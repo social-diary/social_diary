@@ -61,11 +61,29 @@ P.nav.about:Click()
 Check(P.panes.about:IsShown() and not P.panes.memory:IsShown(), "the About page did not open")
 Eq(#P.testers, 3, "the About page does not thank the three testers")
 Eq(P.testers[3]:GetText(), "Koko Skybluff", "a tester's name")
+Eq(P.nav.about.about:GetText(), "Thanks & Credits", "the About row's small print")
+-- Licensing, on the same page: the licence, Dungeon Crawler Forever, each
+-- drawn map's artist once (from the dungeon data), the font.
+local licence = {}
+for i, line in ipairs(P.licensing) do licence[i] = line:GetText() end
+Check(licence[1]:find("GNU General Public License v3 or later") and licence[1]:find("1%.7%.0") and licence[1]:find("MIT"),
+    "the licence line: " .. tostring(licence[1]))
+Check(licence[2]:find("Dungeon Crawler Forever by Per"), "no credit for Dungeon Crawler Forever")
+local credits = ns.Dungeons.Credits()
+Eq(#licence, 3 + #credits, "a line per licence and per artist")
+for i, credit in ipairs(credits) do
+    local artist = credit.text:gsub("^Map art:%s*", "")
+    Check(licence[2 + i]:find(artist, 1, true) and licence[2 + i]:find(credit.dungeons[1], 1, true),
+        "an artist not credited for their maps: " .. licence[2 + i])
+end
+Check(licence[#licence]:find("SIL Open Font License 1%.1"), "no licence for the font")
+Eq(P.questieCredit:GetText(), "Questie and QuestieDB, which Social Diary reads from while the game runs, if you have"
+    .. " them installed.", "the credit for Questie")
 P.nav.recording:Click()
 
 -- Interface's subpages: always listed, under it, each with its own pane.
 -- Open, a subpage is marked and its section's name goes dark with it.
-local SUBPAGES = { toasts = "Toasts", shortcuts = "Keybinds & Shortcuts" }
+local SUBPAGES = { toasts = "Toasts", shortcuts = "Keybinds & Shortcuts", dungeons = "Dungeons and Raids" }
 for key, label in pairs(SUBPAGES) do
     Check(P.nav[key] and P.panes[key], "no row or pane for the subpage " .. key)
     Eq(P.nav[key].label:GetText(), label, "the subpage's name on the left")

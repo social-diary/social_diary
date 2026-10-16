@@ -339,7 +339,7 @@ Eq(rfk.visit.name, "Razorfen Kraul", "the dungeon-only session did not give way"
 Eq(rfk.hidden, 3, "the session's chat did not go with the visit")
 local _, text, sub = ns.UI.DescribeItem(rfk, G)
 Eq(text, "Razorfen Kraul, 35 min, 4 of 6 bosses", "visit headline")
-Check(sub:find("^2 deaths  ·  with Brom, Kaelith and Zuri"), "visit details: " .. sub)
+Check(sub:find("^4 deaths  ·  1 wipe  ·  with Brom, Kaelith and Zuri"), "visit details: " .. sub)
 
 -- Inside a session, the visit is always shown and only counted on the
 -- session's details.
@@ -372,6 +372,9 @@ Check(text:find("^Quested together for 3 h 5 min"), "long session: " .. text)
 Check(sub:find("1 dungeon"), "the session does not count its dungeon: " .. sub)
 -- Three deaths, two of them with lines: only the third is counted.
 Check(sub:find("1 death"), "the death without a line is not counted: " .. sub)
+-- Tester's death in Wailing Caverns is the run's (TLN-11): no line beside
+-- the card (the order above), and not counted on the session.
+Check(not sub:find("2 deaths"), "a death in the dungeon is counted on its session: " .. sub)
 Eq(select(2, ns.UI.DescribeItem(long.lines[1], G)),
     "You died to Razormane Geomancer's Fireball (3 attackers) near Razormane Grounds", "a recap death's line")
 Eq(select(2, ns.UI.DescribeItem(long.lines[5], G)),
@@ -397,7 +400,7 @@ Eq(entry.text, "RAZORFEN KRAUL", "the visit name is not in capitals")
 Eq(entry.font, ns.Style.FONT.rubric, "the visit name is not in red")
 Check(entry.height and entry.height > 20, "the visit entry is not taller than a line")
 Eq(entry.visit.aside, "35 min", "the visit's duration")
-Eq(entry.visit.losses, "2 deaths", "the visit's deaths and wipes")
+Eq(entry.visit.losses, "4 deaths  ·  1 wipe", "the visit's deaths and wipes")
 Eq(#entry.visit.members, 3, "the party, less the user and the page's person")
 for i = 1, #lines do
     Check(not (lines[i].item == entry.item and lines[i] ~= entry and lines[i].text),
@@ -715,6 +718,11 @@ Eq(vlines[plateAt + 2].note, early, "the visit's note is not under the gap")
 -- Two levels in: the visit's bracket runs down its medallion, a level
 -- further in than an icon's, and must clear the icons under it.
 Eq(vlines[plateAt + 2].depth, 2, "what hangs under a visit is not clear of its medallion")
+-- A visit no longer folds open (TLN-12: its card opens the dungeon page,
+-- tests/dungeon_ui.lua), so nothing under it hangs on a bracket.
+Eq(vlines[plateAt + 2].bracket, nil, "a visit's note hangs on a fold's bracket")
+Check(vlines[plateAt].full:find("\nClick to open its page%.$"), "a visit's tooltip does not say what a click does: "
+    .. vlines[plateAt].full)
 ns.db.instances = {}
 
 -- A note about two people is on both their timelines, and says who else.

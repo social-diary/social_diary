@@ -3,7 +3,9 @@
 -- timeline. Its tabs lay a
 -- loose sheet over the book: the map, or a note for the timeline (DIA-11);
 -- the page itself only ever shows what is written. In writing mode the
--- entry form (UI/Windows/Entry.lua) takes its place.
+-- entry form (UI/Windows/Entry.lua) takes its place, and with a dungeon run
+-- opened from its card (J.visit) the dungeon page does (UI/Dungeon/Page.lua),
+-- the tabs still out of the edge.
 --
 -- The selection, the tab and writing mode live in the journal's shared
 -- state (ns.UI.Journal, from UI/Journal/Book.lua). The timeline's rows are
@@ -175,6 +177,12 @@ function J.EditNote(note)
     if note then OpenNote(note) end
 end
 
+-- The page's own pieces, which the dungeon page lies in place of.
+local function ShowPage(p, shown)
+    for _, piece in ipairs({ p.portrait, p.name, p.who }) do piece:SetShown(shown) end
+    p.dungeon:SetShown(not shown)
+end
+
 function RefreshProfile()
     if not J.journal then return end
     local p = J.journal.profile
@@ -182,6 +190,7 @@ function RefreshProfile()
     local s = J.selected and ns.People.Stats(J.selected)
     if not s then
         J.selected = nil
+        J.visit = nil
         p:Hide()
         p.map:Hide()
         -- An empty diary's right page is the page drawn in pencil
@@ -200,6 +209,8 @@ function RefreshProfile()
     p.tagRow:SetShown(not J.editing)
 
     if J.editing then
+        J.visit = nil
+        ShowPage(p, true)
         for _, piece in ipairs({ p.timeline, p.map, p.noteSheet }) do piece:Hide() end
         p.meta:SetText(ns.UI.Entry.Meta(s.guid))
         p.form:SetPerson(s.guid)
@@ -217,15 +228,25 @@ function RefreshProfile()
     -- opens on their story, and the sheet keeps its draft.
     if J.tab == "note" and p.noteSheet.guid ~= s.guid then J.tab = "timeline" end
     local onNote = J.tab == "note"
-    p.timeline:Show()
+    -- A dungeon run opened from their card, if it is theirs: the dungeon
+    -- page lies in place of the page's own pieces, the sheets over it as
+    -- over the page. Anyone else's page opens on their story.
+    local visit = J.visit and J.visit.guid == s.guid and ns.UI.DungeonPage.Visit(s.guid, J.visit.id)
+    if not visit then J.visit = nil end
+    ShowPage(p, not visit)
+    p.edit:SetShown(not visit)
+    p.tagRow:SetShown(not visit)
+    p.timeline:SetShown(not visit)
     if not onNote then p.noteSheet:Hide() end
     p.map:SetShown(onMap)
-    p.tabStory:SetSelected(not onMap and not onNote)
+    -- On the dungeon page no tab is lit: their story is the way back.
+    p.tabStory:SetSelected(not onMap and not onNote and not visit)
     p.tabMap:SetSelected(onMap)
     p.tabNote:SetSelected(onNote)
 
     p.timeline:SetNumRows(TimelineRows(tagHeight))
     FillTimeline(p, s)
+    if visit then p.dungeon:Open(visit, s.guid, s.name:match("^(%S+)") or s.name) end
     if onMap then p.map:SetPerson(s.guid) end
 end
 
@@ -273,6 +294,12 @@ local function BuildProfile(panel, book)
     p.form:Hide()
     p.form.onDone = function() J.EndEdit() end
 
+    -- A dungeon run's page (UI/Dungeon/Page.lua), in place of the rest
+    -- while one is open. A book closed and opened again opens on the
+    -- person's page.
+    p.dungeon = ns.UI.DungeonPage.New(p, PROFILE_W, PROFILE_H)
+    panel:HookScript("OnHide", function() J.visit = nil end)
+
     -- The map: a loose sheet across both pages (UI/Map/HeatSheet.lua). A click
     -- on the book beside it puts it away.
     p.map = ns.UI.MapSheet.New(book)
@@ -285,7 +312,7 @@ local function BuildProfile(panel, book)
     p.tabStory = Style.SideTab(p, "book", "Their story", function()
         J.tab = "timeline"
         J.EndEdit()
-        RefreshProfile()
+        if not ns.UI.DungeonPage.Close() then RefreshProfile() end
     end)
     p.tabStory:SetPoint("TOPLEFT", panel, "TOPRIGHT", -3, -72)
 

@@ -1,5 +1,5 @@
--- Deaths capture (Kind.lua): deaths in a together session, and what killed
--- them (SES-4); and the user's own, on their route.
+-- Deaths capture (Kind.lua): deaths in a together session or a dungeon run,
+-- and what killed them (SES-4, INS-30); and the user's own, on their route.
 --
 -- PLAYER_DEAD and UNIT_DIED say who died and nothing more: the combat log
 -- that used to say who did it is closed to addons since 12.0. Two sources
@@ -365,6 +365,7 @@ local function Try()
                 killer.name = ns.CreatureNames.Clean(ns.Journey.Mine(), killer.npcID, killer.name)
             end
             if item.death then ns.Sessions.SetKiller(item.death, killer) end
+            if item.run then ns.Instances.SetKiller(item.run, killer) end
             if item.guid == ns.ownGUID then
                 ns.Fire("SD_DEATH_RECAP", item.told, killer)
                 Deaths.Killer(item.slain, Ranked(killer, item.ranks))
@@ -390,18 +391,22 @@ local function Step()
     end
 end
 
--- A death in a session is the session's; the user's own is told as well
--- (SD_YOU_DIED), session or not. `told` is the death as the messages carry
--- it, the same table at the moment and with the recap.
+-- A death in a session is the session's, and one in a dungeon run the
+-- run's (Core/Instances.lua, INS-30), with or without a session; the
+-- user's own is told as well (SD_YOU_DIED), session or not. `told` is the
+-- death as the messages carry it, the same table at the moment and with
+-- the recap.
 local function Died(guid)
     local death = ns.Sessions.Death(guid) or nil
+    local run = ns.Instances.Death(guid) or nil
     local own = guid == ns.ownGUID
-    if not death and not own then return end
+    if not death and not run and not own then return end
 
     local guess = Guess(guid)
-    local item = { guid = guid, death = death, guess = guess, tries = 0,
+    local item = { guid = guid, death = death, run = run, guess = guess, tries = 0,
         time = death and death.time or ns.Now(), where = ns.Where() }
     if death then ns.Sessions.SetKiller(death, guess) end
+    if run then ns.Instances.SetKiller(run, guess) end
     if own then
         item.told = { guess = guess, time = item.time, where = item.where }
         ns.Fire("SD_YOU_DIED", item.told)

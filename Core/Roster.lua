@@ -88,6 +88,8 @@ function Roster.Update(current, complete, raid)
     local set = {}
     for guid in pairs(current) do set[guid] = true end
     ns.Sessions.Roster(set)
+    -- The open dungeon run's members, with when they joined and left (INS-12).
+    ns.Instances.Roster(set, complete)
 
     for i = 1, #joined do
         local guid = joined[i]

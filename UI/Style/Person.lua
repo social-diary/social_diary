@@ -1,6 +1,7 @@
 -- A person's pieces (Style, from UI/Style/Tokens.lua): the round
 -- portrait, the heading on their page and loose sheet (Style.HEADING), a
--- dungeon run's medallion and its boss marks, and the rubricated heading
+-- dungeon run's medallion and its boss marks, a boss's portrait on a
+-- dungeon's map, and the rubricated heading
 -- the onboarding pages share. Loaded after UI/Style/Book.lua, whose brass
 -- rings the medallions; the other widgets are in UI/Style/Widgets.lua.
 
@@ -107,10 +108,33 @@ function Style.SetPersonHeading(owner, record, name, who)
     owner.who:SetText(who)
 end
 
+-- A creature's face on `icon`: from its display (the client's 2D portrait
+-- of it, cropped in to BOSS_FACE.crop, as Dungeon Crawler Forever does) or
+-- else a portrait texture (a FileDataID). How it came ("display" or
+-- "portrait"), or nil with neither, no client call for one, or a texture
+-- the client would not set.
+local BOSS_FACE = { crop = { 0.1, 0.9, 0.1, 0.9 }, faded = 0.55 }
+
+local function SetFace(icon, display, portrait)
+    if display and type(SetPortraitTextureFromCreatureDisplayID) == "function"
+        and pcall(SetPortraitTextureFromCreatureDisplayID, icon, display) then
+        icon:SetTexCoord(unpack(BOSS_FACE.crop))
+        return "display"
+    end
+    if portrait and icon:SetTexture(portrait) ~= false then
+        icon:SetTexCoord(0, 1, 0, 1)
+        return "portrait"
+    end
+end
+
 -- A dungeon run's medallion: the instance's own picture in a brass ring (gilt
 -- for a raid), standing a little proud of the page, so it casts a small
--- shadow down and to the right. Without the picture, the name's initial as
--- a drop cap in red.
+-- shadow down and to the right. Without the picture (a Forever dungeon has
+-- none; a file the client does not have sets nothing), the face it is
+-- given (`face` = { display, portrait }: its last boss's, the caller's
+-- choice), as the map's boss medallions show it; without either, the
+-- name's initial as a drop cap in red, over the face, so it is never
+-- hidden under it. `how` says which: "art", "face" or "initial".
 local MEDALLION_RINGS = {
     party = { { 0, BRASS_DARK }, { 1, BRASS_MID }, { 3, BRASS_DARK } },
     raid = { { 0, BRASS_DARK }, { 1, { 0.86, 0.68, 0.36 } }, { 2, BRASS_LIGHT }, { 3, BRASS_DARK } },
@@ -139,25 +163,86 @@ function Style.Medallion(parent, size)
         faces[kind] = face
     end
 
-    medallion.initial = Style.Text(medallion, Style.FONT.title)
+    local cap = CreateFrame("Frame", nil, medallion)
+    cap:SetAllPoints()
+    cap:SetFrameLevel(medallion:GetFrameLevel() + 3)
+    medallion.initial = Style.Text(cap, Style.FONT.title)
     medallion.initial:SetPoint("CENTER", 0, -1)
     medallion.initial:SetJustifyH("CENTER")
     medallion.initial:SetTextColor(Style.RUBRIC[1], Style.RUBRIC[2], Style.RUBRIC[3])
 
-    function medallion:SetVisit(visit)
+    function medallion:SetVisit(visit, face)
         local kind = visit.instanceType == "raid" and "raid" or "party"
-        for k, face in pairs(faces) do face:SetShown(k == kind) end
+        for k, f in pairs(faces) do f:SetShown(k == kind) end
         local icon, path = faces[kind].icon, Style.InstanceArt(visit)
-        if path then
-            icon:SetTexture(path)
+        icon:SetVertexColor(1, 1, 1, 1)
+        if path and icon:SetTexture(path) ~= false then
             icon:SetTexCoord(0, 1, 0, 1)
-            self.initial:Hide()
+            self.how = "art"
+        elseif face and SetFace(icon, face.display, face.portrait) then
+            self.how = "face"
         else
             icon:SetColorTexture(Style.PAPER[1] * 0.92, Style.PAPER[2] * 0.92, Style.PAPER[3] * 0.92, 1)
             local name = (visit.name or "?"):gsub("^The ", "")
             self.initial:SetText(name:sub(1, 1):upper())
-            self.initial:Show()
+            self.how = "initial"
         end
+        self.initial:SetShown(self.how == "initial")
+    end
+
+    return medallion
+end
+
+-- A boss's portrait on a dungeon's map (UI/Dungeon/Print.lua): the face
+-- round in a ring that says how the run left it. "killed" in the
+-- medallions' brass, standing a little proud of the print with its shadow;
+-- "rare" the same in silver, for a rare that was killed; "standing" flat
+-- in a ring of pencil, the face greyed and faded: still there. Each ring's
+-- middle has a colour of its own (deep red, slate, the print's stock), so
+-- a face slow to come never leaves a hole. :SetBoss(look, display,
+-- portrait) shows the face from a creature display (the client's 2D
+-- portrait of it, cropped in, as Dungeon Crawler Forever does) or else a
+-- portrait texture (a FileDataID), and returns how ("display" or
+-- "portrait"), or nil with neither or no client call for one: the caller
+-- marks the boss plainer then.
+local SILVER_LIGHT, SILVER_MID, SILVER_DARK = { 0.90, 0.90, 0.87 }, { 0.64, 0.64, 0.63 }, { 0.24, 0.24, 0.26 }
+local BOSS_RINGS = {
+    killed = { { 0, BRASS_DARK }, { 0.8, BRASS_MID }, { 2, BRASS_DARK }, { 2.5, { 0.36, 0.09, 0.05 } } },
+    rare = { { 0, SILVER_DARK }, { 0.8, SILVER_MID }, { 1.4, SILVER_LIGHT }, { 2, SILVER_DARK },
+        { 2.5, { 0.20, 0.22, 0.27 } } },
+    standing = { { 0, Style.GRAPHITE }, { 1, { 0.90, 0.85, 0.70 } } },
+}
+-- A face (SetFace, above, and its BOSS_FACE): still standing, it is
+-- greyed and drawn at BOSS_FACE.faded.
+
+function Style.BossMedallion(parent, size)
+    local medallion = CreateFrame("Frame", nil, parent)
+    medallion:SetSize(size, size)
+
+    local circle = Style.Art("circle")
+    local shadow = medallion:CreateTexture(nil, "BACKGROUND", nil, -1)
+    shadow:SetSize(size, size)
+    shadow:SetPoint("CENTER", 1.2, -1.2)
+    if circle then Style.Disc(shadow, Style.INK[1], Style.INK[2], Style.INK[3], 0.4) end
+
+    local faces = {}
+    for look, rings in pairs(BOSS_RINGS) do
+        local face = CreateFrame("Frame", nil, medallion)
+        face:SetAllPoints()
+        face.icon = RoundFrame(face, size, rings, 1)
+        face:Hide()
+        faces[look] = face
+    end
+
+    function medallion:SetBoss(look, display, portrait)
+        for k, face in pairs(faces) do face:SetShown(k == look) end
+        shadow:SetShown(circle ~= nil and look ~= "standing")
+        local icon = faces[look].icon
+        local how = SetFace(icon, display, portrait)
+        icon:SetDesaturated(look == "standing")
+        icon:SetAlpha(look == "standing" and BOSS_FACE.faded or 1)
+        self.look, self.face, self.icon = look, how, icon
+        return how
     end
 
     return medallion

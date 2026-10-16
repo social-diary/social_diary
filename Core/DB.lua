@@ -59,6 +59,7 @@ local DIARY = {
         nextSessionId = 1,
         openSession = nil,  -- id of the one open together session (SES-1)
         nextVisitId = 1,    -- Core/Instances.lua's ids (INS-1)
+        openVisit = nil,    -- id of the one open visit (Core/Instances.lua)
         nextNoteId = 1,     -- Core/Notes.lua's ids (DIA-11)
 
         -- The group as last seen, so a /reload does not read every member as
@@ -110,6 +111,7 @@ local CHARACTER_SETTINGS = {
     bookStack = true,   -- the journal's page stack grows with the diary and turns with the page
     flatSheets = false,  -- "Flat paper only": loose sheets (the map, notes) without folds, bends or grime
     revealMap = false,  -- "Always show the whole map": the map sheets fill in unexplored areas too (UI/Map/Art.lua)
+    dungeonRoute = true,  -- MAP-4: the dungeon page's print draws the usual way through (UI/Dungeon/Page.lua)
     -- The parcel at login has been torn open: from then on it comes back
     -- torn, the diary's note beside the book (UI/Windows/Intro/Parcel.lua).
     parcelOpened = false,

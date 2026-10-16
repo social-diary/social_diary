@@ -37,8 +37,11 @@ local VISIT = { medallion = 36, members = 4, pips = 12,
     line1 = 22, line2 = 14 }
 VISIT.height = VISIT.padY * 2 + VISIT.line1 + VISIT.leading + VISIT.line2
 -- The plate: a wash lighter than the page (the grain still shows through),
--- an ink hairline round it, and its shadow down and to the right.
-local PLATE = { wash = { 1, 0.97, 0.88, 0.24 }, edge = 0.24, shadow = 0.16, drop = 2 }
+-- an ink hairline round it, and its shadow down and to the right. Under
+-- the mouse it lifts (`lift`): it rises `rise` px toward the light, its
+-- shadow falls `drop` px out at `shadow`, and its wash brightens to `wash`.
+local PLATE = { wash = { 1, 0.97, 0.88, 0.24 }, edge = 0.24, shadow = 0.16, drop = 2,
+    lift = { rise = 1, drop = 4, shadow = 0.22, wash = 0.34 } }
 -- A day's heading is rubricated: a paraph (a small lozenge, lapis and red
 -- by turns from day to day), the day in red capitals, and a red line ruled
 -- out to the edge, fading as it goes.
@@ -54,8 +57,18 @@ local DayLabel = Format.DayLabel
 -- entry along; not saved, so every login starts with them folded.
 local openEpisodes = setmetatable({}, { __mode = "k" })
 
+-- A visit never folds open: a click opens its dungeon page on the right
+-- page instead (TLN-12, UI/Dungeon/Page.lua).
 local function Openable(item)
-    return IsEpisode(item) and item.hidden > 0
+    return IsEpisode(item) and item.hidden > 0 and item.kind ~= "visit"
+end
+
+-- What a click on a visit's card does, for its tooltip: opens the run's
+-- map, or, on the dungeon page itself, goes back.
+local function VisitHint(visit)
+    if J.visit and J.visit.id == visit.id then return "Click to go back to their story." end
+    if ns.Dungeons.Floors(visit.instanceID) then return "Click to open its map." end
+    return "Click to open its page."
 end
 
 -- Where a line's icon starts, `depth` levels in: the icon column, clear of
@@ -131,6 +144,8 @@ local function TimelineLines(items, guid)
         if Openable(item) then
             full = full .. "\n" .. (isOpen and "Click to fold it up again."
                 or ("Click to show all %d."):format(#item.all))
+        elseif isVisit then
+            full = full .. "\n" .. VisitHint(item.visit)
         end
 
         -- Each line draws its own piece of the bracket, inked a little
@@ -156,7 +171,8 @@ local function TimelineLines(items, guid)
             if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. "  ·  " .. visit.difficulty end
             local losses = {}
             if (visit.deaths or 0) > 0 then losses[#losses + 1] = Count(visit.deaths, "death", "deaths") end
-            if (visit.wipes or 0) > 0 then losses[#losses + 1] = Count(visit.wipes, "wipe", "wipes") end
+            local wipes = ns.DungeonRun.Wipes(visit)
+            if wipes > 0 then losses[#losses + 1] = Count(wipes, "wipe", "wipes") end
             lines[#lines + 1] = { item = item, when = when, text = (visit.name or "An instance"):upper(),
                 font = FONT.rubric, depth = item.depth, full = full, height = VISIT.height,
                 visit = { visit = visit, aside = aside, losses = table.concat(losses, "  ·  "),
@@ -164,7 +180,7 @@ local function TimelineLines(items, guid)
             sub = nil
             head = #lines
             -- Its own lines start as far under the plate as the line above
-            -- ends over it, on its bracket from the plate's edge down.
+            -- ends over it. A visit never folds, so they hang on no bracket.
             local under = isOpen and item.all or item.lines
             if #under > 0 or (item.notes and #item.notes > 0) then
                 lines[#lines + 1] = { item = item, height = VISIT.above, bracket = Bracket() }
@@ -387,7 +403,8 @@ local function BuildTimelineRow(list)
     end
 
     -- Lines wrap up to WRAP_LINES; the tooltip has the rest. Prose is all
-    -- there, but where it is cut short.
+    -- there, but where it is cut short. A visit's card lifts under the
+    -- mouse: it is there to be picked up.
     Style.Tooltip(row, function(self)
         if not self.full then return nil end
         if self.text.IsTruncated and not self.text:IsTruncated()
@@ -395,15 +412,25 @@ local function BuildTimelineRow(list)
             return nil
         end
         return { { self.full, 1, 1, 1, 1, true } }
-    end, "ANCHOR_TOPLEFT", HighlightBracket)
+    end, "ANCHOR_TOPLEFT", function(self, hot)
+        HighlightBracket(self, hot)
+        if self.visit and self.visit:IsShown() then self.visit:Lift(hot) end
+    end)
 
-    -- A note the user wrote opens for writing (UI/Journal/Profile.lua). An
-    -- episode with something folded away opens and folds; all its other
-    -- lines answer, open or folded, the rows on its bracket too.
+    -- A note the user wrote opens for writing (UI/Journal/Profile.lua). A
+    -- visit's card opens its dungeon page on the right page, and on that
+    -- page goes back (TLN-12, UI/Dungeon/Page.lua). An episode with
+    -- something folded away opens and folds; all its other lines answer,
+    -- open or folded, the rows on its bracket too.
     row:SetScript("OnMouseUp", function(self)
         if self.item and self.item.note and J.EditNote then
             GameTooltip:Hide()
             J.EditNote(self.item.note)
+            return
+        end
+        if self.item and self.item.visit then
+            GameTooltip:Hide()
+            ns.UI.OpenVisit(self.item.visit.visit.id, J.selected)
             return
         end
         local item = self.item and (self.item.fold or self.item.item)
@@ -436,13 +463,26 @@ local function BuildVisit(row)
     local W = PLATE.wash
     v.plate = Plate(1, W[1], W[2], W[3], W[4])
     Style.Hairline(v, "BACKGROUND", 2, PLATE.edge, v.plate)
-    local d = PLATE.drop
-    local right = Plate(0, INK[1], INK[2], INK[3], PLATE.shadow)
-    right:SetPoint("TOPLEFT", v.plate, "TOPRIGHT", 0, -d)
-    right:SetPoint("BOTTOMRIGHT", v.plate, "BOTTOMRIGHT", d, -d)
-    local below = Plate(0, INK[1], INK[2], INK[3], PLATE.shadow)
-    below:SetPoint("TOPLEFT", v.plate, "BOTTOMLEFT", d, 0)
-    below:SetPoint("BOTTOMRIGHT", v.plate, "BOTTOMRIGHT", 0, -d)
+    v.right = Plate(0, INK[1], INK[2], INK[3], PLATE.shadow)
+    v.below = Plate(0, INK[1], INK[2], INK[3], PLATE.shadow)
+
+    -- Lying on the page, or lifted under the mouse (PLATE.lift): where its
+    -- shadow falls and how dark, and how bright its wash.
+    function v:Lift(hot)
+        self.hot = hot or nil
+        local L = PLATE.lift
+        local d, a = hot and L.drop or PLATE.drop, hot and L.shadow or PLATE.shadow
+        self.plate:SetColorTexture(W[1], W[2], W[3], hot and L.wash or W[4])
+        self.right:ClearAllPoints()
+        self.right:SetPoint("TOPLEFT", self.plate, "TOPRIGHT", 0, -d)
+        self.right:SetPoint("BOTTOMRIGHT", self.plate, "BOTTOMRIGHT", d, -d)
+        self.right:SetColorTexture(INK[1], INK[2], INK[3], a)
+        self.below:ClearAllPoints()
+        self.below:SetPoint("TOPLEFT", self.plate, "BOTTOMLEFT", d, 0)
+        self.below:SetPoint("BOTTOMRIGHT", self.plate, "BOTTOMRIGHT", 0, -d)
+        self.below:SetColorTexture(INK[1], INK[2], INK[3], a)
+        if self.place then self.place(hot and L.rise or 0) end
+    end
     v.medallion = Style.Medallion(v, VISIT.medallion)
     v.aside = Style.Text(v, FONT.small)
     v.aside:SetJustifyH("RIGHT")
@@ -470,16 +510,23 @@ function UpdateVisit(row, line)
 
     local left = IconLeft(line.depth or 0)
     local textX = left + VISIT.padX + VISIT.medallion + VISIT.gutter
-    v.plate:ClearAllPoints()
-    v.plate:SetPoint("TOPLEFT", row, "TOPLEFT", left, 0)
-    v.plate:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2 - PLATE.drop, 0)
+    -- The plate where it lies, `rise` px up and to the left when lifted.
+    function v.place(rise)
+        v.plate:ClearAllPoints()
+        v.plate:SetPoint("TOPLEFT", row, "TOPLEFT", left - rise, rise)
+        v.plate:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2 - PLATE.drop - rise, rise)
+    end
+    -- A row handed a new line lies down again (the mouse left with the old).
+    v:Lift(false)
     row.icon:Hide()
     row.when:ClearAllPoints()
     row.when:SetPoint("LEFT", row, "TOPLEFT", 0, VISIT_LINE1)
 
     v.medallion:ClearAllPoints()
     v.medallion:SetPoint("LEFT", row, "LEFT", left + VISIT.padX, 0)
-    v.medallion:SetVisit(info.visit)
+    -- Without the client's picture of it, its last boss's face
+    -- (UI/Dungeon/Print.lua), as on the dungeon page's head.
+    v.medallion:SetVisit(info.visit, ns.UI.DungeonPage.Face(info.visit))
 
     v.aside:ClearAllPoints()
     v.aside:SetPoint("RIGHT", row, "TOPRIGHT", -2 - PLATE.drop - VISIT.padX, VISIT_LINE1)
@@ -621,7 +668,11 @@ local function UpdateTimelineRow(row, line)
     end
 end
 
--- For the profile, which holds the timeline (UI/Journal/Profile.lua).
+-- For the profile, which holds the timeline (UI/Journal/Profile.lua), and
+-- the dungeon page, which wears a visit's card as its head
+-- (UI/Dungeon/Page.lua): where the card's plate starts, and how far short
+-- of the row's right edge it stops.
 J.TimelineLines, J.FitTimelineLines, J.BuildTimelineRow, J.UpdateTimelineRow =
     TimelineLines, FitTimelineLines, BuildTimelineRow, UpdateTimelineRow
 J.TIMELINE_ROW_HEIGHT = ROW_H
+J.VISIT_PLATE = { left = IconLeft(0), right = 2 + PLATE.drop }

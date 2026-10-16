@@ -471,12 +471,17 @@ function Timeline.For(guid)
             end
             top[#top + 1] = Finish(episode, {})
         elseif host then
-            -- What happened during the run happened in the run.
+            -- What happened during the run happened in the run. Its deaths
+            -- are the visit's to count ("4 deaths" on its card), not lines
+            -- beside it, nor the session's count again (TLN-11).
             local kept, ended = {}, visit.endedAt or ns.Now()
             for i = 1, #host.all do
                 local child = host.all[i]
-                if child.kind == "row" and child.time >= visit.startedAt and child.time <= ended then
+                local during = child.time >= visit.startedAt and child.time <= ended
+                if child.kind == "row" and during then
                     episode.all[#episode.all + 1] = child
+                elseif child.kind == "death" and during then
+                    host.runDeaths = (host.runDeaths or 0) + 1
                 else
                     kept[#kept + 1] = child
                 end

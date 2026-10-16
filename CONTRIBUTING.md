@@ -118,4 +118,4 @@ packages the addon with the BigWigs packager and publishes a GitHub release.
 ## Licence
 
 By contributing, you agree that your code is released under the
-[MIT License](LICENSE).
+[GNU General Public License v3.0 or later](LICENSE).

@@ -9,7 +9,7 @@
 ## AddonCompartmentFunc: SocialDiary_OnCompartmentClick
 ## X-Category: Social
 ## OptionalDeps: QuestieDB, Questie
-## X-License: MIT
+## X-License: GPL-3.0-or-later
 
 Core/Addon.lua
 Core/DB.lua
@@ -26,6 +26,23 @@ Core/Diary.lua
 Core/Notes.lua
 Core/Sessions.lua
 Core/Instances.lua
+# Dungeon Crawler Forever's data (GPL-3.0-or-later, Vendor/DungeonCrawlerForever/
+# VERSION): the table it loads into first, then its files as they ship,
+# then the one reader of them.
+Vendor/DungeonCrawlerForever/DCF.lua
+Vendor/DungeonCrawlerForever/Data/Art.lua
+Vendor/DungeonCrawlerForever/Data/ArtForever.lua
+Vendor/DungeonCrawlerForever/Data/ArtCustom.lua
+Vendor/DungeonCrawlerForever/Data/Dungeons.lua
+Vendor/DungeonCrawlerForever/Data/Rares.lua
+Vendor/DungeonCrawlerForever/Data/Wings.lua
+Vendor/DungeonCrawlerForever/Data/Markers.lua
+Vendor/DungeonCrawlerForever/Data/Combined.lua
+Vendor/DungeonCrawlerForever/Data/Routes.lua
+Vendor/DungeonCrawlerForever/Data/Loot.lua
+Core/DungeonRoutes.lua
+Core/Dungeons.lua
+Core/DungeonRun.lua
 Core/Roster.lua
 Core/Reunions.lua
 Core/Timeline.lua
@@ -61,6 +78,7 @@ UI/Windows/Picker.lua
 UI/Paper/Sheet.lua
 UI/Map/OverlayData.lua
 UI/Map/Art.lua
+UI/Map/Dungeon.lua
 UI/Ink/Blot.lua
 UI/Map/HeatSheet.lua
 UI/Ink/Pen.lua
@@ -96,6 +114,12 @@ UI/Journey/Page.lua
 UI/Journal/Timeline.lua
 UI/Journal/People.lua
 UI/Journal/Profile.lua
+# The dungeon page (ns.UI.DungeonPage): its print first, its words, its
+# margin notes, then the page.
+UI/Dungeon/Print.lua
+UI/Dungeon/Words.lua
+UI/Dungeon/Notes.lua
+UI/Dungeon/Page.lua
 UI/Journal/Nearby.lua
 UI/Journal/Front.lua
 UI/Journal/Corner.lua
@@ -120,6 +144,7 @@ UI/Settings/Sections/Recording.lua
 UI/Settings/Sections/Interface.lua
 UI/Settings/Sections/Toasts.lua
 UI/Settings/Sections/Shortcuts.lua
+UI/Settings/Sections/Dungeons.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Memory.lua
@@ -206,6 +231,7 @@ Features/Hunts/LuckyCard.lua
 
 Capture/Menus.lua
 Capture/Group.lua
+Capture/Instances.lua
 Capture/Together.lua
 Capture/Nearby.lua
 Capture/Sightings.lua

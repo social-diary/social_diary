@@ -198,7 +198,8 @@ local function VisitText(episode, guid)
 
     local facts = {}
     if (visit.deaths or 0) > 0 then facts[#facts + 1] = Count(visit.deaths, "death", "deaths") end
-    if (visit.wipes or 0) > 0 then facts[#facts + 1] = Count(visit.wipes, "wipe", "wipes") end
+    local wipes = ns.DungeonRun.Wipes(visit)
+    if wipes > 0 then facts[#facts + 1] = Count(wipes, "wipe", "wipes") end
     facts[#facts + 1] = Members(visit, guid)
     if #bosses > 0 then facts[#facts + 1] = "killed " .. table.concat(bosses, ", ") end
     return text, facts
@@ -244,10 +245,12 @@ local function Facts(episode, guid)
     end
 
     -- Deaths with a line of their own (Timeline's death items) are not
-    -- counted again; older sessions only have the count.
+    -- counted again, nor those a dungeon run in it counts (TLN-11); older
+    -- sessions only have the count.
     local session = episode.session
     if session then
         local deaths = (session.deaths[guid] or 0) + (session.deaths[session.me] or 0)
+            - (episode.runDeaths or 0)
         for i = 1, #episode.all do
             if episode.all[i].kind == "death" then deaths = deaths - 1 end
         end

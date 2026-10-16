@@ -364,7 +364,11 @@ function TestData.Write(now)
         { quests = Quests(14, 900), levelStart = 18, levelEnd = 21,
             rares = { { name = "Humar the Pridelord", npcID = 5828, kind = "rare", time = t2 + 40 * MIN } } },
         -- One of the user's deaths has no record: older sessions only counted.
-        { deaths = { [ns.ownGUID] = 2, [GUID] = 1 }, others = 3, deathLog = {
+        -- Tester's death in Wailing Caverns is the run's (TLN-11): neither a
+        -- line beside its card nor counted on the session.
+        { deaths = { [ns.ownGUID] = 2, [GUID] = 2 }, others = 3, deathLog = {
+            { guid = GUID, time = t2 + 80 * MIN, zone = "Wailing Caverns",
+                killer = { source = "recap", name = "Lord Cobrahn", npcID = 3669 } },
             { guid = ns.ownGUID, time = t2 + 25 * MIN, zone = "The Barrens", subZone = "Razormane Grounds",
                 killer = { source = "recap", name = "Razormane Geomancer", npcID = 3269, spell = "Fireball",
                     attackers = 3 } },
@@ -388,12 +392,37 @@ function TestData.Write(now)
     local s3 = Session(t3, 40 * MIN, { "Razorfen Kraul" },
         { levelStart = 21, levelEnd = 22 }, { others = 3 })
     Beat("began", s3.startedAt, 3, s3)
+    -- As the capture writes a run (Core/Instances.lua): the pulls, a wipe
+    -- on Aggem and a ghost run after it, a death to trash on the way to
+    -- Jargba, and two bosses' loot, one for Tester (a diary entry) and one
+    -- for the user, for the map's notes (Core/DungeonRun.lua).
+    local at = function(m) return t3 + m * MIN end
     Visit({
         instanceID = 47, name = "Razorfen Kraul", instanceType = "party", difficulty = "Normal",
-        startedAt = t3 + 3 * MIN, endedAt = t3 + 38 * MIN,
+        startedAt = at(3), endedAt = at(38),
         members = { Tester(), Me(), BROM, KAELITH, ZURI },
         bossesKilled = { "Roogug", "Aggem Thorncurse", "Death Speaker Jargba", "Overlord Ramtusk" },
-        bossTotal = 6, deaths = 2, sessionIds = { s3.id },
+        bossTotal = 6, deaths = 4, wipes = 1, sessionIds = { s3.id },
+        spans = { { from = at(3), to = at(14), ghost = true }, { from = at(16), to = at(38) } },
+        pulls = {
+            { id = 2773, name = "Roogug", start = at(7), stop = at(8), killed = true },
+            { id = 2774, name = "Aggem Thorncurse", start = at(12), stop = at(13) },
+            { id = 2774, name = "Aggem Thorncurse", start = at(18), stop = at(20), killed = true },
+            { id = 2775, name = "Death Speaker Jargba", start = at(26), stop = at(27), killed = true },
+            { id = 2776, name = "Overlord Ramtusk", start = at(33), stop = at(35), killed = true },
+        },
+        deathLog = {
+            { guid = BROM.guid, time = at(12) + 30, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
+            { guid = ZURI.guid, time = at(12) + 45, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
+            { guid = KAELITH.guid, time = at(12) + 50, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
+            { guid = ns.ownGUID, time = at(23), killer = { name = "Razorfen Defender", npcID = 4442 } },
+        },
+        loot = {
+            { guid = GUID, item = "|cnIQ3:|Hitem:6681::::::::22:1491::::::::|h[Thornspike]|h|r",
+                itemID = 6681, time = at(20) + 20 },
+            { guid = ns.ownGUID, item = "|cnIQ2:|Hitem:6686::::::::22:1491::::::::|h[Tusken Helm]|h|r",
+                itemID = 6686, time = at(35) + 15 },
+        },
     })
     Point("tester", { n = 3, session = s3, now = now, Row = Row })
 

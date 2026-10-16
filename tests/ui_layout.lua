@@ -34,6 +34,7 @@ local LOOSE = {
     RefreshJourneyPage = "tests",
     RedrawJourneyPage = "Dev",      -- /sd journey, the tests, plate_dump.lua
     OpenZoneSheet = "tests",
+    OpenVisit = "tests",            -- the dungeon page's one way in (DGN-1); the super plate's next
     ShowSettings = "Core",          -- /sd settings
     PickupDiaryMacro = "tests",
     -- Writing in the diary
@@ -82,6 +83,7 @@ local MODULES = {
     Surface = true, LinkSheet = true, NoteSheet = true, MapSheet = true, MapArt = true,
     Pen = true, InkTrail = true, InkBlot = true, TimelineText = true,
     YourDiary = true, JourneyPlate = true, JourneyText = true, JourneyLook = true, JourneyMargin = true,
+    DungeonMap = true, DungeonPage = true,
 }
 
 local function IsModule(v)

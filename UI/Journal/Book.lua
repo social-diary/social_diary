@@ -87,6 +87,12 @@ J.selected = nil
 -- "map" while the map sheet lies on the book, else "timeline".
 J.tab = "timeline"
 
+-- The dungeon run whose page lies on the right page in place of the
+-- person's (UI/Dungeon/Page.lua): { id, guid, offset } (the visit, whose
+-- page it was opened on, and where their timeline was scrolled to), or nil.
+-- Not kept past closing the book.
+J.visit = nil
+
 -- Writing mode: the right page shows the entry form (UI/Windows/Entry.lua) in
 -- place of the note, story and timeline or map.
 J.editing = false

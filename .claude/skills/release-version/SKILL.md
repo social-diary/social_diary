@@ -46,6 +46,12 @@ Stop if the tag already exists.
   every raised `SCHEMA_VERSION` / `ACCOUNT_SCHEMA` / `CHARACTER_SCHEMA` has a
   matching `STEPS.*` entry (see `.claude/rules/settings.md`). A release that
   renames a key without a step loses players' data.
+- Dungeon Crawler Forever: compare `Vendor/DungeonCrawlerForever/VERSION`
+  with the release in `Interface/AddOns/DungeonCrawlerForever/*.toc` (or its
+  GitHub). If DCF is newer, tell the user and offer the sync: copy its
+  `Data/` files that `Vendor/` holds, re-apply the one changed line (and
+  ArtCustom's tile paths, see each file's header), copy new `Art/*.blp`,
+  raise `VERSION`, run the tests. Never sync without a yes.
 
 Leave `## Interface:` alone unless the user asks. WoW Forever's interface
 number moves with the client, not with the addon.

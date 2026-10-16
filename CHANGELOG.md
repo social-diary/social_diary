@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Changes
+
+- Social Diary is now licensed under the GPL v3
+
 ### Fixes
 
 - Flight paths in _Your Diary_ now use a single Flight Master node
