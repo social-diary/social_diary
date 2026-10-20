@@ -212,6 +212,42 @@ function ns.OnChat(event, fn)
     return handler
 end
 
+-- The client's own sentences (LOC-1). A global string as a pattern: "%s
+-- receives loot: %s." with its arguments' order ("%2$s" comes second).
+local function Pattern(fmt)
+    if type(fmt) ~= "string" or fmt == "" then return nil end
+    local out, order = {}, {}
+    local i = 1
+    while i <= #fmt do
+        local s, e, pos, conv = fmt:find("^%%(%d?)%$?([sd])", i)
+        if fmt:sub(i, i + 1) == "%%" then
+            out[#out + 1] = "%%"
+            i = i + 2
+        elseif s then
+            order[#order + 1] = tonumber(pos) or (#order + 1)
+            out[#out + 1] = conv == "d" and "(%d+)" or "(.+)"
+            i = e + 1
+        else
+            local c = fmt:sub(i, i)
+            out[#out + 1] = c:find("[%^%$%(%)%%%.%[%]%*%+%-%?]") and ("%" .. c) or c
+            i = i + 1
+        end
+    end
+    return "^" .. table.concat(out) .. "$", order
+end
+
+-- `text` read as the global string `fmt`: its arguments in the string's
+-- order, or nil when it is not that sentence.
+function ns.ReadString(fmt, text)
+    local pattern, order = Pattern(fmt)
+    if not pattern or type(text) ~= "string" then return nil end
+    local found = { text:match(pattern) }
+    if #found == 0 then return nil end
+    local args = {}
+    for k, at in ipairs(order) do args[at] = found[k] end
+    return args
+end
+
 --------------------------------------------------------------------------
 -- Timers
 --------------------------------------------------------------------------

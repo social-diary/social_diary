@@ -6,6 +6,29 @@ local T = ...
 local mock, F = T.mock, T.F
 local Section, Check, Eq = T.Section, T.Check, T.Eq
 local DAY = T.DAY
+
+-- The client's loot lines (enUS) and its mailbox, hooked as the client's
+-- hooksecurefunc does. Set before the addon loads (the hooks are made at
+-- load); taken away at the end.
+_G.LOOT_ITEM_CREATED_SELF = "You create: %s."
+_G.LOOT_ITEM_CREATED_SELF_MULTIPLE = "You create: %sx%d."
+_G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
+_G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
+_G.LOOT_ITEM_SELF = "You receive loot: %s."
+_G.LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
+local inbox = {}
+_G.GetInboxItemLink = function(index, attachment) return inbox[index] and inbox[index][attachment] end
+_G.TakeInboxItem = function() end
+_G.AutoLootMailItem = function() end
+_G.hooksecurefunc = function(name, fn)
+    local before = _G[name]
+    _G[name] = function(...)
+        local r = before(...)
+        fn(...)
+        return r
+    end
+end
+
 local ns = T.Boot()
 
 local J, R, Text = ns.Journey, ns.JourneyRecap, ns.UI.JourneyText
@@ -152,6 +175,70 @@ end
 Eq(Firsts.Looking(j), false, "still looking with every kind found or had")
 
 --------------------------------------------------------------------------
+Section("how a first came: what was said about the item, not an open mailbox")
+
+-- One kind looked for again, an item of it in the bags, what `say` does
+-- before (or after) the bags change: how it came.
+local GREEN = Link(6071, "Woolen Gloves", "1eff00")
+mock.itemInfo[6071] = { classID = 4, subclassID = 1, equipLoc = "INVTYPE_HAND" }
+local function Came(say, after)
+    local saved = j.firsts.uncommon
+    j.firsts.uncommon = nil
+    mock.now = mock.now + 60
+    Put(7, nil)
+    Bags()
+    if not after then say() end
+    Put(7, GREEN, 2)
+    Bags()
+    if after then say() end
+    local rec = j.firsts.uncommon
+    j.firsts.uncommon = saved
+    Put(7, nil)
+    return rec and rec.from
+end
+local function Chat(text) mock.fire("CHAT_MSG_LOOT", text, "Me") end
+-- The green bag found above is out of the bags meanwhile.
+local greenBag = mock.bags[0][3]
+Put(3, nil)
+
+-- The reported bug: a mailbox open (or its close never heard) said
+-- "came by mail" of a quest's reward and of something made.
+mock.fire("MAIL_SHOW")
+Eq(Came(function()
+    mock.fire("QUEST_COMPLETE")
+    mock.fire("QUEST_FINISHED")
+    Chat("You receive item: " .. GREEN .. ".")
+end), "quest", "a quest's reward beside an open mailbox")
+Eq(Came(function() Chat("You create: " .. GREEN .. ".") end), "craft", "something made beside an open mailbox")
+Eq(Came(function() end), nil, "an open mailbox alone said how it came")
+
+-- A line after the bags changed still says how.
+Eq(Came(function() Chat("You create: " .. GREEN .. ".") end, true), "craft", "a line after the bags changed")
+Eq(Came(function() Chat("You create: " .. GREEN .. "x2.") end), "craft", "two made at once")
+Eq(Came(function() Chat("You receive loot: " .. GREEN .. ".") end), "loot", "a looted green")
+Eq(Came(function()
+    mock.fire("MERCHANT_SHOW")
+    Chat("You receive item: " .. GREEN .. ".")
+end), "vendor", "a green bought")
+mock.fire("MERCHANT_CLOSED")
+-- A line about another item says nothing about this one.
+mock.now = mock.now + 60
+Eq(Came(function() Chat("You create: " .. BRACERS .. ".") end), nil, "a line about another item")
+
+-- Taken out of a letter: one attachment, or all of them.
+inbox[1] = { [2] = GREEN }
+Eq(Came(function() TakeInboxItem(1, 2) end), "mail", "an attachment taken")
+Eq(Came(function()
+    AutoLootMailItem(1)
+    Chat("You receive item: " .. GREEN .. ".")
+end), "mail", "a letter opened, and a line after it")
+Eq(Came(function() TakeInboxItem(1, 2) end, true), "mail", "the attachment's hook after the bags changed")
+inbox[1] = nil
+mock.fire("MAIL_CLOSED")
+mock.bags[0][3] = greenBag
+mock.now = mock.now + 60
+
+--------------------------------------------------------------------------
 Section("not watching: what came in meanwhile is had, not found")
 
 local SECOND = "Player-0000-ALT00001"
@@ -241,6 +328,8 @@ Eq(Firsts.Sentence("rare", { t = d0, link = BLUE, from = "quest" }), "A quest ga
 Eq(Firsts.Sentence("bag", { t = d0, mapID = MULGORE, link = POUCH, from = "vendor" }),
     "Bought your first bag in Mulgore: Small Brown Pouch.", "a bag bought")
 Eq(Firsts.Sentence("shoulder", { t = d0, from = "mail" }), "Your first shoulders came by mail.", "shoulders by mail")
+Eq(Firsts.Sentence("bag", { t = d0, mapID = MULGORE, link = POUCH, from = "craft" }),
+    "Made your first bag in Mulgore: Small Brown Pouch.", "a bag made")
 Eq(Firsts.Sentence("epic", { t = d0 }), "Found your first epic.", "an epic found nowhere known")
 
 local plate = { mapID = MULGORE, t = d0, moments = { Find("uncommon", loot) } }
@@ -270,6 +359,8 @@ Eq(head, "Your first bag", "a first's tooltip heading")
 Check(line:find("^Small Brown Pouch, from Koko Skybluff, at level 5, "), "a first's tooltip line: " .. line)
 head, line = Firsts.Tip(Find("uncommon", loot), d0)
 Check(line:find("^Wolfskin Bracers, looted, at level 6, "), "a looted first's tooltip line: " .. line)
+head, line = Firsts.Tip(Find("bag", { t = d0, link = POUCH, from = "craft", level = 5 }), d0)
+Check(line:find("^Small Brown Pouch, made by hand, at level 5, "), "a made first's tooltip line: " .. line)
 
 -- The entry's prose ends with its firsts.
 local lines = Text.Lines({ kind = "level", level = 5, from = d0, to = d0 + 600, seconds = 600, places = {},
@@ -858,3 +949,9 @@ do
     Check(shoulders, "the narrow shoulders' card is not stacked under a two-line heading")
 end
 ns.UI.CloseJournal()
+
+for _, name in ipairs({ "LOOT_ITEM_CREATED_SELF", "LOOT_ITEM_CREATED_SELF_MULTIPLE", "LOOT_ITEM_PUSHED_SELF",
+    "LOOT_ITEM_PUSHED_SELF_MULTIPLE", "LOOT_ITEM_SELF", "LOOT_ITEM_SELF_MULTIPLE", "GetInboxItemLink",
+    "TakeInboxItem", "AutoLootMailItem", "hooksecurefunc" }) do
+    _G[name] = nil
+end

@@ -101,39 +101,8 @@ end)
 -- The client's own sentences (LOC-1)
 --------------------------------------------------------------------------
 
--- A global string as a pattern: "%s receives loot: %s." with its
--- arguments' order ("%2$s" comes second).
-local function Pattern(fmt)
-    if type(fmt) ~= "string" or fmt == "" then return nil end
-    local out, order = {}, {}
-    local i = 1
-    while i <= #fmt do
-        local s, e, pos, conv = fmt:find("^%%(%d?)%$?([sd])", i)
-        if fmt:sub(i, i + 1) == "%%" then
-            out[#out + 1] = "%%"
-            i = i + 2
-        elseif s then
-            order[#order + 1] = tonumber(pos) or (#order + 1)
-            out[#out + 1] = conv == "d" and "(%d+)" or "(.+)"
-            i = e + 1
-        else
-            local c = fmt:sub(i, i)
-            out[#out + 1] = c:find("[%^%$%(%)%%%.%[%]%*%+%-%?]") and ("%" .. c) or c
-            i = i + 1
-        end
-    end
-    return "^" .. table.concat(out) .. "$", order
-end
-
-local function Read(fmt, text)
-    local pattern, order = Pattern(fmt)
-    if not pattern or type(text) ~= "string" then return nil end
-    local found = { text:match(pattern) }
-    if #found == 0 then return nil end
-    local args = {}
-    for k, at in ipairs(order) do args[at] = found[k] end
-    return args
-end
+-- A global string read back out of a line (Core/Events.lua).
+local Read = ns.ReadString
 
 -- The dungeon was reset: the next time in is a new run (INS-8).
 ns.On("CHAT_MSG_SYSTEM", function(_, text)

@@ -12,6 +12,8 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Fixes
 
 - Flight paths in _Your Diary_ now use a single Flight Master node
+- First items in _Your Diary_ now say how they really arrived
+  - Crafted firsts now say you made them
 
 ## [1.7.0]
 

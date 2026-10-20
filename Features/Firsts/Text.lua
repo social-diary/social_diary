@@ -89,6 +89,8 @@ function Firsts.Sentence(kind, rec)
         text = "A quest gave you " .. yours
     elseif rec.from == "vendor" then
         text = "Bought " .. yours .. in_
+    elseif rec.from == "craft" then
+        text = "Made " .. yours .. in_
     elseif rec.from == "mail" then
         text = Capital(yours) .. " came by mail"
     else
@@ -114,7 +116,8 @@ end
 function Firsts.Tip(m, now, bare)
     local rec = m.find or m
     local _, yours = Words(m.what or m.kind)
-    local how = ({ quest = "a quest's reward", vendor = "bought", mail = "by mail", loot = "looted" })[rec.from]
+    local how = ({ quest = "a quest's reward", vendor = "bought", craft = "made by hand", mail = "by mail",
+        loot = "looted" })[rec.from]
     if rec.from == "trade" then
         local giver = Giver(rec)
         how = giver and ("from " .. Who(giver)) or "a gift"

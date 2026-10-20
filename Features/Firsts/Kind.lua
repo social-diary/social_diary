@@ -63,10 +63,10 @@ local Journey = ns.Journey
 -- j.firsts[kind] is the record of the first one found, as Capture.lua saw
 -- it come into the bags: { t, mapID, x, y, level, link, from, guid }.
 -- `from` is how it came, when that could be told: "trade" (and `guid`,
--- who gave it), "mail", "vendor", "quest" or "loot". `false` is a kind
--- the character already had when the diary first looked (D10: nothing
--- before is made up), nil one still to be found. No table at all: the
--- diary has not looked yet.
+-- who gave it), "mail", "vendor", "quest", "craft" (made, since 20 Oct)
+-- or "loot". `false` is a kind the character already had when the diary
+-- first looked (D10: nothing before is made up), nil one still to be
+-- found. No table at all: the diary has not looked yet.
 
 Firsts.KINDS = { "bag", "shoulder", "uncommon", "rare", "epic" }
 
