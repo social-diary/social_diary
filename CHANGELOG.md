@@ -3,12 +3,17 @@
 All notable changes to Social Diary. Versions follow the `## Version` line in
 `social_diary.toc`; a release is the matching `v` tag (for example `v1.0.0`).
 
-## [Unreleased]
+## [unreleased]
+
+### Shiny new Things
+
+- Dungeons activites are now mapped!
+  - Group members now get a business card. Art is WIP
 
 ### Changes
 
 - Social Diary is now licensed under the GPL v3
-- Sessions on a profile now tell their proper stories -- will get better over time with more addtions.
+- Sessions on a profile now tell proper stories -- will get better over time with more addtions.
 
 ### Fixes
 
