@@ -8,7 +8,9 @@
 -- spans = { { from, to, ghost } }, pulls = { { id, name, start, stop,
 -- killed, secret } }, deathLog = { { guid, time, killer, pull, fight } },
 -- loot = { { guid, item, itemID, time } }, inferred = { [boss name] =
--- "loot" } (a kill only its loot told of) }.
+-- "loot" } (a kill only its loot told of), rolls = { { key, hkey, item,
+-- itemID, time, need = { [guid] = roll, or true when only the choice was
+-- said }, winner, winRoll, winNeed } } (group loot rolls, Need only) }.
 --
 -- Capture/Instances.lua tells this file what the client says (in, out, the
 -- group, pulls, loot), and the deaths' capture tells it who died. The open
@@ -28,7 +30,7 @@ local GAP = 30 * 60
 -- killed, or this long inside.
 local KEEP_SECONDS = 10 * 60
 -- Caps, so one long night cannot grow a record without end.
-local MAX_DEATHS, MAX_LOOT, MAX_PULLS, MAX_SPANS = 60, 40, 60, 40
+local MAX_DEATHS, MAX_LOOT, MAX_PULLS, MAX_SPANS, MAX_ROLLS = 60, 40, 60, 40, 40
 
 Instances.GAP = GAP
 
@@ -426,6 +428,67 @@ function Instances.Loot(guid, link, now)
 end
 
 --------------------------------------------------------------------------
+-- Rolls (pass B, untested in the client: .claude/dungeon-visits-prd.md)
+--------------------------------------------------------------------------
+
+-- Two reports of one drop without a shared key (the chat's loot history
+-- id, the history's own) are one drop when the same item comes this close.
+local ROLL_MERGE = 120
+
+-- The drop `key` of `link`: its record, made when new. The chat keys a
+-- drop by its loot history id (a number), the loot history by its own
+-- (a string, kept as `hkey`); a drop one told of is matched to the
+-- other's by its item and time.
+local function Drop(visit, key, link, itemID, now)
+    visit.rolls = visit.rolls or {}
+    local field = type(key) == "string" and "hkey" or "key"
+    for _, drop in ipairs(visit.rolls) do
+        if key ~= nil and drop[field] == key then return drop end
+    end
+    for _, drop in ipairs(visit.rolls) do
+        if drop.itemID == itemID and math.abs((drop.time or 0) - now) <= ROLL_MERGE
+            and (key == nil or drop[field] == nil) then
+            drop[field] = drop[field] or key
+            return drop
+        end
+    end
+    if #visit.rolls >= MAX_ROLLS then return nil end
+    local drop = { item = link, itemID = itemID, time = now, need = {} }
+    drop[field] = key
+    visit.rolls[#visit.rolls + 1] = drop
+    return drop
+end
+
+-- What the client said about a roll on a drop in the run. `what` is
+-- { guid, need (they chose Need), roll (their number, when said), won }:
+-- a Need choice, a Need roll, a winner (with their roll and whether it
+-- was Need, when said). Only the user's and the members' rolls are kept,
+-- and only Need counts (the user's rule): a Greed winner is kept as the
+-- winner, its roll not. Returns the drop's record.
+function Instances.Roll(key, link, what, now)
+    local inside, visit = Instances.Inside()
+    if not inside or type(link) ~= "string" or type(what) ~= "table" then return nil end
+    local guid = ns.SafeGUID(what.guid)
+    if not guid or not InRun(visit, guid) then return nil end
+    now = now or ns.Now()
+    local itemID = tonumber(link:match("item:(%d+)"))
+    local drop = Drop(visit, key, link, itemID, now)
+    if not drop then return nil end
+    if what.need then
+        local roll = tonumber(what.roll)
+        local had = drop.need[guid]
+        drop.need[guid] = roll or (type(had) == "number" and had) or true
+    end
+    if what.won then
+        drop.winner = guid
+        drop.winNeed = what.need or nil
+        if what.need and tonumber(what.roll) then drop.winRoll = tonumber(what.roll) end
+    end
+    ns.Touch()
+    return drop
+end
+
+--------------------------------------------------------------------------
 -- Forgetting
 --------------------------------------------------------------------------
 
@@ -443,6 +506,10 @@ function Instances.Forget(guid)
             for i = #list, 1, -1 do
                 if list[i].guid == guid then table.remove(list, i) end
             end
+        end
+        for _, drop in ipairs(visit.rolls or {}) do
+            if drop.need then drop.need[guid] = nil end
+            if drop.winner == guid then drop.winner, drop.winRoll, drop.winNeed = nil, nil, nil end
         end
     end
 end

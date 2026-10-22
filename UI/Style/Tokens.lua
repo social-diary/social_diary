@@ -112,10 +112,20 @@ local MORPHEUS = "Fonts\\MORPHEUS.TTF"
 local FRIZ = "Fonts\\FRIZQT__.TTF"
 local NEUTON_ITALIC = "Interface\\AddOns\\" .. addonName .. "\\Fonts\\Neuton-Italic.ttf"
 
--- The three files by name, for what sets a font by hand at a size of its
--- own (the margin cards' hand, the plates' heading, the parcel's fonts):
--- the same path every time, never a copy of the string.
+-- Goodmountain (Hermann S Designs, Fonts/Goodmountain-LICENSE.txt): shipped
+-- as it came, never modified nor renamed (its licence forbids both). A
+-- display face that reads in mixed case down to about 15 px, which Morpheus
+-- cannot, so it is set in mixed case, never in capitals. For now on the
+-- person's page alone (the person-page proposal, variant A, round 2): their
+-- name on the clipped sheet, the timeline's day labels and a run card's
+-- title. The user's client loads it (20 Oct: SetFont on it returns true).
+local GOODMOUNTAIN = "Interface\\AddOns\\" .. addonName .. "\\Fonts\\Goodmountain.otf"
+
+-- The files by name, for what sets a font by hand at a size of its own
+-- (the margin cards' hand, the plates' heading, the parcel's fonts): the
+-- same path every time, never a copy of the string.
 Style.MORPHEUS, Style.FRIZ, Style.NEUTON_ITALIC = MORPHEUS, FRIZ, NEUTON_ITALIC
+Style.GOODMOUNTAIN = GOODMOUNTAIN
 
 local function Font(name, file, size, color)
     local font = CreateFont(name)
@@ -156,6 +166,17 @@ Style.FONT = {
     pencilLede = Font("SocialDiaryFontPencilLede", FRIZ, 15, Style.GRAPHITE),
     pencilTitle = Font("SocialDiaryFontPencilTitle", MORPHEUS, 20, Style.GRAPHITE),
     margin = Font("SocialDiaryFontMargin", FRIZ, 12, Style.ACCENT),
+    -- The person's page in Goodmountain (GOODMOUNTAIN, above), mixed case:
+    -- their name on the clipped sheet (27, the 50 px sheet's line; a long
+    -- name steps down to `personNameSmall`, and a very long one to
+    -- `personNameLeast`, the smallest Goodmountain still reads at in mixed
+    -- case), a day's label on its strip
+    -- (15, rubric) and a dungeon run's title on its card (17, rubric).
+    personName = Font("SocialDiaryFontPersonName", GOODMOUNTAIN, 27, Style.INK_STRONG),
+    personNameSmall = Font("SocialDiaryFontPersonNameSmall", GOODMOUNTAIN, 22, Style.INK_STRONG),
+    personNameLeast = Font("SocialDiaryFontPersonNameLeast", GOODMOUNTAIN, 17, Style.INK_STRONG),
+    dayLabel = Font("SocialDiaryFontDayLabel", GOODMOUNTAIN, 15, Style.RUBRIC),
+    runTitle = Font("SocialDiaryFontRunTitle", GOODMOUNTAIN, 17, Style.RUBRIC),
     -- The title tooled in gold on the closed book (Style.ClosedBook): GameFont
     -- gold on leather, pressed in, so its dark lip is up and to the left.
     cover = Font("SocialDiaryFontCover", MORPHEUS, 21, { 0.89, 0.73, 0.39 }),

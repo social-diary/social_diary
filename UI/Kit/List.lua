@@ -220,6 +220,37 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
         return item.height or rowHeight
     end
 
+    -- Smooth (list:SetSmooth): scrolled by the pixel, not by the item, in a
+    -- list `smooth` px tall that cuts off what lies past its edges, so a
+    -- tall item slides away under whatever lies over the list's top (the
+    -- person's page: its timeline under the clipped name sheet, the
+    -- person-page proposal, variant A, round 2). `pos` is how far down it
+    -- is scrolled, `tops[i]` where item i starts, `total` all of them;
+    -- `offset` stays the number of items before the first one shown, so
+    -- SetOffset(n) still scrolls to item n + 1.
+    local smooth, tops, total = nil, {}, 0
+    list.pos = 0
+
+    local function Measure()
+        tops, total = {}, 0
+        for i = 1, #list.data do
+            tops[i] = total
+            total = total + HeightOf(list.data[i])
+        end
+    end
+    local function MaxPos()
+        return math.max(0, math.floor(total - smooth + 0.5))
+    end
+    -- The first item whose foot lies below `pos`.
+    local function FirstAt(pos)
+        local lo, hi = 1, #list.data
+        while lo < hi do
+            local mid = math.floor((lo + hi) / 2)
+            if tops[mid] + HeightOf(list.data[mid]) <= pos then lo = mid + 1 else hi = mid end
+        end
+        return lo
+    end
+
     -- Scrolled all the way down, the last items fill the list: the offset
     -- is however many come before the ones that fit.
     local function MaxOffset()
@@ -231,7 +262,34 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
         return math.max(i, 0)
     end
 
+    -- Smooth: the items from the one at `pos`, the first a part of it cut
+    -- off above the list's top, until the list's foot.
+    local function RefreshSmooth(self)
+        local first = #self.data > 0 and FirstAt(self.pos) or 1
+        self.offset = first - 1
+        local y = (tops[first] or 0) - self.pos
+        for i = 1, maxRows do
+            local row = self.rows[i]
+            local item = self.data[first + i - 1]
+            if item and y < smooth then
+                local height = HeightOf(item)
+                row:SetHeight(height)
+                row:ClearAllPoints()
+                row:SetPoint("TOPLEFT", 0, -y)
+                row:SetPoint("RIGHT", self, "RIGHT", -SCROLLBAR_WIDTH - 2, 0)
+                y = y + height
+                row.item = item
+                update(row, item)
+                row:Show()
+            else
+                row.item = nil
+                row:Hide()
+            end
+        end
+    end
+
     function list:Refresh()
+        if smooth then return RefreshSmooth(self) end
         local y, room, full = 0, rowHeight * numRows, false
         for i = 1, maxRows do
             local row = self.rows[i]
@@ -256,7 +314,20 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
         end
     end
 
+    -- Smooth: scrolled `pos` px down, within what there is.
+    function list:SetPosition(pos)
+        pos = math.max(0, math.min(math.floor(pos + 0.5), MaxPos()))
+        if pos == self.pos and self.shownOnce then return end
+        self.pos, self.shownOnce = pos, true
+        if bar:GetValue() ~= pos then bar:SetValue(pos) end
+        self:Refresh()
+    end
+
     function list:SetOffset(offset)
+        if smooth then
+            local n = math.max(0, math.floor(offset + 0.5))
+            return self:SetPosition(tops[n + 1] or total)
+        end
         offset = math.max(0, math.min(math.floor(offset + 0.5), MaxOffset()))
         if offset == self.offset and self.shownOnce then return end
         self.offset, self.shownOnce = offset, true
@@ -268,29 +339,54 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
     function list:SetData(data, keep)
         self.data = data or {}
         paint()
+        if smooth then
+            Measure()
+            bar:SetMinMaxValues(0, MaxPos())
+            bar:SetShown(MaxPos() > 0)
+            self.shownOnce = false
+            self:SetPosition(keep and self.pos or 0)
+            return
+        end
         bar:SetMinMaxValues(0, MaxOffset())
         bar:SetShown(MaxOffset() > 0)
         self.shownOnce = false
         self:SetOffset(keep and self.offset or 0)
     end
 
+    -- Scrolled by the pixel from now on, `height` px tall, what lies past
+    -- its top and foot cut off (Smooth, above). Call before SetData; the
+    -- rows built stay the most it shows.
+    function list:SetSmooth(height)
+        smooth = height
+        self:SetHeight(height)
+        self:SetClipsChildren(true)
+        self.smooth = height
+    end
+
     -- Call before SetData. Never more than were built.
     function list:SetNumRows(n)
         numRows = math.max(1, math.min(n, maxRows))
         self.numRows = numRows
-        self:SetHeight(rowHeight * numRows)
+        -- A smooth list keeps the height it was given.
+        if not smooth then self:SetHeight(rowHeight * numRows) end
     end
     list.numRows = numRows
 
     bar:SetScript("OnValueChanged", function(_, value)
-        list:SetOffset(value)
+        if smooth then list:SetPosition(value) else list:SetOffset(value) end
     end)
 
     -- Rows take the mouse (clicks, tooltips), so they pass the wheel on rather
-    -- than rely on it reaching the list underneath.
+    -- than rely on it reaching the list underneath. A notch is three rows'
+    -- worth, by the item or (smooth) by the pixel.
     local function Wheel(_, delta)
-        list:SetOffset(list.offset - delta * 3)
+        if smooth then
+            list:SetPosition(list.pos - delta * 3 * rowHeight)
+        else
+            list:SetOffset(list.offset - delta * 3)
+        end
     end
+    list.Wheel = Wheel
     list:EnableMouseWheel(true)
     list:SetScript("OnMouseWheel", Wheel)
     for i = 1, maxRows do

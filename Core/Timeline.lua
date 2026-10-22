@@ -92,6 +92,77 @@ function Timeline.TradeQuality(row)
 end
 
 --------------------------------------------------------------------------
+-- Where an episode went
+--------------------------------------------------------------------------
+
+-- A session's zones, each once, in the order first reached, and without
+-- the client's nameless "" (a loading screen). Older sessions kept a zone
+-- every time it came round again (21 Oct, in the client: Stormwind City,
+-- Deeprun Tram, Stormwind City, ... up to forty), so they are read through
+-- this rather than changed.
+function Timeline.Unique(zones)
+    local out, seen = {}, {}
+    for _, zone in ipairs(zones or {}) do
+        if type(zone) == "string" and zone:find("%S") and not seen[zone] then
+            seen[zone] = true
+            out[#out + 1] = zone
+        end
+    end
+    return out
+end
+
+local TRAVEL = { road = true, flight = true }
+
+-- Where a session's time went, from the user's own road (Core/Journey.lua)
+-- over its stretch: { zones = { { name, seconds, sub = { [subZone] =
+-- seconds } } } in the order first reached, total, travel (seconds on the
+-- road or in the air), first, last (names), timed = true }. Without a road
+-- for that stretch, the session's own zones (or `zones`, read the same
+-- way) in order and timed = false. Nothing is saved.
+function Timeline.Zones(session, zones)
+    local from, to = session.startedAt or 0, session.endedAt or ns.Now()
+    local j = ns.db.journey and session.me and ns.db.journey[session.me]
+    local out = { zones = {}, total = 0, travel = 0, timed = false }
+    local byName = {}
+
+    if j and ns.Journey and ns.Journey.All then
+        for _, seg in ipairs(ns.Journey.All(j)) do
+            local a, b = math.max(seg.from or 0, from), math.min(seg.to or seg.from or 0, to)
+            local name = seg.kind ~= "dungeon" and ns.MapName(seg.mapID)
+            if b > a and name then
+                local seconds = b - a
+                local zone = byName[name]
+                if not zone then
+                    zone = { name = name, seconds = 0, sub = {} }
+                    byName[name] = zone
+                    out.zones[#out.zones + 1] = zone
+                end
+                zone.seconds = zone.seconds + seconds
+                if seg.subZone and seg.subZone ~= "" then
+                    zone.sub[seg.subZone] = (zone.sub[seg.subZone] or 0) + seconds
+                end
+                out.total = out.total + seconds
+                if TRAVEL[seg.kind] then out.travel = out.travel + seconds end
+                out.first = out.first or name
+                out.last = name
+            end
+        end
+    end
+
+    if out.total > 0 then
+        out.timed = true
+        return out
+    end
+    out.zones, out.first, out.last = {}, nil, nil
+    for _, name in ipairs(Timeline.Unique(zones or session.zones)) do
+        out.zones[#out.zones + 1] = { name = name, seconds = 0, sub = {} }
+    end
+    out.first = out.zones[1] and out.zones[1].name
+    out.last = out.zones[#out.zones] and out.zones[#out.zones].name
+    return out
+end
+
+--------------------------------------------------------------------------
 -- How much an episode says (TLN-3)
 --------------------------------------------------------------------------
 
@@ -177,6 +248,30 @@ local function Climbs(lines)
     return out
 end
 
+-- Folded, an episode with DEATH_FOLD or more deaths shows them as one line
+-- (a "rough patch") at the first, every death in its tooltip; opened, each
+-- has its own line again. (15 Oct, in the client: seven death lines under
+-- one long session.)
+local DEATH_FOLD = 3
+
+local function Deaths(lines)
+    local deaths = {}
+    for i = 1, #lines do
+        if lines[i].kind == "death" then deaths[#deaths + 1] = lines[i] end
+    end
+    if #deaths < DEATH_FOLD then return lines end
+    local out = {}
+    for i = 1, #lines do
+        local line = lines[i]
+        if line == deaths[1] then
+            out[#out + 1] = { kind = "deaths", time = line.time, deaths = deaths, depth = line.depth, moment = true }
+        elseif line.kind ~= "death" then
+            out[#out + 1] = line
+        end
+    end
+    return out
+end
+
 local function Finish(episode, present, depth)
     -- Quests and rares only count while grouped (Sessions.Quest, .Rare), so
     -- naming either already says it.
@@ -202,7 +297,7 @@ local function Finish(episode, present, depth)
         child.depth = (depth or 0) + 1
         if child.moment and not named[child.activity] then lines[#lines + 1] = child end
     end
-    lines = Climbs(lines)
+    lines = Deaths(Climbs(lines))
 
     episode.activities, episode.headline, episode.named = activities, headline, named
     episode.lines, episode.hidden = lines, #all - #lines
@@ -219,7 +314,7 @@ end
 local function NewSession(session, guid)
     local p = session.participants[guid]
     local episode = { kind = "session", time = session.startedAt, session = session,
-        participant = p, seconds = p and p.seconds or 0, zones = session.zones, rows = {}, all = {},
+        participant = p, seconds = p and p.seconds or 0, zones = Timeline.Unique(session.zones), rows = {}, all = {},
         key = session }
 
     local present = {}

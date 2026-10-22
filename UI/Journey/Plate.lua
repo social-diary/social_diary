@@ -187,8 +187,9 @@ local ZOOM = { scale = 1.16, time = 0.2 }
 -- `native`, the whole zone is no more than its art's own size (a zone's
 -- 1002 by 668 px), not much more than a window and a margin round it.
 local FULLZOOM = { step = 1.25, time = 0.15, settle = 0.25, native = 1, overscan = math.huge }
--- Dragging a zoomed full page pans it; a press that moves less than
--- `threshold` px is a click, which goes back.
+-- Dragging a full page pans it, fitted too (the fit is the zone's whole
+-- height, so most zones run past the card's sides); a press that moves
+-- less than `threshold` px is a click, which goes back.
 local DRAG = { threshold = 4 }
 -- The mat over the card's margin: the card's stock and its grain (as
 -- UI/Paper/Sheet.lua lays it), over the picture, under the neat line.
@@ -229,9 +230,16 @@ local FLIGHT = { dash = 5, gap = 4, width = 1.5, alpha = 0.9, ring = 8, node = 5
 local MARK = { hover = 16, halo = 0.75, together = 11, hole = 5, fight = 10, note = { 8, 10 }, noteTurn = 0.14,
     fold = 3.5, door = 10, pin = 13, pinPad = 5, first = { 8.4, 10.4 }, line = 1.2, clear = 3, step = 7, tries = 4,
     merge = 8, tether = { 0.8, 0.5 } }
+-- Two marks only a person's own page puts on its plate (UI/Journal/
+-- PersonPlate.lua; the person-page proposal: "trades and /say as a dot",
+-- "last seen as a rubric X"): `dot`, a trade or a word said there, an ink
+-- dot `dot` px across; `seen`, where they were last seen, a cross of two
+-- rubric strokes `seen` px long and `seenWidth` wide. No moment of Your
+-- Diary's has either kind, so its plates never draw them.
+MARK.dot, MARK.seen, MARK.seenWidth = 6, 9, 2
 -- A moment of a kind it does not know (a feature's, joined to a person's
 -- marks: a registered mark's `join`) is the least likely to matter.
-local PRIORITY = { fight = 1, session = 2, note = 3, first = 4 }
+local PRIORITY = { fight = 1, session = 2, note = 3, first = 4, seen = 5, dot = 6 }
 -- A doorway's arch, as shares of its size (MARK.door on a plate; the
 -- ledger's margin draws the same, LEDGER.door in UI/Journey/Look.lua):
 -- a square `body` `w` wide, `h` tall, its middle `y` below the mark's
@@ -903,6 +911,16 @@ local function New(parent, slot)
         local hw, hh, t = MARK.first[1] / 2, MARK.first[2] / 2, MARK.line
         Lozenge(ink, x, y, hw + t, hh + t * hh / hw, INK_STRONG, 1)
         Lozenge(inner, x, y, hw, hh, P, 0.95)
+    end
+    -- A person's page's own (MARK.dot, MARK.seen): a dot of ink, and the
+    -- rubric cross of where they were last seen.
+    function SHAPES.dot(ink, _, x, y)
+        Dot(ink, x, y, MARK.dot, INK_STRONG, 0.95)
+    end
+    function SHAPES.seen(ink, _, x, y)
+        local h = MARK.seen / 2
+        Stroke(ink, x - h, y - h, x + h, y + h, MARK.seenWidth, Style.RUBRIC, 1)
+        Stroke(ink, x - h, y + h, x + h, y - h, MARK.seenWidth, Style.RUBRIC, 1)
     end
     -- The paper round a mark, so it reads over the art.
     local function Halo(x, y, size, round)
@@ -1698,6 +1716,8 @@ local function New(parent, slot)
         if kind == "note" then return MARK.note[2] / 2 + 1 end
         if kind == "first" then return MARK.first[2] / 2 + 1 end
         if kind == "dungeon" then return MARK.door / 2 + 1 end
+        if kind == "dot" then return MARK.dot / 2 + 1 end
+        if kind == "seen" then return MARK.seen / 2 + 1 end
         return MARK.together / 2 + 1
     end
 
@@ -1725,8 +1745,11 @@ local function New(parent, slot)
         return x, y
     end
 
-    -- A meeting's or a first sighting's tooltip: a title and its lines.
+    -- A meeting's or a first sighting's tooltip: a title and its lines; a
+    -- moment that brings its own words (`tip(m, now)`: a person's page's,
+    -- UI/Journal/PersonPlate.lua) says them instead.
     local function MomentTip(m, entry, now, fights)
+        if m.tip then return m.tip(m, now) end
         if m.kind == "first" then return Text.FirstSeen(m.first or m, now) end
         return Text.Meeting({ kind = m.kind, t = m.t, session = m.session, mark = m.mark, note = m.note,
             level = entry and entry.level }, now, fights)
@@ -1738,7 +1761,7 @@ local function New(parent, slot)
     -- on top (PRIORITY) and its tooltip telling the rest. Each person's
     -- moment's mark is kept on the page (plate.where) for the margin
     -- notes' leaders.
-    local PEOPLE = { session = true, fight = true, note = true, first = true }
+    local PEOPLE = { session = true, fight = true, note = true, first = true, dot = true, seen = true }
 
     local function DrawMoments(sheet, moments, mapID, At, pools, entry, now, fights)
         local counts = plate.counts
@@ -1864,7 +1887,9 @@ local function New(parent, slot)
                 if top.kind == "first" then
                     Halo(x, y, MARK.first[2] + 5, true)
                 else
-                    Halo(x, y, (top.kind == "note" and 14 or MARK.together) + 4, true)
+                    local size = top.kind == "note" and 14 or top.kind == "dot" and MARK.dot + 1
+                        or top.kind == "seen" and MARK.seen or MARK.together
+                    Halo(x, y, size + 4, true)
                 end
                 SHAPES[top.kind](markPool, markInnerPool, x, y)
                 hoverPool:Next(x, y, function()
@@ -2128,11 +2153,10 @@ local function New(parent, slot)
         Unscale(plate.scale)
     end
 
-    -- A view kept on the map: zoomed out to the fit, the fitted framing;
-    -- else the middle no nearer an edge than half the window.
+    -- A view kept on the map: no further than the fit, the middle no
+    -- nearer an edge than half the window.
     local function Hold(f, cx, cy)
         f = Clamp(f, look.fit, FULLZOOM.native)
-        if f <= look.fit + 1e-9 then return look.fit, look.c0[1], look.c0[2] end
         local s = plate.slot
         local hw, hh = (s.w - 2 * s.pad) / 2 / (f * look.LW), (s.h - 2 * s.pad) / 2 / (f * look.LH)
         cx = hw >= 0.5 and 0.5 or Clamp(cx, hw, 1 - hw)
@@ -2145,11 +2169,11 @@ local function New(parent, slot)
     -- a new zoom is drawn (a drag draws again once let go); the press is
     -- carried on over the drawing.
     local Drag
-    local function Redraw(whole)
+    local function Redraw()
         local pressed = look.pressed
         look.redraws = (look.redraws or 0) + 1
         local g = look.goal
-        look.onSettle(g.f, g.cx, g.cy, whole)
+        look.onSettle(g.f, g.cx, g.cy)
         if pressed and look then
             look.pressed = pressed
             clip:SetScript("OnUpdate", Drag)
@@ -2175,10 +2199,7 @@ local function New(parent, slot)
             pivot:SetScript("OnUpdate", nil)
             local d, pressed = look.drawn, look.pressed
             look.goal = { f = look.f, cx = look.cx, cy = look.cy }
-            -- Back out to the fit, drawn whole for the way there: drawn
-            -- again as the fit is, at the same size, so nothing shifts.
-            local whole = d.whole and look.f <= look.fit + 1e-9
-            if d.f ~= look.f or (not pressed and (whole or d.cx ~= look.cx or d.cy ~= look.cy)) then
+            if d.f ~= look.f or (not pressed and (d.cx ~= look.cx or d.cy ~= look.cy)) then
                 Redraw()
             end
         end
@@ -2216,10 +2237,10 @@ local function New(parent, slot)
         f, cx, cy = Hold(f, cx, cy)
         local shown = { f = look.f, cx = look.cx, cy = look.cy }
         look.goal = { f = f, cx = cx, cy = cy }
-        -- Drawn now for where it is going, the whole zone round it (the
-        -- fit too, so the way out has art), and eased in from where it was.
+        -- Drawn now for where it is going, the whole zone round it, and
+        -- eased in from where it was.
         local d = look.drawn
-        if d.f ~= f or d.cx ~= cx or d.cy ~= cy then Redraw(true) end
+        if d.f ~= f or d.cx ~= cx or d.cy ~= cy then Redraw() end
         look.f, look.cx, look.cy = shown.f, shown.cx, shown.cy
         look.move = { t = 0, f = shown.f, cx = shown.cx, cy = shown.cy }
         Show()
@@ -2227,7 +2248,7 @@ local function New(parent, slot)
     end
     clip:SetScript("OnMouseWheel", function(_, delta) plate:Wheel(delta) end)
 
-    -- A press on the picture: a click, or once zoomed a drag that pans.
+    -- A press on the picture: a click, or a drag that pans.
     function Drag()
         local p = look and look.pressed
         if not p then
@@ -2241,7 +2262,7 @@ local function New(parent, slot)
         local x, y = plate.CursorScreen()
         local X, Y = x - p.x, y - p.y
         if X * X + Y * Y > DRAG.threshold * DRAG.threshold then p.moved = true end
-        if not p.moved or look.f <= look.fit + 1e-9 then return end
+        if not p.moved then return end
         local a = view.turn or 0
         local c, sn = math.cos(a), math.sin(a)
         local lx, ly = X * c + Y * sn, X * sn - Y * c
@@ -2269,7 +2290,7 @@ local function New(parent, slot)
         local p = look.pressed
         look.pressed = nil
         clip:SetScript("OnUpdate", nil)
-        if p and p.moved and look.f > look.fit + 1e-9 then
+        if p and p.moved then
             Wait()
         elseif self.onClick then
             self.onClick(self)
@@ -2283,7 +2304,7 @@ local function New(parent, slot)
     function plate:Look(o)
         pivot:SetScript("OnUpdate", nil)
         look = o and { f = o.f, cx = o.cx, cy = o.cy, fit = o.fit, c0 = o.c0, LW = o.LW, LH = o.LH,
-            onSettle = o.onSettle, drawn = { f = o.f, cx = o.cx, cy = o.cy, whole = o.whole },
+            onSettle = o.onSettle, drawn = { f = o.f, cx = o.cx, cy = o.cy },
             goal = { f = o.f, cx = o.cx, cy = o.cy }, still = 0, redraws = o.redraws } or nil
         self.look = look
         clip:EnableMouseWheel(look ~= nil)

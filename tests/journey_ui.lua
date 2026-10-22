@@ -1220,6 +1220,7 @@ do
     local look = plate.look
     local f0 = (484 - 20) / 668
     Check(look and math.abs(look.f - f0) < 1e-9, "the full page does not open fitted")
+    Check(plate.window[1] == 0 and plate.window[3] == 1, "fitted, the zone was not drawn whole round the window")
     Eq(clip.recorded.calls.EnableMouseWheel[1], true, "the full page does not take the wheel")
     local c0x = look.c0[1]
     local qx, qy = 80, -40
@@ -1268,11 +1269,16 @@ do
     Eq(plate.look.goal.f, FZ.native, "the zoom passed the art's own size")
     for _ = 1, 20 do plate:Wheel(-1, 0, 0) end
     Eq(plate.look.goal.f, f0, "the zoom passed the fitted view")
-    Eq(plate.look.goal.cx, c0x, "zoomed out, the fitted framing did not come back")
+    -- Out at the fit, the view stays where the wheel took it (no jump back
+    -- to the road), kept on the map.
+    local fhw0 = (446 - 20) / 2 / (f0 * 1002)
+    Check(plate.look.goal.cx ~= c0x and plate.look.goal.cx >= fhw0 - 1e-9 and plate.look.goal.cx <= 1 - fhw0 + 1e-9,
+        "zoomed out, the fitted view jumped or left the map: " .. plate.look.goal.cx)
+    Check(math.abs(plate.look.goal.cy - 0.5) < 1e-9, "zoomed out, the fit is not the zone's whole height")
     Check(plate.window[1] == 0 and plate.window[3] == 1, "on the way out to the fit, the zone was not drawn whole")
     pivot.scripts.OnUpdate(pivot, FZ.time)
     pivot.scripts.OnUpdate(pivot, FZ.settle)
-    Check(plate.window[1] > 0 and not plate.look.drawn.whole, "back at the fit, it was not drawn as the fit is")
+    Check(plate.window[1] == 0 and plate.window[3] == 1, "back at the fit, the zone was not drawn whole round it")
     -- Zoomed in, a drag pans (kept on the map) and does not go back.
     plate:Wheel(1, 0, 0)
     plate:Wheel(1, 0, 0)
@@ -1336,6 +1342,31 @@ do
     ns.UI.OpenZoneSheet(1412)
     look = plate.look
     Check(math.abs(look.f - f0) < 1e-9 and look.cx == look.c0[1], "the full page did not open fitted again")
+    -- Fitted, a drag pans too (the zone runs past the card's sides) and
+    -- does not go back.
+    do
+        local cx0 = look.cx
+        local fat = { 0, 0 }
+        plate.CursorScreen = function() return fat[1], fat[2] end
+        clip.scripts.OnMouseDown(clip, "LeftButton")
+        fat[1] = 30
+        clip.scripts.OnUpdate(clip, 0.016)
+        Check(plate.look.cx < cx0, "fitted, a drag to the right did not pan the map with it")
+        Check(math.abs(plate.look.f - f0) < 1e-9, "fitted, a drag zoomed")
+        for _ = 1, 50 do
+            fat[1] = fat[1] + 400
+            clip.scripts.OnUpdate(clip, 0.016)
+        end
+        local fhw = (446 - 20) / 2 / (f0 * 1002)
+        Check(plate.look.cx >= fhw - 1e-9, "fitted, a drag panned past the map's edge")
+        Check(math.abs(plate.look.cy - 0.5) < 1e-9, "fitted, a drag moved the zone's whole height")
+        clip.scripts.OnMouseUp(clip, "LeftButton")
+        Eq(page.mode, "full", "fitted, a drag went back")
+        pivot.scripts.OnUpdate(pivot, FZ.settle)
+        Check(plate.window[1] == 0 and plate.window[3] == 1, "panned fitted, the zone was not drawn whole round it")
+        ns.UI.OpenZoneSheet(1412)
+        look = plate.look
+    end
     -- Drawn again or put away mid-wheel or mid-drag: nothing left running.
     plate:Wheel(1, 0, 0)
     pivot.scripts.OnUpdate(pivot, FZ.time / 2)

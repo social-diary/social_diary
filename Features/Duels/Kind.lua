@@ -125,7 +125,7 @@ end
 local function Always() return true end
 
 -- The picker's reason, the same whoever challenged (it isn't kept).
-ns.Rows.Register(KIND, { proximity = true, moment = Always, reason = "you duelled them",
+ns.Rows.Register(KIND, { proximity = true, plate = 6, moment = Always, reason = "you duelled them",
     text = Line, icon = KIND })
 
 -- Its icon: Challenging Shout's, a raised war cry (15 Oct, not yet seen in

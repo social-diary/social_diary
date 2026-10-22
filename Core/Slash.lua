@@ -191,7 +191,7 @@ local function CommandSessions(text)
             s.id, date("%d %b %H:%M", s.startedAt),
             math.floor(ns.Sessions.Duration(s) / 60),
             s.source, s.endedAt and "" or " |cff40c040open|r",
-            table.concat(s.zones, " > ")))
+            table.concat(ns.Timeline.Unique(s.zones), " > ")))
         DEFAULT_CHAT_FRAME:AddMessage(("      %s; +%d others, %d death(s), %d highlight(s), you lvl %s-%s"):format(
             table.concat(names, ", "), s.others, ns.Sessions.DeathCount(s), #ns.Sessions.Highlights(s),
             tostring(s.myLevelStart), tostring(s.myLevelEnd)))

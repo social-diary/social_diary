@@ -8,12 +8,15 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Changes
 
 - Social Diary is now licensed under the GPL v3
+- Sessions on a profile now tell their proper stories -- will get better over time with more addtions.
 
 ### Fixes
 
 - Flight paths in _Your Diary_ now use a single Flight Master node
-- First items in _Your Diary_ now say how they really arrived
+- First items in _Your Diary_ do not show up as mail items anymore
   - Crafted firsts now say you made them
+- A zone's full map in _Your Diary_ now pans without zooming first
+- Sessions no longer list the same zone over and over
 
 ## [1.7.0]
 

@@ -98,7 +98,7 @@ local function Always() return true end
 -- Valley": by how long they watched (WATCHING), under 1.5 s only "saw you
 -- die", from 5 s on "mercilessly". In the subzone where there is one; a
 -- row kept before the watching was timed is plain "watched".
-ns.Rows.Register(WATCHED, { witness = "watched", moment = Always, reason = "they watched you die",
+ns.Rows.Register(WATCHED, { witness = "watched", plate = 3, moment = Always, reason = "they watched you die",
     text = function(row, guid)
         local them = guid and ns.Characters.Name(guid) or "They"
         local c = row.context or {}
@@ -115,7 +115,7 @@ ns.Rows.Register(WATCHED, { witness = "watched", moment = Always, reason = "they
     end,
     icon = "around" })
 
-ns.Rows.Register(HELPED, { witness = "helped", moment = Always, reason = "they tried to save you",
+ns.Rows.Register(HELPED, { witness = "helped", plate = 3, moment = Always, reason = "they tried to save you",
     text = function(row, guid)
         local them = guid and ns.Characters.Name(guid) or "They"
         local foe = Foe(row)
@@ -123,7 +123,7 @@ ns.Rows.Register(HELPED, { witness = "helped", moment = Always, reason = "they t
     end,
     icon = "together" })
 
-ns.Rows.Register(SAVED, { witness = "helped", moment = Always, reason = "they saved you",
+ns.Rows.Register(SAVED, { witness = "helped", plate = 3, moment = Always, reason = "they saved you",
     text = function(row, guid)
         local them = guid and ns.Characters.Name(guid) or "They"
         local foe = Foe(row)

@@ -299,6 +299,16 @@ Eq(where.instanceID, 36, "instance id")
 Eq(where.mapID, nil, "coordinates stored inside an instance")
 mock.inInstance = false
 
+-- A loading screen: the zone texts are "", which is no name at all.
+local zone = mock.zone
+mock.zone = ""
+Eq(ns.Where().zone, nil, "an empty zone text kept as a zone")
+mock.inInstance, mock.instanceName = true, ""
+mock.zone = "Westfall"
+Eq(ns.Where().zone, "Westfall", "an empty instance name hid the zone text")
+mock.inInstance, mock.instanceName = false, "The Deadmines"
+mock.zone = zone
+
 --------------------------------------------------------------------------
 Section("unit tokens to GUIDs: one visible-player check")
 

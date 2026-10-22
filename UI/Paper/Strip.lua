@@ -50,10 +50,11 @@
 -- margin so the words line up under the name (STRIP.quote). It is their
 -- words, not the diary's: what happened stays under it in the small hand.
 --
--- Textures: a slip has 14 (its body, edge, contact shadow, grain, two
+-- Textures: a slip has 18 (its body, edge, contact shadow, grain, the sheen, two
 -- soft shadow bands, a rival's foot, the underline, the tape, its two
--- ends, its two edges and its lifted shadow), and STRIP.torn.teeth more
--- for a tear, made once and hidden on a slip that was cut.
+-- ends, its two edges and its lifted shadow, and a tack's three, hidden
+-- under tape), and STRIP.torn.teeth more for a tear, made once and hidden
+-- on a slip that was cut.
 
 local addonName, ns = ...
 
@@ -140,6 +141,22 @@ local TAPE = { w = 28, h = 11, at = 0.16, inset = 16, over = 0.42, slant = 11, j
 -- strip opens nothing, so it has no hover.
 TAPE.hover = { time = 0.15, tint = { 0.97, 0.90, 0.68 }, alpha = 0.80, endAlpha = 0.36, shadow = 0.22, drop = 1.2,
     strip = 0.46, flatAlpha = 0.74 }
+-- A slip fastened with a brass tack instead of tape (`tack`: an epic's
+-- strip on a dungeon's map, UI/Dungeon/Notes.lua): a round head `size` px
+-- across, pinned through its top right corner, its middle `inset` px in
+-- from the slip's right and `down` from its top, clear of the name (which
+-- starts at the left and ends `pad[3]` short of the right at the most),
+-- in brass (Style's) with a lit spot up and to the left and a hair of
+-- shadow down and to the right. Drawn, until the art comes. (16 Oct, in
+-- the client: 12 px in from the left it sat on the name's first letter.)
+local TACK = { size = 7, inset = 4, down = 4, shine = 0.4, shadow = { 1.2, 0.35 } }
+-- Turned writing is drawn inside its own box, and the client cuts what
+-- the turn takes out of it: a line w px long turned t lifts its ends w *
+-- sin t, so each line's box is that much taller (centred on it, so the
+-- words stay where they were) and `room` px more. (16 Oct, in the client:
+-- the long "Finally!" line on a strip turned some 8 degrees lost the tops
+-- of its letters.)
+local TURNED = { room = 4 }
 -- How far round the strip and its tape, as drawn, the mouse finds it (px).
 local HIT = 2
 -- A rival's foot: a rubric line `inset` px in from the bottom edge, inset
@@ -257,6 +274,12 @@ function ns.UI.PaperStrip(parent, card)
     strip.shadow = Texture("BACKGROUND", 0)
     strip.edge = Texture("BACKGROUND", 1)
     strip.paper = Texture("BACKGROUND", 2)
+    -- Lit (`light`): the house light's shade across the slip, over it.
+    strip.sheen = Texture("BACKGROUND", 3)
+    strip.sheen:Hide()
+    -- Its shadow on what lies under what it lies on (`ground`), made on
+    -- that frame as first asked for.
+    strip.grounds = {}
     strip.teeth = {}
     for i = 1, STRIP.torn.teeth do strip.teeth[i] = Texture("BACKGROUND", 2) end
     local grainPath = Style.Art("grain")
@@ -271,6 +294,8 @@ function ns.UI.PaperStrip(parent, card)
     strip.tapeEnds = { Texture("OVERLAY", 3), Texture("OVERLAY", 3) }
     -- Its long edges: the lower in dust and shade, the upper in light.
     strip.tapeEdges = { Texture("OVERLAY", 4), Texture("OVERLAY", 4) }
+    -- Or a brass tack (TACK): its shadow, its head, the light on it.
+    strip.tack = { Texture("OVERLAY", 1), Texture("OVERLAY", 2), Texture("OVERLAY", 3) }
 
     -- Whether a texture's corners can be moved (the uneven cut, the tear,
     -- the shadow's mitre). A field, so the tests can say.
@@ -457,7 +482,7 @@ function ns.UI.PaperStrip(parent, card)
             Mix(T.tint[3], HOVER.tint[3], t), flat and Mix(T.flatAlpha, HOVER.flatAlpha, t) or Mix(T.alpha, HOVER.alpha, t))
         local INK = Style.INK
         strip.tapeShadow:SetColorTexture(INK[1], INK[2], INK[3], flat and 0 or HOVER.shadow * t)
-        strip.tapeShadow:SetShown(not flat and t > 0)
+        strip.tapeShadow:SetShown(not flat and t > 0 and not strip.tacked)
         local tip = strip.tapeEnds[2]
         tip:SetColorTexture(T.tint[1], T.tint[2], T.tint[3], Mix(T.endAlpha, HOVER.endAlpha, t))
         strip.shadow:SetColorTexture(INK[1], INK[2], INK[3], Mix((strip.contact or STRIP.shadow)[3], HOVER.strip, t))
@@ -492,12 +517,16 @@ function ns.UI.PaperStrip(parent, card)
         if body then Apply() end
     end
     strip:HookScript("OnHide", Settle)
+    -- Its shadow on the ground goes with it.
+    strip:HookScript("OnHide", function()
+        for _, t in ipairs(strip.grounds) do t:Hide() end
+    end)
 
     -- `note`: { name, what, quote (their note's words, as JourneyText's
     -- Written gives them: no escape codes), quoteLines (the most lines the
     -- quote may take, STRIP.quote.lines at most), guid (a link to their page when
     -- given), rival, seed, onClick(guid), and for a slip that is not a
-    -- person's: strong
+    -- person's: tack (fastened with a brass tack, TACK, instead of tape), strong
     -- (the name in INK_STRONG without a page to open), tip (a tooltip's
     -- lines, as Style.Tooltip takes them), picture ({ w, h, gap }: room over
     -- the name), under ({ w, h, gap, after }: room under the name, `gap`
@@ -509,7 +538,12 @@ function ns.UI.PaperStrip(parent, card)
     -- degrees: a slip stuck on another, turned against it), size ({ w, h }:
     -- a blank slip that size, written on by its caller), paper (its stock),
     -- shadow ({ right, down, alpha }: its contact shadow), soft ({ out,
-    -- blur, alpha }: its soft one) }.
+    -- blur, alpha }: its soft one), light (lit across by the house light,
+    -- UI/Paper/Light.lua's SHEEN: as cut at its top left, a little darker
+    -- toward its bottom right), ground ({ frame, layers, colour }: its
+    -- outline's shadow, as UI/Paper/Light.lua's Cast gives it, drawn on
+    -- `frame`, a layer under what the strip lies on: the dungeon map's
+    -- strips on the world under it, where they stick out past the sheet) }.
     function strip:SetNote(note)
         self.note = note
         self.guid = note.guid
@@ -686,6 +720,33 @@ function ns.UI.PaperStrip(parent, card)
         local P = self.stock
         self.paper:SetColorTexture(P[1], P[2], P[3], 1)
         Body(self.paper, 0)
+        -- Lit across, where asked (not laid flat).
+        local lit = note.light and not flat
+        if lit then
+            ns.UI.Light.Sheen(self.paper, self.sheen, P)
+            Body(self.sheen, 0)
+        end
+        self.sheen:SetShown(lit == true)
+        -- Its shadow on the ground under what it lies on, an outline a
+        -- layer at a time, grown and moved as each says.
+        local G = not flat and note.ground or nil
+        for i, layer in ipairs(G and G.layers or {}) do
+            local t = self.grounds[i]
+            if not t or t.frame ~= G.frame then
+                t = G.frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+                if t.SetSnapToPixelGrid then
+                    t:SetSnapToPixelGrid(false)
+                    t:SetTexelSnappingBias(0)
+                end
+                t.frame = G.frame
+                self.grounds[i] = t
+            end
+            local c = G.colour or INK
+            t:SetColorTexture(c[1], c[2], c[3], layer[4])
+            Body(t, layer[3], layer[1], layer[2])
+            t:Show()
+        end
+        for i = #(G and G.layers or {}) + 1, #self.grounds do self.grounds[i]:Hide() end
         if self.grain then
             local u, v = Noise(seed + 1) * 0.6, Noise(seed + 2) * 0.6
             self.grain:SetTexCoord(u, u + W / 512, v, v + H / 512)
@@ -704,9 +765,18 @@ function ns.UI.PaperStrip(parent, card)
             self.picture = { lx = lx, ly = ly, w = pic.w, h = pic.h, X = X, Y = Y, x = px, y = py }
         end
 
+        -- A line of writing w by h with its middle at lx, ly, in a box tall
+        -- enough for its turn (TURNED).
+        local lift = math.abs(math.sin(turn))
+        local function Write(region, lx, ly, w, h)
+            Place(region, lx, ly, w, h + w * lift + TURNED.room)
+        end
+
         -- The writing, under it.
         local top = -H / 2 + pad[2] + picH
-        Place(self.name, left + nameW / 2, top + nameH / 2, nameW, nameH)
+        Write(self.name, left + nameW / 2, top + nameH / 2, nameW, nameH)
+        -- For the tests and a card: the name's writing, from the middle.
+        self.nameBox = { left, top, left + nameW, top + nameH }
         local U = Style.INK_STRONG
         self.underline:SetColorTexture(U[1], U[2], U[3], Style.HAIRLINE)
         Place(self.underline, left + nameW / 2, top + nameH, nameW, 1)
@@ -724,13 +794,13 @@ function ns.UI.PaperStrip(parent, card)
             local line = self.said[i]
             local w = Width(line) + 2
             local lx = left - (i == 1 and hang or 0)
-            Place(line, lx + w / 2, quoteTop + (i - 0.5) * quoteH, w, quoteH)
+            Write(line, lx + w / 2, quoteTop + (i - 0.5) * quoteH, w, quoteH)
         end
         local lineTop = top + nameH + underH + quoteGap + whatGap
         for i = 1, #wrapped do
             local line = self.lines[i]
             local w = Width(line) + 2
-            Place(line, left + w / 2, lineTop + (i - 0.5) * lineH, w, lineH)
+            Write(line, left + w / 2, lineTop + (i - 0.5) * lineH, w, lineH)
         end
 
         -- A rival's foot, in rubric.
@@ -802,6 +872,28 @@ function ns.UI.PaperStrip(parent, card)
         -- tape's right half, a little down.
         local qx, qy = Along(tw / 4, T.hover.drop)
         Place(self.tapeShadow, qx, qy, tw / 2, th, slant)
+        -- Or a brass tack in the tape's place (TACK).
+        self.tacked = note.tack == true
+        for _, part in ipairs({ self.tape, self.tapeEnds[1], self.tapeEnds[2], lower, upper }) do
+            if self.tacked then part:Hide() end
+        end
+        local K = TACK
+        local kx, ky = W / 2 - K.inset, -H / 2 + K.down
+        self.tackBox = self.tacked and { kx - K.size / 2, ky - K.size / 2, kx + K.size / 2, ky + K.size / 2 } or nil
+        for k, part in ipairs(self.tack) do
+            if self.tacked then
+                local B = k == 1 and Style.INK or k == 2 and Style.BRASS_MID or Style.BRASS_LIGHT
+                local a = k == 1 and K.shadow[2] or k == 2 and 1 or K.shine
+                Style.Disc(part, B[1], B[2], B[3], a)
+                local d = k == 1 and K.shadow[1] or 0
+                local size = k == 3 and K.size * 0.45 or K.size
+                local ox = k == 3 and -K.size * 0.15 or 0
+                Place(part, kx + d + ox, ky + d + ox, size, size)
+                part:Show()
+            else
+                part:Hide()
+            end
+        end
 
         -- The mouse is taken over all of it as drawn, the slip and its tape
         -- turned, and `HIT` px round: one square button (buttons cannot

@@ -65,6 +65,11 @@ would like to change the code, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Neuton Italic** font: Copyright 2010 The Neuton Project Authors, licensed
   under the SIL Open Font License 1.1. It ships unmodified in `Fonts/`, with
   the licence in `Fonts/OFL.txt`.
+- **Goodmountain** font by Hermann S Designs
+  ([github.com/Hermann-S-Designs/Goodmountain](https://github.com/Hermann-S-Designs/Goodmountain)):
+  all rights retained by Hermann S Designs, shared under their end-user
+  licence. It ships unmodified and unrenamed in `Fonts/`, with the licence in
+  `Fonts/Goodmountain-LICENSE.txt`.
 - **Questie and QuestieDB** ([github.com/Questie](https://github.com/Questie)):
   the optional integration reads their data while the game runs.
 - **Dungeon Crawler Forever** by Per
@@ -90,4 +95,7 @@ Social Diary is released under the
 [GNU General Public License v3.0 or later](LICENSE), since it includes code
 and data from Dungeon Crawler Forever. Releases up to 1.7.0 were under the
 MIT License and stay so. The Neuton font is under the
-[SIL Open Font License 1.1](Fonts/OFL.txt).
+[SIL Open Font License 1.1](Fonts/OFL.txt). The Goodmountain font is not
+covered by the GPL: it stays under its
+[own licence](Fonts/Goodmountain-LICENSE.txt), which allows sharing it
+unmodified with that licence but not changing, renaming or selling it.

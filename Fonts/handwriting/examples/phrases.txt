@@ -1,0 +1,6 @@
+# One phrase per line. Blank lines and lines starting with # are skipped.
+# Each phrase becomes one line of handwriting (max 75 characters).
+died twice
+back in five minutes
+don't stand in the fire
+meet at the inn tonight

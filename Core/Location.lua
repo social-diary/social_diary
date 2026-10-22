@@ -17,6 +17,15 @@ local function Round(value)
     return math.floor(value * 1000 + 0.5) / 1000
 end
 
+-- A name the client gave, or nil: during a loading screen the zone texts
+-- are "", which would be saved as a zone with no name (", Stormwind City"
+-- in a session's headline, 20 Oct).
+local function Named(value)
+    value = ns.Plain(value)
+    if value == "" then return nil end
+    return value
+end
+
 -- Instances get a name and an id but no coordinates: prd.md section 7 says
 -- "zone only inside instances", and a dungeon's map position is noise.
 local function InstanceContext(where)
@@ -29,7 +38,7 @@ local function InstanceContext(where)
 
     if GetInstanceInfo then
         local name, _, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
-        where.zone = ns.Plain(name)
+        where.zone = Named(name) or where.zone
         where.instanceID = ns.Plain(instanceID)
         where.difficultyID = ns.Plain(difficultyID)
     end
@@ -42,8 +51,8 @@ end
 function ns.Where()
     local where = {}
 
-    where.zone = ns.Plain(GetRealZoneText and GetRealZoneText())
-        or ns.Plain(GetZoneText and GetZoneText())
+    where.zone = Named(GetRealZoneText and GetRealZoneText())
+        or Named(GetZoneText and GetZoneText())
 
     if InstanceContext(where) then
         return where

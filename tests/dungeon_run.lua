@@ -390,3 +390,142 @@ Eq(tn.ranBack, 1, "the ghost run after the wipe")
 Eq(#tn.legs, 1, "the trash death")
 Eq(tn.legs[1].after.name, "Aggem Thorncurse", "the trash death after Aggem")
 Eq(tn.legs[1].before.name, "Death Speaker Jargba", "... on the way to Jargba")
+
+--------------------------------------------------------------------------
+Section("the run's moments for the map's hand: near wipes, fights, level-ups (flavour pass A)")
+
+-- The test run: Jargba killed with two of five down is a near wipe; its
+-- level 22 for Tester falls between Aggem and Jargba; Aggem's fight (two
+-- pulls, a wipe between) and Ramtusk's long one are shares of the 33
+-- minutes inside.
+local jargba, aggem, ramtusk = byBoss["Death Speaker Jargba"], byBoss["Aggem Thorncurse"], byBoss["Overlord Ramtusk"]
+Eq(jargba.near, 1, "Jargba nearly lost")
+Eq(jargba.nearDeaths, 2, "two down at Jargba")
+Eq(aggem.near, nil, "a wipe counted as nearly")
+Eq(tn.inside, 33 * MIN, "the run's time inside")
+Eq(aggem.fight.from, rfkTest.pulls[2].start, "Aggem's fight from its first pull")
+Eq(aggem.fight.to, rfkTest.pulls[3].stop, "Aggem's fight to its kill")
+Check(math.abs(aggem.share - 8 / 33) < 1e-9, "Aggem's share: " .. tostring(aggem.share))
+Check(math.abs(ramtusk.share - 10 / 33) < 1e-9, "Ramtusk's share: " .. tostring(ramtusk.share))
+local up
+for _, l in ipairs(tn.levels) do
+    if l.guid == ns.TestData.GUID then up = l end
+end
+Check(up and up.level == 22, "Tester's level 22 not in the run")
+Eq(up.after.name, "Aggem Thorncurse", "the level-up after Aggem")
+Eq(up.before.name, "Death Speaker Jargba", "... on the way to Jargba")
+Check(up.frac > 0 and up.frac < 1, "the level-up's place on the way")
+
+-- The rule (NEAR): a kill that cost half the group less one, at least two;
+-- trash deaths within the window as near without reaching half.
+local G5 = { { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" }, { guid = "Player-1-D" },
+    { guid = ns.ownGUID } }
+Eq(Run.Nearly({ members = G5 }), 2, "near for five: two")
+Eq(Run.Nearly({ members = { G5[1], G5[5] } }), 2, "near for two: never fewer than two")
+local function Run1(fields)
+    fields.instanceID, fields.members, fields.startedAt, fields.endedAt = 47, G5, 1000, 1000 + 3600
+    return Run.Notes(fields)
+end
+local function Pull(n, dead, killed)
+    local deaths = {}
+    for i = 1, dead do deaths[i] = { guid = G5[i].guid, time = 1100 + i, pull = 1, killer = { name = "Roogug" } } end
+    return { pulls = { { name = "Roogug", start = 1090, stop = 1200, killed = killed } }, deathLog = deaths }
+end
+local function Roogug(notes)
+    for _, e in ipairs(notes.bosses) do
+        if e.boss.name == "Roogug" then return e end
+    end
+end
+Eq(Roogug(Run1(Pull(1, 1, true))).near, nil, "one down is no near wipe")
+Eq(Roogug(Run1(Pull(1, 2, true))).near, 1, "two of five down in a kill is a near wipe")
+Eq(Roogug(Run1(Pull(1, 3, false))).near, nil, "a wipe is no near wipe")
+Eq(Roogug(Run1(Pull(1, 3, false))).wipes, 1, "three of five down unkilled is a wipe")
+local function Trash(dead, apart)
+    local deaths = {}
+    for i = 1, dead do deaths[i] = { guid = G5[i].guid, time = 2000 + i * apart, killer = { name = "Razorfen Defender" } } end
+    return Run1({ bossesKilled = { "Roogug" }, pulls = { { name = "Roogug", start = 1090, stop = 1200, killed = true } },
+        deathLog = deaths })
+end
+Eq(#Trash(2, 10).near, 1, "two to trash together is a near wipe")
+Eq(#Trash(2, 10).wipes, 0, "two of five is no wipe")
+Eq(#Trash(3, 10).near, 0, "three to trash is a wipe, not near")
+Eq(#Trash(3, 10).wipes, 1, "three of five to trash is a wipe")
+Eq(#Trash(2, Run.WIPE_WINDOW + 5).near, 0, "two apart is no near wipe")
+Eq(#Trash(2, 10).near[1].deaths, 2, "the near wipe's deaths")
+
+-- Level-ups: the user's own (their route) and the group's (rows), only
+-- inside the run, each placed between the kills.
+local lv = Run1({ bossesKilled = { "Roogug" }, pulls = { { name = "Roogug", start = 1090, stop = 1200, killed = true } } })
+Eq(#lv.levels, 0, "level-ups in a run without any")
+ns.db.journey[ns.ownGUID] = ns.db.journey[ns.ownGUID] or { levels = {} }
+ns.db.journey[ns.ownGUID].levels = ns.db.journey[ns.ownGUID].levels or {}
+ns.db.journey[ns.ownGUID].levels[30] = { at = 1500 }
+ns.db.journey[ns.ownGUID].levels[29] = { at = 500 }
+local ups = Run.LevelUps({ startedAt = 1000, endedAt = 4600, members = G5 })
+Eq(#ups, 1, "the user's level-ups in the run")
+Eq(ups[1].level, 30, "the user's level 30")
+lv = Run1({ bossesKilled = { "Roogug" }, pulls = { { name = "Roogug", start = 1090, stop = 1200, killed = true } } })
+Eq(lv.levels[1].after.name, "Roogug", "the level-up after the kill before it")
+Eq(lv.levels[1].before, nil, "no kill after it")
+ns.db.journey[ns.ownGUID].levels[30], ns.db.journey[ns.ownGUID].levels[29] = nil, nil
+
+--------------------------------------------------------------------------
+Section("a person's run: what their card says, in order (step 4)")
+
+do
+    local ME, A, B, C = ns.ownGUID, "Player-1-0000AA01", "Player-1-0000AA02", "Player-1-0000AA03"
+    local BLUE = Link(271098, "Golemguard Chest", 3)
+    local GREEN = Link(6337, "Infantry Leggings of the Whale", 2)
+    local base = { instanceID = 47, me = ME, startedAt = 1000, endedAt = 4600,
+        members = { { guid = ME }, { guid = A, joined = 1000 }, { guid = B, joined = 1500, left = 3000 }, { guid = C } } }
+    local function V(more)
+        local v = {}
+        for k, x in pairs(base) do v[k] = x end
+        for k, x in pairs(more or {}) do v[k] = x end
+        return v
+    end
+    local function Kinds(facts)
+        local out = {}
+        for i, f in ipairs(facts) do out[i] = f.kind end
+        return table.concat(out, ",")
+    end
+    Eq(#Run.Person(V(), C), 0, "nothing to say of someone who only came along")
+    Eq(#Run.Person(nil, A), 0, "no run, no facts")
+    Eq(Kinds(Run.Person(V(), B)), "late,early", "joined late and left early, by PERSON.late")
+
+    -- Snagged from the user: first, and its item is not "won" again.
+    local snag = V({ rolls = { { item = BLUE, itemID = 271098, time = 1200, need = { [ME] = 80, [A] = 85 },
+        winner = A, winNeed = true, winRoll = 85 } } })
+    local f = Run.Person(snag, A)
+    Eq(f[1].kind, "snagged", "a snag comes first")
+    Eq(f[1].item, BLUE, "the snagged item")
+    Eq(Kinds(f), "snagged", "the snagged item is not won as well")
+    Eq(#Run.Person(snag, ME), 0, "the user snags nothing from themselves")
+
+    -- The rest in order: won (rare+), died, rolled, reached, late, won (below rare).
+    local all = V({
+        loot = { { guid = A, item = GREEN, itemID = 6337 }, { guid = B, item = BLUE, itemID = 271098 } },
+        deathLog = { { guid = B, time = 1600 }, { guid = B, time = 2000 } },
+        rolls = { { item = GREEN, itemID = 6337, time = 1700, need = { [B] = 2, [A] = 3, [ME] = 50 }, winner = ME } },
+    })
+    Eq(Kinds(Run.Person(all, B)), "won,died,rolled,late,early", "a rare's win, deaths, a bad roll, then late and early")
+    Eq(Run.Person(all, B)[2].n, 2, "died twice")
+    Eq(Run.Person(all, B)[3].roll, 2, "the lowest bad roll")
+    Eq(Kinds(Run.Person(all, A)), "rolled,won", "a green's win counts last but one")
+    Eq(Kinds(Run.Person(all, ME)), "won", "the user's own: what they won, never late or together")
+
+    -- Together: a diary person's runs with the user to this one, from the second.
+    local IsDiary, For = ns.Diary.IsDiary, ns.Instances.For
+    ns.Diary.IsDiary = function(g) return g == C end
+    ns.Instances.For = function()
+        return { { me = ME, startedAt = 100 }, { me = ME, startedAt = 500 }, { me = ME, startedAt = 1000 },
+            { me = ME, startedAt = 9000 }, { me = "Player-1-0000FFFF", startedAt = 200 } }
+    end
+    local t = Run.Person(V({ deathLog = { { guid = C, time = 1600 } } }), C)
+    Eq(Kinds(t), "died,together", "together counts at the lowest priority")
+    Eq(t[2].n, 3, "the third run together (later runs and another character's not counted)")
+    Eq(Kinds(Run.Person(V(), A)), "", "not in the diary: no runs together")
+    ns.Instances.For = function() return { { me = ME, startedAt = 1000 } } end
+    Eq(#Run.Person(V(), C), 0, "the first run together says nothing")
+    ns.Diary.IsDiary, ns.Instances.For = IsDiary, For
+end

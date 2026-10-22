@@ -51,6 +51,7 @@ Core/Candidates.lua
 Core/Journey.lua
 Core/CreatureNames.lua
 Core/JourneyRecap.lua
+Core/PersonPlate.lua
 Core/Events.lua
 Core/Slash.lua
 
@@ -69,9 +70,10 @@ UI/Style/Widgets.lua
 UI/Style/Person.lua
 UI/Kit/Keys.lua
 UI/Kit/Confirm.lua
-# Pool and Surface make nothing as they load: kits for the paper after them.
+# Pool, Surface and Light make nothing as they load: kits for the paper after them.
 UI/Kit/Pool.lua
 UI/Paper/Surface.lua
+UI/Paper/Light.lua
 UI/Paper/Strip.lua
 UI/Windows/Entry.lua
 UI/Windows/Picker.lua
@@ -83,10 +85,15 @@ UI/Ink/Blot.lua
 UI/Map/HeatSheet.lua
 UI/Ink/Pen.lua
 UI/Ink/Trail.lua
+UI/Ink/Hand.lua
+UI/Ink/HandData.lua
 UI/Journey/Plate.lua
 UI/Paper/LinkSheet.lua
 UI/Paper/NoteSheet.lua
 UI/Words/Timeline.lua
+# The person's page's words (ns.UI.PersonText): its strips, their tooltips,
+# its plate's marks.
+UI/Words/Person.lua
 # Your Diary's words (ns.UI.JourneyText): the module and its grammar first,
 # then each file after those whose helpers it takes as it loads.
 UI/Journey/Text/Grammar.lua
@@ -111,15 +118,28 @@ UI/Journey/Caption.lua
 UI/Journey/Full.lua
 UI/Journey/Empty.lua
 UI/Journey/Page.lua
+# The person's page: its paper strips (the timeline's day labels and note
+# slips among them), the timeline, the People page, then the page's own
+# pieces in the order they take from each other as they load (the plate,
+# the top block that holds it, the clipped name sheet), the page last.
+UI/Journal/Strips.lua
 UI/Journal/Timeline.lua
 UI/Journal/People.lua
+UI/Journal/PersonPlate.lua
+UI/Journal/Clippings.lua
+UI/Journal/Header.lua
 UI/Journal/Profile.lua
-# The dungeon page (ns.UI.DungeonPage): its print first, its words, its
-# margin notes, then the page.
+# A dungeon run laid out on the table over the book (ns.UI.DungeonPage):
+# the marks on its map first, how high everything on it lies (its
+# shadows), their words, the margin notes (step 2), the map sheet, the
+# party's cards (step 4), then the spread that hosts it.
 UI/Dungeon/Print.lua
+UI/Dungeon/Heights.lua
 UI/Dungeon/Words.lua
 UI/Dungeon/Notes.lua
-UI/Dungeon/Page.lua
+UI/Dungeon/Sheet.lua
+UI/Dungeon/Cards.lua
+UI/Dungeon/Spread.lua
 UI/Journal/Nearby.lua
 UI/Journal/Front.lua
 UI/Journal/Corner.lua
@@ -255,6 +275,9 @@ Features/Witnesses/Capture.lua
 # /sd testdata (TestData.Register), so it comes after Dev/TestData.lua.
 Dev/Art.lua
 Dev/Diagnostics.lua
+Dev/LootProbe.lua
+Dev/HandTest.lua
+Dev/CardRace.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
 Dev/TestData.lua

@@ -99,15 +99,15 @@ Eq(timeline[2].hidden, 1, "folded-away count")
 Eq(timeline[2].all[1].depth, 1, "a session's rows not one level in")
 
 local _, text, sub = ns.UI.DescribeItem(timeline[3], A)
-Eq(text, "Quested together for 1 h through Mulgore and The Barrens", "questing session line")
-Eq(sub, "2 quests  ·  they went from 8 to 10", "session details")
+Eq(text, "Quested together in Mulgore and The Barrens for 1 h; Bram reached lv 10", "questing session line")
+Eq(sub, "2 quests", "session details: the level is the headline's")
 _, text = ns.UI.DescribeItem(timeline[4], A)
 Check(text:find("gave 5x %[Linen Cloth%]") and text:find("got 1g 23s 45c"), "trade line: " .. text)
 _, text = ns.UI.DescribeItem(timeline[2].all[1], A)
 Check(text:find('"ty!"'), "whisper line: " .. text)
 _, text, sub = ns.UI.DescribeItem(timeline[2], A)
-Eq(text, "Grouped for 10 min in Thunder Bluff", "grouped session line")
-Eq(sub, "1 death  ·  1 message", "deaths and chatter on the session's details")
+Eq(text, "Kept company in Thunder Bluff", "a session in a capital, under 15 min")
+Eq(sub, "1 death", "a single message is not counted on the session's details")
 
 -- Item and chat colours are for dark backgrounds; on parchment they get ink.
 Eq(ns.Style.Inkify("|cffffffff|Hitem:2589|h[Linen Cloth]|h|r"), "|cff211408|Hitem:2589|h[Linen Cloth]|h|r",
@@ -237,13 +237,9 @@ local function Headings()
     end
     return table.concat(list, ",")
 end
-local function Plain(text) return (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
--- The profile's own lines at the top of its list: "note" or "story".
-local function Prose(P, kind)
-    for _, line in ipairs(P.timeline.data) do
-        if line.prose == kind then return line.text end
-    end
-end
+-- The profile's own line at the top of its list: the plate, the facts'
+-- strips and your note (UI/Journal/Clippings.lua).
+local function Block(P) return P.clippings end
 
 Eq(J.people.data[1].header, "This week", "first group heading")
 Eq(J.people.rows[1].header:GetText(), "THIS WEEK", "headings are set in capitals")
@@ -259,25 +255,34 @@ Check(J.profile:IsShown() == false or J.profile.name:GetText() == "", "clicking 
 
 people[1]:Click()
 local P = J.profile
-Eq(P.name:GetText(), "BRAM REDFEN", "profile heading, in capitals")
-local story = Plain(Prose(P, "story"))
-Check(story:find("You first met Bram in Durotar on") and story:find("when they were level 5"), "story: " .. story)
-Check(story:find("crossed paths 3 times") and story:find("level 12 now"), "story: " .. story)
+-- The name sheet: their name as written (Goodmountain, mixed case).
+Eq(P.name:GetText(), "Bram Redfen", "profile heading, as written")
+Eq(P.name.recorded.calls.SetFontObject[1], ns.Style.FONT.personName, "the name is not in Goodmountain")
 Check(P.chips[1]:IsShown() and P.chips[1].label:GetText() == "friend", "tag chip")
 Eq(P.relationship:GetText(), "questing buddy", "relationship")
-Check(Prose(P, "note"):find("Nagas"), "note")
+-- No summary paragraph: the facts are strips (the old story's "You first
+-- met Bram in Durotar ... when they were level 5", "crossed paths 3
+-- times", "level 12 now").
+local CL = Block(P)
+Check(CL.first:IsShown() and CL.first.name:GetText():find("^First met "), "no first-met strip: "
+    .. tostring(CL.first.name:GetText()))
+Eq(CL.first:What(), "at level 5", "the first-met strip's level then")
+Eq(CL.tally.name:GetText(), "Met 3 times", "the tally strip")
+Check(CL.level:IsShown() and CL.level.struck == "5" and CL.level.written == "12", "the level tag: 5 struck, 12 written")
+Check(CL.note:Written():find("Nagas"), "note")
 
--- The list scrolls your note, a rule and the story with the timeline under
--- them, and starts right under the tags.
+-- The list starts with that one tall line, from behind the name sheet,
+-- and scrolls by the pixel.
 local lines = P.timeline.data
-Eq(lines[1].prose, "note", "the list does not start with the note")
-Eq(lines[1].font, ns.Style.FONT.noteWritten, "the note is not in the note's hand")
-Eq(lines[1].justify, "CENTER", "the note is not centred")
-Check(lines[2].rule and lines[2].height, "no rule between the note and the story")
-Eq(lines[3].prose, "story", "the story is not under the rule")
-Check(lines[4].height and not lines[4].text, "no gap between the story and the timeline")
-local PAGE = 4
-Eq(P.timeline.recorded.points[1].args[1], P.tagRow, "the list is not right under the tags")
+Eq(lines[1].clippings, CL, "the list does not start with the plate and the facts")
+Check(lines[1].height and lines[1].height > 100, "the top block is not one tall line")
+for _, line in ipairs(lines) do
+    Check(line.prose == nil and line.rule == nil, "a summary line is still in the list")
+end
+local PAGE = 1
+Eq(P.timeline.recorded.points[1].args[1], P, "the list is not on the page")
+Eq(P.timeline.recorded.points[1].args[4], -ns.UI.PersonHeader.SHEET.listTop, "the list does not start behind the sheet")
+Eq(P.timeline.smooth, 534 - ns.UI.PersonHeader.SHEET.listTop, "the list does not scroll by the pixel to the foot")
 
 -- Timeline: a day heading per day, a details line under a session.
 local headers, added, session = 0, nil, nil
@@ -301,7 +306,7 @@ for i = 1, #P.timeline.rows do
 end
 Check(sessionRow, "no session row on screen")
 sessionRow.scripts.OnEnter(sessionRow)
-Check(GameTooltip.text and GameTooltip.text:find("Grouped for"), "the tooltip does not show the full line")
+Check(GameTooltip.text and GameTooltip.text:find("Kept company in Thunder Bluff"), "the tooltip does not show the full line")
 Check(GameTooltip.text:find("Click to show all 1"), "the tooltip does not say the session opens")
 Check(people[1].selected:IsShown(), "the selected row is not marked")
 

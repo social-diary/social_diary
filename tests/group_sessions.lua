@@ -117,6 +117,13 @@ Eq(s.zones[2], "Thunder Bluff", "zone change not recorded")
 mock.fire("ZONE_CHANGED_NEW_AREA")
 Eq(#s.zones, 2, "the same zone recorded twice in a row")
 mock.zone = "Mulgore"
+-- Walking to and fro across a border is not another place (21 Oct, in the
+-- client: Stormwind City, Deeprun Tram, Stormwind City, ... up to forty).
+mock.fire("ZONE_CHANGED_NEW_AREA")
+mock.zone = "Thunder Bluff"
+mock.fire("ZONE_CHANGED_NEW_AREA")
+Eq(table.concat(s.zones, ","), "Mulgore,Thunder Bluff", "a zone come back to was written down again")
+mock.zone = "Mulgore"
 
 mock.fire("PLAYER_DEAD")
 Eq(s.deaths[SELF.guid], 1, "own death not counted")

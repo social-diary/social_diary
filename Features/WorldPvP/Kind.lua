@@ -76,7 +76,7 @@ local Place = ns.UI.TimelineText.Place
 
 local function Always() return true end
 
-ns.Rows.Register(KILL, { fight = "kill", moment = Always, reason = "you killed them",
+ns.Rows.Register(KILL, { fight = "kill", plate = 1, moment = Always, reason = "you killed them",
     text = function(row, guid)
         local them = guid and ns.Characters.Name(guid) or "them"
         local by = row.context and row.context.by
@@ -87,7 +87,7 @@ ns.Rows.Register(KILL, { fight = "kill", moment = Always, reason = "you killed t
     end,
     icon = "hostile" })
 
-ns.Rows.Register(DEATH, { fight = "death", moment = Always, reason = "they killed you",
+ns.Rows.Register(DEATH, { fight = "death", plate = 1, moment = Always, reason = "they killed you",
     text = function(row, guid)
         local c = row.context or {}
         local them = guid and ns.Characters.Name(guid) or "They"
