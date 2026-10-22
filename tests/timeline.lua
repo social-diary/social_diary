@@ -189,8 +189,8 @@ Eq(short.lines[1].kind, "rare", "the rare is a moment")
 Eq(short.lines[2].row.context.given[1].link, SWORD_LINK, "the green trade is a moment")
 Eq(short.hidden, 2, "the white trade and the whisper fold away")
 _, text, sub = ns.UI.DescribeItem(short, PAL)
-Eq(text, "Quested together for 20 min in Duskwood", "short session headline")
-Eq(sub, "1 quest  ·  1 message  ·  1 trade", "short session details count only the chatter")
+Eq(text, "Hunted Mor\226\128\153Ladim together in Duskwood over 20 min", "short session headline: the rare is its story")
+Eq(sub, "1 quest  ·  1 trade", "short session details count only the chatter, and not one message")
 _, text, _, icon = ns.UI.DescribeItem(short.lines[1], PAL)
 Eq(text, "Killed Mor'Ladim", "rare moment line")
 Eq(icon, "rare", "rare moment icon")
@@ -199,20 +199,22 @@ Eq(icon, "rare", "rare moment icon")
 -- details line, not repeated as lines (TLN-6).
 Eq(#long.lines, 0, "named moments repeated as lines")
 _, text, sub = ns.UI.DescribeItem(long, PAL)
-Eq(text, "Quested together for 3 h 5 min through Westfall and Duskwood, killed Mor'Ladim, and traded",
-    "long session headline")
-Eq(sub, "18 quests  ·  killed Mor'Ladim  ·  gave " .. SWORD_LINK
-    .. "  ·  they went from 21 to 24  ·  2 deaths  ·  5 messages", "long session details")
+Eq(text, "Hunted Mor\226\128\153Ladim together in Westfall and Duskwood over 3 h 5 min; Trade reached lv 24",
+    "long session headline: the rare, and past an hour the level after it")
+Eq(sub, "18 quests  ·  gave " .. SWORD_LINK .. "  ·  2 deaths  ·  5 messages",
+    "long session details: nothing the headline says")
 
 -- Facts past the budget go to the tooltip only.
 Fresh(t0, {
     Session(SHORT, t0 + 1000, 10 * 60, { quests = { 1 }, levelStart = 5, levelEnd = 6 },
         { deaths = { [SELF.guid] = 1 } }),
 })
-Row("whisper_in", t0 + 1100, { excerpt = "x" }, SHORT)
-_, _, sub, _, story = ns.UI.DescribeItem(ns.Timeline.For(PAL)[1], PAL)
-Eq(sub, "1 quest  ·  they went from 5 to 6  ·  1 death", "details not cut to the budget")
-Check(story:find("1 death  ·  1 message"), "the tooltip lost the cut fact: " .. story)
+for i = 1, 3 do Row("whisper_in", t0 + 1100 + i, { excerpt = "x" .. i }, SHORT) end
+Row("trade", t0 + 1200, { context = { given = JERKY } }, SHORT)
+_, text, sub, _, story = ns.UI.DescribeItem(ns.Timeline.For(PAL)[1], PAL)
+Eq(text, "Trade reached lv 6 with you in Duskwood", "a short session's level is its story")
+Eq(sub, "1 quest  ·  1 trade  ·  1 death", "details not cut to the budget")
+Check(story:find("1 death  ·  3 messages", 1, true), "the tooltip lost the cut fact: " .. story)
 
 -- The page: folded by default, a click opens it, another folds it.
 Fresh(t0, {
@@ -339,7 +341,7 @@ Eq(rfk.visit.name, "Razorfen Kraul", "the dungeon-only session did not give way"
 Eq(rfk.hidden, 3, "the session's chat did not go with the visit")
 local _, text, sub = ns.UI.DescribeItem(rfk, G)
 Eq(text, "Razorfen Kraul, 35 min, 4 of 6 bosses", "visit headline")
-Check(sub:find("^4 deaths  ·  1 wipe  ·  with Brom, Kaelith and Zuri"), "visit details: " .. sub)
+Check(sub:find("^6 deaths  ·  1 wipe  ·  with Brom, Kaelith and Zuri"), "visit details: " .. sub)
 
 -- Inside a session, the visit is always shown and only counted on the
 -- session's details.
@@ -368,8 +370,9 @@ for _, child in ipairs(wc.all) do
 end
 Eq(inWC, 20, "the level-up during the dungeon is not the dungeon's")
 _, text, sub = ns.UI.DescribeItem(long, G)
-Check(text:find("^Quested together for 3 h 5 min"), "long session: " .. text)
-Check(sub:find("1 dungeon"), "the session does not count its dungeon: " .. sub)
+Eq(text, "Hunted Humar the Pridelord together in The Barrens over 3 h 5 min; ran Wailing Caverns together",
+    "long session: past an hour, the run follows the story")
+Check(not sub:find("dungeon"), "the session counts the run its headline names: " .. sub)
 -- Three deaths, two of them with lines: only the third is counted.
 Check(sub:find("1 death"), "the death without a line is not counted: " .. sub)
 -- Tester's death in Wailing Caverns is the run's (TLN-11): no line beside
@@ -389,18 +392,20 @@ for i = 1, #lines do
     end
 end
 
--- A visit is one tall entry beside its medallion: red name, duration
+-- A visit is one tall entry beside its medallion: its name, duration
 -- aside, a mark per boss, the others in the party, deaths and wipes.
 local entry
 for i = 1, #lines do
     if lines[i].visit and lines[i].item.visit.name == "Razorfen Kraul" then entry = lines[i] end
 end
 Check(entry, "Razorfen Kraul is not a visit entry on the page")
-Eq(entry.text, "RAZORFEN KRAUL", "the visit name is not in capitals")
-Eq(entry.font, ns.Style.FONT.rubric, "the visit name is not in red")
+-- Its title in Goodmountain, rubric, as written (the person-page proposal,
+-- variant A: mixed case, never capitals).
+Eq(entry.text, "Razorfen Kraul", "the visit name is not as written")
+Eq(entry.font, ns.Style.FONT.runTitle, "the visit name is not in the run card's title")
 Check(entry.height and entry.height > 20, "the visit entry is not taller than a line")
 Eq(entry.visit.aside, "35 min", "the visit's duration")
-Eq(entry.visit.losses, "4 deaths  ·  1 wipe", "the visit's deaths and wipes")
+Eq(entry.visit.losses, "6 deaths  ·  1 wipe", "the visit's deaths and wipes")
 Eq(#entry.visit.members, 3, "the party, less the user and the page's person")
 for i = 1, #lines do
     Check(not (lines[i].item == entry.item and lines[i] ~= entry and lines[i].text),
@@ -541,8 +546,9 @@ local s401 = ns.Timeline.For(PAL)[1]
 Eq(#s401.lines, 1, "the level-up is not a line under its session")
 Eq(s401.lines[1].row.type, "level_up", "the line under the session")
 Eq(table.concat(s401.activities, ","), "quest,chat", "a level-up added an activity")
-local _, _, s401sub = ns.UI.DescribeItem(s401, PAL)
-Eq(s401sub, "1 quest  ·  they went from 6 to 7  ·  1 message", "a level-up counted on the details line")
+local _, s401text, s401sub = ns.UI.DescribeItem(s401, PAL)
+Eq(s401text, "Trade reached lv 7 with you in Duskwood over 20 min", "a level-up is the session's story")
+Eq(s401sub, "1 quest", "the level said again, or one message counted, on the details line")
 
 -- Level-ups seen in passing are single lines, not an exchange: only
 -- things done together count towards one.
@@ -606,17 +612,160 @@ Fresh(t0, { Session(403, t0 + 1000, 60 * 60, { quests = { 1 } }, { deathLog = {
         killer = { name = "Kobold Tunneler", source = "recap", attackers = 6 } },
     { time = t0 + 1400, guid = PAL, subZone = "Jasperlode Mine", killer = { name = "Rumbler", source = "recap" } },
 } }) })
+-- Folded, three deaths are one line (15 Oct, in the client: seven death
+-- lines under one session), each in its tooltip; opened, each a line.
+local s403 = ns.Timeline.For(PAL)[1]
+Eq(#s403.lines, 1, "three deaths are not one folded line")
+Eq(s403.lines[1].kind, "deaths", "the folded line is not the deaths")
+Eq(s403.lines[1].time, t0 + 1100, "the deaths' line is not at the first")
+local _, patchText, _, patchIcon, patchFull = ns.UI.DescribeItem(s403.lines[1], PAL)
+Eq(patchText, "You died once, Trade twice", "the deaths' line")
+Eq(patchIcon, "death", "the deaths' icon")
+Check(patchFull:find("Rumbler", 1, true), "the deaths' tooltip lost a death")
+-- Two deaths stay lines of their own.
+ns.db.sessions[403].deathLog[3] = nil
 ns.UI.ShowJournal(PAL)
 local deathLines = {}
 for _, line in ipairs(_G.SocialDiaryJournalFrame.profile.timeline.data) do
     if line.item and line.item.kind == "death" and line.text then deathLines[#deathLines + 1] = line end
 end
-Eq(#deathLines, 3, "the deaths are not lines")
+Eq(#deathLines, 2, "the deaths are not lines")
 Eq(deathLines[1].text, "Trade died to Kobold Tunneler near Fargodeep Mine", "the first death at a place names it")
 Eq(deathLines[2].text, "You died to Kobold Tunneler (6 attackers) there", "a death at the same place names it again")
 Check(deathLines[2].full:find("near Fargodeep Mine", 1, true), "said \"there\", the tooltip lost the place")
-Eq(deathLines[3].text, "Trade died to Rumbler near Jasperlode Mine", "a death at another place is \"there\"")
 ns.UI.CloseJournal()
+
+--------------------------------------------------------------------------
+Section("a together session's story: headline and details line")
+
+-- The headline of the newest session, and its details line.
+local function Said(sessions, road)
+    Fresh(t0, sessions)
+    ns.db.journey = road and { [SELF.guid] = { segments = road } } or {}
+    local item = ns.Timeline.For(PAL)[1]
+    local _, text, sub = ns.UI.DescribeItem(item, PAL)
+    return text, sub, item
+end
+mock.mapNames[9001], mock.mapNames[9002] = "Westfall", "Duskwood"
+local function Seg(kind, from, seconds, mapID, subZone)
+    return { kind = kind, from = t0 + from, to = t0 + from + seconds, mapID = mapID, subZone = subZone }
+end
+
+-- Old sessions wrote a zone every time it came round again (21 Oct, in
+-- the client: "through Stormwind City, Deeprun Tram and 22 more").
+local flap = {}
+for i = 1, 20 do flap[#flap + 1] = i % 2 == 1 and "Stormwind City" or "Deeprun Tram" end
+flap[#flap + 1] = "Elwynn Forest"
+local text = Said({ Session(500, t0 + 1000, 40 * 60, { quests = { 1, 2 } }, { zones = flap }) })
+Eq(text, "Quested together in Stormwind City and around for 40 min", "flapping zones, read each once")
+Eq(ns.Timeline.Unique(flap)[3], "Elwynn Forest", "a zone repeated after reading")
+Eq(#ns.Timeline.Unique(flap), 3, "the zones read each once")
+
+-- Never more than two names, never "and N more".
+text = Said({ Session(502, t0 + 1000, 40 * 60, { quests = { 1 } },
+    { zones = { "Westfall", "Duskwood", "Redridge Mountains", "Elwynn Forest" } }) })
+Eq(text, "Quested together in Westfall and around for 40 min", "four zones")
+text = Said({ Session(504, t0 + 1000, 40 * 60, { quests = { 1 } }, { zones = { "Westfall", "Duskwood" } }) })
+Eq(text, "Quested together in Westfall and Duskwood for 40 min", "two zones")
+
+-- Under 15 min, no duration.
+text = Said({ Session(506, t0 + 1000, 10 * 60, { quests = { 1 } }, { zones = { "Westfall" } }) })
+Eq(text, "Quested together in Westfall", "a short session gave its length")
+
+-- A capital and the tram: company kept, never questing.
+text = Said({ Session(508, t0 + 1000, 40 * 60, { quests = { 1 } },
+    { zones = { "Deeprun Tram", "Stormwind City", "Deeprun Tram" } }) })
+Eq(text, "Kept company in Stormwind City for 40 min", "a capital session")
+text = Said({ Session(509, t0 + 1000, 40 * 60, {}, { zones = { "Deeprun Tram" } }) })
+Eq(text, "Kept each other company on the Deeprun Tram for 40 min", "the tram alone, the other variant")
+
+-- Settled: most of the time in one zone (from the user's road); its
+-- subzone only once it alone had half of it.
+local settled = { Seg("stop", 1000, 1600, 9001, "Sentinel Hill"), Seg("road", 2600, 400, 9001),
+    Seg("stop", 3000, 1400, 9001, "Saldean's Farm"), Seg("stop", 4400, 600, 9002) }
+text = Said({ Session(510, t0 + 1000, 4000, { quests = { 1 } }, { zones = { "Duskwood" } }) }, settled)
+Eq(text, "Quested together in Westfall for 1 h 6 min", "settled in a zone")
+settled[3].subZone = "Sentinel Hill"
+text = Said({ Session(510, t0 + 1000, 4000, { quests = { 1 } }) }, settled)
+Eq(text, "Quested together at Sentinel Hill in Westfall for 1 h 6 min", "settled at a subzone")
+
+-- A journey: a quarter of the time on the road, and a fifth in the zone
+-- it ended in.
+local journey = { Seg("stop", 1000, 1000, 9001), Seg("road", 2000, 1200, 9001),
+    Seg("road", 3200, 400, 9002), Seg("stop", 3600, 1400, 9002) }
+text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 } }) }, journey)
+Eq(text, "Went from Westfall to Duskwood together over 1 h 6 min", "a journey")
+-- Not when the end zone had little of it.
+journey[4].to = journey[4].from + 100
+text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 } }) }, journey)
+Check(not text:find("^Went from"), "a journey into a zone barely reached: " .. text)
+
+-- Rough patches: the user's deaths, theirs, or both; three, or two close.
+local function Deaths(...)
+    local log = {}
+    for i, who in ipairs({ ... }) do log[i] = { time = t0 + 1000 + i * 120, guid = who } end
+    return log
+end
+local sub
+text, sub = Said({ Session(514, t0 + 1000, 20 * 60, { quests = { 1 } },
+    { deathLog = Deaths(SELF.guid, SELF.guid, SELF.guid) }) })
+Eq(text, "You died 3 times with Trade close by in Duskwood over 20 min", "a rough patch, the user's")
+Eq(sub, "1 quest", "the deaths said again on the details line")
+text = Said({ Session(516, t0 + 1000, 10 * 60, { quests = { 1 } }, { deathLog = Deaths(PAL, PAL) }) })
+Eq(text, "Trade died twice at your side in Duskwood", "a rough patch, theirs: two close together")
+text = Said({ Session(517, t0 + 1000, 10 * 60, { quests = { 1 } }, { deathLog = Deaths(PAL, PAL) }) })
+Eq(text, "Trade died twice with you close by in Duskwood", "a rough patch, theirs, the other variant")
+text = Said({ Session(518, t0 + 1000, 20 * 60, { quests = { 1 } },
+    { deathLog = Deaths(SELF.guid, PAL, SELF.guid, PAL) }) })
+Eq(text, "You and Trade died 4 times between you in Duskwood over 20 min", "a rough patch, both")
+text = Said({ Session(519, t0 + 1000, 20 * 60, { quests = { 1 } },
+    { deathLog = Deaths(SELF.guid, PAL, SELF.guid, PAL) }) })
+Eq(text, "4 deaths between you and Trade in Duskwood over 20 min", "a rough patch, both, the other variant")
+local apart = { { time = t0 + 1100, guid = PAL }, { time = t0 + 3000, guid = SELF.guid } }
+text = Said({ Session(520, t0 + 1000, 40 * 60, { quests = { 1 } }, { deathLog = apart }) })
+Eq(text, "Quested together in Duskwood for 40 min", "two deaths far apart made a rough patch")
+
+-- A level reached: both, theirs, the user's.
+text, sub = Said({ Session(522, t0 + 1000, 30 * 60, { quests = { 1 }, levelStart = 15, levelEnd = 16 },
+    { myLevelStart = 15, myLevelEnd = 16 }) })
+Eq(text, "Reached lv 16 together in Duskwood over 30 min", "both levelled")
+Eq(sub, "1 quest", "the level said again on the details line")
+text = Said({ Session(524, t0 + 1000, 30 * 60, { quests = { 1 }, levelStart = 15, levelEnd = 16 }) })
+Eq(text, "Trade reached lv 16 at your side in Duskwood over 30 min", "they levelled")
+text = Said({ Session(526, t0 + 1000, 30 * 60, { quests = { 1 } }, { myLevelStart = 19, myLevelEnd = 20 }) })
+Eq(text, "You reached lv 20 while questing with Trade in Duskwood over 30 min", "the user levelled")
+
+-- A level outweighs a rough patch and a rare.
+text = Said({ Session(528, t0 + 1000, 30 * 60, { quests = { 1 }, levelStart = 15, levelEnd = 16,
+    rares = { { name = "Mor'Ladim", time = t0 + 1100 } } }, { deathLog = Deaths(PAL, PAL, PAL) }) })
+Check(text:find("^Trade reached lv 16"), "the level is not the story: " .. text)
+
+-- Past an hour, the place leads and the level follows.
+text, sub = Said({ Session(530, t0 + 1000, 100 * 60, { quests = { 1, 2 }, levelStart = 19, levelEnd = 20 },
+    { zones = { "Westfall" } }) })
+Eq(text, "Quested together in Westfall for 1 h 40 min; Trade reached lv 20", "a second story after an hour")
+Eq(sub, "2 quests", "the second story said again on the details line")
+
+-- A run is the strongest story; under an hour, the only one.
+local item
+_, _, item = Said({ Session(532, t0 + 1000, 30 * 60, { quests = { 1 }, levelStart = 15, levelEnd = 16 }) })
+item.all[#item.all + 1] = { kind = "visit", time = t0 + 1200, all = {}, visit = { name = "Wailing Caverns" } }
+_, text, sub = ns.UI.DescribeItem(item, PAL)
+Eq(text, "Ran Wailing Caverns together over 30 min", "a run is the story")
+Check(not sub:find("dungeon") and sub:find("Trade reached lv 16", 1, true), "the run's details line: " .. sub)
+ns.db.journey = {}
+
+-- The details line: a message or two is not counted; one quest goes by
+-- its title.
+_G.C_QuestLog = _G.C_QuestLog or {}
+local title = C_QuestLog.GetTitleForQuestID
+C_QuestLog.GetTitleForQuestID = function(id) return id == 7 and "The Legend of Stalvan" or nil end
+Fresh(t0, { Session(534, t0 + 1000, 40 * 60, { quests = { 7 } }) })
+Row("whisper_in", t0 + 1100, { excerpt = "hi" }, 534)
+Row("whisper_out", t0 + 1110, { excerpt = "hey" }, 534)
+_, _, sub = ns.UI.DescribeItem(ns.Timeline.For(PAL)[1], PAL)
+Eq(sub, "\226\128\156The Legend of Stalvan\226\128\157", "one quest by its title, two messages left out")
+C_QuestLog.GetTitleForQuestID = title
 
 --------------------------------------------------------------------------
 Section("notes on the timeline (TLN-10)")
@@ -718,10 +867,10 @@ Eq(vlines[plateAt + 2].note, early, "the visit's note is not under the gap")
 -- Two levels in: the visit's bracket runs down its medallion, a level
 -- further in than an icon's, and must clear the icons under it.
 Eq(vlines[plateAt + 2].depth, 2, "what hangs under a visit is not clear of its medallion")
--- A visit no longer folds open (TLN-12: its card opens the dungeon page,
--- tests/dungeon_ui.lua), so nothing under it hangs on a bracket.
+-- A visit no longer folds open (TLN-12: its card lays the run out on the
+-- table, tests/dungeon_ui.lua), so nothing under it hangs on a bracket.
 Eq(vlines[plateAt + 2].bracket, nil, "a visit's note hangs on a fold's bracket")
-Check(vlines[plateAt].full:find("\nClick to open its page%.$"), "a visit's tooltip does not say what a click does: "
+Check(vlines[plateAt].full:find("\nClick to open its sheet%.$"), "a visit's tooltip does not say what a click does: "
     .. vlines[plateAt].full)
 ns.db.instances = {}
 
@@ -782,8 +931,12 @@ Eq(wrap[3].height, nil, "a short line changed height")
 Eq(wrap[3].top, nil, "a short line moved its text")
 Eq(wrap[4].height, 20 + 52, "a long note is not held to four lines")
 Eq(wrap[5].height, 6, "a gap changed height")
--- The name has 386 - 2 - 2 - 8 - 42 - 12 - 96 = 224, 32 a line: two lines,
--- 31 high, 17 more than one, so 20; the plate grows by that.
+-- The name has the card's first line to itself (the time and losses are
+-- on the second, and there are no bosses' marks): 386 - 2 - 2 - 8 - 96 =
+-- 278, 39 a line: 80 characters want three lines, held to two, 31 high, 17
+-- more than one, so 20; the card (64 high, three lines) grows by that and
+-- takes the row's width.
 Eq(wrap[6].visit.extra, 20, "a long dungeon name did not grow its plate")
-Eq(wrap[6].height, 58 + 20, "the plate's height")
-Eq(wrap[6].visit.nameTop, 8 + (22 - 14) / 2, "where a wrapped name starts")
+Eq(wrap[6].height, 64 + 20, "the plate's height")
+Eq(wrap[6].visit.nameTop, 6 + (22 - 14) / 2, "where a wrapped name starts")
+Eq(wrap[6].visit.cardW, 386 - 2 - 2 - 40, "a card with a wrapped name is not as wide as its row lets it be")

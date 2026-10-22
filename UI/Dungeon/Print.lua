@@ -3,14 +3,9 @@
 -- leaves the floor shown (UI/Route.lua's followBosses and RenderRoute),
 -- changed 2026-10-16: drawn with our own pen, in ink and pencil.
 --
--- The dungeon page's print (MAP-1 to MAP-4, MAP-7): one floor of the
--- dungeon printed on photo stock and glued into the page, as Your Diary's
--- plates are (UI/Journey/Plate.lua's PLATE, SHADOW, THICKNESS, VIGNETTE and
--- MOUNT, read from it as it draws), but flat: no turn, no lift. On it, what
--- happened there, never a guide:
---   the art     the floor (ns.UI.DungeonMap), greyed part way and warmed
---               toward the page, in a neat line of ink (FRAME), its edges
---               darkened as an old print's (none laid flat)
+-- What happened on a run, printed over its floor on the map sheet of the
+-- table spread (MAP-1 to MAP-4, MAP-7, MAP-14; UI/Dungeon/Sheet.lua), never
+-- a guide:
 --   the way     the usual way through (ns.Dungeons.Route, the author's, not
 --               the user's: there are no coordinates inside), inked as far
 --               as the furthest boss killed, the rest in pencil (ROUTE)
@@ -25,12 +20,17 @@
 --   deaths      small crosses (MAP-14, DEATH): in ink round the boss they
 --               died at; in pencil on the way between two bosses, where
 --               the time says (approximate, and it says so); without a
---               way through, by the boss, else at the print's foot
--- A drawn map's artist is credited on the About page (Licensing), not here.
+--               way through, by the boss, else at the map's foot
 -- Each mark has a tooltip; there is no key (the plates' Decision 7).
--- Drawn once as the page opens or a floor is chosen, from pools; nothing
--- per frame, nothing random: seeded by the visit, so it lies the same way
--- every time.
+--
+-- In two steps, both in the sheet's own coordinates (x right, y down from
+-- its top left): Plan works out where everything goes and draws nothing,
+-- so the sheet can keep its folds clear of the faces and the numbers
+-- before it is laid; Ink then prints it through the sheet's placer (its
+-- toolkit, UI/Paper/Sheet.lua), so every mark turns, folds and takes the
+-- light with the paper. Drawn once as the sheet opens or a floor is
+-- chosen, from pools; nothing per frame, nothing random: seeded by the
+-- visit, so it lies the same way every time.
 
 local addonName, ns = ...
 
@@ -39,31 +39,24 @@ local Style = ns.Style
 local DungeonPage = {}
 ns.UI.DungeonPage = DungeonPage
 
--- The card: `margin` px of stock round the art; photo corners as on a
--- lone plate (`corner`, the slot's pc in UI/Journey/Look.lua's terms).
--- The neat line round the art: ink at `alpha`, `inner` px hugging it, a
--- `gap`, an `outer` hairline (the plates' FRAME).
-local CARD = { margin = 8, corner = 26, edge = 0.30 }
-local FRAME = { inner = 1.5, gap = 1.5, outer = 1, alpha = 0.65 }
-
--- A boss killed with no face to show: on a dot of the card's stock
+-- A boss killed with no face to show: on a dot of the sheet's stock
 -- (`halo` across, at `haloAlpha`), a lozenge of ink `edge` px with a red
 -- one `fill` px in it, the card's boss marks (Style.Pips) at map size.
 -- Every kill's number in the order they fell, `size` pt, on a dot of stock
 -- `halo` across (where: APART.spots).
 local KILL = { halo = 15, haloAlpha = 0.75, edge = 10, fill = 6.5,
     number = { size = 10, halo = 11 } }
--- A boss still standing: a faint pencil ring drawn by hand, `radius` px,
+-- A boss still standing: a faint ring in chalk (CHALK) drawn by hand, `radius` px,
 -- in `strokes` pieces `width` wide at `alpha`, a little uneven (`wobble`)
 -- and over its start by `overshoot` of a turn; on a fainter dot of stock.
 local STANDING = { radius = 5.5, strokes = 16, width = 1.1, alpha = 0.72, wobble = 0.07, overshoot = 0.1,
     halo = 15, haloAlpha = 0.38 }
 -- The way through: resampled every `step` px after `smooth` rounds of
 -- corner cutting. Inked as far as you went (`ink`: the pen's nib on a
--- line `width` wide at `alpha`), the rest pencil (`pencil`, even). At most
--- `budget` pieces in all.
+-- line `width` wide at `alpha`), the rest in chalk (`pencil`, even, over
+-- its faint dark stroke: CHALK). At most `budget` pieces in all.
 local ROUTE = { step = 4, smooth = 2, budget = 700,
-    ink = { width = 2.2, alpha = 0.82 }, pencil = { width = 1.1, alpha = 0.5 } }
+    ink = { width = 2.2, alpha = 0.82 }, pencil = { width = 1.2, alpha = 0.7 } }
 -- A boss's face: `kill` px across for a kill (a rare's too), `standing`
 -- for one still standing, smaller, as it is only pencil.
 local MEDAL = { kill = 24, standing = 20 }
@@ -73,23 +66,89 @@ local HOVER = 22
 -- shape: a stem `stem` = { w, h } and a bar `bar` `up` px up), on a dot of
 -- stock `halo` across. At a boss in ink, `ring` px out from the edge of
 -- its mark, from `start` degrees (y down: the left, clear of its number
--- at the upper right and the leaders coming up from below) `step` degrees
--- apart, at most `most`; on the way in pencil at
--- `pencil`. Its tooltip takes a square `hit` px. At the print's foot, a
--- row `gap` px apart.
+-- at the upper right) `step` degrees apart, at most `most`; on the way in
+-- pencil at `pencil`. Its tooltip takes a square `hit` px. Where nothing
+-- places them, a row `gap` px apart (by default `foot` px under the art).
 local DEATH = { stem = { 1.6, 7 }, bar = { 5, 1.6 }, up = 1.5, halo = 10, haloAlpha = 0.8, ring = 6,
-    start = 195, step = 30, most = 6, pencil = 0.9, hit = 10, gap = 9 }
+    start = 195, step = 30, most = 6, pencil = 0.9, hit = 10, gap = 9, foot = 12 }
 -- Marks never touch (the plates' rule, 9 Oct: side by side they read as
 -- letters): each keeps `clear` px from those placed before it, the kills
 -- first, moving out to the first free place on rings `step` px apart
 -- (`tries` rings of eight headings), with a pencil tether (`tether`:
 -- width, alpha) back to where the boss stands. A kill's number takes the
 -- first of `spots` round its mark `gap` px clear of every mark and number.
-local APART = { clear = 25, step = 9, tries = 3, tether = { 0.8, 0.5 }, gap = 12,
+-- Marks keep `inset` px inside the art.
+-- Chalk: what is drawn lightly on the map, where pencil grey would be lost
+-- on the dark art (16 Oct, in the client: the leaders could not be seen at
+-- all): a pale cream, about the strips' own paper (UI/Paper/Strip.lua's
+-- STRIP.paper), so a leader reads as its strip's; under it, where it must
+-- read on the lighter art too, a faint dark stroke `under.offset` px down
+-- and to the right at `under.alpha`. The way still to go (ROUTE.pencil),
+-- a mark's tether, a standing boss's ring without a face, and the margin
+-- notes' leaders (UI/Dungeon/Notes.lua) are chalk; the way gone (ink) and
+-- the crosses, each on its dot of paper, stay as they were.
+local CHALK = { colour = { 0.93, 0.89, 0.76 }, under = { offset = 0.9, alpha = 0.32 } }
+-- The run's moments in the hand (flavour pass A): the bigger the moment,
+-- the more the hand shows. In order of what gives way to what, when two
+-- would clash (the lesser drawn smaller or moved off): a good drop for you
+-- (LOOT), a wipe's scribble (SCRIBBLE), the pen at rest where the group
+-- stayed long (REST), the blood where people died (SPLAT), a level-up's
+-- star (LEVEL).
+--   LOOT      round a boss's face, for the best drop there for you: a rare
+--             (blue) one ink loop by hand, `pad` px out from the face,
+--             over its start by `overshoot` of a turn, uneven by `wobble`;
+--             an epic two heavier loops `apart` px apart and a small inked
+--             star `star.out` px out. In `steps` pieces a turn
+--   SCRIBBLE  beside a face (or a wipe's place on the way), `out` px from
+--             its edge: an angry scribble, `size` px, of `strokes`
+--             scratches and `more` for each wipe past the first (at most
+--             `most` counted), pressed (`width`, `alpha`) and struck through;
+--             a near wipe's lighter and nervous, a wavering line `wave` px
+--             high, `near`. In chalk, over its faint dark stroke (CHALK)
+--   REST      the share of the run's time inside spent at one boss (first
+--             pull to kill, Core/DungeonRun.lua's `share`): from `circle`
+--             the pen went round it once, wrinkled (`wiggles` a turn,
+--             `wobble`), `pad` px out from the face; from `knot` it went
+--             round and round, `loops` overlapping loops `swing` px across.
+--             The route's own ink, under the face
+--   SPLAT     dried blood under each death spot's crosses (the witness
+--             card's, Features/Witnesses/Card.lua: InkBlot in a brown red):
+--             crosses within `cluster` px one spot; its pool `drops` drops
+--             and `per` more for each death, `spread` px and `grow` more
+--             each; InkBlot's `levels`, `ink`, `rim`, `step`, `warp`, `cap`
+--   LEVEL     a level-up on the way it happened: a five-point star in ink,
+--             `size` px, on a dot of paper `halo` across, the new level
+--             scrawled `text.dx`, `text.dy` px off it, `text.size` pt in the
+--             hand, in chalk
+local LOOT = { pad = 4, overshoot = 0.14, wobble = 0.05, steps = 30,
+    rare = { width = 1.5, alpha = 0.9, loops = 1 }, epic = { width = 2.1, alpha = 0.95, loops = 2, apart = 3.5 },
+    star = { size = 9, out = 8, width = 1.3 } }
+local SCRIBBLE = { out = 12, size = { 16, 10 }, strokes = 6, more = 4, most = 3, width = 1.2, alpha = 0.8, press = 0.3,
+    near = { width = 0.9, alpha = 0.55, wave = 2.2, passes = 2 } }
+local REST = { circle = 0.15, knot = 0.30, pad = 5, wiggles = 9, wobble = 0.09, loops = 3, swing = 3.5, width = 1.7,
+    alpha = 0.82 }
+local SPLAT = { cluster = 18, drops = 5, per = 3, spread = 2.5, grow = 1.4,
+    levels = { { sigma = 2.0, edge = 0.22, from = 0, full = 1 }, { sigma = 1.8, edge = 0.55, from = 0.8, full = 1 } },
+    ink = { { 0.42, 0.11, 0.06, 0.62 }, { 0.30, 0.065, 0.04, 0.55 } }, rim = 0.8, rimInk = { 0.25, 0.05, 0.03, 0.5 },
+    step = 0.8, warp = { 0.6, 8 }, cap = 360 }
+local LEVEL = { size = 9, halo = 13, haloAlpha = 0.8, width = 1.2, text = { size = 14, dx = 10, dy = -6 } }
+local APART = { clear = 25, step = 9, tries = 3, tether = { 1, 0.7 }, gap = 12, inset = 6,
     spots = { { 13, -11 }, { -13, -11 }, { 13, 11 }, { -13, 11 }, { 0, -16 }, { 0, 16 }, { 16, 0 }, { -16, 0 } } }
 
-DungeonPage.CARD, DungeonPage.KILL, DungeonPage.STANDING, DungeonPage.ROUTE = CARD, KILL, STANDING, ROUTE
-DungeonPage.APART, DungeonPage.MEDAL, DungeonPage.DEATH = APART, MEDAL, DEATH
+DungeonPage.KILL, DungeonPage.STANDING, DungeonPage.ROUTE = KILL, STANDING, ROUTE
+DungeonPage.APART, DungeonPage.MEDAL, DungeonPage.DEATH, DungeonPage.HOVER = APART, MEDAL, DEATH, HOVER
+DungeonPage.CHALK = CHALK
+DungeonPage.LOOT, DungeonPage.SCRIBBLE, DungeonPage.REST, DungeonPage.SPLAT, DungeonPage.LEVEL =
+    LOOT, SCRIBBLE, REST, SPLAT, LEVEL
+
+-- What the pen at rest draws for a boss the group spent `share` of the
+-- run's time inside at (REST): "knot", "circle" or nil.
+function DungeonPage.Rest(share)
+    if not share then return nil end
+    if share >= REST.knot then return "knot" end
+    if share >= REST.circle then return "circle" end
+    return nil
+end
 
 --------------------------------------------------------------------------
 -- What is drawn
@@ -142,7 +201,7 @@ local function KilledAt(visit, notes)
 end
 
 -- The name the game gave each boss where it is not the data's ("Infurnus"
--- for Magmatus): what the page calls it. By the data's name.
+-- for Magmatus): what the map calls it. By the data's name.
 function DungeonPage.Names(notes)
     local names = {}
     for _, e in ipairs(notes and notes.bosses or {}) do
@@ -187,315 +246,10 @@ function DungeonPage.Marks(visit, wing, notes)
 end
 
 --------------------------------------------------------------------------
--- The print
+-- Where it goes (Plan)
 --------------------------------------------------------------------------
 
--- A new print on `parent`; :Lay(spec) draws it.
-function DungeonPage.Print(parent)
-    local print = CreateFrame("Frame", nil, parent)
-    local base = print:GetFrameLevel()
-
-    -- Above the art: its edges, the neat line, the way, the marks. Above
-    -- them the photo corners, and over all the squares that take the mouse.
-    local canvas = ns.UI.DungeonMap.New(print)
-    canvas:SetFrameLevel(base + 1)
-    local over = CreateFrame("Frame", nil, print)
-    over:SetAllPoints()
-    over:SetFrameLevel(base + 3)
-    local mount = CreateFrame("Frame", nil, print)
-    mount:SetAllPoints()
-    mount:SetFrameLevel(base + 5)
-    -- The faces over the marks, under the corners; the kills' numbers
-    -- over the faces.
-    local medals = CreateFrame("Frame", nil, print)
-    medals:SetAllPoints()
-    medals:SetFrameLevel(base + 4)
-    local labels = CreateFrame("Frame", nil, print)
-    labels:SetAllPoints()
-    labels:SetFrameLevel(base + 6)
-    local hits = CreateFrame("Frame", nil, print)
-    hits:SetAllPoints()
-    hits:SetFrameLevel(base + 7)
-    print.canvas, print.over, print.mount = canvas, over, mount
-
-    local function Textures(frame, layer, sublevel)
-        return ns.UI.Pool.New(function()
-            local t = frame:CreateTexture(nil, layer, nil, sublevel)
-            if t.SetSnapToPixelGrid then
-                t:SetSnapToPixelGrid(false)
-                t:SetTexelSnappingBias(0)
-            end
-            return t
-        end)
-    end
-    local pools = {
-        shadow = Textures(print, "BACKGROUND", -6),
-        card = Textures(print, "BACKGROUND", -4),
-        edge = Textures(print, "BORDER", 0),
-        vignette = Textures(over, "ARTWORK", 0),
-        frame = Textures(over, "ARTWORK", 1),
-        route = Textures(over, "ARTWORK", 3),
-        tether = Textures(over, "ARTWORK", 4),
-        halo = Textures(over, "OVERLAY", 0),
-        ink = Textures(over, "OVERLAY", 2),
-        fill = Textures(over, "OVERLAY", 3),
-        cross = Textures(over, "OVERLAY", 4),
-        crossHalo = Textures(over, "OVERLAY", 1),
-        -- The margin notes' leaders (UI/Dungeon/Notes.lua), over the art
-        -- and its crosses, under the faces.
-        leader = Textures(over, "OVERLAY", 6),
-        cornerShadow = Textures(mount, "ARTWORK", 0),
-        corner = Textures(mount, "ARTWORK", 1),
-        fold = Textures(mount, "ARTWORK", 2),
-        medal = ns.UI.Pool.New(function() return Style.BossMedallion(medals, MEDAL.kill) end),
-        sketch = ns.UI.Pool.New(function() return Style.BossMedallion(medals, MEDAL.standing) end),
-        numberHalo = Textures(labels, "ARTWORK", 0),
-        number = ns.UI.Pool.New(function()
-            local text = labels:CreateFontString(nil, "OVERLAY")
-            text:SetFont(Style.FRIZ, KILL.number.size, "")
-            text:SetTextColor(Style.INK_STRONG[1], Style.INK_STRONG[2], Style.INK_STRONG[3], 1)
-            text:SetShadowOffset(0, 0)
-            return text
-        end),
-        hit = ns.UI.Pool.New(function()
-            local hit = CreateFrame("Frame", nil, hits)
-            hit:SetSize(HOVER, HOVER)
-            hit:EnableMouse(true)
-            Style.Tooltip(hit, function(self) return self.tip end, "ANCHOR_RIGHT")
-            return hit
-        end),
-    }
-    print.pools = pools
-
-    print.Lay = DungeonPage.Lay
-    return print
-end
-
--- The drawing kit over one print: `print` is the frame everything is
--- placed on (x right, y down from its top left).
-local function Kit(print, canBend)
-    local K = {}
-
-    function K.Place(texture, x, y, w, h)
-        texture:ClearAllPoints()
-        texture:SetPoint("TOPLEFT", print, "TOPLEFT", x, -y)
-        texture:SetSize(w, h)
-        if texture.SetRotation then texture:SetRotation(0) end
-    end
-
-    function K.Fill(texture, c, a)
-        texture:SetTexture(nil)
-        texture:SetVertexColor(1, 1, 1, 1)
-        texture:SetColorTexture(c[1], c[2], c[3], a)
-    end
-
-    -- A round spot `size` across, its middle at x, y.
-    function K.Dot(pool, x, y, size, c, a)
-        local texture = pool:Next()
-        texture:SetVertexColor(1, 1, 1, 1)
-        Style.Disc(texture, c[1], c[2], c[3], a)
-        K.Place(texture, x - size / 2, y - size / 2, size, size)
-        return texture
-    end
-
-    -- A square `size` across turned on its point, its middle at x, y.
-    function K.Lozenge(pool, x, y, size, c, a)
-        local texture = pool:Next()
-        K.Fill(texture, c, a)
-        texture:ClearAllPoints()
-        texture:SetPoint("CENTER", print, "TOPLEFT", x, -y)
-        texture:SetSize(size, size)
-        if texture.SetRotation then texture:SetRotation(math.pi / 4) end
-        return texture
-    end
-
-    -- A straight stroke `width` wide from one point to the other: a
-    -- texture turned to it (on the screen y runs up). None where textures
-    -- cannot turn.
-    function K.Stroke(pool, x1, y1, x2, y2, width, c, a)
-        local dx, dy = x2 - x1, y2 - y1
-        local length = math.sqrt(dx * dx + dy * dy)
-        if length < 0.01 then return nil end
-        local texture = pool:Next()
-        if not texture.SetRotation then
-            texture:Hide()
-            return nil
-        end
-        K.Fill(texture, c, a)
-        texture:ClearAllPoints()
-        texture:SetPoint("CENTER", print, "TOPLEFT", (x1 + x2) / 2, -(y1 + y2) / 2)
-        texture:SetSize(length + 0.5, width)
-        texture:SetRotation(math.atan2(-dy, dx))
-        return texture
-    end
-
-    -- Any four points (Style.Quad's order), or `fx, fy, fw, fh` where the
-    -- client cannot move corners.
-    function K.Quad(pool, c, a, x1, y1, x2, y2, x3, y3, x4, y4, fx, fy, fw, fh)
-        local texture = pool:Next()
-        K.Fill(texture, c, a)
-        if canBend and Style.Quad(texture, print, x1, y1, x2, y2, x3, y3, x4, y4) then return texture end
-        if fx then K.Place(texture, fx, fy, fw, fh) else texture:Hide() end
-        return texture
-    end
-
-    return K
-end
-
--- Whether textures here can have their corners moved (Style.Quad).
-local function CanBend(print)
-    local probe = print.pools.card[1] or print:CreateTexture(nil, "BACKGROUND", nil, -8)
-    local asked, fn = pcall(function() return probe.SetVertexOffset end)
-    return asked and type(fn) == "function"
-end
-
--- The card, its grain, its edges and its shadow on the page.
-local function Card(print, K, W, H, flat)
-    local Plate = ns.UI.JourneyPlate
-    local P, S, T, INK = Plate.PLATE, Plate.SHADOW, Plate.THICKNESS, Style.INK
-    local pools = print.pools
-    local paper = pools.card:Next()
-    K.Fill(paper, P.stock, 1)
-    K.Place(paper, 0, 0, W, H)
-    local grain = Style.Art("grain")
-    if grain then
-        local g = pools.card:Next()
-        g:SetTexture(grain)
-        g:SetVertexColor(1, 1, 1, 1)
-        g:SetTexCoord(0.31, 0.58, 0.12, 0.47)
-        g:SetAlpha(0.14)
-        K.Place(g, 0, 0, W, H)
-    end
-
-    -- Its ink outline, and lit from the top left: the top and left cut
-    -- edges catch the light, the bottom and right fall away.
-    for _, e in ipairs({ { 0, 0, W, 1 }, { 0, H - 1, W, 1 }, { 0, 0, 1, H }, { W - 1, 0, 1, H } }) do
-        local line = pools.edge:Next()
-        K.Fill(line, INK, CARD.edge)
-        K.Place(line, e[1], e[2], e[3], e[4])
-    end
-    if flat then return end
-    for _, e in ipairs({ { 0, T.at, W, T.width }, { T.at, 0, T.width, H } }) do
-        local light = pools.edge:Next()
-        K.Fill(light, T.light, T.lightAlpha)
-        K.Place(light, e[1], e[2], e[3], e[4])
-    end
-    for _, e in ipairs({ { 1, H - 2, W - 2, T.width }, { W - 2, 1, T.width, H - 2 } }) do
-        local dark = pools.edge:Next()
-        K.Fill(dark, INK, T.darkAlpha)
-        K.Place(dark, e[1], e[2], e[3], e[4])
-    end
-
-    -- Glued flat: a soft band along the bottom and the right, meeting on a
-    -- mitre, their far ends slanted in, and the dark line where it touches.
-    local d, b, c = S.out, S.blur, S.core.out
-    local soft = K.Quad(pools.shadow, INK, 1, d + b, H - 1, W - 1, H - 1, W + d + b, H + d + b, d, H + d + b,
-        d, H - 1, W, d + b + 1)
-    Style.Shade(soft, "VERTICAL", INK[1], INK[2], INK[3], 0, S.alpha)
-    soft = K.Quad(pools.shadow, INK, 1, W - 1, d + b, W + d + b, d, W + d + b, H + d + b, W - 1, H - 1,
-        W - 1, d, d + b + 1, H)
-    Style.Shade(soft, "HORIZONTAL", INK[1], INK[2], INK[3], S.alpha, 0)
-    K.Quad(pools.shadow, INK, S.core.alpha, 0.5 + c, H - 1, W - 1, H - 1, W + c, H + c, 0.5, H + c,
-        0.5, H - 1, W, c + 1)
-    K.Quad(pools.shadow, INK, S.core.alpha, W - 1, 0.5 + c, W + c, 0.5, W + c, H + c, W - 1, H - 1,
-        W - 1, 0.5, c + 1, H)
-end
-
--- The print's darkened edges (VIGNETTE): a band inside each side of the
--- art, each side's darkness a little its own.
-local function Vignette(print, K, ax, ay, aw, ah, seed)
-    local V = ns.UI.JourneyPlate.VIGNETTE
-    local T, d = V.tint, V.depth * math.min(aw, ah)
-    local function A(side, n)
-        return V.alpha[side] * (1 + (Style.Noise(seed * 0.71 + n) - 0.5) * 2 * V.uneven)
-    end
-    local pool = print.pools.vignette
-    local bands = {
-        { "VERTICAL", 0, A("top", 1), ax, ay, aw, d },
-        { "VERTICAL", A("bottom", 2), 0, ax, ay + ah - d, aw, d },
-        { "HORIZONTAL", A("left", 3), 0, ax, ay, d, ah },
-        { "HORIZONTAL", 0, A("right", 4), ax + aw - d, ay, d, ah },
-    }
-    for _, band in ipairs(bands) do
-        local t = pool:Next()
-        t:SetTexture(nil)
-        -- VERTICAL runs from the bottom up.
-        Style.Shade(t, band[1], T[1], T[2], T[3], band[2], band[3])
-        K.Place(t, band[4], band[5], band[6], band[7])
-    end
-end
-
--- The neat line: a rule hugging the art, a gap, a hairline.
-local function NeatLine(print, K, x0, y0, x1, y1)
-    local ink, pool = Style.INK_STRONG, print.pools.frame
-    for _, ring in ipairs({ { 0, FRAME.inner }, { FRAME.inner + FRAME.gap, FRAME.outer } }) do
-        local o, w = ring[1], ring[2]
-        for _, r in ipairs({
-            { x0 - o - w, y0 - o - w, x1 - x0 + 2 * (o + w), w },
-            { x0 - o - w, y1 + o, x1 - x0 + 2 * (o + w), w },
-            { x0 - o - w, y0 - o, w, y1 - y0 + 2 * o },
-            { x1 + o, y0 - o, w, y1 - y0 + 2 * o },
-        }) do
-            local t = pool:Next()
-            K.Fill(t, ink, FRAME.alpha)
-            K.Place(t, r[1], r[2], r[3], r[4])
-        end
-    end
-end
-
--- A photo corner (the plates' MOUNT): its shadow, the kraft pocket a shade
--- of its own, and the light on its fold by how the fold faces the top-left
--- light. Laid flat, the pocket alone; where corners cannot move, an L of
--- two strips.
-local R2 = math.sqrt(0.5)
-local function Corner(print, K, which, W, H, flat, seed, canBend)
-    local M = ns.UI.JourneyPlate.MOUNT
-    local size, o = CARD.corner * M.scale, M.out
-    local pts
-    if which == "tl" then pts = { -o, -o, size - o, -o, -o, size - o, -o, size - o }
-    elseif which == "tr" then pts = { W - size + o, -o, W + o, -o, W + o, size - o, W + o, size - o }
-    elseif which == "bl" then pts = { -o, H - size + o, -o, H - size + o, size - o, H + o, -o, H + o }
-    else pts = { W + o, H - size + o, W + o, H - size + o, W + o, H + o, W - size + o, H + o } end
-    local tone = 1 + (Style.Noise(seed) - 0.5) * 2 * M.uneven
-    local layers = { { print.pools.corner, 0, 0, { M.ink[1] * tone, M.ink[2] * tone, M.ink[3] * tone }, M.alpha } }
-    if not flat then
-        table.insert(layers, 1, { print.pools.cornerShadow, M.shadow[1], M.shadow[2], M.shade, M.shadow[3] })
-    end
-    for _, l in ipairs(layers) do
-        local pool, dx, dy, c, a = l[1], l[2], l[3], l[4], l[5]
-        if canBend then
-            K.Quad(pool, c, a, pts[1] + dx, pts[2] + dy, pts[3] + dx, pts[4] + dy, pts[5] + dx, pts[6] + dy,
-                pts[7] + dx, pts[8] + dy)
-        else
-            local left = (which == "tl" or which == "bl") and -o or W + o - size
-            local top = (which == "tl" or which == "tr") and -o or H + o - size
-            local hy = (which == "tl" or which == "tr") and -o or H + o - M.strip
-            local vx = (which == "tl" or which == "bl") and -o or W + o - M.strip
-            for _, s in ipairs({ { left, hy, size, M.strip }, { vx, top, M.strip, size } }) do
-                local t = pool:Next()
-                K.Fill(t, c, a)
-                K.Place(t, s[1] + dx, s[2] + dy, s[3], s[4])
-            end
-        end
-    end
-    if flat or not canBend then return end
-    -- The fold: the diagonal, a line just inside it toward the print's
-    -- middle, its ends drawn in so it stays on the pocket.
-    local ax, ay, bx, by, nx, ny
-    if which == "tl" then ax, ay, bx, by, nx, ny = pts[3], pts[4], pts[5], pts[6], R2, R2
-    elseif which == "tr" then ax, ay, bx, by, nx, ny = pts[1], pts[2], pts[5], pts[6], -R2, R2
-    elseif which == "bl" then ax, ay, bx, by, nx, ny = pts[1], pts[2], pts[5], pts[6], R2, -R2
-    else ax, ay, bx, by, nx, ny = pts[1], pts[2], pts[7], pts[8], -R2, -R2 end
-    local f = M.fold
-    local len = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
-    local ux, uy = (bx - ax) / len, (by - ay) / len
-    ax, ay, bx, by = ax + ux * f * 1.5, ay + uy * f * 1.5, bx - ux * f * 1.5, by - uy * f * 1.5
-    local facing = (-nx - ny) * R2
-    K.Quad(print.pools.fold, M.light, M.lo + (M.hi - M.lo) * (facing + 1) / 2,
-        ax - nx * f, ay - ny * f, bx - nx * f, by - ny * f, bx, by, ax, ay)
-end
-
--- The way through on the print: `At(floor, x, y)` places a point of any
+-- The way through over the art: `At(floor, x, y)` places a point of any
 -- floor on it, or nil. { route, pts (each { x, y }, or false off the floor
 -- shown), stops (a boss's name, ns.Dungeons.Norm, to its point), reached
 -- (the furthest stop whose boss fell) }, or nil without a way through.
@@ -518,77 +272,6 @@ local function Path(visit, wing, At, notes)
         end
     end
     return { route = route, pts = pts, stops = stops, reached = reached }
-end
-
--- The way through (MAP-4) over the art, along `path` (Path): inked from
--- the start to the furthest stop whose boss fell, the rest in pencil;
--- broken where it leaves the floor or jumps (a linked stair, `pair`).
--- Returns how many pieces of each were drawn.
-local function DrawRoute(print, K, path, canBend)
-    local Pen = ns.UI.Pen
-    local counts = { ink = 0, pencil = 0 }
-    if not path then return counts end
-    local route, pts, reached = path.route, path.pts, path.reached
-
-    local budget = ROUTE.budget
-    local pool = print.pools.route
-    local function Draw(from, to, look, colour, nib)
-        if to <= from or budget <= 0 then return 0 end
-        local flatPts = {}
-        for k = from, to do
-            flatPts[#flatPts + 1] = pts[k][1]
-            flatPts[#flatPts + 1] = pts[k][2]
-        end
-        local P = Pen.Resample(Pen.Chaikin(flatPts, ROUTE.smooth), ROUTE.step)
-        if #P < 2 then return 0 end
-        local M, n = Pen.Mitres(P), #P
-        local function Half(k)
-            if not nib then return look.width / 2 end
-            local a, b = P[math.max(k - 1, 1)], P[math.min(k + 1, n)]
-            return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y)
-        end
-        local prims = {}
-        Pen.Stroke(prims, 0, P, M, Half, function() return 0 end, function() return look.alpha end, colour, nil,
-            budget)
-        for _, q in ipairs(prims) do
-            local texture = pool:Next()
-            K.Fill(texture, { q.r, q.g, q.b }, q.a)
-            if not (canBend and Style.Quad(texture, print, q.x1, q.y1, q.x2, q.y2, q.x3, q.y3, q.x4, q.y4)) then
-                pool.used = pool.used - 1
-                texture:Hide()
-                local w = (math.sqrt((q.x1 - q.x4) ^ 2 + (q.y1 - q.y4) ^ 2)
-                    + math.sqrt((q.x2 - q.x3) ^ 2 + (q.y2 - q.y3) ^ 2)) / 2
-                K.Stroke(pool, (q.x1 + q.x4) / 2, (q.y1 + q.y4) / 2, (q.x2 + q.x3) / 2, (q.y2 + q.y3) / 2, w,
-                    { q.r, q.g, q.b }, q.a)
-            end
-        end
-        budget = budget - #prims
-        return #prims
-    end
-
-    local i = 1
-    while i <= #route do
-        if not pts[i] then
-            i = i + 1
-        else
-            local j = i
-            while j < #route and pts[j + 1] and not route[j + 1].pair do j = j + 1 end
-            local split = math.max(i, math.min(j, reached))
-            counts.ink = counts.ink + Draw(i, split, ROUTE.ink, Style.INK, true)
-            counts.pencil = counts.pencil + Draw(split, j, ROUTE.pencil, Style.GRAPHITE, false)
-            i = j + 1
-        end
-    end
-    return counts
-end
-
--- A tooltip over a mark at x, y, `size` px square (HOVER by default).
-local function Hit(print, x, y, tip, size)
-    local hit = print.pools.hit:Next()
-    hit:ClearAllPoints()
-    hit:SetPoint("CENTER", print, "TOPLEFT", x, -y)
-    hit:SetSize(size or HOVER, size or HOVER)
-    hit.tip = tip
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.
@@ -631,44 +314,185 @@ local function NumberAt(x, y, marks, numbers, box)
     return x + APART.spots[1][1], y + APART.spots[1][2]
 end
 
--- A boss's face at x, y in `pool`'s medallions, as `look` (killed, rare,
--- standing): how it came ("display" or "portrait"), or nil and none
--- shown where the boss has no face to show.
-local function Face(print, pool, x, y, look, boss)
-    local medal = pool:Next()
-    local how = medal:SetBoss(look, boss.display, boss.portrait)
-    if not how then
-        medal:Hide()
-        pool.used = pool.used - 1
-        return nil
+-- Where everything on the run's map goes, nothing drawn: `spec` = { visit,
+-- floor, wing, notes, route, box = { x, y, w, h } (the whole floor on the
+-- sheet), At (DungeonMap.At for it), inside = { x0, y0, x1, y1 } (where
+-- marks moved apart are kept; the box less APART.inset by default), foot
+-- = { x, y } (where deaths that lie nowhere are tallied; under the box by
+-- default) }. The plan: the spec's fields and path,
+-- door ({ x, y }), marks (the kills first, in the order they fell, then
+-- the rest, each { name, boss, killed, rare, inferred, order, x, y, at (where
+-- the boss stands), number ({ x, y }, a kill the diary saw) }), names,
+-- facts (by boss, for its tooltip), seed, and `spots`: the faces, the
+-- numbers and the door as { x, y, r }, which the folds keep clear of.
+function DungeonPage.Plan(spec)
+    local visit, box, At = spec.visit, spec.box, spec.At
+    local notes = spec.notes or { bosses = {}, legs = {}, wipes = {} }
+    local plan = { visit = visit, floor = spec.floor, wing = spec.wing, box = box, At = At, notes = notes,
+        hasNotes = spec.notes ~= nil, route = spec.route, names = DungeonPage.Names(notes) }
+    plan.seed = (visit.id or 1) * 7.31 + (spec.floor and spec.floor.uiMapID or 0) * 0.013
+    plan.path = Path(visit, spec.wing, At, spec.notes)
+
+    -- The way in, then the bosses round it.
+    local door = spec.floor and ns.Dungeons.Entrance(visit.instanceID, spec.floor.uiMapID)
+    local dx, dy
+    if door then dx, dy = At(spec.floor.uiMapID, door.x, door.y) end
+    plan.door = dx and { x = dx, y = dy } or nil
+
+    -- The kills first, in the order they fell, then the rest: each kept
+    -- clear of those before it, tethered back where it moved.
+    local list = DungeonPage.Marks(visit, spec.wing, notes)
+    table.sort(list, function(a, b)
+        if a.killed ~= b.killed then return a.killed end
+        if a.killed then return a.fell < b.fell end
+        return (a.boss.order or 0) < (b.boss.order or 0)
+    end)
+    local inset = APART.inset
+    local inside = spec.inside or { box.x + inset, box.y + inset, box.x + box.w - inset, box.y + box.h - inset }
+    plan.inside = inside
+    plan.foot = spec.foot or { x = box.x + 10, y = box.y + box.h + DEATH.foot }
+    local placed = plan.door and { { x = plan.door.x, y = plan.door.y } } or {}
+    plan.marks = {}
+    for _, mark in ipairs(list) do
+        local b = mark.boss
+        local x, y = At(b.floor, b.x, b.y)
+        if x then
+            local px, py = Apart(x, y, placed, inside)
+            placed[#placed + 1] = { x = px, y = py }
+            plan.marks[#plan.marks + 1] = { name = b.name, boss = b, killed = mark.killed, rare = mark.rare,
+                inferred = mark.inferred, order = mark.order, x = px, y = py, at = { x, y } }
+        end
     end
-    medal:ClearAllPoints()
-    medal:SetPoint("CENTER", print, "TOPLEFT", x, -y)
-    return how
+    -- Each number where it is clear of the marks and the numbers before it.
+    local numbers = {}
+    for _, mark in ipairs(plan.marks) do
+        if mark.killed and mark.order then
+            local nx, ny = NumberAt(mark.x, mark.y, placed, numbers, inside)
+            numbers[#numbers + 1] = { x = nx, y = ny }
+            mark.number = { x = nx, y = ny }
+        end
+    end
+
+    -- What happened at each boss, for its tooltip.
+    plan.facts = {}
+    for _, e in ipairs(notes.bosses or {}) do plan.facts[e.boss.name] = DungeonPage.Words.Facts(visit, e) end
+
+    -- What a fold must not run through: every face as big as a kill's, every
+    -- number and the way in.
+    plan.spots = {}
+    for _, mark in ipairs(plan.marks) do
+        plan.spots[#plan.spots + 1] = { x = mark.x, y = mark.y, r = MEDAL.kill / 2 }
+        if mark.number then
+            plan.spots[#plan.spots + 1] = { x = mark.number.x, y = mark.number.y, r = KILL.number.halo / 2 }
+        end
+    end
+    if plan.door then plan.spots[#plan.spots + 1] = { x = plan.door.x, y = plan.door.y, r = KILL.halo / 2 } end
+    return plan
+end
+
+--------------------------------------------------------------------------
+-- Printing it (Ink)
+--------------------------------------------------------------------------
+--
+-- The placer P is the sheet's (UI/Dungeon/Sheet.lua), in its coordinates:
+--   P.Rect(pool, x, y, w, h, c, a, turn)     a rectangle of ink from its
+--                                            top left, turned `turn` more
+--   P.Dot(pool, x, y, size, c, a)            a round spot on its middle
+--   P.Lozenge(pool, x, y, size, c, a)        a square on its point
+--   P.Stroke(pool, x1, y1, x2, y2, w, c, a)  a straight stroke, or nil
+--   P.Quad(pool, c, a, x1, y1, ... y4)       any four points, or nil where
+--                                            corners cannot move
+--   P.Face(pool, x, y, look, boss)           a boss's face (its medallion),
+--                                            how it came, or nil
+--   P.Text(pool, text, x, y)                 a line of text on its middle
+--   P.Hit(pool, x, y, size, tip)             a square that takes the mouse
+-- each lit by the facet it lies on; and P.pools, the pools by name: route,
+-- tether, halo, ink, fill, crossHalo, cross, medal, sketch, numberHalo,
+-- number, hit. `stock` is the paper's colour, for the dots under marks.
+
+-- The way through (MAP-4) over the art, along `path` (Path): inked from
+-- the start to the furthest stop whose boss fell, the rest in pencil;
+-- broken where it leaves the floor or jumps (a linked stair, `pair`).
+-- Returns how many pieces of each were drawn.
+local function DrawRoute(P, path)
+    local Pen = ns.UI.Pen
+    local counts = { ink = 0, pencil = 0 }
+    if not path then return counts end
+    local route, pts, reached = path.route, path.pts, path.reached
+
+    local budget = ROUTE.budget
+    local pool = P.pools.route
+    local function Draw(from, to, look, colour, nib, chalk)
+        if to <= from or budget <= 0 then return 0 end
+        local flatPts = {}
+        for k = from, to do
+            flatPts[#flatPts + 1] = pts[k][1]
+            flatPts[#flatPts + 1] = pts[k][2]
+        end
+        local L = Pen.Resample(Pen.Chaikin(flatPts, ROUTE.smooth), ROUTE.step)
+        if #L < 2 then return 0 end
+        local M, n = Pen.Mitres(L), #L
+        local function Half(k)
+            if not nib then return look.width / 2 end
+            local a, b = L[math.max(k - 1, 1)], L[math.min(k + 1, n)]
+            return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y)
+        end
+        local prims = {}
+        Pen.Stroke(prims, 0, L, M, Half, function() return 0 end, function() return look.alpha end, colour, nil,
+            budget)
+        for _, q in ipairs(prims) do
+            local c = { q.r, q.g, q.b }
+            local w = (math.sqrt((q.x1 - q.x4) ^ 2 + (q.y1 - q.y4) ^ 2) + math.sqrt((q.x2 - q.x3) ^ 2 + (q.y2 - q.y3) ^ 2)) / 2
+            if chalk then
+                local o, U = CHALK.under.offset, CHALK.under
+                if not P.Quad(P.pools.routeUnder, Style.INK, U.alpha, q.x1 + o, q.y1 + o, q.x2 + o, q.y2 + o,
+                    q.x3 + o, q.y3 + o, q.x4 + o, q.y4 + o) then
+                    P.Stroke(P.pools.routeUnder, (q.x1 + q.x4) / 2 + o, (q.y1 + q.y4) / 2 + o, (q.x2 + q.x3) / 2 + o,
+                        (q.y2 + q.y3) / 2 + o, w, Style.INK, U.alpha)
+                end
+            end
+            if not P.Quad(pool, c, q.a, q.x1, q.y1, q.x2, q.y2, q.x3, q.y3, q.x4, q.y4) then
+                P.Stroke(pool, (q.x1 + q.x4) / 2, (q.y1 + q.y4) / 2, (q.x2 + q.x3) / 2, (q.y2 + q.y3) / 2, w, c, q.a)
+            end
+        end
+        budget = budget - #prims
+        return #prims
+    end
+
+    local i = 1
+    while i <= #route do
+        if not pts[i] then
+            i = i + 1
+        else
+            local j = i
+            while j < #route and pts[j + 1] and not route[j + 1].pair do j = j + 1 end
+            local split = math.max(i, math.min(j, reached))
+            counts.ink = counts.ink + Draw(i, split, ROUTE.ink, Style.INK, true)
+            counts.pencil = counts.pencil + Draw(split, j, ROUTE.pencil, CHALK.colour, false, true)
+            i = j + 1
+        end
+    end
+    return counts
 end
 
 -- A boss killed with no face to show (KILL): a red lozenge inked round.
-local function Killed(print, K, x, y, stock)
-    local pools = print.pools
-    K.Dot(pools.halo, x, y, KILL.halo, stock, KILL.haloAlpha)
-    K.Lozenge(pools.ink, x, y, KILL.edge, Style.INK_STRONG, 1)
-    K.Lozenge(pools.fill, x, y, KILL.fill, Style.RUBRIC, 1)
+local function Killed(P, x, y, stock)
+    local pools = P.pools
+    P.Dot(pools.halo, x, y, KILL.halo, stock, KILL.haloAlpha)
+    P.Lozenge(pools.ink, x, y, KILL.edge, Style.INK_STRONG, 1)
+    P.Lozenge(pools.fill, x, y, KILL.fill, Style.RUBRIC, 1)
 end
 
 -- A kill's number in the order they fell, at nx, ny on a dot of stock.
-local function Number(print, K, number, nx, ny, stock)
-    local pools = print.pools
-    K.Dot(pools.numberHalo, nx, ny, KILL.number.halo, stock, KILL.haloAlpha)
-    local text = pools.number:Next()
-    text:ClearAllPoints()
-    text:SetPoint("CENTER", print, "TOPLEFT", nx, -ny)
-    text:SetText(tostring(number))
+local function Number(P, number, nx, ny, stock)
+    P.Dot(P.pools.numberHalo, nx, ny, KILL.number.halo, stock, KILL.haloAlpha)
+    P.Text(P.pools.number, tostring(number), nx, ny)
 end
 
 -- A boss still standing (STANDING): a ring in pencil, by hand.
-local function Standing(print, K, x, y, seed, stock)
+local function Standing(P, x, y, seed, stock)
     local S = STANDING
-    K.Dot(print.pools.halo, x, y, S.halo, stock, S.haloAlpha)
+    P.Dot(P.pools.halo, x, y, S.halo, stock, S.haloAlpha)
     local a0 = Style.Noise(seed) * 2 * math.pi
     local sweep = 2 * math.pi * (1 + S.overshoot)
     local px, py
@@ -676,36 +500,30 @@ local function Standing(print, K, x, y, seed, stock)
         local t = a0 + sweep * i / S.strokes
         local grow = 1 + S.wobble * math.sin(3 * t + seed) + S.wobble * i / S.strokes
         local qx, qy = x + S.radius * grow * math.cos(t), y + S.radius * grow * math.sin(t)
-        if px then K.Stroke(print.pools.ink, px, py, qx, qy, S.width, Style.GRAPHITE, S.alpha) end
+        if px then P.Stroke(P.pools.ink, px, py, qx, qy, S.width, CHALK.colour, S.alpha) end
         px, py = qx, qy
     end
 end
 
 -- The way in: a doorway's arch, as on the plates (their DOOR, MARK.door).
-local function Door(print, K, x, y, stock)
+local function Door(P, x, y, stock)
     local Plate = ns.UI.JourneyPlate
     local d, B, H = Plate.MARK.door, Plate.DOOR.body, Plate.DOOR.head
-    K.Dot(print.pools.halo, x, y, KILL.halo, stock, KILL.haloAlpha)
-    local body = print.pools.ink:Next()
-    K.Fill(body, Style.INK_STRONG, 1)
-    K.Place(body, x - d * B.w / 2, y + d * B.y - d * B.h / 2, d * B.w, d * B.h)
-    K.Dot(print.pools.ink, x, y + d * H.y, d * H.size, Style.INK_STRONG, 1)
+    P.Dot(P.pools.halo, x, y, KILL.halo, stock, KILL.haloAlpha)
+    P.Rect(P.pools.ink, x - d * B.w / 2, y + d * B.y - d * B.h / 2, d * B.w, d * B.h, Style.INK_STRONG, 1)
+    P.Dot(P.pools.ink, x, y + d * H.y, d * H.size, Style.INK_STRONG, 1)
 end
 
 -- A death's cross at x, y (DEATH): in ink, or in pencil where it is only
 -- about there. Its tooltip says who died, to what, and where about.
-local function Cross(print, K, x, y, pencil, stock, tip)
-    local pools, D = print.pools, DEATH
+local function Cross(plan, P, x, y, pencil, stock, tip)
+    local pools, D = P.pools, DEATH
     local c, a = pencil and Style.GRAPHITE or Style.INK_STRONG, pencil and D.pencil or 1
-    K.Dot(pools.crossHalo, x, y, D.halo, stock, D.haloAlpha)
-    local stem = pools.cross:Next()
-    K.Fill(stem, c, a)
-    K.Place(stem, x - D.stem[1] / 2, y + 0.5 - D.stem[2] / 2, D.stem[1], D.stem[2])
-    local bar = pools.cross:Next()
-    K.Fill(bar, c, a)
-    K.Place(bar, x - D.bar[1] / 2, y - D.up - D.bar[2] / 2, D.bar[1], D.bar[2])
-    Hit(print, x, y, tip, D.hit)
-    print.crosses[#print.crosses + 1] = { x = x, y = y, pencil = pencil or nil, tip = tip }
+    P.Dot(pools.crossHalo, x, y, D.halo, stock, D.haloAlpha)
+    P.Rect(pools.cross, x - D.stem[1] / 2, y + 0.5 - D.stem[2] / 2, D.stem[1], D.stem[2], c, a)
+    P.Rect(pools.cross, x - D.bar[1] / 2, y - D.up - D.bar[2] / 2, D.bar[1], D.bar[2], c, a)
+    P.Hit(pools.hit, x, y, D.hit, tip)
+    plan.crosses[#plan.crosses + 1] = { x = x, y = y, pencil = pencil or nil, tip = tip }
 end
 
 -- Where a death on the way lies (MAP-9): `frac` of the way along the
@@ -746,13 +564,31 @@ local function LegPoint(path, leg)
     end
 end
 
+DungeonPage.LegPoint = LegPoint
+
+-- Where a moment at time `t` on the way lies on the map (a drop rolled for
+-- that no boss's table holds: the rolls' strips, pass B): on the route
+-- between the kills before and after it (Core/DungeonRun.lua's When), as a
+-- death on the way is; without a route, by the boss before or after it;
+-- else by the way in. { x, y, r }, or nil off this floor.
+function DungeonPage.Anchor(plan, t)
+    local leg = ns.DungeonRun.When(plan.visit, plan.notes, t)
+    local x, y = LegPoint(plan.path, leg)
+    if x then return { x = x, y = y, r = DEATH.halo / 2 } end
+    local near = (leg.after and plan.targets[leg.after.name]) or (leg.before and plan.targets[leg.before.name])
+    if near then
+        return { x = near.x - (near.r + DEATH.ring) * 0.9, y = near.y + (near.r + DEATH.ring) * 0.9, r = DEATH.halo / 2 }
+    end
+    return plan.targets.door
+end
+
 -- The run's deaths (MAP-14), from its notes (ns.DungeonRun.Notes): in ink
 -- round the boss they died at; in pencil on the way, by the boss before or
--- after where the way through does not say; at the print's foot where
--- nothing does. `targets` are the marks by boss name.
-local function Deaths(print, K, visit, notes, path, targets, At, foot, stock, names)
-    local W = DungeonPage.Words
-    local D = DEATH
+-- after where the way through does not say; at the map's foot where
+-- nothing does.
+local function Deaths(plan, P, stock)
+    local W, D = DungeonPage.Words, DEATH
+    local visit, notes, targets, At = plan.visit, plan.notes, plan.targets, plan.At
     local loose = {}
     local function Near(boss)
         local t = boss and targets[boss.name]
@@ -770,7 +606,7 @@ local function Deaths(print, K, visit, notes, path, targets, At, foot, stock, na
                 local turn = math.floor(k / 2) * (k % 2 == 0 and 1 or -1)
                 local a = math.rad(D.start + turn * D.step)
                 local r = t.r + D.ring
-                Cross(print, K, t.x + math.cos(a) * r, t.y + math.sin(a) * r, false, stock,
+                Cross(plan, P, t.x + math.cos(a) * r, t.y + math.sin(a) * r, false, stock,
                     Style.TipList(W.Death(visit, death)))
             end
         else
@@ -778,155 +614,436 @@ local function Deaths(print, K, visit, notes, path, targets, At, foot, stock, na
         end
     end
     for k, leg in ipairs(notes.legs or {}) do
-        local tip = Style.TipList(W.Death(visit, leg.death), { W.Leg(leg, names) })
-        local x, y = LegPoint(path, leg)
+        local tip = Style.TipList(W.Death(visit, leg.death), { W.Leg(leg, plan.names) })
+        local x, y = LegPoint(plan.path, leg)
         if not x then
             local t = Near(leg.after) or Near(leg.before)
             if t then x, y = t.x - (t.r + D.ring) * 0.9, t.y + (t.r + D.ring) * 0.9 + k * 2 end
         end
-        if x then Cross(print, K, x, y, true, stock, tip) else loose[#loose + 1] = leg.death end
+        if x then Cross(plan, P, x, y, true, stock, tip) else loose[#loose + 1] = leg.death end
     end
     for _, death in ipairs(notes.unplaced and notes.unplaced.deaths or {}) do loose[#loose + 1] = death end
-    -- Nowhere to put them: a tally along the print's foot.
+    -- Nowhere to put them: a tally along the map's foot.
+    local fx, fy = plan.foot.x, plan.foot.y
     for k, death in ipairs(loose) do
-        Cross(print, K, foot.x + (k - 1) * D.gap, foot.y, true, stock, Style.TipList(W.Death(visit, death)))
+        Cross(plan, P, fx + (k - 1) * D.gap, fy, true, stock, Style.TipList(W.Death(visit, death)))
     end
 end
 
--- Draws the print: `spec` = { visit, floor, wing, x, y, w, h, route,
--- notes }: the floor of the visit, fitted inside the box w by h at x, y
--- on the parent (y down) and centred across it; the way through when
--- `route`. Returns the card's width and height.
--- `notes` are the run's (ns.DungeonRun.Notes): its deaths are crossed,
--- and what happened at each boss is told in its tooltip.
--- Kept for the tests and the margin notes (UI/Dungeon/Notes.lua):
--- print.marks (each with its `face`: how its portrait came, or nil),
--- print.targets (each mark by boss name: { x, y, r } on the print),
--- print.origin and print.size (its top left on its parent, and its size),
--- print.crosses,
--- print.routeCounts, print.door.
-function DungeonPage.Lay(print, spec)
-    local visit, floor = spec.visit, spec.floor
-    local pools = print.pools
-    for _, pool in pairs(pools) do pool:Begin() end
-    local flat = ns.Setting("flatSheets") == true
-    local canBend = CanBend(print)
-    local K = Kit(print, canBend)
-    local P = ns.UI.JourneyPlate.PLATE
-    local stock = P.stock
+--------------------------------------------------------------------------
+-- The moments in the hand (flavour pass A)
+--------------------------------------------------------------------------
 
-    local m = CARD.margin
-    local foot = m
-    local aw, ah = ns.UI.DungeonMap.Fit(floor, spec.w - 2 * m, spec.h - m - foot)
-    local W, H = aw + 2 * m, ah + m + foot
-    print:ClearAllPoints()
-    print:SetPoint("TOPLEFT", spec.x + (spec.w - W) / 2, -spec.y)
-    print:SetSize(W, H)
-    print.origin, print.size = { spec.x + (spec.w - W) / 2, spec.y }, { W, H }
-    local seed = (visit.id or 1) * 7.31 + (floor.uiMapID or 0) * 0.013
-
-    Card(print, K, W, H, flat)
-    print.canvas:ClearAllPoints()
-    print.canvas:SetPoint("TOPLEFT", print, "TOPLEFT", m, -m)
-    print.canvas:Draw(floor, aw, ah, { tint = P.tint, desaturate = P.desaturate, plain = P.plain })
-    if not flat then Vignette(print, K, m, m, aw, ah, seed) end
-    NeatLine(print, K, m, m, m + aw, m + ah)
-
-    local function At(f, x, y)
-        local px, py = print.canvas:Place(f, x, y)
-        if px then return m + px, m + py end
+-- A line by hand through `pts` ({ x1, y1, x2, y2, ... } on the sheet),
+-- `width` wide (with the pen's nib where `nib`), in colour c at alpha a,
+-- from `pool`; with a faint dark stroke under it from `under` (chalk).
+-- Rounded off `smooth` times. Returns how many pieces it took.
+local function Hand(P, pool, pts, width, c, a, nib, under, smooth)
+    local Pen = ns.UI.Pen
+    local L = Pen.Resample(Pen.Chaikin(pts, smooth or 1), 2.5)
+    if #L < 2 then return 0 end
+    local M, n = Pen.Mitres(L), #L
+    local function Half(k)
+        if not nib then return width / 2 end
+        local p, q = L[math.max(k - 1, 1)], L[math.min(k + 1, n)]
+        return width / 2 * Pen.Nib(q.x - p.x, q.y - p.y)
     end
-
-    local notes = spec.notes or { bosses = {}, legs = {}, wipes = {} }
-    local names = DungeonPage.Names(notes)
-    local path = Path(visit, spec.wing, At, spec.notes)
-    print.routeCounts = spec.route and DrawRoute(print, K, path, canBend) or { ink = 0, pencil = 0 }
-
-    -- The way in, then the bosses over it.
-    print.door = nil
-    local door = ns.Dungeons.Entrance(visit.instanceID, floor.uiMapID)
-    local dx, dy
-    if door then dx, dy = At(floor.uiMapID, door.x, door.y) end
-    if dx then
-        Door(print, K, dx, dy, stock)
-        -- And the runs back in, which a strip may have had no room for.
-        local ranBack = spec.notes and spec.notes.ranBack or 0
-        local W = DungeonPage.Words
-        Hit(print, dx, dy, Style.TipList("The way in",
-            ranBack > 0 and { W.RanBack(ranBack) .. " " .. W.GHOST } or nil))
-        print.door = { x = dx, y = dy }
-    end
-    -- The kills first, in the order they fell, then the rest: each kept
-    -- clear of those before it, tethered back where it moved.
-    local list = DungeonPage.Marks(visit, spec.wing, notes)
-    table.sort(list, function(a, b)
-        if a.killed ~= b.killed then return a.killed end
-        if a.killed then return a.fell < b.fell end
-        return (a.boss.order or 0) < (b.boss.order or 0)
-    end)
-    local box = { m + 6, m + 6, m + aw - 6, m + ah - 6 }
-    local placed = print.door and { { x = print.door.x, y = print.door.y } } or {}
-    print.marks = {}
-    for _, mark in ipairs(list) do
-        local b = mark.boss
-        local x, y = At(b.floor, b.x, b.y)
-        if x then
-            local px, py = Apart(x, y, placed, box)
-            placed[#placed + 1] = { x = px, y = py }
-            print.marks[#print.marks + 1] = { name = b.name, boss = b, killed = mark.killed, rare = mark.rare,
-                inferred = mark.inferred, order = mark.order, x = px, y = py, at = { x, y } }
+    local prims = {}
+    Pen.Stroke(prims, 0, L, M, Half, function() return 0 end, function() return a end, c, nil, 600)
+    local U = CHALK.under
+    for _, q in ipairs(prims) do
+        local layers = under and { { under, Style.INK, U.alpha, U.offset }, { pool, c, a, 0 } } or { { pool, c, a, 0 } }
+        for _, l in ipairs(layers) do
+            local o = l[4]
+            if not P.Quad(l[1], l[2], l[3], q.x1 + o, q.y1 + o, q.x2 + o, q.y2 + o, q.x3 + o, q.y3 + o, q.x4 + o, q.y4 + o) then
+                P.Stroke(l[1], (q.x1 + q.x4) / 2 + o, (q.y1 + q.y4) / 2 + o, (q.x2 + q.x3) / 2 + o, (q.y2 + q.y3) / 2 + o,
+                    width, l[2], l[3])
+            end
         end
     end
-    -- What happened at each boss, for its tooltip.
-    local facts = {}
-    for _, e in ipairs(notes.bosses or {}) do facts[e.boss.name] = DungeonPage.Words.Facts(visit, e) end
-    local numbers = {}
-    print.targets, print.crosses = {}, {}
-    for i, mark in ipairs(print.marks) do
+    return #prims
+end
+DungeonPage.Hand = Hand
+
+-- A stream of numbers seeded by `key` (the same every time): U(a, b).
+local function Stream(key)
+    local rand = ns.UI.Pen.Random(ns.UI.Surface.Seed(key))
+    return function(a, b) return a + (b - a) * rand() end
+end
+
+-- What is already drawn where, { x, y, r }: a new mark keeps clear of it.
+local function Free(busy, x, y, r)
+    for _, q in ipairs(busy) do
+        if (q.x - x) ^ 2 + (q.y - y) ^ 2 < (q.r + r + 2) ^ 2 then return false end
+    end
+    return true
+end
+
+-- The first free place `d` px out from x, y at one of `angles` (degrees,
+-- y down), or the first of them.
+local function Beside(busy, x, y, d, r, angles)
+    for _, deg in ipairs(angles) do
+        local a = math.rad(deg)
+        local px, py = x + math.cos(a) * d, y + math.sin(a) * d
+        if Free(busy, px, py, r) then return px, py, true end
+    end
+    local a = math.rad(angles[1])
+    return x + math.cos(a) * d, y + math.sin(a) * d, false
+end
+
+-- A loop by hand round x, y: `loops` turns from radius r, `apart` px out
+-- each turn, uneven and over its start (LOOT).
+local function Loop(x, y, r, loops, apart, U, wobble, wiggles)
+    local pts = {}
+    local a0, phase = U(0, 2 * math.pi), U(0, 6)
+    local sweep = 2 * math.pi * (loops + LOOT.overshoot)
+    local n = math.ceil(LOOT.steps * (loops + LOOT.overshoot))
+    for i = 0, n do
+        local t = sweep * i / n
+        local grow = 1 + wobble * math.sin((wiggles or 3) * t + phase)
+        local rr = (r + (apart or 0) * t / (2 * math.pi)) * grow
+        pts[#pts + 1] = x + rr * math.cos(a0 + t)
+        pts[#pts + 1] = y + rr * math.sin(a0 + t)
+    end
+    return pts
+end
+
+-- A small star in ink at x, y, `size` px: five points, drawn as a hand
+-- draws one, round in one stroke.
+local function Star(P, pool, x, y, size, width, U)
+    local pts, a0 = {}, U(-0.3, 0.3) - math.pi / 2
+    for k = 0, 5 do
+        local a = a0 + k * 4 * math.pi / 5
+        pts[#pts + 1] = x + size / 2 * math.cos(a)
+        pts[#pts + 1] = y + size / 2 * math.sin(a)
+    end
+    Hand(P, pool, pts, width, Style.INK_STRONG, 1, false, nil, 0)
+end
+
+-- The best drop for you at each boss (LOOT): a loop round its face, an
+-- epic's two and a star. `plan.lootTier` by boss name.
+local function Circles(plan, P, busy)
+    local pools = P.pools
+    for _, mark in ipairs(plan.marks) do
+        local tier = plan.lootTier and plan.lootTier[mark.name]
+        local t = plan.targets[mark.name]
+        if tier and t then
+            local U = Stream(plan.visit.id .. ":loot:" .. mark.name)
+            local L = LOOT[tier]
+            local r = t.r + LOOT.pad
+            Hand(P, pools.loot, Loop(t.x, t.y, r, L.loops, L.apart, U, LOOT.wobble), L.width, Style.INK_STRONG, L.alpha,
+                true, nil, 1)
+            local reach = r + (L.apart or 0) * L.loops + L.width
+            plan.flavour[#plan.flavour + 1] = { kind = tier, x = t.x, y = t.y, r = reach }
+            busy[#busy + 1] = { x = t.x, y = t.y, r = reach }
+            if tier == "epic" then
+                local S = LOOT.star
+                local sx, sy = Beside(busy, t.x, t.y, reach + S.out, S.size / 2, { -135, -45, 135, 45, 180, 0 })
+                Star(P, pools.loot, sx, sy, S.size, S.width, U)
+                plan.flavour[#plan.flavour + 1] = { kind = "lootStar", x = sx, y = sy, r = S.size / 2 + 1 }
+                busy[#busy + 1] = { x = sx, y = sy, r = S.size / 2 }
+            end
+        end
+    end
+end
+
+-- A scribble at x, y (SCRIBBLE): angry for `wipes` wipes, or nervous for
+-- a near wipe (`near`).
+local function Scribble(P, x, y, wipes, near, U)
+    local pools, S = P.pools, SCRIBBLE
+    local w, h = S.size[1], S.size[2]
+    if near then
+        local N = S.near
+        for pass = 1, N.passes do
+            local pts = {}
+            local y0 = y - h / 4 + (pass - 1) * h / 2
+            for i = 0, 10 do
+                local f = i / 10
+                pts[#pts + 1] = x - w / 2 + w * f + U(-0.6, 0.6)
+                pts[#pts + 1] = y0 + math.sin(f * 4 * math.pi + U(0, 1)) * N.wave + U(-0.5, 0.5)
+            end
+            Hand(P, pools.scribble, pts, N.width, CHALK.colour, N.alpha, false, pools.scribbleUnder, 0)
+        end
+        return
+    end
+    local n = math.min(wipes, S.most)
+    local strokes = S.strokes + S.more * (n - 1)
+    local pts = {}
+    for i = 0, strokes do
+        local f = i / strokes
+        local side = (i % 2 == 0) and -1 or 1
+        pts[#pts + 1] = x + side * w / 2 + U(-2, 2)
+        pts[#pts + 1] = y - h / 2 + h * f + U(-1, 1)
+    end
+    local width, alpha = S.width + S.press * (n - 1), math.min(1, S.alpha + 0.08 * (n - 1))
+    Hand(P, pools.scribble, pts, width, CHALK.colour, alpha, false, pools.scribbleUnder, 0)
+    -- Struck through, hard.
+    Hand(P, pools.scribble, { x - w / 2 - 2, y + h / 2 + U(-1, 1), x + w / 2 + 2, y - h / 2 + U(-1, 1) }, width + 0.4,
+        CHALK.colour, alpha, false, pools.scribbleUnder, 0)
+end
+
+-- The wipes and near wipes (SCRIBBLE): beside each boss's face, never on
+-- it; beside a wipe's place on the way.
+local function Scribbles(plan, P, busy)
+    local S = SCRIBBLE
+    local r = math.max(S.size[1], S.size[2]) / 2
+    local around = { 180, 160, 200, 140, 220, 90, -90, 0, 30, -30 }
+    local function At(x, y, d, wipes, near, key)
+        local px, py = Beside(busy, x, y, d, r, around)
+        Scribble(P, px, py, wipes, near, Stream(plan.visit.id .. ":scribble:" .. key))
+        plan.flavour[#plan.flavour + 1] = { kind = near and "near" or "wipe", x = px, y = py, r = r + 1, wipes = wipes }
+        busy[#busy + 1] = { x = px, y = py, r = r }
+    end
+    for _, e in ipairs(plan.notes.bosses or {}) do
+        local t = plan.targets[e.boss.name]
+        if t and (e.wipes or 0) > 0 then At(t.x, t.y, t.r + S.out + r, e.wipes, false, e.boss.name) end
+        if t and (e.near or 0) > 0 then At(t.x, t.y, t.r + S.out + r, 1, true, e.boss.name .. ":near") end
+    end
+    for i in ipairs(plan.notes.wipes or {}) do
+        local t = plan.targets["wipe:" .. i]
+        if t then At(t.x, t.y, t.r + r + 6, 1, false, "way" .. i) end
+    end
+    for i in ipairs(plan.notes.near or {}) do
+        local t = plan.targets["near:" .. i]
+        if t then At(t.x, t.y, t.r + r + 6, 1, true, "near" .. i) end
+    end
+end
+
+-- The pen at rest (REST): where the group stayed long, the route's ink
+-- goes round the spot the boss stands at, under its face; outside a
+-- drop's loop where there is one.
+local function Rests(plan, P, busy)
+    local byName = {}
+    for _, e in ipairs(plan.notes.bosses or {}) do byName[e.boss.name] = e end
+    for _, mark in ipairs(plan.marks) do
+        local e = byName[mark.name]
+        local how = e and DungeonPage.Rest(e.share)
+        local t = plan.targets[mark.name]
+        if how and t and plan.route then
+            local U = Stream(plan.visit.id .. ":rest:" .. mark.name)
+            local x, y = mark.at[1], mark.at[2]
+            local r = t.r + REST.pad
+            local looped = plan.lootTier and plan.lootTier[mark.name]
+            if looped then r = r + LOOT.pad + (LOOT[looped].apart or 0) * LOOT[looped].loops + 3 end
+            local pts
+            if how == "knot" then
+                pts = {}
+                local a0, turns = U(0, 2 * math.pi), REST.loops
+                local n = LOOT.steps * turns
+                for i = 0, n do
+                    local tt = 2 * math.pi * turns * i / n
+                    local rr = r + REST.swing * math.sin(tt * (turns + 0.5) / turns * 2.3 + U(0, 0.3))
+                    pts[#pts + 1] = x + rr * math.cos(a0 + tt) + REST.swing * 0.6 * math.cos(tt * 2.7)
+                    pts[#pts + 1] = y + rr * math.sin(a0 + tt) + REST.swing * 0.6 * math.sin(tt * 2.7)
+                end
+            else
+                pts = Loop(x, y, r, 1, 0, U, REST.wobble, REST.wiggles)
+            end
+            Hand(P, P.pools.route, pts, REST.width, Style.INK, REST.alpha, true, nil, 1)
+            local reach = r + REST.swing + REST.width
+            plan.flavour[#plan.flavour + 1] = { kind = how, x = x, y = y, r = reach, name = mark.name }
+            busy[#busy + 1] = { x = x, y = y, r = reach }
+        end
+    end
+end
+
+-- The blood (SPLAT): under each death spot's crosses, a stain the more
+-- that died there the bigger, seeded by the run and the spot.
+local function Splats(plan, P)
+    local spots = {}
+    for _, c in ipairs(plan.crosses) do
+        local near
+        for _, sp in ipairs(spots) do
+            if (sp.x - c.x) ^ 2 + (sp.y - c.y) ^ 2 <= SPLAT.cluster ^ 2 then near = sp end
+        end
+        if near then
+            near.n = near.n + 1
+            near.x, near.y = near.x + (c.x - near.x) / near.n, near.y + (c.y - near.y) / near.n
+        else
+            spots[#spots + 1] = { x = c.x, y = c.y, n = 1 }
+        end
+    end
+    local pools = P.pools
+    for i, sp in ipairs(spots) do
+        local U = Stream(plan.visit.id .. ":blood:" .. i)
+        local points = {}
+        local spread = SPLAT.spread + SPLAT.grow * sp.n
+        for k = 1, SPLAT.drops + SPLAT.per * sp.n do
+            local a, d = U(0, 2 * math.pi), (k == 1 and 0 or math.sqrt(U(0, 1))) * spread
+            points[#points + 1] = { x = sp.x + d * math.cos(a), y = sp.y + d * math.sin(a), t = k == 1 and 1 or U(0.5, 1) }
+        end
+        -- And a few flung drops.
+        for _ = 1, 2 + sp.n do
+            local a, d = U(0, 2 * math.pi), spread + U(3, 8)
+            points[#points + 1] = { x = sp.x + d * math.cos(a), y = sp.y + d * math.sin(a), t = U(0.26, 0.6) }
+        end
+        local reach = spread + 12
+        local stain = ns.UI.InkBlot.Build(points, SPLAT.levels, { step = SPLAT.step,
+            clip = { sp.x - reach, sp.y - reach, sp.x + reach, sp.y + reach }, rim = SPLAT.rim, warp = SPLAT.warp,
+            cap = SPLAT.cap })
+        for n, quads in ipairs(stain.levels) do
+            local ink = SPLAT.ink[n]
+            for _, q in ipairs(quads) do
+                P.Quad(n == 1 and pools.blood or pools.bloodCore, ink, ink[4], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8])
+            end
+        end
+        for _, q in ipairs(stain.rim) do
+            P.Quad(pools.bloodCore, SPLAT.rimInk, SPLAT.rimInk[4], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8])
+        end
+        plan.flavour[#plan.flavour + 1] = { kind = "blood", x = sp.x, y = sp.y, r = spread + 4, n = sp.n }
+    end
+end
+
+-- The level-ups (LEVEL): a star on the way where each happened, the new
+-- level scrawled by it; moved off what is there, and drawn smaller where
+-- nothing near is free.
+local function Levels(plan, P, busy, stock)
+    local pools, L = P.pools, LEVEL
+    for i, up in ipairs(plan.notes.levels or {}) do
+        local x, y = DungeonPage.LegPoint(plan.path, up)
+        if not x then
+            local t = (up.before and plan.targets[up.before.name]) or (up.after and plan.targets[up.after.name])
+            if t then x, y = t.x + t.r + L.halo, t.y - t.r end
+        end
+        if x then
+            local size = L.size
+            if not Free(busy, x, y, L.halo / 2) then
+                local px, py, free = Beside(busy, x, y, L.halo, L.halo / 2, { -90, 0, 180, 90, -45, -135, 45, 135 })
+                x, y = px, py
+                if not free then size = size * 0.7 end
+            end
+            local U = Stream(plan.visit.id .. ":level:" .. i)
+            P.Dot(pools.halo, x, y, L.halo * size / L.size, stock, L.haloAlpha)
+            Star(P, pools.loot, x, y, size, L.width, U)
+            local tx, ty = x + L.text.dx, y + L.text.dy
+            if not Free(busy, tx + 6, ty, 8) then tx = x - L.text.dx - 12 end
+            local label = P.Text(pools.scrawl, DungeonPage.Words.LevelScrawl(up.level), tx + 6, ty)
+            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.LevelTip(plan.visit, up))
+            plan.flavour[#plan.flavour + 1] = { kind = "level", x = x, y = y, r = L.halo / 2 + 1, level = up.level,
+                label = label, size = size }
+            plan.flavour[#plan.flavour + 1] = { kind = "levelText", x = tx + 6, y = ty, r = 9 }
+            busy[#busy + 1] = { x = x, y = y, r = L.halo / 2 }
+        end
+    end
+end
+
+-- The moments, in order of what gives way to what (the less important
+-- drawn after, round what is there): the drops' loops, the wipes'
+-- scribbles, the pen at rest, the blood (under the crosses, where they
+-- are), the level-ups. Kept on the plan: plan.flavour ({ kind, x, y, r,
+-- ... } each), which the margin notes keep clear of too.
+local function Flavour(plan, P, stock)
+    plan.flavour = {}
+    local busy = {}
+    for _, mark in ipairs(plan.marks) do
+        local t = plan.targets[mark.name]
+        if t then busy[#busy + 1] = { x = t.x, y = t.y, r = t.r } end
+        if mark.number then busy[#busy + 1] = { x = mark.number.x, y = mark.number.y, r = KILL.number.halo / 2 } end
+    end
+    for _, c in ipairs(plan.crosses) do busy[#busy + 1] = { x = c.x, y = c.y, r = DEATH.halo / 2 } end
+    if plan.door then busy[#busy + 1] = { x = plan.door.x, y = plan.door.y, r = KILL.halo / 2 } end
+    Circles(plan, P, busy)
+    Scribbles(plan, P, busy)
+    Rests(plan, P, busy)
+    Splats(plan, P)
+    Levels(plan, P, busy, stock)
+end
+
+-- Prints `plan` (DungeonPage.Plan) through the placer P on paper of colour
+-- `stock`. Begins and finishes P's pools. Kept on the plan for the tests
+-- and the margin notes still to come (step 2): routeCounts, each mark's
+-- `face` (how its portrait came, or nil), targets (each mark by boss name,
+-- the door and each wipe on the way ("wipe:<n>"): { x, y, r } on the
+-- sheet), crosses.
+function DungeonPage.Ink(plan, P, stock)
+    local pools = P.pools
+    for _, pool in pairs(pools) do pool:Begin() end
+    local W = DungeonPage.Words
+
+    plan.routeCounts = plan.route and DrawRoute(P, plan.path) or { ink = 0, pencil = 0 }
+
+    if plan.door then
+        local d = plan.door
+        Door(P, d.x, d.y, stock)
+        -- And the runs back in, which a strip may have had no room for.
+        local ranBack = plan.hasNotes and plan.notes.ranBack or 0
+        P.Hit(pools.hit, d.x, d.y, HOVER, Style.TipList("The way in",
+            ranBack > 0 and { W.RanBack(ranBack) .. " " .. W.GHOST } or nil))
+    end
+
+    plan.targets, plan.crosses = {}, {}
+    for i, mark in ipairs(plan.marks) do
         if mark.x ~= mark.at[1] or mark.y ~= mark.at[2] then
-            K.Stroke(print.pools.tether, mark.at[1], mark.at[2], mark.x, mark.y, APART.tether[1], Style.GRAPHITE,
+            P.Stroke(pools.tether, mark.at[1], mark.at[2], mark.x, mark.y, APART.tether[1], CHALK.colour,
                 APART.tether[2])
         end
         local lines
         if mark.killed then
-            mark.face = Face(print, pools.medal, mark.x, mark.y, mark.rare and "rare" or "killed", mark.boss)
-            if not mark.face then Killed(print, K, mark.x, mark.y, stock) end
+            mark.face = P.Face(pools.medal, mark.x, mark.y, mark.rare and "rare" or "killed", mark.boss)
+            if not mark.face then Killed(P, mark.x, mark.y, stock) end
             -- Numbered in the order they fell; a kill only its loot told
             -- of goes unnumbered, as when it fell is a guess.
-            if mark.order then
-                local nx, ny = NumberAt(mark.x, mark.y, placed, numbers, box)
-                numbers[#numbers + 1] = { x = nx, y = ny }
-                Number(print, K, mark.order, nx, ny, stock)
-            end
+            if mark.number then Number(P, mark.order, mark.number.x, mark.number.y, stock) end
             local killed = mark.inferred and "Killed on this run, going by its loot" or "Killed on this run"
             lines = mark.rare and { "Rare", killed } or { killed }
-            print.targets[mark.name] = { x = mark.x, y = mark.y, r = mark.face and MEDAL.kill / 2 or KILL.edge / 2 + 1 }
+            plan.targets[mark.name] = { x = mark.x, y = mark.y, r = mark.face and MEDAL.kill / 2 or KILL.edge / 2 + 1 }
         else
-            mark.face = Face(print, pools.sketch, mark.x, mark.y, "standing", mark.boss)
-            if not mark.face then Standing(print, K, mark.x, mark.y, seed + i * 1.7, stock) end
+            mark.face = P.Face(pools.sketch, mark.x, mark.y, "standing", mark.boss)
+            if not mark.face then Standing(P, mark.x, mark.y, plan.seed + i * 1.7, stock) end
             lines = { "Not killed on this run" }
-            print.targets[mark.name] = { x = mark.x, y = mark.y,
+            plan.targets[mark.name] = { x = mark.x, y = mark.y,
                 r = mark.face and MEDAL.standing / 2 or STANDING.radius + 1 }
         end
-        for _, fact in ipairs(facts[mark.name] or {}) do lines[#lines + 1] = fact end
-        Hit(print, mark.x, mark.y, Style.TipList(names[mark.name] or mark.name, lines))
+        for _, fact in ipairs(plan.facts[mark.name] or {}) do lines[#lines + 1] = fact end
+        P.Hit(pools.hit, mark.x, mark.y, HOVER, Style.TipList(plan.names[mark.name] or mark.name, lines))
     end
-    if print.door then print.targets.door = { x = print.door.x, y = print.door.y, r = 7 } end
-    Deaths(print, K, visit, notes, path, print.targets, At, { x = m + 10, y = m + ah + foot / 2 }, stock, names)
-    -- Where each wipe on the way lies (MAP-17), for its strip's arrow: the
-    -- leg point of its first death, else by the boss before or after it.
-    for i, w in ipairs(notes.wipes or {}) do
-        local x, y = LegPoint(path, w)
+    if plan.door then plan.targets.door = { x = plan.door.x, y = plan.door.y, r = 7 } end
+    Deaths(plan, P, stock)
+    -- Where each wipe on the way lies (MAP-17), for its strip's arrow (step
+    -- 2): the leg point of its first death, else by the boss before or
+    -- after it.
+    for i, w in ipairs(plan.notes.wipes or {}) do
+        local x, y = LegPoint(plan.path, w)
         if not x then
-            local t = (w.after and print.targets[w.after.name]) or (w.before and print.targets[w.before.name])
+            local t = (w.after and plan.targets[w.after.name]) or (w.before and plan.targets[w.before.name])
             if t then x, y = t.x - (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
         end
-        if x then print.targets["wipe:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
+        if x then plan.targets["wipe:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
+    end
+    -- And each near wipe on the way, the same way.
+    for i, w in ipairs(plan.notes.near or {}) do
+        local x, y = LegPoint(plan.path, w)
+        if not x then
+            local t = (w.after and plan.targets[w.after.name]) or (w.before and plan.targets[w.before.name])
+            if t then x, y = t.x - (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
+        end
+        if x then plan.targets["near:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
     end
 
-    for i, which in ipairs({ "tl", "tr", "br", "bl" }) do Corner(print, K, which, W, H, flat, seed + i, canBend) end
+    -- The best drop for you at each boss, for its loop (LOOT).
+    plan.lootTier = {}
+    local me = plan.visit.me or ns.ownGUID
+    for _, e in ipairs(plan.notes.bosses or {}) do
+        local best = 0
+        for _, entry in ipairs(e.loot or {}) do
+            if entry.guid == me or entry.guid == ns.ownGUID then
+                best = math.max(best, ns.Timeline.Quality(entry.item) or 0)
+            end
+        end
+        plan.lootTier[e.boss.name] = best >= 4 and "epic" or best == 3 and "rare" or nil
+    end
+    -- An item that finally came to you keeps its boss's loop, or adds one
+    -- (a big moment, whatever its colour).
+    for _, g in ipairs(plan.notes.rolls and plan.notes.rolls.finally or {}) do
+        if g.boss then
+            local q = ns.Timeline.Quality(g.item) or 0
+            local tier = plan.lootTier[g.boss.name]
+            if q >= 4 then tier = "epic" elseif not tier then tier = "rare" end
+            plan.lootTier[g.boss.name] = tier
+        end
+    end
+    Flavour(plan, P, stock)
 
     for _, pool in pairs(pools) do pool:Finish() end
-    print:Show()
-    return W, H
+    return plan
 end

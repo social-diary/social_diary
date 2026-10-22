@@ -164,12 +164,16 @@ end
 
 local function TrackZone(session)
     local zone = ns.Where().zone
-    if zone and session.zones[#session.zones] ~= zone and #session.zones < MAX_ZONES then
-        session.zones[#session.zones + 1] = zone
-        -- The People index reads the zones ("met in"), and Sessions.Zone
-        -- gets here without going through Together's own check.
-        ns.Touch()
+    if not zone or #session.zones >= MAX_ZONES then return end
+    -- Each zone once: walking to and fro across a border (Stormwind City
+    -- and the Deeprun Tram) is not another place (21 Oct, in the client).
+    for i = 1, #session.zones do
+        if session.zones[i] == zone then return end
     end
+    session.zones[#session.zones + 1] = zone
+    -- The People index reads the zones ("met in"), and Sessions.Zone
+    -- gets here without going through Together's own check.
+    ns.Touch()
 end
 
 -- A session record under the next id. `opts` may carry any of the record's

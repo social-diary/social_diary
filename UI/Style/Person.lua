@@ -253,6 +253,13 @@ end
 -- that. Returns how wide the marks came out.
 local PIP, PIP_STEP = 7, 11
 
+-- How wide `killed` of `total` bosses come out as marks, at most `max`
+-- (what pips:Set returns), for what lays them out before drawing them.
+function Style.PipsWidth(killed, total, max)
+    local n = math.min(math.max(total or 0, killed or 0), max)
+    return n > 0 and (n - 1) * PIP_STEP + PIP + 2 or 0
+end
+
 function Style.Pips(parent, max)
     local pips = CreateFrame("Frame", nil, parent)
     pips:SetHeight(PIP + 4)

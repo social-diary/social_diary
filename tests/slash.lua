@@ -42,7 +42,7 @@ Section("one list per level, dev commands marked")
 
 Eq(Names(nil, false), "journal,add,remember,list,remove,sessions,sightings,settings,about,forget,debug",
     "the user's commands, in help order")
-Eq(Names(nil, true), "art,env,who,observe,chars,db,toast,journey,pen,testdata", "the development commands")
+Eq(Names(nil, true), "art,env,who,observe,chars,db,toast,probe,handtest,cardrace,journey,pen,testdata", "the development commands")
 Eq(Names("sightings", false), "recent,of,city,on,rollup,reset", "the user's sighting commands")
 Eq(Names("sightings", true), "status,scan,around,tooltip", "the sighting diagnostics")
 
@@ -105,7 +105,7 @@ Eq(table.concat(unknown, "\n"), table.concat(help, "\n"), "an unknown command")
 
 ns.db.settings.debug = true
 help = Said(function() Slash("help") end)
-Eq(#help, 1 + 21, "help with debug: every command")
+Eq(#help, 1 + 24, "help with debug: every command")
 Check(Has(help, "/sd testdata|r") and Has(help, "/sd art|r"), "a development command is missing")
 Check(Has(help, "/sd forget|r") < Has(help, "/sd art|r"), "the dev commands are not after the user's")
 

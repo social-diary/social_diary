@@ -163,7 +163,7 @@ local NOOPS = {
     "SetShadowOffset", "SetShadowColor", "SetGradient", "SetDesaturated",
     "SetAtlas", "AddMaskTexture", "SetRotation", "SetHitRectInsets",
     "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetVertexOffset",
-    "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetDrawLayer",
+    "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
 }
 
 local ANCHORS = {}
@@ -280,9 +280,26 @@ local function NewWidget(frameType, name, parent, template)
     -- Where it lies on the screen, for code that reads a frame back after
     -- it was dragged. Nothing is laid out: a test sets `w.at` = { x, top }.
     function w:GetCenter() return self.at and self.at[1], self.at and 0 end
+    -- Its scale, as last set (SetScale is recorded with the no-ops).
+    function w:GetScale()
+        local scale = rec.calls.SetScale
+        return scale and scale[1] or 1
+    end
     function w:GetTop() return self.at and self.at[2] end
+    -- Its alpha, as last set (SetAlpha is recorded with the no-ops).
+    function w:GetAlpha()
+        local alpha = rec.calls.SetAlpha
+        return alpha and alpha[1] or 1
+    end
 
-    function w:SetText(value) self.text = value or "" end
+    -- A font string with no font refuses text in the client ("Font not
+    -- set"): its font comes from a template, SetFont or SetFontObject.
+    function w:SetText(value)
+        if frameType == "FontString" and not (template or rec.calls.SetFont or rec.calls.SetFontObject) then
+            error("FontString:SetText(): Font not set", 2)
+        end
+        self.text = value or ""
+    end
     function w:GetText() return self.text end
 
     -- Sliders. Like the client, SetValue clamps and fires OnValueChanged
@@ -311,12 +328,18 @@ local function NewWidget(frameType, name, parent, template)
         return child
     end
     function w:CreateMaskTexture(n) return NewWidget("MaskTexture", n, self) end
+    -- The same limit when a region's layer is changed later.
+    function w:SetDrawLayer(layer, sublevel)
+        assert(sublevel == nil or (sublevel >= -8 and sublevel <= 7), "Sublevel must be between -8 and 7")
+        self.recorded.layer, self.recorded.sublevel = layer, sublevel
+    end
 
     -- No font metrics here: a rough width from the length keeps layout
     -- arithmetic honest about types, not about pixels. Colour codes take no
     -- room, as in the client.
     local function Shown(text)
-        return ((text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+        return ((text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[^:|]*:", ""):gsub("|H.-|h", ""):gsub("|h", "")
+            :gsub("|r", ""))
     end
     function w:GetStringWidth() return #Shown(self.text) * 6 end
     function w:GetStringHeight() return self.text ~= "" and 14 or 0 end

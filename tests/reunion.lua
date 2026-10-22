@@ -125,7 +125,7 @@ Eq(Story(toast), "You've crossed paths 2 times, last today in Mulgore.", "the st
 toast.button:Click("LeftButton")
 local J = _G.SocialDiaryJournalFrame
 Check(not toast:IsShown(), "clicking did not dismiss the toast")
-Check(J:IsShown() and J.profile.name:GetText():find("BRAM REDFEN"),
+Check(J:IsShown() and J.profile.name:GetText():find("Bram Redfen"),
     "clicking the toast did not open their profile")
 ns.UI.CloseJournal()
 
@@ -383,20 +383,25 @@ Eq(ns.UI.Format.SeenText(nil), "Not seen nearby yet.", "never seen")
 Eq(ns.UI.Format.SeenText({ time = at, zone = "Orgrimmar", subZone = "Orgrimmar" }, at),
     "Last seen today at " .. date("%H:%M", at) .. " in Orgrimmar", "a subzone named like its zone")
 
--- On the profile, and as a sort: the story is the list's own line, above
--- the timeline.
-local function Prose(kind)
-    for _, line in ipairs(J.profile.timeline.data) do
-        if line.prose == kind then return line.text end
-    end
+-- On the profile, and as a sort. The summary paragraph is gone: where
+-- they were last seen is in the facts' tooltips (the tally's, or for
+-- somebody never met the first strip's), the person-page copy's gap.
+local CL = J.profile.clippings
+local function Tip(strip)
+    local list, out = strip.tip and strip.tip() or {}, {}
+    for _, line in ipairs(list) do out[#out + 1] = line[1] end
+    return table.concat(out, "\n")
 end
 ns.Diary.Add(B, { source = "test" })
 ns.UI.ShowJournal(A)
-Check(Prose("story"):find("Last seen today at"), "profile story: " .. Prose("story"))
+local facts = CL.tally:IsShown() and CL.tally or CL.first
+Check(Tip(facts):find("Last seen today at"), "profile facts' tooltip: " .. Tip(facts))
 ns.UI.SelectPerson(B)
-Check(Prose("story"):find("Not seen nearby yet%.$"), "story for somebody never seen: " .. Prose("story"))
-Check(Prose("story"):find("^You haven't spent time with Garrick yet"), "story for somebody never met")
-Check(Prose("note"):find("No note yet"), "an empty note")
+Check(Tip(CL.first):find("Not seen nearby yet$"), "facts for somebody never seen: " .. Tip(CL.first))
+Check(CL.first.name:GetText():find("^Added "), "the first strip for somebody never met: " .. CL.first.name:GetText())
+Eq(CL.first:What(), "not met yet", "the first strip's subtitle for somebody never met")
+Check(not CL.tally:IsShown(), "a tally for somebody never met")
+Check(CL.note:Written():find("No note yet"), "an empty note")
 
 J.sortButton:Click()
 Check(mock.MenuClick("Last seen"), "no 'Last seen' sort")

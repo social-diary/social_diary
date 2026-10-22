@@ -55,7 +55,7 @@ ns.Trade = Trade
 
 local Items = ns.UI.TimelineText.Items
 
-ns.Rows.Register("trade", { proximity = true, opens = true, meeting = true, dealt = "trade", matters = true,
+ns.Rows.Register("trade", { proximity = true, plate = 7, opens = true, meeting = true, dealt = "trade", matters = true,
     activity = "trade",
     moment = function(row) return ns.Timeline.TradeQuality(row) >= ns.Timeline.UNCOMMON end,
     text = function(row)

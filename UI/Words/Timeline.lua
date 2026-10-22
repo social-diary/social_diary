@@ -87,11 +87,20 @@ local function DeathText(death, guid, there)
     return text
 end
 
--- "Mulgore", "Mulgore and The Barrens", "Mulgore, Durotar and 2 more".
-local PLACES = { max = 3, shown = 2 }
-
+-- "Mulgore", "Mulgore and The Barrens", "Mulgore and around", and how many
+-- places there were. Never more than two names. A zone the client had no
+-- name for when it was written down (an empty string: Core/Location.lua's
+-- ns.Where takes GetRealZoneText's "" during a loading screen, and
+-- Core/Sessions.lua's TrackZone keeps it) is no place, and is left out;
+-- one written down again on coming back is the same place (20 and 21 Oct,
+-- in the client: "Quested together for 2 h 36 min through , Stormwind City
+-- and 23 more", and "Stormwind City, Deeprun Tram and 22 more").
 local function Places(zones)
-    return Format.List(zones, PLACES)
+    local named = ns.Timeline.Unique(zones)
+    if #named == 0 then return nil, 0 end
+    if #named == 1 then return named[1], 1 end
+    if #named == 2 then return named[1] .. " and " .. named[2], 2 end
+    return named[1] .. " and around", #named
 end
 
 local Count = Format.Count
@@ -148,9 +157,8 @@ local function Headline(episode, activities)
         text = text .. " for " .. Format.Duration(episode.seconds)
     end
 
-    local zones = episode.zones or {}
-    local places = Places(zones)
-    if places then text = text .. (#zones > 1 and " through " or " in ") .. places end
+    local places, count = Places(episode.zones)
+    if places then text = text .. (count == 2 and " through " or " in ") .. places end
 
     local clauses = { text }
     for i = 2, #activities do
@@ -158,6 +166,267 @@ local function Headline(episode, activities)
         clauses[#clauses + 1] = type(extra) == "function" and extra(episode) or extra
     end
     return Format.List(clauses, CLAUSES)
+end
+
+--------------------------------------------------------------------------
+-- A together session's headline: its one strongest story
+--------------------------------------------------------------------------
+--
+-- A session is told by what made it, weighed best first: a dungeon or raid
+-- run in it, a level reached, a rough patch, a rare hunted, a journey from
+-- one zone to another, a zone it settled in, a capital it never left, else
+-- what was done most and where. Then where, then how long (from 15 min).
+-- Past an hour, a place story leads and a run or a level follows after a
+-- semicolon: "Quested together in Westfall for 1 h 40 min; Feivel reached
+-- lv 20". Each story's variants carry the same facts, longest first; the
+-- session's id picks one, so a page of sessions does not read the same.
+-- `said` tells the details line what the headline already names.
+
+local SHORT = 15 * 60       -- under this, no duration
+local SECOND = 60 * 60      -- from this, a second story
+local ROUGH, ROUGH_PAIR, ROUGH_GAP = 3, 2, 10 * 60
+local JOURNEY_TRAVEL, JOURNEY_END = 0.25, 0.20
+local SETTLED, SETTLED_SUB = 0.60, 0.50
+
+-- The capitals (the settings' city list, by name) and the tram between two.
+local CAPITALS = { ["Stormwind City"] = true, ["Orgrimmar"] = true, ["Ironforge"] = true,
+    ["Thunder Bluff"] = true, ["Darnassus"] = true, ["Undercity"] = true }
+local TRAM = "Deeprun Tram"
+
+local function IsCity(name)
+    if name == TRAM or CAPITALS[name] then return true end
+    local cities = ns.db and ns.db.settings and ns.db.settings.cities or {}
+    if cities[name] then return true end
+    for key, on in pairs(cities) do
+        if on and type(key) == "number" and ns.MapName(key) == name then return true end
+    end
+    return false
+end
+
+-- Rare names as the book sets them: curly apostrophes.
+local function Curly(text)
+    return (text:gsub("'", "\226\128\153"))
+end
+
+local function Times(n)
+    return n == 1 and "once" or (n == 2 and "twice") or (n .. " times")
+end
+
+local function Pick(list, seed)
+    return list[(seed or 0) % #list + 1]
+end
+
+-- Deaths in the session outside its runs: the user's and theirs, and
+-- whether two came close together.
+local function DeathsOf(episode, guid)
+    local mine, theirs, times = 0, 0, {}
+    local logged = false
+    for _, child in ipairs(episode.all) do
+        if child.kind == "death" then
+            logged = true
+            if child.death.guid == guid then theirs = theirs + 1 else mine = mine + 1 end
+            times[#times + 1] = child.time
+        end
+    end
+    local session = episode.session
+    if not logged and session and session.deaths then
+        mine = math.max(0, (session.deaths[session.me] or 0) - (episode.runDeaths or 0))
+        theirs = session.deaths[guid] or 0
+    end
+    table.sort(times)
+    local close = false
+    for i = 2, #times do
+        if times[i] - times[i - 1] <= ROUGH_GAP then close = true end
+    end
+    return mine, theirs, close
+end
+
+-- The place a session is told in, from where its time went
+-- (Timeline.Zones): { top, share, sub, subShare, names (at most two),
+-- journey, city }.
+local function Where(episode)
+    local z = ns.Timeline.Zones(episode.session, episode.zones)
+    local where = { zones = z, names = {} }
+    local list = z.zones
+    if #list == 0 then return where end
+
+    local top = list[1]
+    for _, zone in ipairs(list) do
+        if zone.seconds > top.seconds then top = zone end
+    end
+    where.top = top.name
+    where.share = z.timed and z.total > 0 and top.seconds / z.total or (#list == 1 and 1 or 0)
+    if z.timed and top.seconds > 0 then
+        for sub, seconds in pairs(top.sub) do
+            if seconds / top.seconds >= SETTLED_SUB and (not where.sub or seconds > where.subSeconds) then
+                where.sub, where.subSeconds = sub, seconds
+            end
+        end
+    end
+
+    local city = true
+    for _, zone in ipairs(list) do
+        if not IsCity(zone.name) then city = false end
+    end
+    where.city = city
+
+    if z.timed and z.first and z.last and z.first ~= z.last and z.total > 0
+        and z.travel / z.total >= JOURNEY_TRAVEL then
+        local last
+        for _, zone in ipairs(list) do
+            if zone.name == z.last then last = zone end
+        end
+        if last and last.seconds / z.total >= JOURNEY_END then where.journey = { z.first, z.last } end
+    end
+
+    for i = 1, math.min(2, #list) do where.names[i] = list[i].name end
+    where.count = #list
+    return where
+end
+
+-- " in Westfall", " in Westfall and Duskwood", " in Westfall and around",
+-- or "" without a place.
+local function In(where)
+    if not where.top then return "" end
+    if where.count == 1 or where.share >= SETTLED then return " in " .. where.top end
+    if where.count == 2 then return " in " .. where.names[1] .. " and " .. where.names[2] end
+    return " in " .. where.names[1] .. " and around"
+end
+
+-- The strong stories: a run, then a level. Each gives the headline's
+-- variants on its own and the words it takes after a semicolon.
+local function RunStory(episode)
+    for _, child in ipairs(episode.all) do
+        if child.kind == "visit" and child.visit then
+            local name = child.visit.name or "a dungeon"
+            local raid = child.visit.instanceType == "raid"
+            local verb = raid and "Raided " or "Ran "
+            return { said = "dungeon", placed = true, over = true,
+                lead = { verb .. name .. " together" },
+                tail = (raid and "raided " or "ran ") .. name .. " together" }
+        end
+    end
+end
+
+local LevelWords
+
+local function LevelStory(episode, guid, name, lead)
+    local session, p = episode.session, episode.participant
+    local theirs = p and p.levelStart and p.levelEnd and p.levelEnd > p.levelStart and p.levelEnd
+    local mine = session.myLevelStart and session.myLevelEnd and session.myLevelEnd > session.myLevelStart
+        and session.myLevelEnd
+    if not (theirs or mine) then return nil end
+    local me = session.me
+    local story = LevelWords(me, name, lead, theirs, mine)
+    story.said, story.over = "level", true
+    return story
+end
+
+function LevelWords(me, name, lead, theirs, mine)
+    if theirs and mine then
+        if theirs == mine then
+            return { said = "level", lead = { "Reached lv " .. mine .. " together" },
+                tail = Format.You(me, "{you}") .. " both reached lv " .. mine }
+        end
+        local text = Format.You(me, "{You}") .. " reached lv " .. mine .. ", " .. name .. " lv " .. theirs
+        return { said = "level", lead = { text }, tail = Format.You(me, "{you}") .. " reached lv " .. mine
+            .. ", " .. name .. " lv " .. theirs }
+    elseif theirs then
+        return { said = "level",
+            lead = { name .. " reached lv " .. theirs .. " at " .. Format.You(me, "{your}") .. " side",
+                name .. " reached lv " .. theirs .. " with " .. Format.You(me, "{you}") },
+            tail = name .. " reached lv " .. theirs }
+    end
+    local with = lead == "quest" and " while questing with " or " with "
+    return { said = "level",
+        lead = { Format.You(me, "{You}") .. " reached lv " .. mine .. with .. name },
+        tail = Format.You(me, "{you}") .. " reached lv " .. mine }
+end
+
+-- A rough patch: three deaths, or two close together. Theirs, the user's
+-- or both; plain words, no jokes.
+local function RoughStory(episode, guid, name)
+    local mine, theirs, close = DeathsOf(episode, guid)
+    local total = mine + theirs
+    if not (total >= ROUGH or (total >= ROUGH_PAIR and close)) then return nil end
+    local me = episode.session.me
+    local You, you, your = Format.You(me, "{You}"), Format.You(me, "{you}"), Format.You(me, "{your}")
+    local lead
+    if theirs == 0 then
+        lead = { You .. " died " .. Times(mine) .. " with " .. name .. " close by" }
+    elseif mine == 0 then
+        lead = { name .. " died " .. Times(theirs) .. " at " .. your .. " side",
+            name .. " died " .. Times(theirs) .. " with " .. you .. " close by" }
+    else
+        lead = { You .. " and " .. name .. " died " .. Times(total) .. " between you",
+            Times(total):gsub("^(%d+) times$", "%1 deaths") .. " between " .. you .. " and " .. name }
+        if total < ROUGH then lead[2] = nil end
+    end
+    return { said = "deaths", lead = lead, over = true }
+end
+
+local function RareStory(episode)
+    local rares = Rares(episode)
+    if #rares == 0 then return nil end
+    local names = {}
+    for i = 1, math.min(2, #rares) do names[i] = Curly(rares[i].name or "a rare") end
+    return { said = "rare", lead = { "Hunted " .. table.concat(names, " and ") .. " together" }, over = true }
+end
+
+-- The place stories, weakest last.
+local function PlaceStory(episode, where, lead)
+    local verb = LEAD[lead] or "Together"
+    if where.journey then
+        return { lead = { "Went from " .. where.journey[1] .. " to " .. where.journey[2] .. " together",
+            "Travelled from " .. where.journey[1] .. " to " .. where.journey[2] .. " together" },
+            placed = true, over = true }
+    end
+    if where.city and where.top then
+        local only = where.top == TRAM and where.count == 1
+        local place = only and "on the Deeprun Tram" or (where.top == TRAM and ("in " .. where.names[1]) or ("in " .. where.top))
+        if where.top == TRAM and not only then
+            for _, n in ipairs(where.names) do
+                if n ~= TRAM then place = "in " .. n end
+            end
+        end
+        return { lead = { "Kept company " .. place, "Kept each other company " .. place }, placed = true }
+    end
+    if where.top and where.share >= SETTLED then
+        local place = where.sub and (" at " .. where.sub .. " in " .. where.top) or (" in " .. where.top)
+        return { lead = { verb .. place }, placed = true }
+    end
+    return { lead = { verb .. In(where) }, placed = true }
+end
+
+local function SessionHeadline(episode, guid)
+    local seed = episode.session and episode.session.id or 0
+    local name = guid and ns.Characters.Name(guid) or "They"
+    local lead = episode.activities and episode.activities[1]
+    local where = Where(episode)
+    local said = {}
+
+    local strong = RunStory(episode) or LevelStory(episode, guid, name, lead)
+    local story
+    if strong and episode.seconds < SECOND then
+        story = strong
+        strong = nil
+    else
+        story = RoughStory(episode, guid, name) or RareStory(episode)
+            or PlaceStory(episode, where, lead)
+    end
+
+    local text = Pick(story.lead, seed)
+    if story.said then said[story.said] = true end
+    -- A run and the place stories have said where; the rest say it here.
+    if not story.placed then text = text .. In(where) end
+    if episode.seconds >= SHORT then
+        text = text .. (story.over and " over " or " for ") .. Format.Duration(episode.seconds)
+    end
+    if strong then
+        text = text .. "; " .. strong.tail
+        said[strong.said] = true
+    end
+    return text, said
 end
 
 -- Everyone in the visit but the user and the person whose page this is.
@@ -217,38 +486,49 @@ local function TradeFact(t)
     return t.trades > 1 and (t.trades .. " trades: " .. text) or text
 end
 
--- The details line, most telling first: what the headline names, then how
--- they changed, then the counts of everything else. Moments the headline
--- does not name are lines of their own, so they are not counted here.
-local function Facts(episode, guid)
+-- One quest by its title in curly quotes, when the client knows it;
+-- else the count.
+local function QuestFact(quests)
+    if #quests == 1 then
+        local Q = C_QuestLog
+        local title = Q and Q.GetTitleForQuestID and ns.Plain(Q.GetTitleForQuestID(quests[1]))
+        if type(title) == "string" and title ~= "" then return "\226\128\156" .. title .. "\226\128\157" end
+    end
+    return #quests > 0 and Count(#quests, "quest", "quests") or nil
+end
+
+-- The details line, in a fixed order: quests, rares, their level, trades,
+-- deaths, runs, messages, the rest. What the headline says (`said`) is not
+-- said again, a message or two is not worth counting, and moments with a
+-- line of their own are not counted here.
+local function Facts(episode, guid, said)
+    said = said or {}
     local t = Tally(episode)
     local p = episode.participant
+    local named = episode.named
     local facts = {}
     local function Add(fact) if fact then facts[#facts + 1] = fact end end
 
-    for _, activity in ipairs(episode.headline) do
-        if activity == "quest" then
-            Add(Count(#p.quests, "quest", "quests"))
-        elseif activity == "rare" then
-            Add("killed " .. RareNames(Rares(episode)))
-        elseif activity == "trade" then
-            Add(TradeFact(t))
-        elseif activity == "chat" then
-            Add(Count(t.chat, "message", "messages"))
-        elseif activity == "other" then
-            Add(Count(t.other, "other interaction", "other interactions"))
-        end
+    if named.quest and p then Add(QuestFact(p.quests or {})) end
+    if named.rare and not said.rare and #Rares(episode) > 0 then
+        Add("killed " .. RareNames(Rares(episode)))
     end
 
-    if p and p.levelStart and p.levelEnd and p.levelEnd ~= p.levelStart then
-        Add(("they went from %d to %d"):format(p.levelStart, p.levelEnd))
+    if not said.level and p and p.levelStart and p.levelEnd and p.levelEnd > p.levelStart then
+        Add((guid and ns.Characters.Name(guid) or "They") .. " reached lv " .. p.levelEnd)
+    end
+
+    if named.trade then
+        Add(TradeFact(t))
+    elseif t.chatterTrades > 0 then
+        Add(Count(t.chatterTrades, "trade", "trades"))
     end
 
     -- Deaths with a line of their own (Timeline's death items) are not
     -- counted again, nor those a dungeon run in it counts (TLN-11); older
     -- sessions only have the count.
     local session = episode.session
-    if session then
+    if session and not said.deaths then
         local deaths = (session.deaths[guid] or 0) + (session.deaths[session.me] or 0)
             - (episode.runDeaths or 0)
         for i = 1, #episode.all do
@@ -265,13 +545,15 @@ local function Facts(episode, guid)
             if child.visit.instanceType == "raid" then raids = raids + 1 else dungeons = dungeons + 1 end
         end
     end
+    -- The headline names one run; any more are counted.
+    if said.dungeon then
+        if raids > 0 then raids = raids - 1 else dungeons = dungeons - 1 end
+    end
     if dungeons > 0 then Add(Count(dungeons, "dungeon", "dungeons")) end
     if raids > 0 then Add(Count(raids, "raid", "raids")) end
 
-    local named = episode.named
-    if not named.chat and t.chat > 0 then Add(Count(t.chat, "message", "messages")) end
-    if not named.trade and t.chatterTrades > 0 then Add(Count(t.chatterTrades, "trade", "trades")) end
-    if not named.other and t.other > 0 then Add(Count(t.other, "other interaction", "other interactions")) end
+    if t.chat >= 3 then Add(Count(t.chat, "message", "messages")) end
+    if t.other > 0 then Add(Count(t.other, "other interaction", "other interactions")) end
 
     return facts
 end
@@ -279,10 +561,13 @@ end
 -- TLN-3: the headline and details line cut to the episode's length; the
 -- tooltip gets all of it.
 local function EpisodeText(episode, guid)
-    local visitText, facts
+    local visitText, facts, sessionText, said
     if episode.kind == "visit" then
         visitText, facts = VisitText(episode, guid)
         for _, fact in ipairs(Facts(episode, guid)) do facts[#facts + 1] = fact end
+    elseif episode.kind == "session" and episode.session then
+        sessionText, said = SessionHeadline(episode, guid)
+        facts = Facts(episode, guid, said)
     else
         facts = Facts(episode, guid)
     end
@@ -295,9 +580,9 @@ local function EpisodeText(episode, guid)
         facts[#facts + 1] = "still going"
     end
 
-    local text = visitText or Headline(episode, episode.headline)
+    local text = visitText or sessionText or Headline(episode, episode.headline)
     local sub = #shown > 0 and table.concat(shown, "  ·  ") or nil
-    local full = visitText or Headline(episode, episode.activities)
+    local full = visitText or sessionText or Headline(episode, episode.activities)
     if #facts > 0 then full = full .. "\n" .. table.concat(facts, "  ·  ") end
 
     local icon = (episode.kind == "session" and "together") or (episode.kind == "visit" and "dungeon")
@@ -349,6 +634,24 @@ function ns.UI.DescribeItem(item, guid)
             full[#full + 1] = date("%H:%M", up.time) .. "  level " .. tostring(up.row.context and up.row.context.level or "?")
         end
         return when, text, nil, "levelup", table.concat(full, "\n")
+    elseif item.kind == "deaths" then
+        -- "{You} died 4 times, Feivel 3 times", each death in the tooltip.
+        local mine, theirs, me = 0, 0, nil
+        local full = {}
+        for _, d in ipairs(item.deaths) do
+            if d.death.guid == guid then theirs = theirs + 1 else mine, me = mine + 1, d.death.guid end
+            full[#full + 1] = date("%H:%M", d.time) .. "  " .. DeathText(d.death, guid)
+        end
+        local function Times(n) return n == 1 and "once" or (n == 2 and "twice") or (n .. " times") end
+        local parts = {}
+        if mine > 0 then parts[#parts + 1] = Format.You(me, "{You}") .. " died " .. Times(mine) end
+        if theirs > 0 then
+            local name = ns.Characters.Name(guid) or "They"
+            parts[#parts + 1] = (mine > 0 and name or (name .. " died")) .. " " .. Times(theirs)
+        end
+        local text = table.concat(parts, ", ")
+        table.insert(full, 1, text)
+        return when, text, nil, "death", table.concat(full, "\n")
     elseif item.kind == "rare" then
         return when, "Killed " .. (item.rare.name or "a rare"), nil, "rare"
     elseif item.kind == "death" then

@@ -60,12 +60,11 @@ local FALL = { least = 0.9, most = 2.2, dx = 14, dy = 8 }
 -- down and right, how much larger, and how dark.
 local SHADOWS = { { 3, -4, 0, 0.26 }, { 7, -10, 6, 0.10 } }
 -- Where it bends, the shadow follows how high the paper stands over the
--- book (its height above its lowest point, h): it falls `base` + `gain` * h
--- pixels down and to the right, at `alpha` / (1 + `fade` * h), so where the
--- paper lifts the shadow moves out and pales, and where it touches the book
--- it stays close and dark. A soft edge falls `reach` times as far plus
--- `extra`, at `soft` of the shadow's darkness.
-local LIFT = { base = 1, gain = 0.22, alpha = 0.32, fade = 0.04, reach = 1.8, extra = 1.5, soft = 0.35 }
+-- book (its height above its lowest point, h): the house light's fall
+-- (UI/Paper/Light.lua's LIFT, which was this sheet's, tuned here), so where
+-- the paper lifts the shadow moves out and pales, and where it touches the
+-- book it stays close and dark, its soft edge further out and paler.
+local Lamp = ns.UI.Light
 -- The folds and the crumple. `columns` and `rows` are the mesh's lines, as
 -- fractions of the sheet's width and height; `folds` says which of them are
 -- folds, 1 a ridge and -1 a valley. Then, in pixels: how high a fold stands
@@ -136,13 +135,31 @@ end
 --   shadows   its own unbent shadows, in SHADOWS' shape, in place of its
 --             look's; {} for none, where the caller casts its own (a plate's
 --             contact shadow, JourneyPlate's SHADOW)
+--   ground    what it lies on, as the house light has it (UI/Paper/Light.lua's
+--             GROUND): its shadow darker and wider on the game world (the
+--             dungeon's map, the book put aside); the book's page by default
 --
 -- Returns the view, with `sheet` (the frame everything is drawn on),
 -- `bends` (whether it bends as it is laid now), `flat` (laid flat by the
 -- setting) and `turnsText`, and the toolkit K:
---   K.Fall(key, turn)  how it lies and was crumpled, the same for the same
---                 key; given a `turn` (radians), it lies turned that much on
---                 its own middle instead of as it fell (the parcel's note)
+--   K.Fall(key, turn, at)  how it lies (view.angle, its turn) and was
+--                 crumpled, the same for the
+--                 same key; given a `turn` (radians), it lies turned that
+--                 much on its own middle instead of as it fell (the
+--                 parcel's note), or `at` = { dx, dy } off it (x right, y up,
+--                 as SetPoint: the dungeon's map, UI/Dungeon/Sheet.lua)
+--   K.Clear(spots, reach, pad)  its folds moved off their lines, at most
+--                 `reach` px, to keep `pad` px clear of each spot ({ x, y,
+--                 r } on the flat sheet: a boss's face, a number), and
+--                 crumpled again round them; until the next K.Fall
+--   K.Lines()     the mesh's lines across and down, and its folds ({
+--                 columns, rows }, by line), for the tests
+--   K.Wear(paper, grime)  worn with age: its stock and how much grime
+--                 lies along its folds
+--   K.Reshape(w, h, crease)  a sheet of another size, and folded otherwise
+--                 (`crease` as opts.crease, or the one it has): a map
+--                 sheet the shape of the map on it (UI/Dungeon/Sheet.lua).
+--                 Laid by the next K.Fall and K.Lay
 --   K.Lay()       lays it on the book: the paper, its shadow and folds
 --   K.Place(region, x, y, w, h, turn, dx, dy), K.PlaceButton(button, x, y,
 --   w, h), K.PlaceText(text, x, y, justify), K.Width(text): placing on
@@ -168,6 +185,8 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     local LOOK = opts.glued and GLUED or LOOSE
     local CREASE = setmetatable(opts.crease or LOOK.crease or {}, { __index = CREASE })
     local INK, P = Style.INK, opts.paper or LOOK.paper
+    -- How worn it is (K.Wear): its grime this many times the usual.
+    local worn = 1
     local SHADOW_LIST = opts.shadows or LOOK.shadows
 
     -- The view covers the book and catches the clicks beside the sheet;
@@ -208,6 +227,9 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     local NX, NY = #CREASE.columns, #CREASE.rows
     local X, Y, mesh = {}, {}, {}
     local folds = { columns = {}, rows = {} }
+    -- How far each fold was moved off its line to keep clear of what must
+    -- not be folded through (K.Clear), by line; none until asked.
+    local nudge = { columns = {}, rows = {} }
 
     -- The height the folds give the paper on line k of `lines`, `t` (0..1)
     -- along it: 0 at the sheet's edges, a fold's own height on it, in a
@@ -235,12 +257,12 @@ function ns.UI.LooseSheet(parent, W, H, opts)
         for i, f in ipairs(CREASE.columns) do
             local off = (i == 1 or i == NX) and 0
                 or Spread(100 + i, CREASE.folds.columns[i] and CREASE.shift or CREASE.wander * W)
-            X[i] = f * W + off
+            X[i] = f * W + off + (nudge.columns[i] or 0)
         end
         for j, f in ipairs(CREASE.rows) do
             local off = (j == 1 or j == NY) and 0
                 or Spread(200 + j, CREASE.folds.rows[j] and CREASE.shift or CREASE.wander * H)
-            Y[j] = f * H + off
+            Y[j] = f * H + off + (nudge.rows[j] or 0)
         end
         for kind, base in pairs({ columns = 300, rows = 400 }) do
             folds[kind] = {}
@@ -477,24 +499,27 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     ----------------------------------------------------------------------
     -- The paper
 
-    local shadows, SHADE = {}, LOOK.shade
+    -- On a ground of its own (opts.ground), its shadow takes that ground's
+    -- colour and darkness.
+    local GROUND = opts.ground
+    local shadows, SHADE = {}, GROUND and GROUND.colour or LOOK.shade
     for i, shadow in ipairs(SHADOW_LIST) do
         shadows[i] = Texture("BACKGROUND", -8 + i - 1)
-        shadows[i]:SetColorTexture(SHADE[1], SHADE[2], SHADE[3], shadow[4])
+        shadows[i]:SetColorTexture(SHADE[1], SHADE[2], SHADE[3],
+            math.min(0.9, shadow[4] * (GROUND and GROUND.strength or 1)))
     end
     -- The bent shadow, soft edge and core, from the facets along the right
     -- and bottom: the only ones whose shadow comes out from under the
     -- paper, as the light falls from the top left.
     local softPool, corePool = Pool("BACKGROUND", -8), Pool("BACKGROUND", -7)
+    local BLACK = { 0, 0, 0 }
 
     -- Where the shadow of a crossing of the mesh falls on the screen, and
     -- how dark it is there: the core's, or with `soft` the soft edge's.
     local function Fallen(i, j, soft)
         local x, y = Screen(X[i], Y[j])
         local h = mesh[i][j].z - mesh.low
-        local off = LIFT.base + LIFT.gain * h
-        if soft then off = off * LIFT.reach + LIFT.extra end
-        local alpha = LIFT.alpha / (1 + LIFT.fade * h) * (soft and LIFT.soft or 1)
+        local off, alpha = Lamp.Fall(h, soft, GROUND)
         return x + off, y - off, alpha
     end
 
@@ -512,10 +537,11 @@ function ns.UI.LooseSheet(parent, W, H, opts)
                         local texture = part[1]:Next()
                         -- Along the bottom it shades left to right, down the
                         -- right side top to bottom.
+                        local c = GROUND and GROUND.colour or BLACK
                         if j == NY - 1 then
-                            Style.Gradient(texture, "HORIZONTAL", { 0, 0, 0, ll }, { 0, 0, 0, lr })
+                            Style.Gradient(texture, "HORIZONTAL", { c[1], c[2], c[3], ll }, { c[1], c[2], c[3], lr })
                         else
-                            Style.Gradient(texture, "VERTICAL", { 0, 0, 0, lr }, { 0, 0, 0, ur })
+                            Style.Gradient(texture, "VERTICAL", { c[1], c[2], c[3], lr }, { c[1], c[2], c[3], ur })
                         end
                         Corners(texture, texture.anchorTo or S, X[i + 1] - X[i], Y[j + 1] - Y[j], ulx, uly, llx,
                             lly, urx, ury, lrx, lry)
@@ -558,7 +584,7 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     local function Grime(x0, y0, x1, y1, orientation, atEnd, n)
         local texture = grimePool:Next()
         GrimeCrop(texture, x1 - x0, y1 - y0, n)
-        local a = GRUNGE.alpha * (1 - GRUNGE.uneven * Style.Noise(n + 0.25))
+        local a = math.min(0.6, GRUNGE.alpha * worn * (1 - GRUNGE.uneven * Style.Noise(n + 0.25)))
         local clear, dark = CreateColor(T[1], T[2], T[3], 0), CreateColor(T[1], T[2], T[3], a)
         local ok = pcall(texture.SetGradient, texture, orientation, atEnd and clear or dark, atEnd and dark or clear)
         if not ok then
@@ -643,7 +669,7 @@ function ns.UI.LooseSheet(parent, W, H, opts)
         -- Grime along the folds, uneven from piece to piece, the bands
         -- overlapping where folds cross. None, laid flat.
         grimePool:Begin()
-        local b, seed = GRUNGE.band, view.seed or 0
+        local b, seed = GRUNGE.band * (1 + (worn - 1) * 0.5), view.seed or 0
         for k in pairs(view.flat and {} or folds.columns) do
             local x = X[k]
             for j = 1, NY - 1 do
@@ -713,14 +739,81 @@ function ns.UI.LooseSheet(parent, W, H, opts)
         S:SetSize(w, h)
     end
 
-    function K.Fall(key, given)
+    function K.Fall(key, given, at)
         local turn, seed
         turn, view.dx, view.dy, seed = Fall(key)
         if given then turn, view.dx, view.dy = given, 0, 0 end
+        if at then view.dx, view.dy = at[1], at[2] end
         if opts.straight or not view.turnsText then turn = 0 end
         angle, cos, sin = turn, math.cos(turn), math.sin(turn)
+        -- Its turn as it lies (radians, as SetRotation), for what is laid
+        -- on it that turns by itself (the dungeon map's strips).
+        view.angle = turn
         view.seed = seed
+        nudge = { columns = {}, rows = {} }
         Crumple(seed)
+    end
+
+    -- A fold kept clear of the spots: of the places within `reach` of its
+    -- line, nearest first (and the left or upper one first of two as
+    -- near), the first `pad` px clear of every spot, never nearer than
+    -- ROOM px to the mesh's lines either side of it; where none is clear,
+    -- the one through the fewest. `axis` is the spots' "x" for a fold
+    -- across, "y" for one down. Returns how far it moved.
+    local ROOM = 12
+    local function Clearing(lines, k, spots, axis, reach, pad)
+        local at, lo, hi = lines[k], lines[k - 1] + ROOM, lines[k + 1] - ROOM
+        local best, fewest = 0, math.huge
+        for step = 0, reach do
+            for _, off in ipairs(step == 0 and { 0 } or { -step, step }) do
+                local p = at + off
+                if p >= lo and p <= hi then
+                    local cut = 0
+                    for _, spot in ipairs(spots) do
+                        if math.abs(p - spot[axis]) < spot.r + pad then cut = cut + 1 end
+                    end
+                    if cut == 0 then return off end
+                    if cut < fewest then best, fewest = off, cut end
+                end
+            end
+        end
+        return best
+    end
+
+    function K.Clear(spots, reach, pad)
+        -- From the lines as they fell, not as a last clearing left them.
+        nudge = { columns = {}, rows = {} }
+        Crumple(view.seed or 0)
+        local moved = { columns = {}, rows = {} }
+        for k in pairs(folds.columns) do moved.columns[k] = Clearing(X, k, spots, "x", reach, pad) end
+        for k in pairs(folds.rows) do moved.rows[k] = Clearing(Y, k, spots, "y", reach, pad) end
+        nudge = moved
+        Crumple(view.seed or 0)
+    end
+
+    function K.Lines() return X, Y, folds end
+
+    -- Worn with age (the dungeon map, UI/Dungeon/Sheet.lua's AGE): its
+    -- stock `paper` ({ r, g, b }, nil for its own) and its grime `grime`
+    -- times the usual, darker and wider along the folds. Laid by the next
+    -- K.Lay.
+    function K.Wear(paper, grime)
+        P = paper or opts.paper or LOOK.paper
+        view.paper = P
+        worn = grime or 1
+    end
+
+    function K.Reshape(w, h, crease)
+        W, H = w, h
+        S:SetSize(w, h)
+        if crease then
+            CREASE = setmetatable(crease, getmetatable(CREASE))
+            NX, NY = #CREASE.columns, #CREASE.rows
+            -- The old mesh's lines and crossings past the new one's go.
+            for k in pairs(X) do X[k] = nil end
+            for k in pairs(Y) do Y[k] = nil end
+            for k in pairs(mesh) do mesh[k] = nil end
+        end
     end
 
     function K.Lay()

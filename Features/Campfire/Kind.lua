@@ -40,6 +40,7 @@ ns.Campfire = Campfire
 -- with the zone's own name. Its icon: Basic Campfire's own spell icon.
 ns.Rows.Register("campfire", {
     proximity = true,
+    plate = 6,
     moment = function() return true end,
     reason = "sat by a campfire together",
     text = function(row, guid)

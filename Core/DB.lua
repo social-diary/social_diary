@@ -111,7 +111,7 @@ local CHARACTER_SETTINGS = {
     bookStack = true,   -- the journal's page stack grows with the diary and turns with the page
     flatSheets = false,  -- "Flat paper only": loose sheets (the map, notes) without folds, bends or grime
     revealMap = false,  -- "Always show the whole map": the map sheets fill in unexplored areas too (UI/Map/Art.lua)
-    dungeonRoute = true,  -- MAP-4: the dungeon page's print draws the usual way through (UI/Dungeon/Page.lua)
+    dungeonRoute = true,  -- MAP-4: a run's map draws the usual way through (UI/Dungeon/Print.lua)
     -- The parcel at login has been torn open: from then on it comes back
     -- torn, the diary's note beside the book (UI/Windows/Intro/Parcel.lua).
     parcelOpened = false,

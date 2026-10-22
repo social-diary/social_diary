@@ -53,8 +53,10 @@ envelope.
 - **Vary the prose** that repeats per level or per row. Use the existing
   seeded variant tables (`STOPS` etc. in `UI/Journey/Text/Prose.lua`) rather than
   one fixed template.
-- **Quiet.** No exclamation marks (only exception: the find card's “Your
-  first green!”). Warnings are carried by colour and rules, not words: “A
+- **Quiet.** No exclamation marks. The only exceptions, both chosen by
+  the user: the find card's “Your first green!” and the dungeon sheet's
+  “Finally! After two drops, it’s yours” (an item lost on a Need roll
+  before, at last won). Warnings are carried by colour and rules, not words: “A
   foe, nearby”, not “WARNING: FOE!”.
 - **Humour is dry and rare**, never on errors or deaths of friends. “Even a
   boar, once” is the ceiling.

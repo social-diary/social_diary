@@ -63,20 +63,20 @@ ns.Chat = Chat
 
 local Quote = ns.UI.TimelineText.Quote
 
-ns.Rows.Register("whisper_in", { chat = true, dealt = "talk", matters = true, activity = "chat",
+ns.Rows.Register("whisper_in", { chat = true, plate = 7, dealt = "talk", matters = true, activity = "chat",
     text = function(row) return Quote(row.excerpt, "They whispered") end,
     icon = "whisper" })
-ns.Rows.Register("whisper_out", { chat = true, dealt = "talk", matters = true, activity = "chat",
+ns.Rows.Register("whisper_out", { chat = true, plate = 7, dealt = "talk", matters = true, activity = "chat",
     text = function(row) return Quote(row.excerpt, ns.UI.Format.You(row.me, "{You} whispered")) end,
     icon = "whisper" })
-ns.Rows.Register("say", { chat = true, proximity = true, opens = true, dealt = "talk", matters = true,
+ns.Rows.Register("say", { chat = true, plate = 7, proximity = true, opens = true, dealt = "talk", matters = true,
     activity = "chat",
     text = function(row) return Quote(row.excerpt, "Said") end,
     icon = "talk" })
-ns.Rows.Register("yell", { chat = true, proximity = true, opens = true, dealt = "talk", activity = "chat",
+ns.Rows.Register("yell", { chat = true, plate = 7, proximity = true, opens = true, dealt = "talk", activity = "chat",
     text = function(row) return Quote(row.excerpt, "Yelled") end,
     icon = "talk" })
-ns.Rows.Register("party", { chat = true, dealt = "talk", activity = "chat",
+ns.Rows.Register("party", { chat = true, plate = 7, dealt = "talk", activity = "chat",
     text = function(row) return Quote(row.excerpt, "Said in party") end,
     icon = "party" })
 

@@ -1,4 +1,4 @@
--- The dungeon page's words (MAP-13 to MAP-15): what a margin note says
+-- A dungeon run's words (MAP-13 to MAP-15): what a margin note says
 -- (UI/Dungeon/Notes.lua), the facts a boss's tooltip adds under its name
 -- and a death's cross's tooltip (UI/Dungeon/Print.lua). One place, so the
 -- strips and the tooltips always say the same.
@@ -79,6 +79,7 @@ function Words.Facts(visit, e)
     local lines = {}
     local wipes, tries = e.wipes or 0, e.tries or 0
     if wipes > 0 then lines[#lines + 1] = Words.Wipes(wipes) end
+    if (e.near or 0) > 0 then lines[#lines + 1] = Words.NEARLY end
     if tries > 1 then
         local said
         if e.killed then
@@ -196,3 +197,86 @@ end
 
 -- "and 2 more", under the notes there was no room for.
 function Words.More(n) return ("and %d more"):format(n) end
+
+-- A near wipe (Core/DungeonRun.lua's NEAR): "Nearly wiped", and under it
+-- how many went down, "two went down" (the diary is not in the group, so
+-- no "us").
+Words.NEARLY = "Nearly wiped"
+function Words.WentDown(n) return ("%s went down"):format(NUMBER[n] or tostring(n)) end
+
+-- A level-up on the map: the bare level scrawled by its star ("22"), as
+-- the plates' level pins, and its tooltip, "Level 22" over who, as the
+-- plates' "Reached ...": "Reached by Tester", "Reached by you".
+function Words.LevelScrawl(level) return tostring(level) end
+function Words.LevelTip(visit, up)
+    return ns.Style.TipList(("Level %d"):format(up.level), { "Reached by " .. Whose(visit, up.guid) })
+end
+
+-- Rolls (pass B). An item snagged from you: "Brom snagged it from you"
+-- (the user's own name in a shared diary, as "dropped for"), under it the
+-- rolls, "80 against 85" (yours first). An item that finally came to you:
+-- "Finally! After two drops, it's yours": the exclamation is the user's
+-- (16 Oct), an exception to the quiet voice like "Your first green!";
+-- `total` is at least two (Core/DungeonRun.lua: a drop lost before, and
+-- this one). A bad roll: "Brom rolled a 2", "You rolled a 2", under it
+-- "on [item]". The pairs' words come with the part of them that is
+-- underlined, from their start: "Brom snagged it", "Finally!" (the user,
+-- 16 Oct).
+function Words.Snagged(visit, guid)
+    local part = ("%s snagged it"):format(Capital(Whose(visit, guid)))
+    return ("%s from %s"):format(part, Whose(visit, visit.me)), part
+end
+function Words.Versus(mine, theirs) return ("%d against %d"):format(mine, theirs) end
+function Words.Finally(total)
+    return ("Finally! After %s drops, it's yours"):format(NUMBER[total] or tostring(total)), "Finally!"
+end
+function Words.Rolled(visit, guid, roll) return ("%s rolled a %d"):format(Capital(Whose(visit, guid)), roll) end
+function Words.OnItem(link) return "on " .. ns.Style.Inkify(link or "?") end
+
+-- The party's cards (step 4). A fact of a card's holder's run in words
+-- (Core/DungeonRun.lua's Person), its subject the card's own: "died
+-- twice", "won [Golemguard Chest]", "snagged [Gnarled Tusk Band] from
+-- you", "rolled a 2", "reached level 23" (the level star's words),
+-- "joined late", "left early", "your third run together", past the tenth
+-- "11 runs together". Facts, never a judgement. "You" is the visit's own
+-- character's name in a shared diary, as on the strips. A card prints
+-- none of them (its notes are handwritten, UI/Dungeon/Cards.lua): a note
+-- about an item says this in its tooltip where the item's cannot show.
+function Words.Fact(fact, visit)
+    local k = fact.kind
+    if k == "snagged" then
+        local from = visit and Whose(visit, visit.me) or "you"
+        return ("snagged %s from %s"):format(ns.Style.Inkify(fact.item or "?"), from)
+    end
+    if k == "won" then return "won " .. ns.Style.Inkify(fact.item or "?") end
+    if k == "died" then return "died " .. Times(fact.n) end
+    if k == "rolled" then return ("rolled a %d"):format(fact.roll) end
+    if k == "reached" then return ("reached level %d"):format(fact.level) end
+    if k == "late" then return "joined late" end
+    if k == "early" then return "left early" end
+    if k == "together" then
+        return ORDINAL[fact.n] and ("your %s run together"):format(ORDINAL[fact.n]) or ("%d runs together"):format(fact.n)
+    end
+end
+
+-- The card's line under the name: "Level 22 Shaman" (never the race).
+function Words.Who(level, class)
+    local parts = {}
+    if level then parts[#parts + 1] = "Level " .. level end
+    if class then parts[#parts + 1] = class end
+    return table.concat(parts, " ")
+end
+
+-- A gnome's employee number on their badge, from the GUID: "4471-G"
+-- (printed matter, so its zeros, not the diary's hand; the badge's own
+-- "EMPLOYEE ID" says what it is).
+function Words.Serial(guid)
+    local hex = tostring(guid or ""):match("(%x%x%x%x%x%x)$") or "0"
+    return ("%04d-G"):format((tonumber(hex, 16) or 0) % 10000)
+end
+
+-- The tooltip every card's way into the diary gives, a click hint as the
+-- timeline's ("Click to open its map.").
+Words.ADD = "Click to add them to the diary."
+-- The cards' stack on the table (UI/Dungeon/Cards.lua), lying together.
+Words.STACK = "Click to fan out the cards."

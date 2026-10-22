@@ -52,6 +52,9 @@
 --               context.watched is a watcher's seconds, context.pct a
 --               rescue's health left, and { npcID, name, rank } the
 --               creature, where known
+--   plate       its rank for the plate on the person's page, lower first
+--               (Core/PersonPlate.lua: Your Diary's ranks where the kinds
+--               meet); without one, PersonPlate.LAST; false, never weighed
 --   hidden      never shown on the timeline
 --   reason      why the picker offers someone whose latest row it is ("they
 --               saved you"); without one, "recent <type>"
@@ -111,6 +114,6 @@ end
 -- (its Kind.lua; .claude/skills/new-feature/folder.md).
 
 Rows.Register("group_join", { structural = true, meeting = true, dealt = "together", matters = true,
-    activity = "group" })
+    activity = "group", plate = 8 })
 -- Implied by the session's end, so never a line.
 Rows.Register("group_leave", { structural = true, hidden = true })

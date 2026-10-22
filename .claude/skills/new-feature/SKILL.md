@@ -148,7 +148,7 @@ surface is offered only if the signals carry what it needs:
 
 | A player would see… | Needs from the signal | Lands in | Example |
 |---|---|---|---|
-| a line on that person's timeline | another player's GUID | `Kind.lua`: `ns.Rows.Register` | Chat, Trade, Campfire |
+| a line on that person's timeline | another player's GUID | `Kind.lua`: `ns.Rows.Register` (with `plate`, its rank for the person page's plate, Core/PersonPlate.lua) | Chat, Trade, Campfire |
 | the person marked on Recently nearby's day | a player within range (a `dealt` mark from `Rows.DEALT`; a new mark is a core hook) | `Kind.lua`: Rows `dealt` | Trade |
 | a count in a together session | a group and a session open | core session (Rares writes through `Sessions.Rare`) | Rares |
 | kept on the user's route | the user, a place, a time | `Kind.lua`: `Journey.RegisterList` | Campfire, Hunts |

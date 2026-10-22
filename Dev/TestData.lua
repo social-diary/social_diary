@@ -310,6 +310,10 @@ function TestData.Remove()
     -- them drops those sessions. A visit outlives one member, though, so the
     -- made-up ones go by their mark.
     ns.Characters.Forget(GUID)
+    -- And the runs' other members, seen for their cards.
+    for _, m in ipairs({ BROM, KAELITH, ZURI }) do
+        if ns.db.characters[m.guid] and not ns.Diary.IsDiary(m.guid) then ns.Characters.Forget(m.guid) end
+    end
     for _, visit in ipairs(ns.Instances.All()) do
         if visit.test then ns.Instances.Remove(visit.id) end
     end
@@ -324,6 +328,13 @@ function TestData.Write(now)
         first = "Tester", surname = "Testerson", class = "SHAMAN", race = "Orc",
         faction = "Horde", level = 22, sex = 2, time = now - 6 * DAY - HOUR,
     })
+    -- The dungeon runs' other members, seen as they grouped: strangers, not
+    -- in the diary, of the races their business cards are told by on the
+    -- map (UI/Dungeon/Cards.lua): a dwarf's, a gnome's and a night elf's.
+    for _, m in ipairs({ { BROM, "Dwarf", 22 }, { ZURI, "Gnome", 21 }, { KAELITH, "NightElf", 22 } }) do
+        ns.Characters.Observe(m[1].guid, { first = m[1].first, surname = m[1].surname, class = m[1].class,
+            race = m[2], faction = "Horde", level = m[3], sex = 2, time = now - 4 * HOUR })
+    end
 
     -- Six days ago: chat and a trade with a stranger (the features', at
     -- "met" and "traded"), then the add, then a first questing session
@@ -394,34 +405,69 @@ function TestData.Write(now)
     Beat("began", s3.startedAt, 3, s3)
     -- As the capture writes a run (Core/Instances.lua): the pulls, a wipe
     -- on Aggem and a ghost run after it, a death to trash on the way to
-    -- Jargba, and two bosses' loot, one for Tester (a diary entry) and one
-    -- for the user, for the map's notes (Core/DungeonRun.lua).
+    -- Jargba, Jargba nearly lost (two down in the kill), a long last fight
+    -- with Ramtusk, and three bosses' loot, one for Tester (a diary entry),
+    -- an epic and a blue for the user, for the map's notes and its marks
+    -- (Core/DungeonRun.lua; UI/Dungeon/Print.lua's flavour). Tester's level
+    -- 22 falls in it too (Features/LevelUps/Dev.lua). Its rolls (pass B): a
+    -- blue Zuri snagged from the user at Ramtusk, 80 against her 85; Brom's
+    -- Need of 2 on green boots found on the way to Jargba; and the charm
+    -- off Jargba, which the user needed and lost to Zuri on an earlier run
+    -- (nine days ago, below: without Tester, so on no timeline of his),
+    -- finally theirs.
     local at = function(m) return t3 + m * MIN end
+    local CHARM = "|cnIQ4:|Hitem:6685::::::::22:1491::::::::|h[Spiteful Death Charm]|h|r"
+    local early = now - 9 * DAY
+    Visit({
+        instanceID = 47, name = "Razorfen Kraul", instanceType = "party", difficulty = "Normal",
+        startedAt = early, endedAt = early + 40 * MIN,
+        members = { Me(), BROM, KAELITH, ZURI },
+        bossesKilled = { "Roogug", "Aggem Thorncurse", "Death Speaker Jargba" },
+        bossTotal = 6, spans = { { from = early, to = early + 40 * MIN } },
+        rolls = {
+            { key = "test:early:1", item = CHARM, itemID = 6685, time = early + 25 * MIN,
+                need = { [ns.ownGUID] = 41, [ZURI.guid] = 77 }, winner = ZURI.guid, winRoll = 77, winNeed = true },
+        },
+    })
     Visit({
         instanceID = 47, name = "Razorfen Kraul", instanceType = "party", difficulty = "Normal",
         startedAt = at(3), endedAt = at(38),
         members = { Tester(), Me(), BROM, KAELITH, ZURI },
         bossesKilled = { "Roogug", "Aggem Thorncurse", "Death Speaker Jargba", "Overlord Ramtusk" },
-        bossTotal = 6, deaths = 4, wipes = 1, sessionIds = { s3.id },
+        bossTotal = 6, deaths = 6, wipes = 1, sessionIds = { s3.id },
         spans = { { from = at(3), to = at(14), ghost = true }, { from = at(16), to = at(38) } },
         pulls = {
             { id = 2773, name = "Roogug", start = at(7), stop = at(8), killed = true },
             { id = 2774, name = "Aggem Thorncurse", start = at(12), stop = at(13) },
             { id = 2774, name = "Aggem Thorncurse", start = at(18), stop = at(20), killed = true },
             { id = 2775, name = "Death Speaker Jargba", start = at(26), stop = at(27), killed = true },
-            { id = 2776, name = "Overlord Ramtusk", start = at(33), stop = at(35), killed = true },
+            { id = 2776, name = "Overlord Ramtusk", start = at(28), stop = at(38), killed = true },
         },
         deathLog = {
             { guid = BROM.guid, time = at(12) + 30, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
             { guid = ZURI.guid, time = at(12) + 45, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
             { guid = KAELITH.guid, time = at(12) + 50, pull = 2, killer = { name = "Aggem Thorncurse", npcID = 4424 } },
             { guid = ns.ownGUID, time = at(23), killer = { name = "Razorfen Defender", npcID = 4442 } },
+            { guid = BROM.guid, time = at(26) + 20, pull = 4, killer = { name = "Death Speaker Jargba", npcID = 4428 } },
+            { guid = KAELITH.guid, time = at(26) + 40, pull = 4, killer = { name = "Death Speaker Jargba", npcID = 4428 } },
         },
         loot = {
             { guid = GUID, item = "|cnIQ3:|Hitem:6681::::::::22:1491::::::::|h[Thornspike]|h|r",
                 itemID = 6681, time = at(20) + 20 },
-            { guid = ns.ownGUID, item = "|cnIQ2:|Hitem:6686::::::::22:1491::::::::|h[Tusken Helm]|h|r",
-                itemID = 6686, time = at(35) + 15 },
+            { guid = ns.ownGUID, item = "|cnIQ4:|Hitem:6685::::::::22:1491::::::::|h[Spiteful Death Charm]|h|r",
+                itemID = 6685, time = at(27) + 15 },
+            { guid = ns.ownGUID, item = "|cnIQ3:|Hitem:6686::::::::22:1491::::::::|h[Tusken Helm]|h|r",
+                itemID = 6686, time = at(38) },
+        },
+        rolls = {
+            { key = "test:rfk:1", item = "|cnIQ3:|Hitem:6687::::::::22:1491::::::::|h[Gnarled Tusk Band]|h|r",
+                itemID = 6687, time = at(38) + 30, need = { [ns.ownGUID] = 80, [ZURI.guid] = 85 },
+                winner = ZURI.guid, winRoll = 85, winNeed = true },
+            { key = "test:rfk:2", item = "|cnIQ2:|Hitem:990101::::::::22:1491::::::::|h[Moss-Stitched Boots]|h|r",
+                itemID = 990101, time = at(24), need = { [BROM.guid] = 2, [KAELITH.guid] = 57 },
+                winner = KAELITH.guid, winRoll = 57, winNeed = true },
+            { key = "test:rfk:3", item = CHARM, itemID = 6685, time = at(27) + 10,
+                need = { [ns.ownGUID] = 64, [ZURI.guid] = 12 }, winner = ns.ownGUID, winRoll = 64, winNeed = true },
         },
     })
     Point("tester", { n = 3, session = s3, now = now, Row = Row })

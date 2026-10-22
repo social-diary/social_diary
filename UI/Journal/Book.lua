@@ -87,10 +87,9 @@ J.selected = nil
 -- "map" while the map sheet lies on the book, else "timeline".
 J.tab = "timeline"
 
--- The dungeon run whose page lies on the right page in place of the
--- person's (UI/Dungeon/Page.lua): { id, guid, offset } (the visit, whose
--- page it was opened on, and where their timeline was scrolled to), or nil.
--- Not kept past closing the book.
+-- The dungeon run laid out on the table over the book (UI/Dungeon/Spread.lua):
+-- { id, guid } (the visit, and whose page it was opened from), or nil. Not
+-- kept past putting it away, turning the book or closing it.
 J.visit = nil
 
 -- Writing mode: the right page shows the entry form (UI/Windows/Entry.lua) in
@@ -220,6 +219,9 @@ local function ShowView()
         if J.journal.ribbons[key] then J.journal.ribbons[key]:SetActive(key == J.view) end
     end
     TurnStack()
+    -- A run out on the table lies over a person's page: another page puts
+    -- it away.
+    if J.visit and J.view ~= "people" then ns.UI.DungeonPage.Close(true) end
     local open = J.Page(J.view)
     if open.refresh then open.refresh() end
     -- Left before its end, the introduction asks to be gone back to
