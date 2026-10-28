@@ -43,6 +43,7 @@ Vendor/DungeonCrawlerForever/Data/Loot.lua
 Core/DungeonRoutes.lua
 Core/Dungeons.lua
 Core/DungeonRun.lua
+Core/DungeonWay.lua
 Core/Roster.lua
 Core/Reunions.lua
 Core/Timeline.lua
@@ -140,6 +141,7 @@ UI/Dungeon/Notes.lua
 UI/Dungeon/Sheet.lua
 UI/Dungeon/Cards.lua
 UI/Dungeon/Spread.lua
+UI/Dungeon/Way.lua
 UI/Journal/Nearby.lua
 UI/Journal/Front.lua
 UI/Journal/Corner.lua

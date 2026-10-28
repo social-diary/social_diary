@@ -393,6 +393,8 @@ local function Gone()
     local open = J.visit ~= nil
     J.visit = nil
     if spread.fanned then DungeonPage.Fan(spread, false, true) end
+    -- The pen put down, what it drew kept (WAY-11).
+    DungeonPage.WayPutDown(spread.map)
     spread.map:Hide(true)
     Away(false)
     StandIn(SPREAD.book)

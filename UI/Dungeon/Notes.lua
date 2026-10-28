@@ -734,6 +734,8 @@ function DungeonPage.LayNotes(view, plan, P, K)
     -- The party's cards in their stack over the map's edge (UI/Dungeon/
     -- Cards.lua).
     if view.stack then taken[#taken + 1] = view.stack.keep end
+    -- The pencil's slip over its top edge (UI/Dungeon/Way.lua).
+    if view.wayKeep then taken[#taken + 1] = view.wayKeep end
     local moreY = (view.labelBox and view.labelBox[2] or H - MORE.inset) - MORE.over
     local moreBox = { W - MORE.inset - MORE.w, moreY - MORE.h / 2, W - MORE.inset, moreY + MORE.h / 2 }
     taken[#taken + 1] = moreBox

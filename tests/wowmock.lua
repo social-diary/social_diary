@@ -279,7 +279,9 @@ local function NewWidget(frameType, name, parent, template)
     function w:GetHeight() return self.height or 0 end
     -- Where it lies on the screen, for code that reads a frame back after
     -- it was dragged. Nothing is laid out: a test sets `w.at` = { x, top }.
-    function w:GetCenter() return self.at and self.at[1], self.at and 0 end
+    -- `at[3]`, when given, is its middle's height (else 0).
+    function w:GetCenter() return self.at and self.at[1], self.at and (self.at[3] or 0) end
+    function w:GetEffectiveScale() return self.effectiveScale or 1 end
     -- Its scale, as last set (SetScale is recorded with the no-ops).
     function w:GetScale()
         local scale = rec.calls.SetScale
@@ -1008,6 +1010,12 @@ _G.GetBindingText = function(key) return key end
 _G.IsAltKeyDown = function() return M.modifiers.alt == true end
 _G.IsControlKeyDown = function() return M.modifiers.ctrl == true end
 _G.IsShiftKeyDown = function() return M.modifiers.shift == true end
+
+-- The mouse on the screen, in the client's pixels (GetCursorPosition):
+-- what a test says, M.pointer = { x, y }; scaled by a frame's
+-- GetEffectiveScale (its `effectiveScale`, else 1).
+M.pointer = { 0, 0 }
+_G.GetCursorPosition = function() return M.pointer[1], M.pointer[2] end
 
 -- Macros, for the book Settings puts on an action bar: M.macros holds the
 -- account's, in order, as { name, icon, body }; the index is the position,

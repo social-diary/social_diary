@@ -178,6 +178,8 @@ end
 --   K.Link(font, onClick): a link whose text and underline turn with it
 --   K.Screen(x, y): a point of the sheet on the screen, relative to its
 --   middle, y up (for what is drawn beside it: a margin note's leader)
+--   K.Unscreen(x, y): back from there to the sheet; K.Cursor(): the point
+--   of the sheet under the cursor (a pen on the dungeon map, WAY-12)
 --   K.Mount(x, y, w, h, turn): glued, where it is (its top left, right and
 --   down from `parent`'s), its size and its turn; laid by the next K.Lay
 function ns.UI.LooseSheet(parent, W, H, opts)
@@ -363,6 +365,39 @@ function ns.UI.LooseSheet(parent, W, H, opts)
         end
         local cx, cy = x - W / 2, H / 2 - y
         return cx * cos - cy * sin, cx * sin + cy * cos
+    end
+
+    -- Back again: a point on the screen (relative to the sheet's middle, y
+    -- up) to the flat sheet, x right and y down from its top left. Turned
+    -- back, then the drift taken off: it is a few pixels at most and
+    -- changes slowly across a facet, so taking off the drift where the
+    -- last guess lies settles in a few rounds.
+    local UNDRIFT = { rounds = 8, close = 1e-4 }
+    local function Unscreen(sx, sy)
+        local cx, cy = sx * cos + sy * sin, -sx * sin + sy * cos
+        local tx, ty = cx + W / 2, H / 2 - cy
+        if not (mesh[1] and view.bends) then return tx, ty end
+        local x, y = tx, ty
+        for _ = 1, UNDRIFT.rounds do
+            local i, j, t, u = Facet(x, y)
+            t, u = math.max(0, math.min(1, t)), math.max(0, math.min(1, u))
+            local a, b, c, d = mesh[i][j], mesh[i + 1][j], mesh[i][j + 1], mesh[i + 1][j + 1]
+            local nx = tx - ((a.dx * (1 - t) + b.dx * t) * (1 - u) + (c.dx * (1 - t) + d.dx * t) * u)
+            local ny = ty - ((a.dy * (1 - t) + b.dy * t) * (1 - u) + (c.dy * (1 - t) + d.dy * t) * u)
+            local moved = math.abs(nx - x) + math.abs(ny - y)
+            x, y = nx, ny
+            if moved < UNDRIFT.close then break end
+        end
+        return x, y
+    end
+
+    -- The point of the flat sheet under the cursor, x right and y down
+    -- from its top left (on the paper or past its edge).
+    local function Cursor()
+        local x, y = GetCursorPosition()
+        local scale = S:GetEffectiveScale() or 1
+        local mx, my = S:GetCenter()
+        return Unscreen(x / scale - (mx or 0), y / scale - (my or 0))
     end
 
     -- Places `region` on the sheet at x, y (its top left, the sheet's top
@@ -729,7 +764,7 @@ function ns.UI.LooseSheet(parent, W, H, opts)
 
     local K = { Place = Place, PlaceButton = PlaceButton, PlaceText = PlaceText, Width = Width,
         Wrap = Wrap, Texture = Texture, Pool = Pool, Split = Split, Bend = Bend, Quad = Quad, Light = Light,
-        Link = Link, Screen = Screen }
+        Link = Link, Screen = Screen, Unscreen = Unscreen, Cursor = Cursor }
 
     -- Glued: where it is mounted on `parent`, and its turn as given.
     local glue = { x = 0, y = 0, turn = opts.turn or 0 }

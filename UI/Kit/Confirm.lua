@@ -31,12 +31,13 @@ StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"] = {
 
 -- `accept`, if given, names the button that goes ahead in place of Delete,
 -- for a question that deletes nothing; it comes without the alert sign.
--- The client reads both each time it shows the dialog.
+-- The client reads both each time it shows the dialog. Returns the popup
+-- shown, for a caller over the dialogs' strata to raise (the dungeon map).
 function Dialog.Confirm(text, action, accept)
     local dialog = StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"]
     dialog.button1 = accept or "Delete"
     dialog.showAlert = accept == nil
-    StaticPopup_Show("SOCIAL_DIARY_CONFIRM", text, nil, action)
+    return StaticPopup_Show("SOCIAL_DIARY_CONFIRM", text, nil, action)
 end
 
 -- Entry.Close announces SD_DIARY_CHANGED, which refreshes the journal and

@@ -169,6 +169,15 @@ function DungeonMap.At(floor, x, y, w, h)
     end
 end
 
+-- At turned round: a point of the sheet to the floor it shows there,
+-- srcFloorID, x, y (ns.Dungeons.Unpoint), or nil off the floor printed.
+function DungeonMap.From(floor, x, y, w, h)
+    return function(sx, sy)
+        if not floor or not w or w <= 0 or not h or h <= 0 then return nil end
+        return ns.Dungeons.Unpoint(floor, (sx - x) / w, (sy - y) / h)
+    end
+end
+
 -- A printer of floors on a loose sheet: `K` is its toolkit and `sheet` the
 -- frame its masks are made on (UI/Paper/Sheet.lua). The art goes on
 -- `layer` (BORDER 2, over the ground and under the grime along the folds),

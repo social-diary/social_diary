@@ -308,7 +308,9 @@ end
 -- inked), view.printer (the art's, UI/Map/Dungeon.lua), view.floors,
 -- view.floorIndex, view.box (the whole floor on the sheet), view.links
 -- (the floors') and view.labelBox, view.none (the pencil line), view.straight (laid straight, as
--- its masks cannot turn), and the toolkit, view.K.
+-- its masks cannot turn), and the toolkit, view.K. view:Under() is the
+-- floor's point under the cursor, view.From(x, y) any point of the sheet's
+-- (WAY-12).
 function DungeonPage.Sheet(parent)
     -- Its size now: the shown map's (Shape).
     local W, H = SHEET.w, SHEET.h
@@ -340,7 +342,7 @@ function DungeonPage.Sheet(parent)
     local labelPool = K.Pool("ARTWORK", 3)
     view.printer = ns.UI.DungeonMap.Printer(K, S, "BORDER", 2)
     local P = Placer(view, K)
-    view.pools = P.pools
+    view.pools, view.placer = P.pools, P
     view.label = labelPool
 
     view.none = Style.Text(S, FONT.pencil)
@@ -397,9 +399,9 @@ function DungeonPage.Sheet(parent)
 
     -- What the map marks, in the floor's units, which the art's border is
     -- never cut through (UI/Map/Dungeon.lua's Kept): the bosses it shows,
-    -- the way in, the way through where it is drawn, and the deaths placed
-    -- by a boss or on the way (round its bosses and the way, so within
-    -- their margins).
+    -- the way in, the way through where it is drawn (the usual one or the
+    -- user's own, WAY-17), and the deaths placed by a boss or on the way
+    -- (round its bosses and the way, so within their margins).
     local function Marked(visit, floor, wing, notes, drawRoute)
         local D, points = ns.Dungeons, {}
         local function Add(f, x, y, kind)
@@ -411,7 +413,7 @@ function DungeonPage.Sheet(parent)
         end
         local door = D.Entrance(visit.instanceID, floor.uiMapID)
         if door then Add(floor.uiMapID, door.x, door.y, "door") end
-        for _, pt in ipairs(drawRoute and D.Route(visit.instanceID, wing) or {}) do
+        for _, pt in ipairs(drawRoute and D.WayOf(visit, wing) or {}) do
             local b = pt.boss and D.Boss(visit.instanceID, pt.boss)
             if b and b.floor and b.x then Add(b.floor, b.x, b.y, "way") else Add(pt.f, pt.x, pt.y, "way") end
         end
@@ -488,7 +490,8 @@ function DungeonPage.Sheet(parent)
         end
         Links({})
         DungeonPage.ClearNotes(view)
-        view.plan, view.box, view.kept, view.scale = nil, nil, nil, nil
+        view.plan, view.box, view.kept, view.scale, view.From, view.At = nil, nil, nil, nil, nil, nil
+        DungeonPage.WayLaid(view)
         view.none:SetText(("The diary has no map of %s yet."):format(visit.name or "this place"))
         K.PlaceText(view.none, W / 2, H / 2, "CENTER")
         view.none:Show()
@@ -503,6 +506,8 @@ function DungeonPage.Sheet(parent)
     -- across, down }), view.kept (the part of the floor printed, in its
     -- units), view.scale (px of the sheet per unit).
     function view:Open(visit, guid)
+        -- Another run: the pen on this one is put down first (WAY-11).
+        DungeonPage.WayBefore(self, visit)
         self.visit, self.guid = visit, guid
         local D, Map = ns.Dungeons, ns.UI.DungeonMap
         local wing = DungeonPage.Wing(visit)
@@ -527,12 +532,12 @@ function DungeonPage.Sheet(parent)
         -- its shape. The margins are the sheet's px,
         -- so the scale is found as the sheet is (twice: the second cut at
         -- the first's scale). The usual way through as the settings say
-        -- (Interface, Dungeons and Raids).
+        -- (Interface, Dungeons and Raids); the user's own always (WAY-16).
         local notes = ns.DungeonRun.Notes(visit)
         -- The rolls (pass B), for the strips.
         notes.rolls = ns.DungeonRun.Rolls(visit)
-        local route = D.Route(visit.instanceID, wing)
-        local drawRoute = route ~= nil and #route > 1 and ns.Setting("dungeonRoute") == true
+        local route, own = D.WayOf(visit, wing)
+        local drawRoute = route ~= nil and #route > 1 and (own or ns.Setting("dungeonRoute") == true)
         local points = Marked(visit, floor, wing, notes, drawRoute)
         local kept, w, h = Map.Kept(floor), nil, nil
         for _ = 1, 2 do
@@ -547,10 +552,13 @@ function DungeonPage.Sheet(parent)
         -- itself (a trimmed border would lie past the paper's edge).
         local box = { x = -kept[1] * s, y = -kept[2] * s, w = floor.w * s, h = floor.h * s }
         self.box = box
+        -- Back from the sheet to the floor, for the pen (WAY-12).
+        self.From = Map.From(floor, box.x, box.y, box.w, box.h)
 
         -- Where everything goes, before the paper is laid, so its folds
         -- keep clear of it.
         local At = Map.At(floor, box.x, box.y, box.w, box.h)
+        self.At = At
         local inset = LABEL.inside
         local plan = DungeonPage.Plan({ visit = visit, floor = floor, wing = wing, box = box, At = At,
             notes = notes, route = drawRoute, inside = { inset, inset, W - inset, H - inset },
@@ -573,10 +581,22 @@ function DungeonPage.Sheet(parent)
         self.plan = DungeonPage.Ink(plan, P, self.paper)
         Links(floors, index)
         -- Where the party's cards lie in their stack by it (UI/Dungeon/
-        -- Cards.lua), before the strips, which keep out from under it.
+        -- Cards.lua), and the pencil's slip on its top edge (UI/Dungeon/
+        -- Way.lua), before the strips, which keep out from under both.
         self.stack = DungeonPage.StackPlace(self)
+        DungeonPage.WayLaid(self)
         DungeonPage.LayNotes(self, self.plan, P, K)
         if self.onLaid then self.onLaid() end
+        -- Laid again while the pen is out (another floor, the screen
+        -- changed): it is taken up again on what is shown now.
+        DungeonPage.WayAfter(self)
+    end
+
+    -- The floor's point under the cursor: srcFloorID, x, y (as a route
+    -- keeps it, ns.Dungeons.Unpoint), or nil off the floor printed.
+    function view:Under()
+        if not self.From then return nil end
+        return self.From(K.Cursor())
     end
 
     view:Hide()

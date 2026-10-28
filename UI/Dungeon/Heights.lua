@@ -30,10 +30,11 @@ local DungeonPage = ns.UI.DungeonPage
 -- what is under it (`slip`), a raid's deck, a small stack (`deck`); the
 -- cards lying in their stack, a few cards thick, on the world (`stack`);
 -- the cards fanned out of it, held up over the map (`fan`); the bookmark on
--- the world (`bookmark`), and how much higher something picked up under
--- the mouse is (`lifted`).
+-- the world (`bookmark`), the pencil's slip across the sheet's top edge
+-- (`way`, UI/Dungeon/Way.lua), and how much higher something picked up
+-- under the mouse is (`lifted`).
 local HEIGHT = { sheet = 0, strip = 1, tacked = 2.5, overhang = 3, onCard = 1.5, slip = 1, deck = 3.5, stack = 2,
-    fan = 9, bookmark = 1.5, lifted = 5 }
+    fan = 9, bookmark = 1.5, way = 2, lifted = 5 }
 DungeonPage.HEIGHT = HEIGHT
 
 -- The shadow of an outline `h` px up on `ground` ("paper", "world"): the

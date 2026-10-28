@@ -8,7 +8,9 @@
 -- a guide:
 --   the way     the usual way through (ns.Dungeons.Route, the author's, not
 --               the user's: there are no coordinates inside), inked as far
---               as the furthest boss killed, the rest in pencil (ROUTE)
+--               as the furthest boss killed, the rest in pencil (ROUTE);
+--               or the way the user drew on the run (visit.route, §19,
+--               ns.Dungeons.WayOf), inked in full: it is where they went
 --   the door    where the way in is, a doorway's arch (the plates' DOOR)
 --   bosses      each its own face, round (Style.BossMedallion, MEDAL):
 --               killed in brass, numbered in the order they fell (a kill
@@ -250,13 +252,14 @@ end
 --------------------------------------------------------------------------
 
 -- The way through over the art: `At(floor, x, y)` places a point of any
--- floor on it, or nil. { route, pts (each { x, y }, or false off the floor
--- shown), stops (a boss's name, ns.Dungeons.Norm, to its point), reached
--- (the furthest stop whose boss fell) }, or nil without a way through.
--- A stop is its boss: where the boss stands, the way meets it.
+-- floor on it, or nil. { route, own (the user drew it), pts (each { x, y },
+-- or false off the floor shown), stops (a boss's name, ns.Dungeons.Norm,
+-- to its point), reached (the furthest stop whose boss fell; the user's
+-- own way all of it, WAY-14) }, or nil without a way through. A stop is
+-- its boss: where the boss stands, the way meets it.
 local function Path(visit, wing, At, notes)
     local D = ns.Dungeons
-    local route = D.Route(visit.instanceID, wing)
+    local route, own = D.WayOf(visit, wing)
     if not route or #route < 2 then return nil end
     local at, pts, stops, reached = KilledAt(visit, notes), {}, {}, 0
     for i, p in ipairs(route) do
@@ -271,7 +274,8 @@ local function Path(visit, wing, At, notes)
             if at[key] then reached = i end
         end
     end
-    return { route = route, pts = pts, stops = stops, reached = reached }
+    if own then reached = #route end
+    return { route = route, own = own, pts = pts, stops = stops, reached = reached }
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.

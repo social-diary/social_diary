@@ -6,7 +6,8 @@
 -- GetInstanceInfo gives and visits keep.
 --
 -- Only the canvas is read: art, floors, boss positions, the route, the
--- entrance, and which boss drops what (to place loot). Tactics (the
+-- entrance, the stairs and doors and how they link (for a way the user
+-- draws, §19), and which boss drops what (to place loot). Tactics (the
 -- bosses' `how`, abilities, quests) and drop rates are not.
 --
 -- A floor is { uiMapID, name, w, h, ... } in one of four shapes: client art
@@ -268,12 +269,63 @@ function Dungeons.Route(instanceID, wing)
     return routes and routes[wing or 0]
 end
 
+-- A run's way through: the one the user drew on it (visit.route,
+-- Core/DungeonWay.lua, WAY-2), else the usual way. Returns the points and
+-- whether they are the user's own.
+function Dungeons.WayOf(visit, wing)
+    if not visit then return nil, false end
+    if type(visit.route) == "table" then return visit.route, true end
+    return Dungeons.Route(visit.instanceID, wing), false
+end
+
 -- The entrance on a floor, { x, y }, or nil. The other markers are
--- wayfinding and are not read (D12).
+-- read only for the user's own way (Markers).
 function Dungeons.Entrance(instanceID, floorID)
     local markers = DCF().Markers and DCF().Markers[instanceID]
     for _, m in ipairs(markers and markers[floorID] or {}) do
         if m.kind == "entrance" then return { x = m.x, y = m.y } end
+    end
+end
+
+-- The markers on a floor, as the data has them: { kind ("up", "down",
+-- "left", "right", "entrance", "exit", "trigger", "portal"), x, y, boss
+-- (a trigger's), label (a trigger's) }. Steps for the user's own way
+-- (WAY-8); never drawn as a guide.
+function Dungeons.Markers(instanceID, floorID)
+    local markers = DCF().Markers and DCF().Markers[instanceID]
+    return markers and markers[tonumber(floorID)] or {}
+end
+
+-- How near two ends must lie to be the same marker (DCF's LINK_TOL).
+local LINK_NEAR = 0.006
+local function Near(f1, x1, y1, f2, x2, y2)
+    return f1 == f2 and math.abs(x1 - x2) < LINK_NEAR and math.abs(y1 - y2) < LINK_NEAR
+end
+Dungeons.Near = Near
+
+-- The other end of the stairs or door whose one end is the marker at
+-- floorID, x, y: { floor, x, y, letter }, or nil when it leads nowhere.
+-- Letters as DCF gives them: A for a wing's first link, B the next, both
+-- ends the same. Only links between floors the dungeon shows count.
+function Dungeons.LinkOf(instanceID, floorID, x, y)
+    floorID = tonumber(floorID)
+    local links = DCF().MarkerLinks and DCF().MarkerLinks[instanceID]
+    if not links then return nil end
+    local shown, wingOf = {}, {}
+    for _, w in ipairs(Dungeons.Wings(instanceID) or { { wing = nil } }) do
+        for _, fl in ipairs(Dungeons.Floors(instanceID, w.wing) or {}) do
+            shown[fl.uiMapID], wingOf[fl.uiMapID] = true, w.wing or 0
+        end
+    end
+    local count = {}
+    for _, l in ipairs(links) do
+        if shown[l.fa] and shown[l.fb] then
+            local key = wingOf[l.fa] or 0
+            count[key] = (count[key] or 0) + 1
+            local letter = string.char(65 + (count[key] - 1) % 26)
+            if Near(l.fa, l.xa, l.ya, floorID, x, y) then return { floor = l.fb, x = l.xb, y = l.yb, letter = letter } end
+            if Near(l.fb, l.xb, l.yb, floorID, x, y) then return { floor = l.fa, x = l.xa, y = l.ya, letter = letter } end
+        end
     end
 end
 
@@ -298,6 +350,32 @@ function Dungeons.Point(floor, srcFloorID, x, y)
         return nil
     end
     if tonumber(srcFloorID) == floor.uiMapID then return x, y end
+end
+
+-- Back again: a point of the floor shown (fractions of its art) to the
+-- floor it belongs to and where on that floor's art, as Point takes it:
+-- srcFloorID, x, y, or nil off the art. A combined map looks it up in its
+-- pieces, the last one printed first (it lies on top). A pen's point is
+-- kept this way (WAY-4), so it stands on its own floor whichever is shown.
+function Dungeons.Unpoint(floor, fx, fy)
+    if not floor or not fx or not fy then return nil end
+    if fx < 0 or fx > 1 or fy < 0 or fy > 1 then return nil end
+    if floor.combined then
+        local cx, cy = fx * floor.w, fy * floor.h
+        local pieces = floor.data.pieces or {}
+        for k = #pieces, 1, -1 do
+            local p = pieces[k]
+            local sf = Dungeons.Floor(floor.instanceID, p.floor)
+            if sf and p.s and p.s > 0 then
+                local px, py = p.x0 + (cx - p.dx) / p.s, p.y0 + (cy - p.dy) / p.s
+                if px >= p.x0 and px <= p.x1 and py >= p.y0 and py <= p.y1 then
+                    return p.floor, px / sf.w, py / sf.h
+                end
+            end
+        end
+        return nil
+    end
+    return floor.uiMapID, fx, fy
 end
 
 -- A visit's killed bosses as DCF records, in the order they fell. A name
