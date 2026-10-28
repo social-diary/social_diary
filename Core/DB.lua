@@ -24,7 +24,7 @@ local addonName, ns = ...
 -- the per-character file. They move apart: a file can be converted at one
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
-local SCHEMA_VERSION = 4     -- a diary
+local SCHEMA_VERSION = 5     -- a diary
 local ACCOUNT_SCHEMA = 1     -- SocialDiaryDB, apart from the shared diary
 local CHARACTER_SCHEMA = 1   -- SocialDiaryCharDB, apart from its own diary
 
@@ -149,10 +149,21 @@ end
 -- The migration steps, by the version each one reaches: STEPS.diary[5]
 -- takes a diary from 4 to 5. A step gets the table as saved, before any
 -- default is filled in, so a renamed key is still under its old name and the
--- new one is not yet there. There are none yet: diary schema 4 and file
--- schema 1 (11 Oct 2026) began the per-character files without carrying
--- older diaries forward, as nobody but the developer had one.
+-- new one is not yet there. Diary schema 4 and file schema 1 (11 Oct
+-- 2026) began the per-character files without carrying older diaries
+-- forward, as nobody but the developer had one; the steps start after.
 local STEPS = { diary = {}, account = {}, character = {} }
+
+-- 5 (28 Oct 2026): each character's route gains its sittings
+-- (Core/Sittings.lua), filled once from the route's own gaps.
+STEPS.diary[5] = function(t)
+    if type(t.journey) ~= "table" then return end
+    for _, j in pairs(t.journey) do
+        if type(j) == "table" and j.sittings == nil then
+            j.sittings = ns.Sittings.Lines(ns.Sittings.FromRoute(j))
+        end
+    end
+end
 
 -- Oldest first, bumping `schema` after each step, so a table that skipped
 -- versions still walks every one. A table with no number is new, and so
@@ -166,6 +177,7 @@ local function Migrate(t, current, steps)
 end
 
 ns._test.Migrate = Migrate
+ns._test.DiarySteps = STEPS.diary
 
 -- Before schema 4 the account file was the one diary, every character's.
 -- It is kept as the shared diary rather than thrown away, so turning sharing

@@ -148,8 +148,8 @@ end
 -- Every entry's plates as they are: each plate's margin kinds and words.
 local function Pages()
     local out = {}
-    for i in ipairs(page.recap.entries) do
-        Open(i)
+    for _, at in ipairs(T.DiaryPages(page)) do
+        T.OpenDiaryPage(page, at.i, at.k)
         local lines = {}
         for k, plate in ipairs(page.plates) do
             if plate:IsShown() then
@@ -159,7 +159,7 @@ local function Pages()
                     page.captionPool[k].text or "")
             end
         end
-        out[i] = tostring(page.pattern) .. " " .. table.concat(lines, " ")
+        out[#out + 1] = tostring(page.pattern) .. " " .. table.concat(lines, " ")
     end
     return out
 end

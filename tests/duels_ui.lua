@@ -439,20 +439,27 @@ end
 -- The week of the oasis: the series with Tester on the full plate, its own
 -- note beside Tester's (never folded into it), lost 3 to 2.
 do
-    local week
-    for i, e in ipairs(page.recap.entries) do
-        OpenAt(i)
-        if page.pattern == "LF" then week = i break end
+    -- Its sitting with Tester is a page of its own (F) since the pages go
+    -- by sitting: the page whose plate has Tester's time together.
+    local full
+    for _, at in ipairs(T.DiaryPages(page)) do
+        T.OpenDiaryPage(page, at.i, at.k)
+        for _, p in ipairs(page.plates) do
+            if p:IsShown() and (p.counts.duels or 0) > 0 and at.e.kind == "week" then full = p end
+        end
+        if full then break end
     end
-    Check(week ~= nil, "setup: no LF week")
-    local full = page.plates[2]
+    Check(full ~= nil, "setup: no page of the oasis week with its duel")
     local person, duel
     for _, it in ipairs(full.margin or {}) do
         if it.kind == "person" then person = it end
         if it.kind == "duel" then duel = it end
     end
     Check(person and duel, "the week's full plate has Tester's note and the duel's apart")
-    Eq(duel and duel.note:Words(), "lost to Tester 3 to 2", "the week's note")
+    -- (On its own page the plate is alone, its notes in the row of three
+    -- under it, where Tester's name does not go beside the score: the
+    -- nameless words, his own note beside it naming him.)
+    Eq(duel and duel.note:Words(), "lost 3 duels to 2", "the week's note")
     Eq(full.counts.duels, 1, "the week's flag")
 end
 

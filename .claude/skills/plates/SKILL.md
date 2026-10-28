@@ -13,6 +13,22 @@ notes** (taped paper strips and cards) with pencil **leaders** to marks on
 the map. This skill is everything a fresh agent needs to work there
 without rediscovering it.
 
+**Plates are drawn per piece** (28 Oct, `.claude/sittings-plan.md`): a
+level (a week past the cap) played over several sittings, or with a run
+page, is read by sitting. `Recap.Pieces(j, e, ctx)` cuts it into
+`e.pieces` (a piece is a full `Gather` entry over one sitting's part of
+the level, so everything below draws it unchanged) and sets `e.spliced`
+when there is one piece and no run. The right page shows the open piece
+(`page.piece`, an index into `e.pieces`, kept with `page.pieceOf`;
+`YourDiary.OpenPieceOf(e)`), or the entry whole where spliced. So
+wherever this skill says "the open level" for the plates, read "the open
+piece": `DrawPlates(piece)`, `PlatesOf(piece)` caches on the piece. The
+full zone page stays level-wide (`DrawFull(e)`), and its way back returns
+to the piece. The left page lists the open entry's sittings (and each
+one's runs) under its rubric (`UI/Journey/Left.lua`, `SITTINGS` in
+`Look.lua`); `OpenLevel(i)` opens the newest piece, `OpenPiece(i, k)` one,
+`OpenRun(id, i)` the piece holding that run.
+
 Also load `frontend-design` (UI work in this project always goes through
 it). If you add or change words a player reads, hand the copy to the
 `copywriter` skill (`.claude/skills/copywriter/`) and don't write it yourself.
@@ -343,10 +359,14 @@ own kit stays inside `Plate.lua`'s `New` for now. `Clamp` is the pen's
 
 ## 4b. A run's page (the keepsake page, 28 Oct)
 
-A level with recorded dungeon runs opens its right page on a run instead
-of its plates (`page.mode = "run"`, `page.runVisit`; interim until pages go
-by play session): the rubric steps run → run → plates → first run again
-(`YourDiary.NextView`), a run's ledger row opens it (`OpenRun`). The page
+A run that earned a page (`Recap.RunWorthy`: a boss killed, or a kill its
+loot told of) is a page of the piece it began in (`piece.runs`;
+`YourDiary.RunsOf(x)` is `x.runs` for a piece, the worthy visits of
+`x.dungeons` for an entry drawn whole). Its line, indented under its
+sitting's on the left page, or its ledger row opens it (`OpenRun`,
+`page.mode = "run"`, `page.runVisit`); a level never opens on a run, but a
+piece with no plates and a run opens on its first run (`ViewOf` in
+`Page.lua`). The interim stepping through runs (`NextView`) is gone. The page
 is `UI/Journey/Run.lua` (`DrawRun`, blank `PaperStrip`s written on through
 `strip:Lay`); where everything goes is the pure plan `Core/RunPage.lua`
 (`RUN`, `Plan`, `Most`, `TitleSize`), and `tests/run_page.lua` checks no two
@@ -359,8 +379,9 @@ that is only a recorded run's door is dropped in `Recap.Plates`
 
 ## 5. Decisions already made (don't reopen without asking the user)
 
-- **Only the open level** is drawn on plates and the full page. Other
-  levels' roads and marks in pencil were removed as "graphic spam" (10 Oct).
+- **Only the open level** is drawn on plates and the full page (on plates,
+  only its open piece, 28 Oct). Other levels' roads and marks in pencil
+  were removed as "graphic spam" (10 Oct).
 - **No key/legend** on plates; tooltips explain ink and marks (Decision 7).
 - **A first sighting shows only in hindsight**, and a person "matters" only
   through a diary add or an interaction row (group_join, trade, whisper,
@@ -405,9 +426,14 @@ that is only a recorded run's door is dropped in `Recap.Plates`
   LayoutFor…), `ns.UI.JourneyPlate` (Cover, Window, SHADOW, LIFT…). On a
   plate: `.slot`, `.window`, `.captionOver`, `.margin`, `.counts`,
   `.killer/.foe/.hunt`, `.where`.
-- To open a page in a test: `page.open = i; page.mode = "plates";
-  ns.UI.RedrawJourneyPage()`, or click the level's rubric row (see `Open`
-  in journey_ui).
+- To open a page in a test: `T.OpenDiaryPage(page, i, k)` (`k` the piece,
+  nil for an entry drawn whole); every page a reader can open:
+  `T.DiaryPages(page)` (`tests/harness.lua`), which the testdata loops in
+  the plate tests walk. Or click the level's rubric row (see `Open` in
+  journey_ui), or `YourDiary.OpenPiece(i, k)`. Setting `page.open = i`
+  alone draws a non-spliced entry's newest piece. The section "a level by
+  sitting" in journey_ui checks the sittings' lines, the tick, OpenPiece,
+  the full page's way back and runs only where worthy.
 - **The mock measures every string at 14 px and ~6 px per character.** To
   test wrapping, patch `GetStringHeight` on the heading/caption pools'
   font strings (as the `top`/F+L tests and `plate_dump.lua` do).
@@ -436,7 +462,12 @@ that is only a recorded run's door is dropped in `Recap.Plates`
 - Testdata today (13 Oct): lv10 F+L, lv11 FL (lucky card L in the column),
   lv12 FF (light plate too wide → full; lucky card M2 in the 122 px column),
   lv13 FL (S on the print; F+L given up for it), lv14 one plate (lucky card
-  XL in the row, L in the mock), lv15–16 one plate, week 1 LF, week 2 FFF
+  XL in the row, L in the mock), lv15–16 one plate; the weeks are read by
+  sitting (28 Oct, from the route's gaps): week 1's two sittings L
+  (Orgrimmar's print alone, on the one-plate slot) and F (the oasis with
+  Tester), week 2's three FF, F, F; its LF and FFF are only drawn whole
+  now (`plates.sh` forces the 3-plate keys onto it, `_whole`; the LF test
+  in campfire_ui empties `j.sittings` so the week is spliced)
   (the hunts written by `Features/Hunts/Dev.lua`, at "route"). Witness cards (14 Oct): lv10 tried
   (M, F+L row), lv11 saved (L), lv13 watched (L), lv14 saw + two others (M),
   the cap's oasis mercilessly watched (XL on lv16's page, smaller on a week's),

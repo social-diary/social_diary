@@ -90,6 +90,32 @@ local function Context()
         return ns
     end
 
+    -- Your Diary's right pages of plates as a reader opens them: an entry
+    -- drawn whole where it is spliced, else each of its pieces, one a
+    -- sitting (Recap.Pieces). Each { i = entry index, k = piece index or
+    -- nil, e = the entry }, in the recap's order.
+    function T.DiaryPages(page)
+        local ns, list = T.ns, {}
+        local j = ns.Journey.For(ns.ownGUID)
+        for i, e in ipairs(page.recap.entries) do
+            local pieces = ns.JourneyRecap.Pieces(j, e, page.ctx or {})
+            if e.spliced then
+                list[#list + 1] = { i = i, e = e }
+            else
+                for k in ipairs(pieces) do list[#list + 1] = { i = i, k = k, e = e } end
+            end
+        end
+        return list
+    end
+
+    -- That page's plates drawn (never a run's page, as a test of plates
+    -- wants them).
+    function T.OpenDiaryPage(page, i, k)
+        page.open, page.piece, page.pieceOf = i, k, page.recap.entries[i]
+        page.mode, page.runVisit, page.fullMap = "plates", nil, nil
+        T.ns.UI.RedrawJourneyPage()
+    end
+
     -- Nobody in the diary, nothing buffered or written, no session open,
     -- nobody in the group. Characters, sightings and settings are left alone.
     function T.BlankDiary()

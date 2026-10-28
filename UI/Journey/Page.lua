@@ -25,8 +25,23 @@
 -- the margin, a pencil leader from each name to their mark (JRN-22).
 -- Clicking a plate or a zone row shows that zone's whole map as one plate
 -- across the page (JRN-14), the open level only (other levels' roads and
--- marks are left off), with a line under it and the way back. A rubric goes
--- back to its level's plates.
+-- marks are left off), with a line under it and the way back to the plates
+-- it was opened from.
+--
+-- A late level spans many evenings, more than one right page holds
+-- (.claude/sittings-plan.md). So a level is read by sitting: where it was
+-- played in more than one, or has a run with a page, its sittings are
+-- listed under its open rubric, each a piece of the level (Recap.Pieces),
+-- and the right page shows one piece's plates (page.piece, an index into
+-- the entry's pieces), never the whole level's, with no scrolling and no
+-- turning on: the left page is the contents. A rubric opens its newest
+-- sitting (OpenLevel), a sitting's line that one (OpenPiece). A run that
+-- earned a page (a boss killed) is a page of the sitting it began in, its
+-- line indented under that sitting's (UI/Journey/Run.lua, the keepsake
+-- page; OpenRun). A level played in one sitting with no run page is
+-- spliced: no list, its rubric opens it whole, as before. Past the cap,
+-- weeks are read by sitting the same way. The zone's whole map stays the
+-- level's (the user, 28 Oct), and its way back is to the sitting open.
 --
 -- The left page's list is virtual (ns.UI.VirtualList): an item per rubric,
 -- paragraph and zone, each paragraph measured once to its own height, so
@@ -38,12 +53,6 @@
 -- it is empty (the setting off, or nothing walked yet), a pencilled sample
 -- entry, and a pencilled plate with notes in the margin. It is a recap,
 -- never a tracker: nothing here counts quests, shows a bar or keeps a score.
---
--- A level with recorded dungeon runs opens on its first run's page
--- instead (UI/Journey/Run.lua, the keepsake page; interim, the user, 28
--- Oct, until the pages go by play session): its rubric steps on through
--- its runs to its plates and round again, and a run's ledger row opens
--- that run (OpenRun).
 --
 -- The page is one module, ns.UI.YourDiary, in a file per question; this
 -- file, the last of them, builds it, refreshes it and turns it to. The
@@ -64,15 +73,17 @@ local HEAD, ENTRY, LEDGER, RIGHT_H = YourDiary.HEAD, YourDiary.ENTRY, YourDiary.
 local LAYOUT, SNAPSHOT, CAPTION, LEADER = YourDiary.LAYOUT, YourDiary.SNAPSHOT, YourDiary.CAPTION, YourDiary.LEADER
 local LEADERS, FOOT, NOTHING, OFF = YourDiary.LEADERS, YourDiary.FOOT, YourDiary.NOTHING, YourDiary.OFF
 local FillHeader, EntryItems = YourDiary.FillHeader, YourDiary.EntryItems
+local PiecesOf, OpenPieceOf = YourDiary.PiecesOf, YourDiary.OpenPieceOf
 local BuildEntryRow, UpdateEntryRow = YourDiary.BuildEntryRow, YourDiary.UpdateEntryRow
 local LayoutFor, Handout = YourDiary.LayoutFor, YourDiary.Handout
 local NewNote, EnsurePools, ROW, Shared = YourDiary.NewNote, YourDiary.EnsurePools, YourDiary.ROW, YourDiary.Shared
 local DrawPlates, DrawFull = YourDiary.DrawPlates, YourDiary.DrawFull
 local DrawRun, HideRun, RunsOf = YourDiary.DrawRun, YourDiary.HideRun, YourDiary.RunsOf
+local PlatesOf = YourDiary.PlatesOf
 local BuildEmpty, FillEmpty = YourDiary.BuildEmpty, YourDiary.FillEmpty
 
 -- Set below, and on the module for the files before this one.
-local OpenLevel, OpenFull, OpenRun
+local OpenLevel, OpenPiece, OpenFull, OpenRun
 
 --------------------------------------------------------------------------
 -- The right page
@@ -93,35 +104,43 @@ local function PlaceOff(full)
     end
 end
 
--- The open entry's run `id`, or nil where it is not one of its runs.
+-- The run `id` of `e` (an entry or a piece), or nil where it is not one
+-- of its runs with a page.
 local function RunOf(e, id)
     for _, visit in ipairs(RunsOf(e)) do
         if visit.id == id then return visit end
     end
 end
 
--- The right page for the open entry: its plates, one zone's full page, or
--- one of its runs (UI/Journey/Run.lua).
+-- What the right page shows of entry `e`: its open piece, or the entry
+-- whole where it is spliced.
+local function Shown(e)
+    return e and (OpenPieceOf(e) or e)
+end
+
+-- The right page for the open entry: the open piece's plates or one of its
+-- runs (UI/Journey/Run.lua), or one zone's full page, the entry's whole.
 -- Drawn as it opens or turns, from pools; never per frame.
 local function DrawRight()
     local page = YourDiary.page
     local recap = page.recap
     local e = recap and recap.entries[page.open]
+    local piece = Shown(e)
     for _, pool in ipairs(page.rightPools) do pool:Begin() end
     page.links = {}
     page.nothing:Hide()
     for _, part in pairs({ page.foot.name, page.foot.meta, page.foot.hint }) do part:Hide() end
     local shown = 0
-    local visit = e and page.mode == "run" and RunOf(e, page.runVisit)
+    local visit = e and page.mode == "run" and RunOf(piece, page.runVisit)
     if not visit then HideRun() end
     if e then
         if visit then
-            shown = DrawRun(e, visit)
+            shown = DrawRun(piece, visit)
         elseif page.mode == "full" and page.fullMap then
             shown = DrawFull(e)
         else
             page.mode = "plates"
-            shown = DrawPlates(e)
+            shown = DrawPlates(piece)
         end
     end
     for i = shown + 1, #page.plates do page.plates[i]:Hide() end
@@ -263,54 +282,81 @@ local function Rebuild(keep, steady)
     end
 end
 
--- What entry `i` opens on: its first run where it has recorded runs,
--- else its plates. Asked again of the level open (its rubric clicked
--- again), the next: the run after the one shown, the plates after the
--- last, the first run after the plates (interim, the user, 28 Oct).
-local function NextView(i)
-    local page = YourDiary.page
-    local runs = RunsOf(page.recap.entries[i])
-    if #runs == 0 then return "plates", nil end
-    if page.open ~= i then return "run", runs[1].id end
-    if page.mode == "run" then
-        for k, visit in ipairs(runs) do
-            if visit.id == page.runVisit then
-                if runs[k + 1] then return "run", runs[k + 1].id end
-                return "plates", nil
-            end
-        end
-    end
-    return "run", runs[1].id
+-- What piece `k` of entry `i` opens on: its plates; where it has none (a
+-- sitting spent inside a dungeon: a run's door alone is no plate,
+-- Recap.DOOR_ONLY) and has a run with a page, its first run, rather than a
+-- page saying nothing was kept. "plates" for an entry drawn whole.
+local function ViewOf(piece)
+    if piece and piece.runs and piece.runs[1] and #PlatesOf(piece) == 0 then return "run", piece.runs[1].id end
+    return "plates", nil
 end
-YourDiary.NextView = NextView
 
--- Opens entry `i`: its prose on the left, its first run or its plates on
--- the right (NextView).
-function OpenLevel(i)
+-- Opens piece `k` of entry `i` (its newest when not given, or where `i`
+-- is spliced: the entry whole): the entry's prose on the left, the
+-- piece's plates on the right (ViewOf).
+function OpenPiece(i, k)
     local page = YourDiary.page
     if not (page and page.recap and page.recap.entries[i]) then return end
     GameTooltip:Hide()
-    local mode, id = NextView(i)
-    page.open, page.mode, page.fullMap, page.runVisit = i, mode, nil, id
+    local e = page.recap.entries[i]
+    local pieces = PiecesOf(e)
+    if not (k and pieces[k]) then k = #pieces > 0 and #pieces or nil end
+    page.open, page.piece, page.pieceOf, page.fullMap = i, k, e, nil
+    page.mode, page.runVisit = ViewOf(OpenPieceOf(e))
     Rebuild(true, i)
     DrawRight()
 end
 
--- Shows run `id` of entry `i` (the open one when not given) across the
--- right page: its ledger row clicked.
+-- Opens entry `i` at its newest piece: a rubric clicked.
+function OpenLevel(i)
+    OpenPiece(i, nil)
+end
+
+-- Where run `id` has its page: entry `i` and the index of its piece that
+-- holds it (nil where `i` is spliced and the entry holds it whole). Looked
+-- for in entry `i` first, then the others, newest first: a run begun in
+-- the level before is a page of that level's sitting.
+local function Holder(id, i)
+    local page = YourDiary.page
+    local entries = page.recap.entries
+    local function In(n)
+        local e = entries[n]
+        if not e then return nil end
+        local pieces = PiecesOf(e)
+        if e.spliced then return RunOf(e, id) and true or nil end
+        for k, p in ipairs(pieces) do
+            if RunOf(p, id) then return k end
+        end
+    end
+    local k = In(i)
+    if k then return i, k ~= true and k or nil end
+    for n = #entries, 1, -1 do
+        if n ~= i then
+            k = In(n)
+            if k then return n, k ~= true and k or nil end
+        end
+    end
+end
+
+-- Shows run `id` across the right page, in the piece of entry `i` (the
+-- open one when not given) that it began in: its line under that
+-- sitting, or its ledger row, clicked.
 function OpenRun(id, i)
     local page = YourDiary.page
     if not (page and page.recap and id) then return end
-    i = i or page.open
-    if not RunOf(page.recap.entries[i], id) then return end
+    local n, k = Holder(id, i or page.open)
+    if not n then return end
     GameTooltip:Hide()
-    page.open, page.mode, page.fullMap, page.runVisit = i, "run", nil, id
-    Rebuild(true, i)
+    page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
+    page.mode, page.fullMap, page.runVisit = "run", nil, id
+    Rebuild(true, n)
     DrawRight()
 end
 
 -- Shows `mapID`'s whole map across the right page, the entry `i` in ink
--- (the open one when not given).
+-- (the open one when not given): the whole entry's, never a piece's. The
+-- piece open is kept, so the way back (Full.lua's Back: OpenPiece) is to
+-- it; another entry's opens at its newest.
 function OpenFull(mapID, i)
     local page = YourDiary.page
     if not (page and page.recap and mapID) then return end
@@ -320,7 +366,8 @@ function OpenFull(mapID, i)
     Rebuild(true, i)
     DrawRight()
 end
-YourDiary.OpenLevel, YourDiary.OpenFull, YourDiary.OpenRun = OpenLevel, OpenFull, OpenRun
+YourDiary.OpenLevel, YourDiary.OpenPiece, YourDiary.OpenFull, YourDiary.OpenRun = OpenLevel, OpenPiece, OpenFull,
+    OpenRun
 
 -- `opening`: the page is being turned to, so it falls open at the newest
 -- entry and its plates. Otherwise (the diary changed while it lies open)
@@ -360,11 +407,10 @@ function ns.UI.RefreshJourneyPage(opening)
     end
     local count = #recap.entries
     if opening or not page.open or page.open > count then
-        -- Fallen open on the newest entry's first view (NextView asked as
-        -- of another entry open).
-        page.open = nil
-        page.mode, page.runVisit = NextView(count)
-        page.open, page.fullMap = count, nil
+        -- Fallen open on the newest entry's newest piece.
+        local e = recap.entries[count]
+        page.open, page.piece, page.pieceOf, page.fullMap = count, nil, nil, nil
+        page.mode, page.runVisit = ViewOf(OpenPieceOf(e))
     end
     if changed or opening then
         Rebuild(not opening)

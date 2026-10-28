@@ -67,3 +67,39 @@ local function When(t, level, now)
 end
 
 Text.Day, Text.When, Text.WORDS = Day, When, WORDS
+
+-- A sitting's label under its level (.claude/sittings-plan.md): "Oct 25th",
+-- and when another sitting began that day the part of it, "Oct 25th,
+-- Evening" (two alike are fine: "Noon" and "Noon"). The year once it is
+-- not this one's. `p` a recap piece: its `at`, `many`. A night past
+-- midnight is the day before's (Recap.SittingDay), and its part "Night".
+local PARTS = {
+    { 5, "Morning" }, { 11, "Noon" }, { 14, "Afternoon" }, { 18, "Evening" }, { 22, "Night" },
+}
+
+local function Ordinal(n)
+    local tail = n % 100
+    if tail >= 11 and tail <= 13 then return n .. "th" end
+    local last = n % 10
+    return n .. (last == 1 and "st" or last == 2 and "nd" or last == 3 and "rd" or "th")
+end
+
+local function Part(t)
+    local hour = date("*t", t).hour
+    local name = "Night"
+    for _, part in ipairs(PARTS) do
+        if hour >= part[1] then name = part[2] end
+    end
+    return name
+end
+Text.DayPart = Part
+
+function Text.SittingLabel(p, now)
+    local t = p.at or p.from
+    local day = ns.JourneyRecap.SittingDay(t) + 12 * 3600
+    local text = date("%b", day) .. " " .. Ordinal(tonumber(date("%d", day)))
+    if date("%Y", day) ~= date("%Y", now or ns.Now()) then text = text .. " " .. date("%Y", day) end
+    text = Glue(text)
+    if p.many then text = text .. ", " .. Part(t) end
+    return text
+end

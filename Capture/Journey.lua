@@ -9,6 +9,7 @@
 --   the gap     a tick long after the last ends what was open (loading
 --               screens, freezes, a logout or a /reload that took long)
 --   AFK         a pause
+--   the sitting the user is at the game: Core/Sittings.lua's heartbeat
 --   instances   a party or raid instance is a dungeon segment; any other
 --               (battlegrounds, arenas) a pause
 --   corpse run  outside the open dungeon as a ghost: still in it
@@ -109,6 +110,9 @@ local function Tick()
         Journey.Settle(j)
         return Skip("AFK")
     end
+    -- At the game: dead, in a battleground or in combat still counts
+    -- (Core/Sittings.lua), so the sitting is noted before any of them.
+    ns.Sittings.Note(j, now)
 
     local inside, kind = IsInInstance()
     if ns.Plain(inside) == true then

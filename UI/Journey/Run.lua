@@ -22,10 +22,10 @@
 -- tooltip; the slip, the rest in their inks; the fallen note, every death
 -- and what killed them; a signature opens that person's page.
 --
--- Interim (the user, 28 Oct, until the pages go by play session): a level
--- with recorded runs opens on its first run; its rubric steps on through
--- the runs to the plates and round again; the ledger's row of a run opens
--- that run (UI/Journey/Page.lua's OpenRun and OpenLevel).
+-- A run has a page where it earned one (a boss killed: Recap.RunWorthy),
+-- as part of the sitting it began in: its line under that sitting on the
+-- left page opens it, and so does its row in the level's ledger
+-- (UI/Journey/Page.lua's OpenRun). A level is never opened on a run.
 --
 -- Pasted things are paper strips (ns.UI.PaperStrip, blank, `size`) turned
 -- as the plan says, written on through the strip (strip:Lay), so they turn,
@@ -137,12 +137,15 @@ local function Ink(q)
     return (q and q >= 2 and Style.QualityNameInk(q)) or Style.INK_STRONG
 end
 
--- The runs recorded in entry `e`, each once, in the order they began.
+-- The runs of `e` that earned a page (Recap.RunWorthy: a boss killed),
+-- each once, in the order they began: a piece's own (`runs`, those begun
+-- in it), else, for an entry drawn whole, those recorded in it.
 function YourDiary.RunsOf(e)
+    if e and e.runs then return e.runs end
     local out, seen = {}, {}
     for _, d in ipairs(e and e.dungeons or {}) do
         local visit = d.visit
-        if visit and visit.id and not seen[visit.id] then
+        if visit and visit.id and not seen[visit.id] and ns.JourneyRecap.RunWorthy(visit) then
             seen[visit.id] = true
             out[#out + 1] = visit
         end

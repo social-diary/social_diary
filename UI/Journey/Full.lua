@@ -37,11 +37,13 @@ local function RoadMiddle(sheet)
     return (lx + hx) / 2, (ly + hy) / 2
 end
 
--- Back from the full page to the level's plates: a click on the map.
+-- Back from the full page to the plates it was opened from, the sitting
+-- open (page.piece): a click on the map.
 local function Back()
     local page = YourDiary.page
     Style.PlaySound("pageTurn")
-    YourDiary.OpenLevel(page.open)
+    local e = page.recap and page.recap.entries[page.open]
+    YourDiary.OpenPiece(page.open, page.pieceOf == e and page.piece or nil)
 end
 
 -- The full page's plate drawn at a view (FULLZOOM, UI/Journey/Plate.lua):

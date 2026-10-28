@@ -22,6 +22,7 @@ local FILES = {
     "deaths",
     "pvp",
     "journey",
+    "sittings",
     "firsts",
     "skills",
     "skills_ui",

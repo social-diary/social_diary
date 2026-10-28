@@ -206,10 +206,9 @@ ns.UI.SetJournalView("journey")
 page = ns.UI.JourneyPage()
 do
     local flights, marked, words, prose = {}, {}, {}, {}
-    for i, entry in ipairs(page.recap.entries) do
-        page.open = i
-        page.mode = "plates"
-        ns.UI.RedrawJourneyPage()
+    for _, at in ipairs(T.DiaryPages(page)) do
+        local entry = at.e
+        T.OpenDiaryPage(page, at.i, at.k)
         local level = entry.level or "week"
         for _, p in ipairs(page.plates) do
             if p:IsShown() then

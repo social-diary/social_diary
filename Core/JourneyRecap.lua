@@ -419,6 +419,169 @@ function Recap.Build(j, ctx)
     return recap
 end
 
+--------------------------------------------------------------------------
+-- Pieces: an entry by sitting (.claude/sittings-plan.md)
+--------------------------------------------------------------------------
+--
+-- A late level spans many evenings, more than one right page can hold. So
+-- an entry (a level, a week past the cap) is read in pieces, one for each
+-- sitting it was played in (Core/Sittings.lua), cut where a sitting
+-- begins and nowhere else: a sitting over levels 1 to 9 is a piece under
+-- each. A piece is an entry itself (Gather over its time), so the plates
+-- draw it as they draw a level.
+--
+--   Pieces(j, e, ctx)  e.pieces, oldest first, slivers left out, and
+--                      e.spliced: true when the entry has one piece and no
+--                      run of its own, so the page shows the entry as it
+--                      always did and lists no pieces
+--
+-- A piece carries the entry's kind, level, week, known and first; `current`
+-- on the one being played; the entry's `reached` on the first and `out` on
+-- the last; `sitting` (Sittings.List's) and `at`, when that sitting began
+-- (its label's time, the same under every level it crossed), and `many`
+-- when another sitting began the same day; `runs`, the dungeon runs begun
+-- in it that earned a page (RunWorthy), oldest first.
+--
+-- A sliver (under SLIVER of play, nothing worth remembering: a ding just
+-- before logging out) is left out; its time still counts in the entry's
+-- prose and zone ledger. An entry whose pieces are all slivers keeps its
+-- longest. Worked out when a level is opened, not for every level on each
+-- build, and kept on the entry, which is rebuilt whenever the recap is.
+
+local SLIVER = 10 * 60
+Recap.SLIVER = SLIVER
+-- A sitting begun before this hour of the morning belongs to the day
+-- before: a night that ran past midnight is still that night.
+local DAY_TURNS = 5
+Recap.DAY_TURNS = DAY_TURNS
+
+-- A run earns a page of its own with a boss killed, or a kill only its loot
+-- told of (the user, 28 Oct). Anything less is the ledger's line and the
+-- door's plate.
+function Recap.RunWorthy(visit)
+    if not visit then return false end
+    if visit.bossesKilled and #visit.bossesKilled > 0 then return true end
+    return type(visit.inferred) == "table" and next(visit.inferred) ~= nil
+end
+
+-- The runs begun in [a, b) that earned a page, oldest first.
+function Recap.Runs(ctx, a, b)
+    local list = {}
+    for _, visit in ipairs(ctx.visits or {}) do
+        local t = visit.startedAt or 0
+        if t >= a and t < b and Recap.RunWorthy(visit) then list[#list + 1] = visit end
+    end
+    table.sort(list, function(x, y)
+        if x.startedAt ~= y.startedAt then return x.startedAt < y.startedAt end
+        return (x.id or 0) < (y.id or 0)
+    end)
+    return list
+end
+
+-- The day a sitting is remembered by: its local midnight, a night past
+-- midnight the day before's.
+function Recap.SittingDay(t)
+    return ns.DayStart(t - DAY_TURNS * 3600)
+end
+
+local function Notable(p)
+    if #p.people > 0 or #p.fights > 0 or #p.notes > 0 or #p.deaths > 0 or #p.runs > 0
+        or #p.hindsight > 0 then
+        return true
+    end
+    for _, spec in ipairs(MOMENTS) do
+        if #p[spec.entry] > 0 then return true end
+    end
+    return false
+end
+Recap.Notable = Notable
+
+function Recap.Pieces(j, e, ctx)
+    if e.pieces then return e.pieces end
+    local pieces = {}
+    e.pieces, e.spliced = pieces, true
+    local a, b = e.from, e.to
+    if not (a and b and b > a) or (e.kind == "level" and not e.known) then return pieces end
+
+    local sittings = ns.Sittings.List(j)
+    local perDay = {}
+    for _, s in ipairs(sittings) do
+        local day = Recap.SittingDay(s.from)
+        perDay[day] = (perDay[day] or 0) + 1
+    end
+
+    -- The cuts: where a sitting begins inside the entry.
+    local cuts = { a }
+    for _, s in ipairs(sittings) do
+        if s.from > a and s.from < b then cuts[#cuts + 1] = s.from end
+    end
+    cuts[#cuts + 1] = b
+
+    -- A stretch no sitting touches (a week's days before its first
+    -- evening, capture that was off) is no piece of its own: it joins the
+    -- next one, or the one before at the end.
+    local function Touched(pa, pb)
+        for _, s in ipairs(sittings) do
+            if s.from < pb and s.to >= pa then return true end
+        end
+        return false
+    end
+    local ranges, carry = {}, nil
+    for i = 1, #cuts - 1 do
+        local pa, pb = carry or cuts[i], cuts[i + 1]
+        if pb > pa then
+            if Touched(pa, pb) or #sittings == 0 then
+                ranges[#ranges + 1] = { pa, pb }
+                carry = nil
+            else
+                carry = pa
+            end
+        end
+    end
+    if carry then
+        if ranges[#ranges] then ranges[#ranges][2] = b else ranges[1] = { carry, b } end
+    end
+
+    local all = {}
+    for _, range in ipairs(ranges) do
+        local pa, pb = range[1], range[2]
+        do
+            local p = Gather(j, pa, pb, ctx)
+            p.kind, p.level, p.week, p.known, p.first = e.kind, e.level, e.week, e.known, e.first
+            p.current = e.current and pb == b or nil
+            p.reached = pa == a and e.reached or nil
+            p.out = pb == b and e.out or nil
+            local s = ns.Sittings.At(j, pa)
+            if not s then
+                for _, other in ipairs(sittings) do
+                    if other.from >= pa and other.from < pb then
+                        s = other
+                        break
+                    end
+                end
+            end
+            p.sitting, p.at = s, s and s.from or pa
+            p.many = (perDay[Recap.SittingDay(p.at)] or 0) > 1 or nil
+            p.runs = Recap.Runs(ctx, pa, pb)
+            p.hindsight = {}
+            for _, f in ipairs(e.hindsight or {}) do
+                if f.t >= pa and f.t < pb then p.hindsight[#p.hindsight + 1] = f end
+            end
+            p.faces = Recap.Faces(p, ctx)
+            all[#all + 1] = p
+        end
+    end
+
+    local longest
+    for _, p in ipairs(all) do
+        if p.seconds >= SLIVER or Notable(p) then pieces[#pieces + 1] = p end
+        if not longest or p.seconds > longest.seconds then longest = p end
+    end
+    if #pieces == 0 and longest then pieces[1] = longest end
+    e.spliced = #pieces <= 1 and (not pieces[1] or #pieces[1].runs == 0)
+    return pieces
+end
+
 -- JRN-15: every zone map with time on it, by first visit, with its level
 -- range and the time spent there.
 function Recap.Zones(j)

@@ -231,37 +231,43 @@ ns.UI.SetJournalView("journey")
 local page = ns.UI.JourneyPage()
 local YD = ns.UI.YourDiary
 local e = page.recap.entries[page.open]
-local runs = YD.RunsOf(e)
+local R = ns.JourneyRecap
+-- Since the pages go by sitting (.claude/sittings-plan.md), a level never
+-- opens on a run: its newest sitting's plates. Its runs are pages of the
+-- sittings they began in, listed under them.
+Eq(page.mode, "plates", "the newest entry opens on its plates")
+Eq(e.spliced, false, "setup: the newest entry is read by sitting")
+Eq(page.piece, nil, "setup: no sitting chosen yet")
+local runs, holder = {}, {}
+for k, p in ipairs(e.pieces) do
+    Eq(YD.RunsOf(p), p.runs, "a piece's runs are its own")
+    for _, visit in ipairs(p.runs) do
+        Check(R.RunWorthy(visit), "a piece holds a run with no boss killed")
+        runs[#runs + 1] = visit
+        holder[visit.id] = k
+    end
+end
 Check(#runs >= 1, "the newest entry has a recorded run")
-Eq(page.mode, "run", "a level with runs opens on a run")
-Eq(page.runVisit, runs[1].id, "its first")
 local RFK
 for _, v in ipairs(runs) do
     if v.instanceID == 47 then RFK = v end
 end
 Check(RFK, "today's Razorfen Kraul is one of them")
 
--- The rubric steps: run, run, ..., plates, the first run again.
-local seen = { page.runVisit }
-for _ = 2, #runs do
-    YD.OpenLevel(page.open)
-    seen[#seen + 1] = page.runVisit
-end
-Eq(page.runVisit, runs[#runs].id, "each click the next run")
-YD.OpenLevel(page.open)
-Eq(page.mode, "plates", "after the last run, the plates")
-Check(page.run.board:IsShown() == false, "the run's page put away")
-YD.OpenLevel(page.open)
-Eq(page.mode .. ":" .. tostring(page.runVisit), "run:" .. runs[1].id, "and round again to the first")
-
--- The ledger's row of a run opens it, inked under while open.
+-- The ledger's row of a run opens it, in the sitting it began in: that
+-- sitting ticked, the run's line and its ledger row inked under.
 YD.OpenRun(RFK.id, page.open)
-Eq(page.runVisit, RFK.id, "a run's row opens that run")
-local current
+Eq(page.mode .. ":" .. tostring(page.runVisit), "run:" .. RFK.id, "a run's row opens that run")
+Eq(page.piece, holder[RFK.id], "in the sitting it began in")
+local current, line, chosen
 for _, item in ipairs(page.items) do
     if item.zone and item.zone.dungeon and item.zone.dungeon.visit == RFK then current = item.current end
+    if item.run == RFK then line = item.current end
+    if item.sitting and item.chosen then chosen = item.sitting end
 end
 Eq(current, true, "its ledger row is marked while it is open")
+Eq(line, true, "its line under its sitting is marked while it is open")
+Eq(chosen, holder[RFK.id], "its sitting is the one ticked")
 
 -- What the page shows of it.
 local run = page.run

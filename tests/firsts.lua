@@ -913,10 +913,9 @@ ns.UI.SetJournalView("journey")
 page = ns.UI.JourneyPage()
 do
     local found, drawn, said, shoulders, narrow = 0, 0, {}, nil, nil
-    for i, entry in ipairs(page.recap.entries) do
-        page.open = i
-        page.mode = "plates"
-        ns.UI.RedrawJourneyPage()
+    for _, at in ipairs(T.DiaryPages(page)) do
+        local entry = at.e
+        T.OpenDiaryPage(page, at.i, at.k)
         for _, plate in ipairs(page.plates) do
             if plate:IsShown() then
                 for _, pouch in ipairs(plate.findMarks or {}) do found = found + #pouch.list end
@@ -938,9 +937,10 @@ do
         end
     end
     Eq(found, 5, "the made-up firsts' pouches")
-    -- All but the blue, Tester's gift, on the top plate of three: its
-    -- column holds his strip and no more (his strip tells the gift).
-    Eq(drawn, 4, "the made-up firsts' cards: " .. table.concat(said, "; "))
+    -- Every one: the blue, Tester's gift, was on the top plate of three,
+    -- its column holding his strip and no more; since the pages go by
+    -- sitting its plate is alone on its sitting's page, with room for both.
+    Eq(drawn, 5, "the made-up firsts' cards: " .. table.concat(said, "; "))
     -- The shoulders in the narrowest column (122 px): the heading on two
     -- lines, and the icon over the name, as "Shoulderpads" will not go
     -- beside it.

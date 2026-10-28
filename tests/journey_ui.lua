@@ -2251,3 +2251,161 @@ do
 end
 
 ns.UI.CloseJournal()
+
+--------------------------------------------------------------------------
+Section("a level by sitting: its sittings under its rubric, a page each (.claude/sittings-plan.md)")
+
+-- /sd testdata's weeks past the cap were played over several sittings
+-- (read from its route's gaps); its levels each in one.
+SlashCmdList.SOCIALDIARY("testdata")
+ns.UI.ShowJournal()
+ns.UI.SetJournalView("people")
+ns.UI.SetJournalView("journey")
+do
+    local YD = ns.UI.YourDiary
+    local Text = ns.UI.JourneyText
+    local entries = page.recap.entries
+    local n = #entries
+    local newest = entries[n]
+    local function Lines(key)
+        local list = {}
+        for _, item in ipairs(page.items) do
+            if item[key] then list[#list + 1] = item end
+        end
+        return list
+    end
+    local function Shows(row)
+        page.entries:SetOffset(0)
+        for k, item in ipairs(page.items) do
+            if item == row then page.entries:SetOffset(math.max(0, k - 2)) end
+        end
+        return RowFor(function(item) return item == row end)
+    end
+
+    -- Fallen open on the newest week's newest sitting.
+    Eq(page.open, n, "setup: the newest week open")
+    Eq(newest.spliced, false, "setup: the newest week was played over several sittings")
+    Check(#newest.pieces >= 2, "setup: the newest week has its sittings")
+    local sits = Lines("sitting")
+    Eq(#sits, #newest.pieces, "a line for each sitting of the open week")
+    for k, item in ipairs(sits) do
+        Eq(item.sitting, k, "the sittings oldest first")
+        Eq(item.label, Text.SittingLabel(newest.pieces[k], page.now), "a sitting's line is its date")
+        Eq(item.entry, n, "a sitting's line is the open week's")
+        Eq(item.aside, newest.pieces[k].current and "so far" or nil, "\"so far\" on the sitting being played alone")
+    end
+    Eq(page.items[page.rubrics[n] + 1], sits[1], "the sittings straight under the rubric, over the prose")
+    Eq(sits[#sits].chosen, true, "the newest sitting is the open one")
+    Eq(sits[#sits].current, true, "and inked under: its plates are on the right page")
+    Eq(newest.plates, nil, "a week read by sitting is never drawn whole")
+    Check(newest.pieces[#newest.pieces].plates ~= nil, "the newest sitting's plates are drawn")
+
+    -- The tick in the margin at the sitting open, on its row alone.
+    local row = Shows(sits[#sits])
+    Check(row and row.tick:IsShown() and row.zone:GetText() == sits[#sits].label, "the open sitting is not ticked")
+    -- An older sitting with plates of its own.
+    local at
+    for k = 1, #newest.pieces - 1 do
+        if not at and #YD.PlatesOf(newest.pieces[k]) > 0 then at = k end
+    end
+    Check(at ~= nil, "setup: an older sitting with plates")
+    row = Shows(sits[at])
+    Check(row and not row.tick:IsShown(), "a sitting not open is ticked")
+
+    -- A sitting's line opens that sitting's plates.
+    row:Click()
+    Eq(page.piece, at, "a sitting's line does not open that sitting")
+    Eq(page.mode, "plates", "a sitting opens on its plates")
+    local first = newest.pieces[at]
+    Eq(page.layout, #first.plates, "the right page is not the sitting's plates")
+    Eq(page.plates[1].plan, first.plates[1], "the first plate drawn is not the sitting's")
+    Eq(Lines("sitting")[at].chosen, true, "the sitting opened is not the one ticked")
+
+    -- Its zone's whole map stays the week's, and the way back is to it.
+    local mapID = first.plates[1].mapID
+    Click(page.plates[1])
+    Eq(page.mode .. ":" .. tostring(page.fullMap), "full:" .. mapID, "a sitting's plate does not open its zone's map")
+    Eq(page.piece, at, "the full page forgot the sitting open")
+    Click(page.plates[1])
+    Eq(page.mode, "plates", "the full page did not go back to the plates")
+    Eq(page.piece, at, "the full page went back to another sitting than the one open")
+    Eq(page.plates[1].plan, first.plates[1], "back, the plates are not the sitting's")
+
+    -- A rubric opens its newest sitting, never a run.
+    YD.OpenLevel(n)
+    Eq(page.piece, #newest.pieces, "a rubric does not open its newest sitting")
+    Eq(page.mode, "plates", "a rubric opened a run")
+
+    -- A level played in one sitting is spliced: no lines, drawn whole.
+    local spliced
+    for i, e in ipairs(entries) do
+        if e.kind == "level" and not spliced then
+            YD.PiecesOf(e)
+            if e.spliced then spliced = i end
+        end
+    end
+    Check(spliced ~= nil, "setup: a level played in one sitting")
+    YD.OpenLevel(spliced)
+    Eq(#Lines("sitting") + #Lines("run"), 0, "a spliced level lists its sittings")
+    Check(entries[spliced].plates ~= nil, "a spliced level is not drawn whole")
+    -- Nor does a closed entry list any.
+    YD.OpenLevel(n)
+    for _, item in ipairs(Lines("sitting")) do Eq(item.entry, n, "a closed entry lists its sittings") end
+
+    -- Runs: a line under the sitting they began in, indented, each a run
+    -- with a boss killed (RunWorthy).
+    local holder, visit
+    for k, p in ipairs(newest.pieces) do
+        if p.runs[1] and not visit then holder, visit = k, p.runs[1] end
+    end
+    Check(visit ~= nil, "setup: a sitting of the newest week has a run")
+    local runs = Lines("run")
+    local line
+    for k, item in ipairs(page.items) do
+        if item.run == visit then line = k end
+    end
+    Check(line ~= nil, "a run has no line")
+    local above = line and line - 1
+    while above and above > 0 and page.items[above].run do above = above - 1 end
+    Eq(above and page.items[above].sitting, holder, "a run's line is not under its sitting")
+    for _, item in ipairs(runs) do
+        Check(ns.JourneyRecap.RunWorthy(item.run), "a run with no boss killed has a line")
+    end
+    row = Shows(page.items[line])
+    Check(row and row.door[1]:IsShown() and row.zone:GetText() == (visit.name or "An instance"),
+        "a run's line is not its dungeon's name behind a doorway")
+    row:Click()
+    Eq(page.mode .. ":" .. tostring(page.runVisit), "run:" .. visit.id, "a run's line does not open its page")
+    Eq(page.piece, holder, "a run's page is not in its sitting")
+
+    -- Its boss kills taken away: no line, no page; its ledger row opens
+    -- the dungeon's map instead.
+    local kills, inferred = visit.bossesKilled, visit.inferred
+    visit.bossesKilled, visit.inferred = {}, nil
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+    YD.OpenLevel(#page.recap.entries)
+    for _, item in ipairs(Lines("run")) do Check(item.run.id ~= visit.id, "a run with no boss killed has a line") end
+    for _, p in ipairs(page.recap.entries[#page.recap.entries].pieces) do
+        for _, v in ipairs(p.runs) do Check(v.id ~= visit.id, "a run with no boss killed is a sitting's page") end
+    end
+    local ledger
+    for _, item in ipairs(page.items) do
+        if item.zone and item.zone.dungeon and item.zone.dungeon.visit and item.zone.dungeon.visit.id == visit.id then
+            ledger = item
+        end
+    end
+    Check(ledger ~= nil, "setup: the run's row in the ledger")
+    if ledger then
+        row = Shows(ledger)
+        row:Click()
+        Eq(page.mode .. ":" .. tostring(page.fullMap), "full:" .. tostring(ledger.mapID),
+            "a run with no boss killed: its ledger row does not open the dungeon's map")
+    end
+    YD.OpenRun(visit.id)
+    Check(page.mode ~= "run", "OpenRun opened a run with no boss killed")
+    visit.bossesKilled, visit.inferred = kills, inferred
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+end
+ns.UI.CloseJournal()

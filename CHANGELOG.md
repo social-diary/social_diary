@@ -16,6 +16,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - Social Diary is now licensed under the GPL v3
 - Sessions on a profile now tell proper stories -- will get better over time with more addtions.
+- _Your Diary_ now lists play sessions instead of levels. This prepares for later levels where too much happens in one level to portray it correctly on one page.
 
 ### Fixes
 

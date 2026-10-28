@@ -205,8 +205,8 @@ end
 -- Wherever a slip is shown: last of its margin, its words exactly, its
 -- leader to one of its plate's fires.
 local shown = 0
-for i in ipairs(page.recap.entries) do
-    Open(i)
+for _, at in ipairs(T.DiaryPages(page)) do
+    T.OpenDiaryPage(page, at.i, at.k)
     for _, s in ipairs(Slips()) do
         shown = shown + 1
         Eq(s:Words(), "sat by a campfire", "a slip's words")
@@ -309,7 +309,15 @@ end
 
 -- The week of the oasis: a light print with its slip under its caption,
 -- and the full plate's fire stepped aside from the time together's ring.
+-- Its two sittings are two pages (an L, an F) since the pages go by
+-- sitting, so it is read here as a week played in one: no sittings known,
+-- every entry one piece, drawn whole (spliced), LF.
 do
+    local j = ns.Journey.For(ns.ownGUID)
+    local kept = j.sittings
+    j.sittings = {}
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
     local week
     for i, e in ipairs(page.recap.entries) do
         Open(i)
@@ -333,6 +341,9 @@ do
     Check(ring and fire, "setup: the ring and the fire")
     local d = math.sqrt((ring.x - fire.x) ^ 2 + (ring.y - fire.y) ^ 2)
     Check(d >= ns.Campfire.MARK.h / 2, "the fire lies on the ring: " .. d)
+    j.sittings = kept
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
 end
 
 -- Laid flat, the slips lie square.

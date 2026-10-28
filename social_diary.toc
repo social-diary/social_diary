@@ -51,6 +51,7 @@ Core/Timeline.lua
 Core/People.lua
 Core/Candidates.lua
 Core/Journey.lua
+Core/Sittings.lua
 Core/CreatureNames.lua
 Core/JourneyRecap.lua
 Core/PersonPlate.lua

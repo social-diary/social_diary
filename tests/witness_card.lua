@@ -364,8 +364,9 @@ end
 -- Every case and every size somewhere: by level (or week), what the card
 -- says and the size it took.
 local seen, margins = {}, {}
-for i, e in ipairs(page.recap.entries) do
-    Open(i)
+for _, at in ipairs(T.DiaryPages(page)) do
+    local e = at.e
+    T.OpenDiaryPage(page, at.i, at.k)
     for _, c in ipairs(Witnesses()) do
         seen[#seen + 1] = (e.level or "week") .. ":" .. c.name:GetText() .. ":" .. c:Deed() .. ":" .. c.form
     end
@@ -383,10 +384,11 @@ for i, e in ipairs(page.recap.entries) do
 end
 table.sort(seen)
 -- (The cap's weeks fall by the calendar: on this test's day Grisha's
--- oasis is on a week's page beside its print, in the row's 142 px box; on
--- other days it has level 16's page to itself, XL.)
+-- oasis has a week's page, or level 16's, to itself, XL; it shared one
+-- with the print before it, M, until the pages went by sitting. Brakk's
+-- crag shares its sitting's page with the Barrens plate before it, M.)
 Eq(table.concat(seen, ", "), "10:Wenna:tried to save you:M, 11:Numa:saved you:L, 13:Corvin:watched you die:L, "
-    .. "14:Ilsabet & two others:saw you die:M, week:Brakk:tried to save you:XL, week:Grisha:mercilessly watched you die:M",
+    .. "14:Ilsabet & two others:saw you die:M, week:Brakk:tried to save you:M, week:Grisha:mercilessly watched you die:XL",
     "the made-up witnesses' cards")
 -- In the margin where the killer's card would be: after the people and
 -- the finds, ahead of the close call's card and the luck.
@@ -395,8 +397,22 @@ Check(Any(margins, "^14:witness,foe,lucky$"), "level 14's margin: " .. table.con
 Check(Any(margins, "^13:find,witness$"), "level 13's margin: " .. table.concat(margins, "; "))
 -- (The oasis week's campfire, sat by with Tester, comes last of all: its
 -- slip, Features/Campfire/Slip.lua, 14 Oct; the duels with Tester just
--- before it, Features/Duels/Slip.lua, 15 Oct.)
-Check(Any(margins, "^week:person,witness,foe,duel,campfire$"), "the oasis week's margin: " .. table.concat(margins, "; "))
+-- before it, Features/Duels/Slip.lua, 15 Oct. Since the pages go by
+-- sitting, the evening with Tester is a page of its own, and the deaths
+-- watched are on others, the witness ahead of the close call's card.)
+Check(Any(margins, "^week:witness,foe$"), "the oasis week's margin: " .. table.concat(margins, "; "))
+local tester
+for _, at in ipairs(T.DiaryPages(page)) do
+    T.OpenDiaryPage(page, at.i, at.k)
+    for _, p in ipairs(page.plates) do
+        if p:IsShown() and at.e.kind == "week" and (p.counts.duels or 0) > 0 then
+            local kinds = {}
+            for _, it in ipairs(p.margin or {}) do kinds[#kinds + 1] = it.kind end
+            tester = table.concat(kinds, ",")
+        end
+    end
+end
+Eq(tester, "person,duel,campfire", "the evening with Tester's margin")
 
 -- Level 13: the card's leader goes to the death's cross; the caption says
 -- "a death" and leaves the creature and the watcher to the card.

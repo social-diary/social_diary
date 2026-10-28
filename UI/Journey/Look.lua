@@ -1,8 +1,8 @@
 -- Your Diary's look (JRN-11, JRN-21): the numbers the page is laid out by,
 -- each table's comment saying what its fields mean and why its values.
--- The left page's (HEAD, ENTRY, LEDGER, PARAPHS, FACES); the right page's
--- slots for one to three plates and for a page keyed by its plates'
--- weights (LAYOUT, Snap, SNAPSHOT), the full page's (FULL); a caption's
+-- The left page's (HEAD, ENTRY, LEDGER, PARAPHS, FACES, SITTINGS); the
+-- right page's slots for one to three plates and for a page keyed by its
+-- plates' weights (LAYOUT, Snap, SNAPSHOT), the full page's (FULL); a caption's
 -- (CAPTION), a leader's (LEADER), the frame levels over the plates
 -- (LEADERS, STRIPS), the full page's foot (FOOT), what a level with nothing
 -- kept and the setting off say (NOTHING, OFF), and the empty page's
@@ -16,7 +16,9 @@
 --                           caption's, a leader's, the full page's foot,
 --                           the empty page's
 --   UI/Journey/Left.lua     the left page: the character, the entries,
---                           their faces and their ledger of zones
+--                           their faces, the open one's sittings and runs
+--                           and its ledger of zones; which piece is open
+--                           (OpenPieceOf)
 --   UI/Journey/Layouts.lua  a level's plates and the page their weights
 --                           give (LayoutFor, PlatesOf), and what each draws
 --                           from (SheetOf, MomentsOf)
@@ -41,9 +43,10 @@
 --               drawn (BuildPage, UI/Journey/Page.lua). Nil until the book
 --               is built. Every function reads it as it runs (`local page
 --               = YourDiary.page`), never as its file loads.
---   .OpenLevel  and .OpenFull: a level's plates, a zone's whole map (Page.lua,
---               the last to load), so the files before it look them up as
---               they call them.
+--   .OpenLevel  .OpenPiece, .OpenRun and .OpenFull: a level's newest
+--               sitting, one sitting, a run's page, a zone's whole map
+--               (Page.lua, the last to load), so the files before it look
+--               them up as they call them.
 -- Everything else on it, the look tables and the functions one file calls
 -- in another, is set once as its file loads and taken by the later files
 -- as they load (`local LAYOUT = YourDiary.LAYOUT`): the same tables, so a
@@ -119,6 +122,23 @@ local PARAPHS = { Style.LAPIS, Style.RUBRIC }
 -- (UI-Classes-Circles) `size` px, `gap` apart, then "+n"; each on a dark
 -- edge `edge` px wider, a rival's in a rubric ring `ring` px wider still.
 local FACES = { most = 4, size = 13, gap = 4, edge = 2, ring = 5, ringAlpha = 0.85 }
+-- The open entry's sittings (.claude/sittings-plan.md), straight under its
+-- rubric and over its prose, where it was played in more than one or has
+-- a run page: a contents list inside the contents list, so it is set as
+-- the book sets one, never as buttons. Each sitting's date in body type,
+-- `indent` px further in than the prose (a sub-entry hangs under its
+-- heading), one `row` each; under a sitting, each of its runs in small
+-- type `run` px further in again, the ledger's doorway hanging before it
+-- (a dungeon is a doorway wherever the page names one), one `runRow`
+-- each; `after` px under the last, before the prose. "so far" beside the
+-- one being played, as the rubric has it, `aside` px clear. The rows are
+-- marked as the ledger's are (LEDGER.mark): a pencil line under the mouse,
+-- an ink line under what the right page shows. The sitting open is ticked
+-- in the margin as a reader ticks their place: the paraph's lozenge in
+-- rubric, `tick` px, `tickX` px left of the date, so it reads as this
+-- level's own mark (it is the paraph, smaller) and stays while a run or a
+-- zone of it is on the right page.
+local SITTINGS = { indent = 12, run = 13, row = 18, runRow = 16, after = 8, aside = 7, tick = 5, tickX = 8 }
 
 -- The right page, measured from its top left (RIGHT_X, TOP), as the
 -- mockup's (.claude/ui-proposal/journey-moments-mockup.html): the plates'
@@ -337,6 +357,7 @@ local SKETCH = { x = RIGHT_X + 8, y = 58, w = 270, h = 190, turn = -1.3, alpha =
 local NOTES = { x = RIGHT_X + 296, w = 166, leader = 0.55, gap = 6 }
 
 YourDiary.HEAD, YourDiary.ENTRY, YourDiary.LEDGER, YourDiary.PARAPHS, YourDiary.FACES = HEAD, ENTRY, LEDGER, PARAPHS, FACES
+YourDiary.SITTINGS = SITTINGS
 YourDiary.RIGHT_H, YourDiary.LAYOUT, YourDiary.SNAPSHOT, YourDiary.FULL = RIGHT_H, LAYOUT, SNAPSHOT, FULL
 YourDiary.CAPTION, YourDiary.LEADER, YourDiary.LEADERS, YourDiary.STRIPS = CAPTION, LEADER, LEADERS, STRIPS
 YourDiary.FOOT, YourDiary.NOTHING, YourDiary.OFF = FOOT, NOTHING, OFF

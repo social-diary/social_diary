@@ -3,9 +3,14 @@
 -- items (EntryItems): the rubrics, the open entry's prose with its names
 -- made links (ToPerson), the player's note, the hindsight lines and the
 -- ledger of zones, each row built and filled (BuildEntryRow,
--- UpdateEntryRow) with its faces and dot leaders. A rubric opens its level
--- and a zone's row its map, a recorded run's row its page
--- (YourDiary.OpenLevel, OpenFull, OpenRun: Page.lua's).
+-- UpdateEntryRow) with its faces and dot leaders. Under the open entry's
+-- rubric, where it was played in more than one sitting or has a run page
+-- (not spliced: Recap.Pieces), its sittings, each with its runs indented
+-- under it (SITTINGS): the right page's contents for that level. A rubric
+-- opens its level at its newest sitting, a sitting's line that sitting, a
+-- run's line or a recorded run's row in the ledger its page, and a zone's
+-- row its map (YourDiary.OpenLevel, OpenPiece, OpenRun, OpenFull:
+-- Page.lua's).
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -22,6 +27,7 @@ local LEFT_W = BOOK.LEFT_W
 local SCROLLBAR_WIDTH = ns.UI.SCROLLBAR_WIDTH
 
 local ENTRY, LEDGER, PARAPHS, FACES = YourDiary.ENTRY, YourDiary.LEDGER, YourDiary.PARAPHS, YourDiary.FACES
+local SITTINGS = YourDiary.SITTINGS
 
 --------------------------------------------------------------------------
 -- The character
@@ -109,8 +115,30 @@ local function Linked(line, names)
     return (line:gsub("\001(%d+)\002", function(k) return marks[tonumber(k)] end))
 end
 
+-- An entry's pieces, one a sitting it was played in (Recap.Pieces, worked
+-- out as it is first asked and kept on the entry).
+local function PiecesOf(e)
+    local page = YourDiary.page
+    return ns.JourneyRecap.Pieces(ns.Journey.For(ns.ownGUID), e, page.ctx or {})
+end
+
+-- The piece of `e` the right page shows, and its index: the one opened
+-- (page.piece, kept with the entry it is of, so a stale index never
+-- carries to another entry), else the newest. Nil where `e` is spliced:
+-- the entry is drawn whole, as it always was.
+local function OpenPieceOf(e)
+    local page = YourDiary.page
+    if not e then return nil end
+    local pieces = PiecesOf(e)
+    if e.spliced or #pieces == 0 then return nil end
+    local k = page.pieceOf == e and page.piece or nil
+    if not (k and pieces[k]) then k = #pieces end
+    return pieces[k], k
+end
+
 -- The recap as list items: the prologue, then per entry its rubric. Only
--- the open entry says more (journey-revamp-plan §3): its paragraphs, the
+-- the open entry says more (journey-revamp-plan §3): its sittings and
+-- their runs where it is not spliced (SITTINGS), its paragraphs, the
 -- player's note in their hand, the hindsight lines, then its ledger of
 -- zones. A closed entry is its rubric and faces alone, so wherever the
 -- list stands, the first thing under the character is a rubric, never
@@ -136,6 +164,19 @@ local function EntryItems(recap, now, fights)
             faces = e.faces, e = e, open = open, height = open and ENTRY.title or ENTRY.closed })
         rubrics[i] = #items
         if i == page.open then
+            -- The sittings, oldest first, each one's runs under it.
+            local _, at = OpenPieceOf(e)
+            if at then
+                for k, p in ipairs(e.pieces) do
+                    Add({ sitting = k, label = Text.SittingLabel(p, now), aside = Text.Current(p), entry = i,
+                        chosen = k == at, current = k == at and page.mode == "plates", height = SITTINGS.row })
+                    for _, visit in ipairs(p.runs) do
+                        Add({ run = visit, label = visit.name or "An instance", entry = i, height = SITTINGS.runRow,
+                            current = page.mode == "run" and page.runVisit == visit.id })
+                    end
+                end
+                Add({ height = SITTINGS.after })
+            end
             local opening, names = HasOpening(e), NamesOf(e)
             for k, line in ipairs(Text.Lines(e, now, fights)) do
                 local font = (k == 1 and opening) and FONT.faded or FONT.body
@@ -291,18 +332,29 @@ local function BuildEntryRow(list)
     row.dots:SetWordWrap(false)
     row.dots:SetAlpha(LEDGER.dotAlpha)
     -- The doorway: the plates' arch, its body then its round head (y up
-    -- here, down in DOOR).
+    -- here, down in DOOR). A run's line under a sitting has the same
+    -- doorway, hung before its name further in (PlaceDoor).
     local D, A = LEDGER.door, Plate.DOOR
-    local s, I, at = D.size, D.ink, ENTRY.indent / 2 - 1
+    local s, I = D.size, D.ink
     local body = row:CreateTexture(nil, "ARTWORK")
     body:SetSize(s * A.body.w, s * A.body.h)
-    body:SetPoint("CENTER", row, "LEFT", at, -s * A.body.y)
     body:SetColorTexture(I[1], I[2], I[3], D.alpha)
+    body.dy = -s * A.body.y
     local head = row:CreateTexture(nil, "ARTWORK")
     head:SetSize(s * A.head.size, s * A.head.size)
-    head:SetPoint("CENTER", row, "LEFT", at, -s * A.head.y)
+    head.dy = -s * A.head.y
     Style.Disc(head, I[1], I[2], I[3], D.alpha)
     row.door = { body, head }
+
+    -- A sitting's "so far", and the tick in the margin at the sitting
+    -- open (SITTINGS): the paraph's lozenge, smaller, in rubric.
+    row.so = Style.Text(row, FONT.small)
+    row.so:SetPoint("LEFT", row.zone, "RIGHT", SITTINGS.aside, 0)
+    row.tick = row:CreateTexture(nil, "ARTWORK")
+    row.tick:SetSize(SITTINGS.tick, SITTINGS.tick)
+    row.tick:SetRotation(math.pi / 4)
+    local R = Style.RUBRIC
+    row.tick:SetColorTexture(R[1], R[2], R[3], 1)
 
     -- The reader's mark under a zone's name (LEDGER.mark): the pencil
     -- line, and the light on its groove's lower side.
@@ -321,8 +373,15 @@ local function BuildEntryRow(list)
         if item.title then
             Style.PlaySound("pageTurn")
             YourDiary.OpenLevel(item.entry)
-        elseif item.zone and item.zone.dungeon and item.zone.dungeon.visit then
-            -- A recorded run's row opens its page (UI/Journey/Run.lua).
+        elseif item.sitting then
+            Style.PlaySound("pageTurn")
+            YourDiary.OpenPiece(item.entry, item.sitting)
+        elseif item.run then
+            Style.PlaySound("pageTurn")
+            YourDiary.OpenRun(item.run.id, item.entry)
+        elseif item.zone and item.zone.dungeon and ns.JourneyRecap.RunWorthy(item.zone.dungeon.visit) then
+            -- A run that earned a page opens it (UI/Journey/Run.lua); any
+            -- other dungeon's row, its map as a zone's does.
             Style.PlaySound("pageTurn")
             YourDiary.OpenRun(item.zone.dungeon.visit.id, item.entry)
         elseif item.zone and item.mapID then
@@ -331,9 +390,15 @@ local function BuildEntryRow(list)
         end
     end)
     -- Under the mouse, a rubric's rule darkens: it opens its level. A
-    -- zone's row that opens its map is marked (LEDGER.mark).
+    -- zone's row that opens its map, a sitting's and a run's line are
+    -- marked (LEDGER.mark).
     local function Hot(self, on)
         local item = self.item
+        if item and (item.sitting or item.run) then
+            self.hot = on
+            Marked(self, item)
+            return
+        end
         if item and item.zone then
             self.hot = on and item.mapID ~= nil
             Marked(self, item)
@@ -348,22 +413,70 @@ local function BuildEntryRow(list)
     return row
 end
 
+-- The doorway hung `at` px in from the row's left, centred there.
+local function PlaceDoor(row, at)
+    for _, piece in ipairs(row.door) do
+        piece:ClearAllPoints()
+        piece:SetPoint("CENTER", row, "LEFT", at, piece.dy)
+    end
+end
+
 local function UpdateEntryRow(row, item)
     local isTitle, isZone = item.title ~= nil, item.zone ~= nil
+    local isSitting, isRun = item.sitting ~= nil, item.run ~= nil
+    local isSub = isSitting or isRun
     row.header:SetShown(isTitle)
     row.paraph:SetShown(isTitle)
     row.rule:SetShown(isTitle)
     row.aside:SetShown(isTitle)
     row.more:SetShown(false)
     row.text:SetShown(item.text ~= nil)
-    row.zone:SetShown(isZone)
+    row.zone:SetShown(isZone or isSub)
     row.time:SetShown(isZone)
     row.dots:SetShown(isZone)
-    for _, piece in ipairs(row.door) do piece:SetShown(isZone and item.zone.dungeon ~= nil) end
+    row.so:SetShown(isSitting and item.aside ~= nil)
+    row.tick:SetShown(isSitting and item.chosen == true)
+    for _, piece in ipairs(row.door) do piece:SetShown(isRun or (isZone and item.zone.dungeon ~= nil)) end
     row.underline:SetShown(false)
     row.lip:SetShown(false)
-    if not (isZone and item.mapID) then row.hot = nil end
+    if not (isSub or (isZone and item.mapID)) then row.hot = nil end
     for _, face in ipairs(row.faces) do face:Hide() end
+    -- A ledger's name lines up with the prose; a sitting's and a run's
+    -- hang further in under the rubric (SITTINGS).
+    if isZone or isSub then
+        local x = ENTRY.indent
+        if isSub then x = x + SITTINGS.indent + (isRun and SITTINGS.run or 0) end
+        row.zone:ClearAllPoints()
+        row.zone:SetPoint("LEFT", x, 0)
+        if isRun or isZone then PlaceDoor(row, isRun and x - SITTINGS.tickX or ENTRY.indent / 2 - 1) end
+        if isSitting then
+            row.tick:ClearAllPoints()
+            row.tick:SetPoint("CENTER", row, "LEFT", x - SITTINGS.tickX, 0)
+        end
+    end
+
+    if isSub then
+        -- A sitting's date in body type, a run's name in small; "so far"
+        -- beside the one being played; cut short at the row's end.
+        row.zone:SetFontObject(isSitting and FONT.body or FONT.small)
+        row.zone:SetWidth(0)
+        row.zone:SetText(item.label)
+        row.so:SetText(item.aside or "")
+        local x = ENTRY.indent + SITTINGS.indent + (isRun and SITTINGS.run or 0)
+        local most = LEFT_W - SCROLLBAR_WIDTH - 2 - x - LEDGER.right
+        if isSitting and item.aside then
+            most = most - SITTINGS.aside - (row.so:GetUnboundedStringWidth() or 0)
+        end
+        local nameW = row.zone:GetUnboundedStringWidth() or 0
+        if nameW > most then
+            row.zone:SetWidth(most)
+            nameW = most
+        end
+        row.underline:SetWidth(math.max(1, nameW))
+        row.lip:SetWidth(math.max(1, nameW))
+        Marked(row, item)
+        return
+    end
 
     if isTitle then
         -- A closed rubric's words sit lower in its shorter row.
@@ -426,3 +539,4 @@ end
 
 YourDiary.FillHeader, YourDiary.ToPerson, YourDiary.EntryItems = FillHeader, ToPerson, EntryItems
 YourDiary.BuildEntryRow, YourDiary.UpdateEntryRow = BuildEntryRow, UpdateEntryRow
+YourDiary.PiecesOf, YourDiary.OpenPieceOf = PiecesOf, OpenPieceOf
