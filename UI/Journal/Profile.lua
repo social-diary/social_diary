@@ -90,7 +90,10 @@ function RefreshProfile()
     local s = J.selected and ns.People.Stats(J.selected)
     -- A run out on the table is someone's: nobody's page, anyone else's or
     -- writing puts it away.
-    if J.visit and (not s or J.visit.guid ~= s.guid or J.editing) then ns.UI.DungeonPage.Close(true) end
+    -- (One opened from Your Diary is the diary's, not a person's.)
+    if J.visit and J.visit.from ~= "journey" and (not s or J.visit.guid ~= s.guid or J.editing) then
+        ns.UI.DungeonPage.Close(true)
+    end
     if not s then
         J.selected = nil
         p:Hide()

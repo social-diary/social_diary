@@ -10,6 +10,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 - Dungeons activites are now mapped!
   - Group members now get a business card. Art is WIP
   - Dungeon Routes can be drawn by hand if they diverge from the default route.
+  - They also appear in _Your Diary_ as full-sized pages
 
 ### Changes
 

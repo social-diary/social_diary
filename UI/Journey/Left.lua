@@ -4,7 +4,8 @@
 -- made links (ToPerson), the player's note, the hindsight lines and the
 -- ledger of zones, each row built and filled (BuildEntryRow,
 -- UpdateEntryRow) with its faces and dot leaders. A rubric opens its level
--- and a zone's row its map (YourDiary.OpenLevel, OpenFull: Page.lua's).
+-- and a zone's row its map, a recorded run's row its page
+-- (YourDiary.OpenLevel, OpenFull, OpenRun: Page.lua's).
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -158,7 +159,9 @@ local function EntryItems(recap, now, fights)
             for _, place in ipairs(e.places or {}) do
                 local mapID = place.mapID or (place.dungeon and place.dungeon.seg.mapID)
                 Add({ zone = place, mapID = mapID, entry = i, height = ENTRY.zone,
-                    current = page.mode == "full" and place.mapID ~= nil and place.mapID == page.fullMap })
+                    current = (page.mode == "full" and place.mapID ~= nil and place.mapID == page.fullMap)
+                    or (page.mode == "run" and place.dungeon ~= nil and place.dungeon.visit ~= nil
+                        and place.dungeon.visit.id == page.runVisit) })
             end
         end
     end
@@ -318,6 +321,10 @@ local function BuildEntryRow(list)
         if item.title then
             Style.PlaySound("pageTurn")
             YourDiary.OpenLevel(item.entry)
+        elseif item.zone and item.zone.dungeon and item.zone.dungeon.visit then
+            -- A recorded run's row opens its page (UI/Journey/Run.lua).
+            Style.PlaySound("pageTurn")
+            YourDiary.OpenRun(item.zone.dungeon.visit.id, item.entry)
         elseif item.zone and item.mapID then
             Style.PlaySound("pageTurn")
             YourDiary.OpenFull(item.mapID, item.entry)

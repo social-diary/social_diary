@@ -39,6 +39,12 @@
 -- entry, and a pencilled plate with notes in the margin. It is a recap,
 -- never a tracker: nothing here counts quests, shows a bar or keeps a score.
 --
+-- A level with recorded dungeon runs opens on its first run's page
+-- instead (UI/Journey/Run.lua, the keepsake page; interim, the user, 28
+-- Oct, until the pages go by play session): its rubric steps on through
+-- its runs to its plates and round again, and a run's ledger row opens
+-- that run (OpenRun).
+--
 -- The page is one module, ns.UI.YourDiary, in a file per question; this
 -- file, the last of them, builds it, refreshes it and turns it to. The
 -- others, their order and what they share: UI/Journey/Look.lua.
@@ -62,10 +68,11 @@ local BuildEntryRow, UpdateEntryRow = YourDiary.BuildEntryRow, YourDiary.UpdateE
 local LayoutFor, Handout = YourDiary.LayoutFor, YourDiary.Handout
 local NewNote, EnsurePools, ROW, Shared = YourDiary.NewNote, YourDiary.EnsurePools, YourDiary.ROW, YourDiary.Shared
 local DrawPlates, DrawFull = YourDiary.DrawPlates, YourDiary.DrawFull
+local DrawRun, HideRun, RunsOf = YourDiary.DrawRun, YourDiary.HideRun, YourDiary.RunsOf
 local BuildEmpty, FillEmpty = YourDiary.BuildEmpty, YourDiary.FillEmpty
 
 -- Set below, and on the module for the files before this one.
-local OpenLevel, OpenFull
+local OpenLevel, OpenFull, OpenRun
 
 --------------------------------------------------------------------------
 -- The right page
@@ -86,7 +93,15 @@ local function PlaceOff(full)
     end
 end
 
--- The right page for the open entry: its plates, or one zone's full page.
+-- The open entry's run `id`, or nil where it is not one of its runs.
+local function RunOf(e, id)
+    for _, visit in ipairs(RunsOf(e)) do
+        if visit.id == id then return visit end
+    end
+end
+
+-- The right page for the open entry: its plates, one zone's full page, or
+-- one of its runs (UI/Journey/Run.lua).
 -- Drawn as it opens or turns, from pools; never per frame.
 local function DrawRight()
     local page = YourDiary.page
@@ -97,8 +112,12 @@ local function DrawRight()
     page.nothing:Hide()
     for _, part in pairs({ page.foot.name, page.foot.meta, page.foot.hint }) do part:Hide() end
     local shown = 0
+    local visit = e and page.mode == "run" and RunOf(e, page.runVisit)
+    if not visit then HideRun() end
     if e then
-        if page.mode == "full" and page.fullMap then
+        if visit then
+            shown = DrawRun(e, visit)
+        elseif page.mode == "full" and page.fullMap then
             shown = DrawFull(e)
         else
             page.mode = "plates"
@@ -244,12 +263,48 @@ local function Rebuild(keep, steady)
     end
 end
 
--- Opens entry `i`: its prose on the left, its plates on the right.
+-- What entry `i` opens on: its first run where it has recorded runs,
+-- else its plates. Asked again of the level open (its rubric clicked
+-- again), the next: the run after the one shown, the plates after the
+-- last, the first run after the plates (interim, the user, 28 Oct).
+local function NextView(i)
+    local page = YourDiary.page
+    local runs = RunsOf(page.recap.entries[i])
+    if #runs == 0 then return "plates", nil end
+    if page.open ~= i then return "run", runs[1].id end
+    if page.mode == "run" then
+        for k, visit in ipairs(runs) do
+            if visit.id == page.runVisit then
+                if runs[k + 1] then return "run", runs[k + 1].id end
+                return "plates", nil
+            end
+        end
+    end
+    return "run", runs[1].id
+end
+YourDiary.NextView = NextView
+
+-- Opens entry `i`: its prose on the left, its first run or its plates on
+-- the right (NextView).
 function OpenLevel(i)
     local page = YourDiary.page
     if not (page and page.recap and page.recap.entries[i]) then return end
     GameTooltip:Hide()
-    page.open, page.mode, page.fullMap = i, "plates", nil
+    local mode, id = NextView(i)
+    page.open, page.mode, page.fullMap, page.runVisit = i, mode, nil, id
+    Rebuild(true, i)
+    DrawRight()
+end
+
+-- Shows run `id` of entry `i` (the open one when not given) across the
+-- right page: its ledger row clicked.
+function OpenRun(id, i)
+    local page = YourDiary.page
+    if not (page and page.recap and id) then return end
+    i = i or page.open
+    if not RunOf(page.recap.entries[i], id) then return end
+    GameTooltip:Hide()
+    page.open, page.mode, page.fullMap, page.runVisit = i, "run", nil, id
     Rebuild(true, i)
     DrawRight()
 end
@@ -261,11 +316,11 @@ function OpenFull(mapID, i)
     if not (page and page.recap and mapID) then return end
     GameTooltip:Hide()
     i = i or page.open
-    page.open, page.mode, page.fullMap = i, "full", mapID
+    page.open, page.mode, page.fullMap, page.runVisit = i, "full", mapID, nil
     Rebuild(true, i)
     DrawRight()
 end
-YourDiary.OpenLevel, YourDiary.OpenFull = OpenLevel, OpenFull
+YourDiary.OpenLevel, YourDiary.OpenFull, YourDiary.OpenRun = OpenLevel, OpenFull, OpenRun
 
 -- `opening`: the page is being turned to, so it falls open at the newest
 -- entry and its plates. Otherwise (the diary changed while it lies open)
@@ -305,7 +360,11 @@ function ns.UI.RefreshJourneyPage(opening)
     end
     local count = #recap.entries
     if opening or not page.open or page.open > count then
-        page.open, page.mode, page.fullMap = count, "plates", nil
+        -- Fallen open on the newest entry's first view (NextView asked as
+        -- of another entry open).
+        page.open = nil
+        page.mode, page.runVisit = NextView(count)
+        page.open, page.fullMap = count, nil
     end
     if changed or opening then
         Rebuild(not opening)

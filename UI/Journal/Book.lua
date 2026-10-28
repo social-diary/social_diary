@@ -219,9 +219,11 @@ local function ShowView()
         if J.journal.ribbons[key] then J.journal.ribbons[key]:SetActive(key == J.view) end
     end
     TurnStack()
-    -- A run out on the table lies over a person's page: another page puts
-    -- it away.
-    if J.visit and J.view ~= "people" then ns.UI.DungeonPage.Close(true) end
+    -- A run out on the table lies over a person's page (or Your Diary's,
+    -- opened from its run page): another page puts it away.
+    if J.visit and J.view ~= (J.visit.from == "journey" and "journey" or "people") then
+        ns.UI.DungeonPage.Close(true)
+    end
     local open = J.Page(J.view)
     if open.refresh then open.refresh() end
     -- Left before its end, the introduction asks to be gone back to

@@ -44,6 +44,7 @@ Core/DungeonRoutes.lua
 Core/Dungeons.lua
 Core/DungeonRun.lua
 Core/DungeonWay.lua
+Core/RunPage.lua
 Core/Roster.lua
 Core/Reunions.lua
 Core/Timeline.lua
@@ -105,6 +106,7 @@ UI/Journey/Text/Zones.lua
 UI/Journey/Text/Tips.lua
 UI/Journey/Text/Caption.lua
 UI/Journey/Text/Margin.lua
+UI/Journey/Text/Run.lua
 UI/Journal/Book.lua
 UI/Journal/Pages.lua
 # Your Diary's page (ns.UI.YourDiary): the module and its look first, each
@@ -118,6 +120,7 @@ UI/Journey/Margin.lua
 UI/Journey/Caption.lua
 UI/Journey/Full.lua
 UI/Journey/Empty.lua
+UI/Journey/Run.lua
 UI/Journey/Page.lua
 # The person's page: its paper strips (the timeline's day labels and note
 # slips among them), the timeline, the People page, then the page's own

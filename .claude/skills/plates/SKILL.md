@@ -341,6 +341,22 @@ own kit stays inside `Plate.lua`'s `New` for now. `Clamp` is the pen's
 (`ns.UI.Pen.Clamp`); the leaders keep their own (it differs where
 `lo` passes `hi`).
 
+## 4b. A run's page (the keepsake page, 28 Oct)
+
+A level with recorded dungeon runs opens its right page on a run instead
+of its plates (`page.mode = "run"`, `page.runVisit`; interim until pages go
+by play session): the rubric steps run → run → plates → first run again
+(`YourDiary.NextView`), a run's ledger row opens it (`OpenRun`). The page
+is `UI/Journey/Run.lua` (`DrawRun`, blank `PaperStrip`s written on through
+`strip:Lay`); where everything goes is the pure plan `Core/RunPage.lua`
+(`RUN`, `Plan`, `Most`, `TitleSize`), and `tests/run_page.lua` checks no two
+pieces meet at 0–5+ keepsakes, with and without a map, one- and two-line
+titles, many seeds (it found the boss strip meeting K2's slip once: keep
+that test running after any change to `RUN`). Its words are
+`UI/Journey/Text/Run.lua` (the user's own, no copywriter pass). A plate
+that is only a recorded run's door is dropped in `Recap.Plates`
+(`Recap.DOOR_ONLY`). The spec: `.claude/ui-proposal/super-plate.md`.
+
 ## 5. Decisions already made (don't reopen without asking the user)
 
 - **Only the open level** is drawn on plates and the full page. Other

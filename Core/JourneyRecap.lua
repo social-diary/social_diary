@@ -63,6 +63,10 @@ Recap.RANK = RANK
 -- (The features' light kinds say so as they register: `light`.)
 local LIGHT = { arrive = true, dungeon = true, stay = true, road = true, level = true }
 Recap.LIGHT = LIGHT
+-- What a plate may hold besides a dungeon's door and still be only the
+-- door (Recap.Plates drops it where the run was recorded).
+local DOOR_ONLY = { arrive = true, level = true }
+Recap.DOOR_ONLY = DOOR_ONLY
 
 --------------------------------------------------------------------------
 -- A feature's moments
@@ -782,7 +786,8 @@ function Recap.Moments(j, e, ctx)
         end
     end
     for _, d in ipairs(e.dungeons or {}) do
-        Add({ kind = "dungeon", t = d.seg.from, seg = d.seg, name = d.name }, d.seg.mapID, d.seg.x, d.seg.y)
+        Add({ kind = "dungeon", t = d.seg.from, seg = d.seg, name = d.name, visit = d.visit }, d.seg.mapID, d.seg.x,
+            d.seg.y)
     end
     for _, stop in ipairs(e.stops or {}) do
         local seg = stop.seg
@@ -865,6 +870,21 @@ function Recap.Plates(j, e, ctx, cover)
                     t = m.t, rank = rank, moments = { m } }
             end
         end
+    end
+    -- A plate that is only a dungeon's door (with an arrival or a level's
+    -- pin at most) is left out where the run behind the door was recorded:
+    -- the run has a page of its own (UI/Journey/Run.lua; the user, 28 Oct),
+    -- and a map with one door on it beside it says nothing more.
+    for i = #plates, 1, -1 do
+        local doorOnly, recorded = true, false
+        for _, m in ipairs(plates[i].moments) do
+            if m.kind == "dungeon" then
+                recorded = recorded or m.visit ~= nil
+            elseif not DOOR_ONLY[m.kind] then
+                doorOnly = false
+            end
+        end
+        if doorOnly and recorded then table.remove(plates, i) end
     end
     table.sort(plates, function(a, b)
         if a.rank ~= b.rank then return a.rank < b.rank end

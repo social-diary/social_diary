@@ -2202,3 +2202,35 @@ Eq(firstItem, nil, "a first sighting at the moment they were added has a line")
 ns.Characters.Forget(KOKO)
 end
 Hindsight()
+
+--------------------------------------------------------------------------
+Section("a plate that is only a recorded run's door is left out")
+
+-- (.claude/ui-proposal/super-plate.md, Q2, the user, 28 Oct: the run has a
+-- page of its own, UI/Journey/Run.lua.) Recap.Plates over moments given
+-- straight: a door with an arrival and a level's pin on one map, a long
+-- stay on another.
+do
+    local R2 = ns.JourneyRecap
+    local moments = R2.Moments
+    local function With(visit)
+        R2.Moments = function()
+            return {
+                { kind = "dungeon", t = 10, mapID = 1, x = 0.5, y = 0.5, visit = visit, name = "Razorfen Kraul" },
+                { kind = "arrive", t = 5, mapID = 1, x = 0.52, y = 0.5 },
+                { kind = "level", t = 20, mapID = 1, x = 0.5, y = 0.52 },
+                { kind = "stay", t = 30, mapID = 2, x = 0.3, y = 0.3, seconds = 900 },
+            }
+        end
+        local plates = R2.Plates({}, {}, {}, function() return 0.3, 0.3 end)
+        R2.Moments = moments
+        local maps = {}
+        for _, plate in ipairs(plates) do maps[#maps + 1] = plate.mapID end
+        table.sort(maps)
+        return table.concat(maps, ",")
+    end
+    Eq(With({ id = 7 }), "2", "the door's plate, its run recorded, is left out")
+    Eq(With(nil), "1,2", "the door's plate, no run recorded behind it, stays")
+    Eq(R2.DOOR_ONLY.arrive and R2.DOOR_ONLY.level and not R2.DOOR_ONLY.stay, true,
+        "an arrival and a pin go with the door; a stay does not")
+end

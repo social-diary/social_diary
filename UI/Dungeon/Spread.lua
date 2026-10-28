@@ -62,6 +62,9 @@ local SPREAD = { name = "SocialDiaryTableSpread", book = "SocialDiaryJournalFram
 -- under the mouse, where the words darken.
 local BOOKMARK = { tuck = 10, down = 30, turn = -4, h = 28, least = 104, ribbon = 20, pad = 11, edge = 0.4,
     tail = { at = 8, w = 8, len = 34, hang = 22, notch = 4.5 }, eyelet = 6.5 }
+-- Opened from Your Diary's run page (UI/Journey/Run.lua), the way back is
+-- to the diary, not to a person's story: its words.
+BOOKMARK.journey = "Your Diary"
 DungeonPage.SPREAD, DungeonPage.BOOKMARK = SPREAD, BOOKMARK
 
 -- The spread draws over all of the book, its side tabs too (16 Oct, in the
@@ -306,9 +309,10 @@ local function Bookmark(map)
         Place(self.words, -W / 2 + BOOKMARK.ribbon + tw / 2, 0.5, tw, th + tw * math.abs(math.sin(turn)) + 4)
     end
 
-    -- "Tester's story" on it, its length to suit them.
-    function mark:Set(first)
-        self.words:SetText(first and ("%s's story"):format(first) or "Their story")
+    -- "Tester's story" on it, its length to suit them; or its own `words`
+    -- (opened from Your Diary: BOOKMARK.journey).
+    function mark:Set(first, words)
+        self.words:SetText(words or (first and ("%s's story"):format(first) or "Their story"))
         self.words:SetSize(0, 0)
         self.textW = (Surface.Width(self.words) or 0) + 2
         self.w = math.max(BOOKMARK.least, BOOKMARK.ribbon + self.textW + BOOKMARK.pad)
@@ -447,17 +451,18 @@ local function Build()
     return host
 end
 
--- Lays `visit` out on the table, opened from `guid`'s page: the book put
+-- Lays `visit` out on the table, opened from `guid`'s page (or from Your
+-- Diary, `from` "journey", read as the user's own run): the book put
 -- aside, the sheet laid where it lay.
-local function Open(visit, guid)
+local function Open(visit, guid, from)
     spread = spread or Build()
     if not spread:IsShown() then StandIn(SPREAD.name) end
     -- The party's cards (UI/Dungeon/Cards.lua), in their stack; the
     -- bookmark's words, for its room beside the map.
     local party = DungeonPage.Party(visit, guid)
     spread.partyList = party
-    spread.back:Set(ns.Characters.Name(guid))
-    J.visit = { id = visit.id, guid = guid }
+    spread.back:Set(ns.Characters.Name(guid), from == "journey" and BOOKMARK.journey or nil)
+    J.visit = { id = visit.id, guid = guid, from = from }
     -- Its card says a click puts it away, the timeline kept where it was.
     J.RefreshTimelineList()
     -- Nothing typed into the book while it is put aside (its search box).
@@ -484,7 +489,23 @@ end
 -- default), or puts it away when it is out already: a second click on the
 -- card. Opens the book on their page first where it is not open on it.
 -- Returns whether the run is out now.
+--
+-- From Your Diary's run page (UI/Journey/Run.lua), `guid` is "journey": the
+-- user's own run, read as theirs, the book left on the diary as it was, so
+-- putting the run away gives back the same run's page; the bookmark says
+-- so (BOOKMARK.journey).
 function ns.UI.OpenVisit(visitId, guid)
+    if guid == "journey" then
+        if J.visit and J.visit.id == visitId and J.visit.from == "journey" then
+            DungeonPage.Close()
+            return false
+        end
+        local visit = ns.db.instances and ns.db.instances[visitId]
+        if not visit then return false end
+        GameTooltip:Hide()
+        Open(visit, visit.me or ns.ownGUID, "journey")
+        return true
+    end
     guid = ns.SafeGUID(guid) or J.selected
     if J.visit and J.visit.id == visitId and J.visit.guid == guid then
         DungeonPage.Close()
@@ -521,7 +542,7 @@ end
 -- through, UI/Settings/Sections/Dungeons.lua).
 function DungeonPage.Refresh()
     if not (spread and spread:IsShown() and J.visit) then return end
-    local visit = DungeonPage.Visit(J.visit.guid, J.visit.id)
+    local visit = J.visit.from == "journey" and ns.db.instances[J.visit.id] or DungeonPage.Visit(J.visit.guid, J.visit.id)
     if visit then spread.map:Open(visit, J.visit.guid) else DungeonPage.Close(true) end
 end
 

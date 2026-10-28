@@ -561,3 +561,158 @@ function DungeonRun.Person(visit, guid)
     end
     return out
 end
+
+--------------------------------------------------------------------------
+-- The run's page in Your Diary (.claude/ui-proposal/super-plate.md, B)
+--------------------------------------------------------------------------
+--
+-- What the keepsake page (UI/Journey/Run.lua) says of a run, worked out
+-- here from the visit and the route as they are saved, nothing stored:
+--   Inside(visit)            the seconds spent inside (its spans)
+--   LevelSpan(visit, j)      the user's level going in and coming out
+--   Bosses(visit)            bosses slain of those that count, and of how
+--                            many (nil for a dungeon the data doesn't know)
+--   Keepsakes(visit, isDiary) the items shown and the rest, in the user's
+--                            order (28 Oct)
+--   Fallen(visit)            who died, each once, in the order they first did
+
+-- The seconds inside: the spans (an open one closed at the run's end),
+-- else start to end. Time away on a ghost run is not in a span.
+function DungeonRun.Inside(visit)
+    if not visit then return 0 end
+    local n = 0
+    for _, span in ipairs(visit.spans or {}) do
+        local to = span.to or visit.endedAt
+        if span.from and to and to > span.from then n = n + to - span.from end
+    end
+    if n == 0 and visit.startedAt and visit.endedAt then n = math.max(0, visit.endedAt - visit.startedAt) end
+    return n
+end
+
+-- The user's level going in (`from`) and the highest they reached inside
+-- (`to`, `from` without a level-up). Going in: their own line in the
+-- party (INS-12 keeps the level at entry), else the route's (`j`, the
+-- user's journey: the highest level reached by the time they went in),
+-- else nil. Coming out: the route's levels reached inside the run.
+function DungeonRun.LevelSpan(visit, j)
+    if not visit then return nil, nil end
+    local me = visit.me or ns.ownGUID
+    local from
+    for _, m in ipairs(visit.members or {}) do
+        if m.guid == me and type(m.level) == "number" then from = m.level end
+    end
+    local start, stop = visit.startedAt or 0, visit.endedAt or visit.startedAt or 0
+    if not from and j then
+        local at = -math.huge
+        from = j.startLevel
+        for n, rec in pairs(j.levels or {}) do
+            if rec.at <= start and rec.at > at then from, at = n, rec.at end
+        end
+    end
+    local to = from
+    for n, rec in pairs(j and j.levels or {}) do
+        if rec.at >= start and rec.at <= stop and (not to or n > to) then to = n end
+    end
+    if not from then from = to end
+    return from, to
+end
+
+-- Bosses slain of those that count towards a full run (Dungeons.Counts:
+-- no trash, summoned, part or rare), and how many count: k, m, and
+-- whether that is all of them. m is nil for a dungeon the data doesn't
+-- know (the page shows no strip then).
+function DungeonRun.Bosses(visit)
+    if not visit then return 0, nil, false end
+    local D = ns.Dungeons
+    local m = visit.bossTotal or D.BossTotal(visit.instanceID, visit.difficultyID, visit.wing)
+    local k = 0
+    for _, boss in ipairs(D.Killed(visit)) do
+        if D.Counts(visit.instanceID, boss) then k = k + 1 end
+    end
+    if m then k = math.min(k, m) end
+    return k, m, m ~= nil and m > 0 and k >= m
+end
+
+-- The keepsakes shown, and those that are not (the user, 28 Oct):
+--   tier 1  the user's own, blue and up
+--   tier 2  a diary entry's (`isDiary(guid)`), blue or epic
+--   tier 3  anyone's epic and up
+-- ranked by tier, then quality, then "at last" (an item the user needed
+-- and lost on an earlier run: Rolls' `finally`), then time; the first
+-- KEEPSAKES.most shown. `rest` is every other item captured, tiered or
+-- not (others' greens off a boss's table too), in the same order, the
+-- untiered last. Each item: { guid, item (its link), itemID, time,
+-- quality, tier, mine, atLast }, one per owner and item (a loot line and
+-- the roll it came from are one).
+local KEEPSAKES = { most = 5, blue = 3, epic = 4 }
+DungeonRun.KEEPSAKES = KEEPSAKES
+
+function DungeonRun.Keepsakes(visit, isDiary)
+    local out = { shown = {}, rest = {} }
+    if not visit then return out end
+    local me = visit.me or ns.ownGUID
+    local Quality = ns.Timeline.Quality
+    local atLast = {}
+    for _, g in ipairs(DungeonRun.Rolls(visit).finally) do
+        if g.itemID then atLast[g.itemID] = true end
+    end
+    local items, seen = {}, {}
+    local function Add(guid, item, itemID, time)
+        if not (guid and item) then return end
+        local key = tostring(guid) .. ":" .. tostring(itemID or item)
+        if seen[key] then return end
+        seen[key] = true
+        local q, mine = Quality(item) or 0, guid == me
+        local tier
+        if mine and q >= KEEPSAKES.blue then
+            tier = 1
+        elseif not mine and isDiary and isDiary(guid) and (q == KEEPSAKES.blue or q == KEEPSAKES.epic) then
+            tier = 2
+        elseif q >= KEEPSAKES.epic then
+            tier = 3
+        end
+        items[#items + 1] = { guid = guid, item = item, itemID = itemID, time = time or 0, quality = q, tier = tier,
+            mine = mine, atLast = mine and itemID ~= nil and atLast[itemID] == true }
+    end
+    for _, entry in ipairs(visit.loot or {}) do Add(entry.guid, entry.item, entry.itemID, entry.time) end
+    for _, drop in ipairs(visit.rolls or {}) do
+        if drop.winner then Add(drop.winner, drop.item, drop.itemID, drop.time) end
+    end
+    table.sort(items, function(a, b)
+        local ta, tb = a.tier or 9, b.tier or 9
+        if ta ~= tb then return ta < tb end
+        if a.quality ~= b.quality then return a.quality > b.quality end
+        if a.atLast ~= b.atLast then return a.atLast end
+        return a.time < b.time
+    end)
+    for _, it in ipairs(items) do
+        if it.tier and #out.shown < KEEPSAKES.most then out.shown[#out.shown + 1] = it else out.rest[#out.rest + 1] = it end
+    end
+    return out
+end
+
+-- Who died in the run, each once, in the order they first died: { guid,
+-- first (their name in the party), me, times, deaths = { death } } (each
+-- death the visit's own, with its killer); and how many deaths in all.
+function DungeonRun.Fallen(visit)
+    local out, by, n = {}, {}, 0
+    if not visit then return out, 0 end
+    local me = visit.me or ns.ownGUID
+    local names = {}
+    for _, m in ipairs(visit.members or {}) do names[m.guid] = m.first end
+    local log = {}
+    for _, death in ipairs(visit.deathLog or {}) do log[#log + 1] = death end
+    table.sort(log, function(a, b) return (a.time or 0) < (b.time or 0) end)
+    for _, death in ipairs(log) do
+        local e = by[death.guid or "?"]
+        if not e then
+            e = { guid = death.guid, first = names[death.guid], me = death.guid == me, times = 0, deaths = {} }
+            by[death.guid or "?"] = e
+            out[#out + 1] = e
+        end
+        e.times = e.times + 1
+        e.deaths[#e.deaths + 1] = death
+        n = n + 1
+    end
+    return out, n
+end
