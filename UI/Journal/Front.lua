@@ -103,7 +103,7 @@ local page
 -- What it says
 --------------------------------------------------------------------------
 
-local WHERE_TEXT = "Only here, in your WTF folder. Nothing is sent to anyone."
+local WHERE_TEXT = "All data is kept local. Nothing is sent to anyone."
 
 -- PRV-7 and what it cannot see, as it is: whose position the road is, and
 -- the client's limits.
@@ -111,7 +111,7 @@ local function LimitsText()
     local road = ns.Setting("keepRoute")
         and "Your road is only your own position, kept for good."
         or "No road of yours is kept just now; what was kept stays until you delete it in the settings."
-    return road .. " Who passes by is only seen with nameplates on. Chat in boss fights can\226\128\153t be read."
+    return road .. " Who passes by is only seen with nameplates on."
 end
 
 -- "Begun in Mulgore / on 8 October 2026, / at level 6.", as far as it is
@@ -220,7 +220,7 @@ local function BuildKept(parent)
     local k = {}
     k.rubric = Style.Rubric(parent, LEFT_W)
     k.rubric:SetPoint("TOPLEFT", LEFT_X, -KEPT.y)
-    k.rubric:SetText("Kept on this computer", true)
+    k.rubric:SetText("Data retention settings", true)
 
     k.where = Style.Text(parent, FONT.body)
     k.where:SetPoint("TOPLEFT", k.rubric, "BOTTOMLEFT", 0, -KEPT.under)

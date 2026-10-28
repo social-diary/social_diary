@@ -273,6 +273,40 @@ Features/Witnesses/Capture.lua
 # release never loads them (.pkgmeta leaves the folder out as well, and
 # every Features/*/Dev.lua). A feature's Dev.lua adds its test data to
 # /sd testdata (TestData.Register), so it comes after Dev/TestData.lua.
+# Experimental: the page writer (Core/Pages/Render.lua, its words in
+# UI/Words/Pages/: grammar, the engine, slots, banks, then the angles,
+# Reunion and Open first) and together sessions in prose behind /sd prose
+# (history, candidates, weights, the told-ledger, then UI/Words/SessionProse.lua). Here, in the dev block, until it is decided.
+UI/Words/Pages/English.lua
+Core/Pages/Render.lua
+UI/Words/Pages/Slots.lua
+UI/Words/Pages/Lexicon.lua
+UI/Words/Pages/Angles/Reunion.lua
+UI/Words/Pages/Angles/Open.lua
+UI/Words/Pages/Angles/Campfire.lua
+UI/Words/Pages/Angles/Changed.lua
+UI/Words/Pages/Angles/Chat.lua
+UI/Words/Pages/Angles/Close.lua
+UI/Words/Pages/Angles/Crowd.lua
+UI/Words/Pages/Angles/Ding.lua
+UI/Words/Pages/Angles/Duel.lua
+UI/Words/Pages/Angles/Dungeon.lua
+UI/Words/Pages/Angles/Lost.lua
+UI/Words/Pages/Angles/Misfortune.lua
+UI/Words/Pages/Angles/NewFace.lua
+UI/Words/Pages/Angles/Parity.lua
+UI/Words/Pages/Angles/PvP.lua
+UI/Words/Pages/Angles/Quiet.lua
+UI/Words/Pages/Angles/Rescue.lua
+UI/Words/Pages/Angles/Stranger.lua
+UI/Words/Pages/Angles/Together.lua
+UI/Words/Pages/Angles/Trade.lua
+UI/Words/Pages/Angles/Witness.lua
+UI/Words/SessionHistory.lua
+UI/Words/SessionCandidates.lua
+UI/Words/SessionWeights.lua
+UI/Words/SessionLedger.lua
+UI/Words/SessionProse.lua
 Dev/Art.lua
 Dev/Diagnostics.lua
 Dev/LootProbe.lua

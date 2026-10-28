@@ -41,6 +41,7 @@ local FILES = {
     "settings",
     "sightings",
     "timeline",
+    "session_prose",
     "person_plate",
     "person_page",
     "instances",

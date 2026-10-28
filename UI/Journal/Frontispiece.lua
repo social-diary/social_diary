@@ -96,10 +96,10 @@ local Days = ns.UI.Journal.PencilDays
 
 local function PencilText()
     return ("|cff%sThe diary pencils in strangers by itself:|r anyone you pass, trade with, group with or"
-        .. " whisper. It fades, and after %s it is rubbed out."):format(Style.HEX.graphite, Days())
+        .. " whisper. It fades, and after %s the player is forgotten again."):format(Style.HEX.graphite, Days())
 end
 
-local INK_TEXT = "Ink is yours to give. Add someone, and everything the pencil had is inked in, for good."
+local INK_TEXT = "Ink is yours to give. Add someone, and everything pencilled is now inked in, for good."
 
 -- The fading stages: day 1, a third, two thirds, the last.
 local function Stages()
@@ -169,7 +169,7 @@ local function BuildKey(parent)
     k.lede:SetPoint("TOPLEFT", LEFT_X, -KEY.lede)
     k.lede:SetWidth(LEFT_W)
     k.lede:SetSpacing(2)
-    k.lede:SetText("Everyone you meet is written down. Most of them only in pencil.")
+    k.lede:SetText("Everyone you meet is written down, but you decide who goes into your diary.")
 
     k.pencil, k.pencilMark = Legend(parent, k.lede, KEY.gap, "Pencil", true, Style.GRAPHITE, SCRIBBLE.pencil)
     k.ink, k.inkMark = Legend(parent, k.pencil, KEY.gap, "Ink", false, Style.INK_STRONG, SCRIBBLE.ink, true)
@@ -179,7 +179,7 @@ local function BuildKey(parent)
     k.aside:SetPoint("TOPLEFT", k.ink, "BOTTOMLEFT", 0, -KEY.aside)
     k.aside:SetWidth(LEFT_W)
     k.aside:SetSpacing(3)
-    k.aside:SetText("Nobody is ever inked in unless you do it.")
+    k.aside:SetText("Only you decide who goes into your diary.")
     return k
 end
 
@@ -214,7 +214,7 @@ local function BuildStranger(fig)
     end
 
     f.notes = {}
-    local words = { "Pencilled in by itself, the moment you cross paths.", "Every meeting after that, too." }
+    local words = { "Pencilled in automatically.", "Every meeting after that, too." }
     for i, y in ipairs(M.notes) do
         local note = Style.Text(fig, FONT.margin)
         note:SetPoint("TOPLEFT", M.x, -y)
@@ -263,7 +263,7 @@ local function BuildFork(fig)
             0.95, 1.6)
     end
 
-    local remember = At(fig, FONT.body, F.remember.x, F.remember.y, "Remember this\226\128\166")
+    local remember = At(fig, FONT.body, F.remember.x, F.remember.y, "Add to Diary")
     return remember
 end
 
@@ -302,7 +302,7 @@ local function BuildFaded(fig)
         crumb:SetColorTexture(G[1], G[2], G[3], D.crumbAlpha)
         if crumb.SetRotation then crumb:SetRotation(math.rad(Style.Noise(i) * 120 - 60)) end
     end
-    rub.caption = At(fig, FONT.small, ENDINGS.left, D.caption, "Rubbed out, and forgotten.")
+    rub.caption = At(fig, FONT.small, ENDINGS.left, D.caption, "Rubbed out, and deleted.")
     return rub
 end
 
@@ -319,8 +319,8 @@ local function BuildInked(fig)
         At(fig, FONT.small, x, y + 2, line[1])
         At(fig, FONT.body, x + I.words, y, line[2])
     end
-    inked.note = At(fig, FONT.noteWritten, x, I.note, "Helped me with the Nagas.")
-    inked.caption = At(fig, FONT.small, x, I.caption, "Kept for good, pencil and all.")
+    inked.note = At(fig, FONT.noteWritten, x, I.note, "Saved me from the Nagas.")
+    inked.caption = At(fig, FONT.small, x, I.caption, "Saved indefinitely.")
     return inked
 end
 
@@ -332,17 +332,17 @@ local function BuildFigure(parent)
 
     local leave = Style.Rubric(fig, ENDINGS.w)
     leave:SetPoint("TOPLEFT", ENDINGS.left, -ENDINGS.y)
-    leave:SetText("If you leave them", true)
+    leave:SetText("Strangers lose their data", true)
     local add = Style.Rubric(fig, ENDINGS.w)
     add:SetPoint("TOPLEFT", ENDINGS.right, -ENDINGS.y)
-    add:SetText("If you add them", false)
+    add:SetText("Diary entries are kept", false)
 
     fig.faded = BuildFaded(fig)
     fig.inked = BuildInked(fig)
 
     fig.caption = Style.Text(fig, FONT.heading)
     fig.caption:SetPoint("TOP", 0, -CAPTION)
-    fig.caption:SetText(Spaced("FIG. I") .. "     \194\183     " .. Spaced("ONE STRANGER, TWO ENDINGS"))
+    fig.caption:SetText(Spaced("FIG. I") .. "     \194\183     " .. Spaced("Strangers vs. Entries"))
     return fig
 end
 

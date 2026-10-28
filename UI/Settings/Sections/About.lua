@@ -13,8 +13,9 @@ local SettingsUI = ns.UI.Settings
 local Kit = SettingsUI.Kit
 local INDENT = Kit.INDENT
 
--- The About page's thanks, in the order they were given.
-local TESTERS = { "Gunther Guntherino", "Mooguy Mooperson", "Koko Skybluff" }
+-- The About page's thanks: Feivel Emmenthal at the top, then the rest in
+-- the order they were given.
+local TESTERS = { "Feivel Emmenthal", "Gunther Guntherino", "Mooguy Mooperson", "Koko Skybluff" }
 
 -- Licensing's lines before and after the map art: the addon's own, then
 -- what it ships.

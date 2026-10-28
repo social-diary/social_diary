@@ -207,7 +207,7 @@ local function Build()
         ns.db.settings.toastAt = nil
         Anchor(host)
     end)
-    host.reset:SetText("Put it back")
+    host.reset:SetText("Reset Position")
     for _, link in ipairs({ host.done, host.reset }) do
         link:SetFrameLevel(button:GetFrameLevel() + 1)
     end

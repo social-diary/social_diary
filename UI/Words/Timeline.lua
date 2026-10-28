@@ -399,6 +399,13 @@ local function PlaceStory(episode, where, lead)
 end
 
 local function SessionHeadline(episode, guid)
+    -- Experimental: the session in prose (UI/Words/SessionProse.lua), when on.
+    local prose = ns.UI.SessionProse
+    if prose and prose.On() then
+        local text, said = prose.Write(episode, guid)
+        if text then return text, said end
+    end
+
     local seed = episode.session and episode.session.id or 0
     local name = guid and ns.Characters.Name(guid) or "They"
     local lead = episode.activities and episode.activities[1]
@@ -509,7 +516,7 @@ local function Facts(episode, guid, said)
     local facts = {}
     local function Add(fact) if fact then facts[#facts + 1] = fact end end
 
-    if named.quest and p then Add(QuestFact(p.quests or {})) end
+    if named.quest and p and not said.quest then Add(QuestFact(p.quests or {})) end
     if named.rare and not said.rare and #Rares(episode) > 0 then
         Add("killed " .. RareNames(Rares(episode)))
     end
@@ -518,7 +525,7 @@ local function Facts(episode, guid, said)
         Add((guid and ns.Characters.Name(guid) or "They") .. " reached lv " .. p.levelEnd)
     end
 
-    if named.trade then
+    if named.trade and not said.trade then
         Add(TradeFact(t))
     elseif t.chatterTrades > 0 then
         Add(Count(t.chatterTrades, "trade", "trades"))
@@ -584,6 +591,12 @@ local function EpisodeText(episode, guid)
     local sub = #shown > 0 and table.concat(shown, "  ·  ") or nil
     local full = visitText or sessionText or Headline(episode, episode.activities)
     if #facts > 0 then full = full .. "\n" .. table.concat(facts, "  ·  ") end
+    -- Experimental: with session prose on and debug, the planner's trace.
+    local prose = ns.UI.SessionProse
+    if episode.kind == "session" and episode.session and prose and prose.On()
+        and ns.db.settings and ns.db.settings.debug then
+        full = full .. "\n\n" .. prose.Trace(episode, guid)
+    end
 
     local icon = (episode.kind == "session" and "together") or (episode.kind == "visit" and "dungeon")
         or ACTIVITY_ICON[episode.headline[1]] or "talk"
@@ -693,5 +706,7 @@ end
 -- alone; Place(row) " in Hillsbrad Foothills", or ""; Foe(row) the
 -- creature in a witness's row as Your Diary names a killer ("a Kobold
 -- Vermin"), or nil.
+-- Where(episode) and DeathsOf(episode, guid) are the session headline's
+-- readings, for UI/Words/SessionProse.lua's facts.
 ns.UI.TimelineText = { IsEpisode = IsEpisode, OtherMembers = OtherMembers, DescribeNote = DescribeNote,
-    Items = Items, Quote = Quote, Place = Place, Foe = Foe }
+    Items = Items, Quote = Quote, Place = Place, Foe = Foe, Where = Where, DeathsOf = DeathsOf }

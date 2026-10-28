@@ -118,7 +118,7 @@ Use the helpers; don't hand-format numbers or dates.
 - **Empty states**: say what's missing, how it fills, what will appear.
   “Nothing of your road is on this map yet.” + the one thing to do.
 - **Link-choices and buttons**: a verb for what happens. “Keep” · “Don’t”,
-  “Tear it open”, “Put it back”. Never *OK*, *Submit*, *Yes/No*, *Dismiss*.
+  “Tear it open”, “Reset Position”. Never *OK*, *Submit*, *Yes/No*, *Dismiss*.
 - **Destructive confirms**: name exactly what goes, then “This cannot be
   undone.” The confirm link repeats the verb (“Delete”).
 - **Setting label**: what it does, in the player's words (“Notice who

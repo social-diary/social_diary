@@ -960,7 +960,7 @@ local reopened = false
 Check(ns.UI.PlaceToast(function() reopened = true end), "placing was refused out of combat")
 Check(card:IsShown() and ns.UI.PlacingToast(), "the card is not laid out to be placed")
 Eq(card.heading:GetText(), "PLACING THE TOAST", "the sample card's heading")
-Check(card.done:IsShown() and card.reset:IsShown(), "no Done or Put it back on the card")
+Check(card.done:IsShown() and card.reset:IsShown(), "no Done or Reset Position on the card")
 Check(Escapable(), "Escape does not end placing")
 
 -- A toast due meanwhile waits for the card to be placed.
@@ -980,7 +980,7 @@ card.button.scripts.OnDragStop(card.button)
 Eq(ns.db.settings.toastAt and ns.db.settings.toastAt.x, 44, "where it was dragged across")
 Eq(ns.db.settings.toastAt and ns.db.settings.toastAt.y, -264, "where it was dragged down")
 card.reset:Click()
-Eq(ns.db.settings.toastAt, nil, "Put it back kept the dragged place")
+Eq(ns.db.settings.toastAt, nil, "Reset Position kept the dragged place")
 
 -- Done: the card goes, the caller hears, and the waiting toast comes.
 card.done:Click()

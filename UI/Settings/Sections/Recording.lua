@@ -20,13 +20,12 @@ local function BuildRecording(pane, c)
     c:Heading("Your Diary")
     page.keepRoute = Switch(c, "Keep my own route", "keepRoute", nil,
         function(on) ns.JourneyCapture.SetEnabled(on) end,
-        "Where this character goes, every few seconds: only your own position, kept for good."
-            .. " Off stops it; the road kept so far stays until you delete it under Memory.")
+        "Record your own way through Azeroth. Saves it every few seconds.")
 
     c:Heading("Chat")
     -- INT-4 asks for the hint to be said in the settings.
     page.storeChat = Switch(c, "Keep whisper, /say and party text", "storeChat", nil, nil,
-        "some text in dungeons cannot be accessed, fyi.")
+        "Some text in dungeons cannot be accessed.")
 
     -- A lower limit applies now, to everyone's chat.
     page.chatLines = Number(c, "Maximum chat lines kept per person", "lines", "chatLines",

@@ -59,8 +59,9 @@ P:ShowSection("nonsense")
 Eq(P:Section(), "memory", "an unknown section was opened")
 P.nav.about:Click()
 Check(P.panes.about:IsShown() and not P.panes.memory:IsShown(), "the About page did not open")
-Eq(#P.testers, 3, "the About page does not thank the three testers")
-Eq(P.testers[3]:GetText(), "Koko Skybluff", "a tester's name")
+Eq(#P.testers, 4, "the About page does not thank the four testers")
+Eq(P.testers[1]:GetText(), "Feivel Emmenthal", "the first tester's name")
+Eq(P.testers[4]:GetText(), "Koko Skybluff", "a tester's name")
 Eq(P.nav.about.about:GetText(), "Thanks & Credits", "the About row's small print")
 -- Licensing, on the same page: the licence, Dungeon Crawler Forever, each
 -- drawn map's artist once (from the dungeon data), the font.
