@@ -26,7 +26,7 @@ local addonName, ns = ...
 -- step in its list below.
 local SCHEMA_VERSION = 5     -- a diary
 local ACCOUNT_SCHEMA = 1     -- SocialDiaryDB, apart from the shared diary
-local CHARACTER_SCHEMA = 1   -- SocialDiaryCharDB, apart from its own diary
+local CHARACTER_SCHEMA = 2   -- SocialDiaryCharDB, apart from its own diary
 
 -- One diary: everything recorded about other players, and the roads of the
 -- characters who write into it. Each record notes which of the user's
@@ -97,7 +97,6 @@ local CHARACTER_SETTINGS = {
     -- per-person summaries. One window, so the Recently nearby page never
     -- lists a day whose "dealt with" marks are already gone. Decision D3.
     bufferDays = 30,
-    sessionGapMinutes = 20,  -- SES-2: this long apart closes a session
     toasts = true,      -- REU-1
     nearbyToasts = true,  -- REU-5
     toastCooldownMinutes = 10,  -- at most one toast per person this often
@@ -165,6 +164,12 @@ STEPS.diary[5] = function(t)
     end
 end
 
+-- 2 (29 Oct 2026): the session gap is no longer a setting
+-- (Core/Sessions.lua), so its saved value goes.
+STEPS.character[2] = function(t)
+    if type(t.settings) == "table" then t.settings.sessionGapMinutes = nil end
+end
+
 -- Oldest first, bumping `schema` after each step, so a table that skipped
 -- versions still walks every one. A table with no number is new, and so
 -- current already.
@@ -178,6 +183,7 @@ end
 
 ns._test.Migrate = Migrate
 ns._test.DiarySteps = STEPS.diary
+ns._test.CharacterSteps = STEPS.character
 
 -- Before schema 4 the account file was the one diary, every character's.
 -- It is kept as the shared diary rather than thrown away, so turning sharing

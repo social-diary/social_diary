@@ -95,10 +95,14 @@ for _, bad in ipairs({ 0, -3, "7" }) do
     settings.bufferDays = bad
     Eq(ns.BufferDays(), 30, "an unusable window (" .. tostring(bad) .. ") not defaulted")
 end
-settings.sessionGapMinutes = 0
-Eq(ns.Sessions.Gap(), 20 * 60, "an unusable session gap not defaulted")
-settings.sessionGapMinutes = 5
-Eq(ns.Sessions.Gap(), 5 * 60, "a set session gap")
+Eq(ns.Sessions.Gap(), 20 * 60, "the session gap")
+
+-- Character schema 2: the session gap's old setting goes.
+local old = { schema = 1, settings = { sessionGapMinutes = 45, storeChat = false } }
+ns._test.Migrate(old, 2, ns._test.CharacterSteps)
+Eq(old.settings.sessionGapMinutes, nil, "the old session gap kept")
+Eq(old.settings.storeChat, false, "another setting lost with the session gap")
+Eq(old.schema, 2, "character schema not bumped")
 
 -- The inconsistency this fixed: Prune fell back to 30 days, Rollup did not.
 settings.bufferDays = nil
@@ -107,7 +111,7 @@ ns.db.sightings[F.STRANGER.guid] = { { time = mock.now - 40 * ns.DAY }, { time =
 Eq(ns.Sightings.Rollup(), 1, "the roll-up without a usable window")
 Eq(#ns.db.sightings[F.STRANGER.guid], 1, "the recent row was rolled up too")
 ns.Sightings.Forget(nil)
-settings.bufferDays, settings.sessionGapMinutes = 30, 20
+settings.bufferDays = 30
 
 --------------------------------------------------------------------------
 Section("counting")

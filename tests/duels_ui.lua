@@ -393,11 +393,12 @@ for i in ipairs(page.recap.entries) do
 end
 Check(shown >= 2, "fewer duel notes on the testdata pages than expected: " .. shown)
 
--- Level 12: the crag's duel won against someone the diary never read, in
--- the narrowest column (122 px) after the lucky card, before the campfire.
+-- Level 12: the crag's duel won against someone the diary never read,
+-- after the lucky card, before the campfire, on the crag's plate: level 12
+-- is two sittings (Dev/TestData.lua), and opens on the second, the crag's.
 do
     OpenAt(Entry(12))
-    local p = page.plates[2]
+    local p = page.plates[1]
     Eq(p.counts.duels, 1, "level 12's flag")
     local kinds = {}
     for _, it in ipairs(p.margin or {}) do kinds[#kinds + 1] = it.kind end

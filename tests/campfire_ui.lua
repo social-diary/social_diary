@@ -235,11 +235,15 @@ for _, at in ipairs(T.DiaryPages(page)) do
 end
 Check(shown >= 3, "fewer slips on the testdata pages than expected: " .. shown)
 
--- Level 12: its fire on the full plate drawn in the narrowest column
--- (122 px), after the lucky card; the fire's mark counted.
+-- Level 12: its fire on the crag's plate, after the lucky card; the
+-- fire's mark counted. Level 12 is two sittings (Dev/TestData.lua) and
+-- opens on the second, the crag's.
 do
+    local _, e12 = Entry(12)
+    Eq(e12.spliced, false, "setup: testdata's level 12 lists its sittings")
+    Eq(#e12.pieces, 2, "setup: testdata's level 12 is two sittings")
     Open(Entry(12))
-    local p = page.plates[2]
+    local p = page.plates[1]
     Eq(p.counts.campfires, 1, "level 12's fire marks")
     Eq(Last(p), "campfire", "level 12's slip, after the lucky card")
     Eq(page.campfiresWritten, 1, "level 12's slips")

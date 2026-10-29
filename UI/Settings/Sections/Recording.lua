@@ -1,6 +1,6 @@
 -- Settings: Recording, the first section (UI/Settings/Page.lua lists them;
--- its controls are UI/Settings/Kit.lua's): your own route, chat, together
--- sessions and sightings.
+-- its controls are UI/Settings/Kit.lua's): your own route, chat and
+-- sightings.
 
 local addonName, ns = ...
 
@@ -20,8 +20,7 @@ local function BuildRecording(pane, c)
     c:Heading("Your Diary")
     page.keepRoute = Switch(c, "Keep my own route", "keepRoute", nil,
         function(on) ns.JourneyCapture.SetEnabled(on) end,
-        "Where this character goes, every few seconds: only your own position, kept for good."
-            .. " Off stops it; the road kept so far stays until you delete it under Memory.")
+        "Data needed for the 'Your Diary' Page: Where you go and what you do.")
 
     c:Heading("Chat")
     -- INT-4 asks for the hint to be said in the settings.
@@ -36,14 +35,6 @@ local function BuildRecording(pane, c)
         function(on) if not on then ns.Interactions.TrimChat() end end)
     DependsOn(page.chatUnlimited, "storeChat")
     c:Hint("Lines can still be lost if they exceed file size limits.")
-
-    c:Heading("Together sessions")
-    page.sessionGap = Number(c, "End a together session after this long apart", "min",
-        "sessionGapMinutes", 5, 120)
-    c:Hint("While you stay grouped, a session runs indefinitely. Imagine leaving"
-        .. " a friend's group to finish a quest alone and inviting them again a quarter of an hour"
-        .. " later. Back within this time, it stays one session in your diary; any longer, and it"
-        .. " is written down as two. Low values could spam the Diary Timeline.")
 
     -- SIG-1 and SIG-5, through the same calls as /sd sightings on|off and
     -- /sd sightings city, so they take effect at once.
@@ -84,4 +75,4 @@ local function BuildRecording(pane, c)
 end
 
 SettingsUI.RegisterSection("recording", { order = 10, label = "Recording",
-    about = "Chat, together sessions, sightings", build = BuildRecording })
+    about = "Your route, chat, sightings", build = BuildRecording })

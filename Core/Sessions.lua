@@ -52,8 +52,12 @@ local Rows = ns.Rows
 -- Reading
 --------------------------------------------------------------------------
 
+-- SES-2: this long apart closes a session. Once a setting; one value for
+-- everyone now, as it was too hard to explain to be worth choosing.
+local GAP = 20 * 60
+
 local function Gap()
-    return ns.PositiveSetting("sessionGapMinutes") * 60
+    return GAP
 end
 
 Sessions.Gap = Gap

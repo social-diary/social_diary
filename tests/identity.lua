@@ -35,7 +35,7 @@ Section("version numbers, for migrations")
 
 -- Each file and the diary in use carry their own number.
 Eq(_G.SocialDiaryDB.schema, 1, "the account file has no version")
-Eq(_G.SocialDiaryCharDB.schema, 1, "the per-character file has no version")
+Eq(_G.SocialDiaryCharDB.schema, 2, "the per-character file has no version")
 Eq(_G.SocialDiaryCharDB.data.schema, 5, "the diary has no version")
 
 -- The steps: oldest first, each once, on the table as saved.

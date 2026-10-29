@@ -263,7 +263,7 @@ P.nav.recording:Click()
 Eq(P.storeChat:GetChecked(), true, "chat storage checkbox")
 Eq(P.toasts:GetChecked(), true, "toast checkbox")
 Eq(P.bufferDays.box:GetText(), "30", "retention box")
-Eq(P.sessionGap.box:GetText(), "20", "session gap box")
+Eq(P.sessionGap, nil, "the session gap is no longer a setting")
 Eq(P.toastCooldown.box:GetText(), "10", "toast cooldown box")
 Check(P.size:GetText():find("1 in the diary"), "size line: " .. P.size:GetText())
 Check(P.size:GetText():find("KB"), "no size estimate (DAT-3)")
@@ -390,13 +390,11 @@ Eq(P.bufferDays.box:GetText(), "365", "the box does not show the clamped value")
 Commit(P.bufferDays, "")
 Eq(ns.db.settings.bufferDays, 365, "an empty box changed the setting")
 Eq(P.bufferDays.box:GetText(), "365", "an empty box was not restored")
-Commit(P.sessionGap, "1")
-Eq(ns.db.settings.sessionGapMinutes, 5, "session gap not clamped to its minimum")
 Commit(P.toastCooldown, "45")
 Eq(ns.db.settings.toastCooldownMinutes, 45, "toast cooldown not saved")
 Commit(P.toastCooldown, "0")
 Eq(ns.db.settings.toastCooldownMinutes, 1, "toast cooldown not clamped to its minimum")
-ns.db.settings.bufferDays, ns.db.settings.sessionGapMinutes = 30, 20
+ns.db.settings.bufferDays = 30
 ns.db.settings.toastCooldownMinutes = 10
 
 -- INT-3: how many lines of chat are kept, or all of them.

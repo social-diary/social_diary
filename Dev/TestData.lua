@@ -234,11 +234,13 @@ function TestData.WriteJourney(now)
     Stop(1500, BARRENS, 0.60, 0.15, 50, { combat = 800, questsOut = 2 }, "The Sludge Fen")
     Ding(BARRENS, 0.60, 0.15, "The Sludge Fen")
 
-    -- Level 12: west across The Barrens into Stonetalon.
+    -- Level 12: west across The Barrens one evening, into Stonetalon the
+    -- next afternoon: a level of two sittings, so it lists them.
     t = start + 2 * DAY
     Road(700, BARRENS, { 0.60, 0.15, 0.52, 0.20, 0.42, 0.24, 0.35, 0.27, 0.30, 0.28 })
     Stop(1200, BARRENS, 0.30, 0.28, 45, { combat = 600 })
     Road(600, BARRENS, { 0.30, 0.28, 0.22, 0.25, 0.14, 0.22, 0.05, 0.20 })
+    t = start + 2 * DAY + 20 * HOUR
     Road(900, STONETALON, { 0.90, 0.80, 0.82, 0.74, 0.76, 0.66, 0.73, 0.60 })
     Stop(1500, STONETALON, 0.72, 0.60, 55, { combat = 900, questsOut = 1 }, "Windshear Crag")
     Ding(STONETALON, 0.72, 0.60, "Windshear Crag")
