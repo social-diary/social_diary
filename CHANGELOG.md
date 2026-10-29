@@ -26,6 +26,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
   - Crafted firsts now say you made them
 - A zone's full map in _Your Diary_ now pans without zooming first
 - Sessions no longer list the same zone over and over
+- Memory page no longer shows file size of all characters combined
 
 ## [1.7.0]
 

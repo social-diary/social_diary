@@ -107,7 +107,7 @@ local function BuildMemory(pane, c)
                 ns.ShareDiary(on)
                 if ReloadUI then ReloadUI() end
             end, "Reload")
-        end, nil, "Applies to every character. Switching reloads the interface.")
+        end, nil, "Switching requires a reload.")
     page.controls[#page.controls + 1] = page.shareDiary
 
     -- Its text is the mode's; the mode stays until the next load.

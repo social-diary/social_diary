@@ -346,9 +346,10 @@ local function Size(value, depth)
     return total
 end
 
--- Both files, since this character reads both at every login.
+-- The diary in use, not the account file around it: this character's whole
+-- file while it keeps its own, the shared diary alone while it shares one.
 function ns.EstimateSize()
-    return Size(account, 0) + Size(character, 0)
+    return Size(ns.diaryShared and diary or character, 0)
 end
 
 -- The same walk over one part of it: a character's route (Journey.Size).
