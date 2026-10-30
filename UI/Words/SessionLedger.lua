@@ -11,16 +11,22 @@
 -- What it holds, per earlier row:
 --   kind     what led it (angle/move: "dungeon/run"), and
 --   tier     the tier it led at
---   told     every kind the row told, and every `must` its lead said
---            (firsts and records, told once)
+--   told     every `must` its lead said (a rule's `once` reads these)
 --
 -- SessionProse.LedgerBefore(episode, guid) gives the weighing
 --   recent   the last RECENT_LEADS rows' { kind, tier }, newest first
---   told     [kind or tag] = true, for everything told before this row
+--   told     [tag] = true, for every `must` led with before this row
 --
 -- Rows are planned here without being written, so a row whose lead the
 -- page writer couldn't say (SessionProse.Write's fallback) counts with the
 -- lead it was planned with.
+--
+-- The words remember too, the same way: SessionProse.PicksFor writes the
+-- person's rows oldest first, once per voice, under one page-writer memory,
+-- and keeps each row's picks. A row is then written from its picks, so it
+-- reads the same each time however it is reached, and differs from the rows
+-- before it. One memory per person, so the order profiles are opened in
+-- changes nothing.
 
 local addonName, ns = ...
 
@@ -31,7 +37,8 @@ ns.UI.SessionProse = SessionProse
 local RECENT_LEADS = 3
 SessionProse.RECENT_LEADS = RECENT_LEADS
 
--- [guid] = { sig, rows = { { id, startedAt, kind, tier, told } } oldest first }
+-- [guid] = { sig, rows = { { id, startedAt, kind, tier, told } } oldest first,
+--            episodes (the rows' own, oldest first), picks = { [voice] = { [session id] = picks } } }
 local cache = {}
 
 local function Kind(c) return c.angle .. "/" .. c.move end
@@ -70,7 +77,6 @@ local function Planned(episode, guid, rows)
     if beats then
         local lead = beats[1].c
         row.kind, row.tier = Kind(lead), lead.tier
-        for _, entry in ipairs(beats) do row.told[Kind(entry.c)] = true end
         if beats[1].role == "point" then
             for _, tag in ipairs(lead.musts or {}) do row.told[tag] = true end
         end
@@ -83,7 +89,7 @@ local function Build(guid)
     local entry = cache[guid]
     if entry and entry.sig == sig then return entry end
 
-    entry = { sig = sig, rows = {} }
+    entry = { sig = sig, rows = {}, picks = {} }
     cache[guid] = entry
     local episodes = {}
     for _, item in ipairs(ns.Timeline.For(guid)) do
@@ -93,11 +99,30 @@ local function Build(guid)
     for _, episode in ipairs(episodes) do
         entry.rows[#entry.rows + 1] = Planned(episode, guid, entry.rows)
     end
+    entry.episodes = episodes
     return entry
 end
 
 function SessionProse.LedgerBefore(episode, guid)
     return LedgerFrom(Build(guid).rows, episode.session.startedAt)
+end
+
+-- This row's picks in `voice`, or nil. A lead the writer can't say costs its
+-- row a turn of the memory; that is rare, and the same every time.
+function SessionProse.PicksFor(episode, guid, voice)
+    local entry = Build(guid)
+    local byId = entry.picks[voice]
+    if not byId then
+        byId = {}
+        entry.picks[voice] = byId
+        local memory = ns.Pages.Memory({})
+        for _, row in ipairs(entry.episodes) do
+            local _, report = SessionProse.Attempt(row, guid, { voice = voice, epithets = false,
+                memory = memory, commit = true })
+            byId[row.session.id] = report and report.picks
+        end
+    end
+    return byId[episode.session.id]
 end
 
 -- For the tests and /sd prose: forget every ledger.

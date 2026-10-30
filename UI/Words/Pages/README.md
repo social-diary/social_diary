@@ -105,9 +105,13 @@ relation to the sentence before (`rel`), a `must` (what the beat is for), and
 
 ## What's not here yet
 
-The planner: reading `db.sessions`, `db.interactions`, `db.around`,
-`db.instances` and `People.Stats` into those facts, scoring the angles, and
-choosing a page's beats and their order. The fact contract in `WRITING.md`
+A planner for whole pages. The one planner so far writes single together
+rows on a person's timeline, while `/sd prose` is on (a dev command):
+`UI/Words/SessionHistory.lua`, `SessionCandidates.lua`, `SessionWeights.lua`,
+`SessionLedger.lua`, `SessionProse.lua`. It saves nothing and doesn't use
+`open/scene`, `close`, `quiet`, `crowd`, `regular`, `changed`, `lost`,
+`stranger`, `chat/quote`, `misfortune`, `duel` or `pvp`. A page planner would
+also read `db.around` and `People.Stats`; the fact contract in `WRITING.md`
 is its spec, field by field.
 
 ## Tests

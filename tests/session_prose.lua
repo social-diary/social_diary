@@ -330,6 +330,8 @@ Eq(by.deaths.noLead, true, "their deaths can't lead")
 Fresh({ S(1700, 0, 1800), S(1701, DAY, 3600, { levelStart = 29, levelEnd = 30 }) })
 local Render, calls = ns.Pages.Render, 0
 ns.Pages.Render = function(plan, opts)
+    -- The earlier rows' words (SessionProse.PicksFor) aren't this row.
+    if opts.memory then return Render(plan, opts) end
     calls = calls + 1
     if calls == 1 then return "", { skipped = { "beat 1/1 (" .. plan.paragraphs[1][1].angle .. ")" }, picks = {} } end
     return Render(plan, opts)
@@ -424,6 +426,126 @@ if os.getenv("SD_SHOW") then
     print(("    sixty rows: %.0f ms the first time, %.0f ms again"):format(first * 1000, (os.clock() - clock) * 1000))
     Prose.voice = nil
 end
+
+-- A favour returned is told once: the later gifts are only gifts. (Spaced
+-- out, or trading would be routine between us.)
+sessions = {}
+for i = 1, 7 do sessions[i] = S(3100 + i, (i - 1) * DAY, 3600) end
+Fresh(sessions)
+local function Trade(session, context)
+    local row = ns.Interactions.Add(PAL, "trade", { time = t0 + (session - 3101) * DAY + 600, context = context })
+    row.session = session
+end
+Trade(3101, { given = { { link = ELIXIR, count = 1 } } })
+Trade(3104, { received = { { link = ELIXIR, count = 1 } } })
+Trade(3107, { received = { { link = ELIXIR, count = 1 } } })
+local function Gift(time)
+    for _, item in ipairs(ns.Timeline.For(PAL)) do
+        if item.session and item.session.startedAt == time then
+            local gifts, h = Prose.Candidates(item, PAL)
+            Prose.Weigh(gifts, h, Prose.LedgerBefore(item, PAL))
+            for _, c in ipairs(gifts) do
+                if c.id == "trade/gift" then return c, item end
+            end
+        end
+    end
+end
+local firstGift = Gift(sessions[4].startedAt)
+Eq(firstGift.facts.returned, true, "the first gift back returns a favour")
+Eq(firstGift.tier, Prose.TIERS.HEADLINE, "and rises for it")
+Eq(Prose.LedgerBefore(Row(), PAL).told.returned, true, "the ledger keeps it as told")
+local secondGift = Gift(sessions[7].startedAt)
+Eq(secondGift.facts.returned, nil, "the second gift doesn't say it again")
+Eq(secondGift.tier, Prose.TIERS.NOTABLE, "and doesn't rise for it")
+
+-- Each row's words are varied against the rows before it, and stay put.
+sessions = {}
+for i = 1, 12 do
+    sessions[i] = S(3200 + i, (i - 1) * DAY, 7200, { levelStart = 20 + i, levelEnd = 21 + i, quests = { 1, 2, 3 } })
+end
+Fresh(sessions)
+Prose.voice = "plain"
+local function Texts()
+    local rows, out = {}, {}
+    for _, item in ipairs(ns.Timeline.For(PAL)) do
+        if item.kind == "session" then rows[#rows + 1] = item end
+    end
+    table.sort(rows, function(a, b) return a.time < b.time end)
+    for i, row in ipairs(rows) do out[i] = select(2, ns.UI.DescribeItem(row, PAL)) end
+    return out
+end
+local texts = Texts()
+-- Memory only draws recent words less, so they may come back later on.
+for i = 1, #texts do
+    for j = math.max(1, i - 4), i - 1 do
+        Check(texts[i] ~= texts[j], "the same words on nearby rows: " .. texts[i])
+    end
+end
+local PicksFor, unvaried, differs = Prose.PicksFor, nil, false
+Prose.PicksFor = function() return nil end
+unvaried = Texts()
+Prose.PicksFor = PicksFor
+for i = 1, #texts do differs = differs or texts[i] ~= unvaried[i] end
+Check(differs, "the earlier rows' words changed nothing")
+-- Drawn again: the same words.
+local again = Texts()
+for i = 1, #texts do Eq(again[i], texts[i], "a row changed when drawn again") end
+ns.Sessions.New((function()
+    local later = S(0, 12 * DAY, 3600)
+    later.id = nil
+    return later
+end)())
+local withLater = Texts()
+for i = 1, #texts do Eq(withLater[i], texts[i], "a later session changed an earlier row") end
+Prose.voice = nil
+
+--------------------------------------------------------------------------
+Section("/sd testdata: Tessa, a timeline of every case")
+
+ns.TestData.Write()
+local TESSA = ns.TestData.PROSE_GUID
+local function TessaRows()
+    local rows = {}
+    for _, item in ipairs(ns.Timeline.For(TESSA)) do
+        if item.kind == "session" then rows[#rows + 1] = item end
+    end
+    table.sort(rows, function(a, b) return a.session.startedAt < b.session.startedAt end)
+    return rows
+end
+local tessaLeads, tessaShown = {}, {}
+for i, row in ipairs(TessaRows()) do
+    local beats = Prose.Choice(row, TESSA)
+    Check(beats ~= nil, "row " .. i .. ": nothing to say")
+    tessaLeads[beats[1].c.angle .. "/" .. beats[1].c.move] = true
+    tessaShown[i] = beats[1].c.id .. " (" .. beats[1].role .. ")"
+    for _, entry in ipairs(beats) do tessaLeads["any:" .. entry.c.angle .. "/" .. entry.c.move] = true end
+end
+if os.getenv("SD_SHOW") then print("    tessa: " .. table.concat(tessaShown, ", ")) end
+for _, kind in ipairs({ "new_face/added", "any:new_face/meet", "rescue/saved", "rescue/helped", "trade/given",
+    "trade/gift", "dungeon/run", "any:dungeon/trouble", "any:dungeon/roll", "reunion/gap", "open/climb",
+    "campfire/sat", "chat/heard", "together/rares", "ding/level" }) do
+    Check(tessaLeads[kind], "no row leads with " .. kind .. ": " .. table.concat(tessaShown, ", "))
+end
+for _, voice in ipairs({ "plain", "warm", "wry", "terse", "mixed" }) do
+    Prose.voice = voice
+    for i, row in ipairs(TessaRows()) do
+        local _, prose = ns.UI.DescribeItem(row, TESSA)
+        if os.getenv("SD_SHOW") then print("    " .. voice .. " " .. i .. ": " .. prose) end
+        Check(not prose:find("[{}<>]") and not prose:find("nil"), voice .. " row " .. i .. ": leftover syntax: " .. prose)
+        Eq(select(2, ns.UI.DescribeItem(row, TESSA)), prose, voice .. " row " .. i .. " changed")
+    end
+end
+Prose.voice = nil
+local witnessed = false
+for _, row in ipairs(TessaRows()) do
+    for _, c in ipairs((Prose.Candidates(row, TESSA))) do witnessed = witnessed or c.id:find("/watched", 1, true) ~= nil end
+end
+Check(witnessed, "no row has her watching me die")
+Eq(ns.Characters.Get(TESSA).sex, 3, "she is a woman, for the pronouns")
+ns.TestData.Remove()
+Check(not ns.Diary.IsDiary(TESSA), "Tessa outlived /sd testdata remove")
+Eq(#ns.Sessions.For(TESSA), 0, "her sessions outlived it")
+Eq(#ns.Instances.For(TESSA), 0, "her runs outlived it")
 
 --------------------------------------------------------------------------
 Section("/sd prose")

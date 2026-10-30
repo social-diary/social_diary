@@ -358,7 +358,7 @@ local function RoughStory(episode, guid, name)
         lead = { name .. " died " .. Times(theirs) .. " at " .. your .. " side",
             name .. " died " .. Times(theirs) .. " with " .. you .. " close by" }
     else
-        lead = { You .. " and " .. name .. " died " .. Times(total) .. " between you",
+        lead = { You .. " and " .. name .. " died " .. Times(total) .. (Format.IsYou(me) and " between you" or " between them"),
             Times(total):gsub("^(%d+) times$", "%1 deaths") .. " between " .. you .. " and " .. name }
         if total < ROUGH then lead[2] = nil end
     end

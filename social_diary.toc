@@ -315,6 +315,7 @@ Dev/CardRace.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
 Dev/TestData.lua
+Dev/TestDataProse.lua
 Features/LevelUps/Dev.lua
 Features/Trade/Dev.lua
 Features/Chat/Dev.lua

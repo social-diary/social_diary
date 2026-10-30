@@ -1,4 +1,5 @@
--- /sd testdata: a made-up diary entry, Tester Testerson, with a week of
+-- /sd testdata: a made-up diary entry (and a second for the session prose,
+-- Dev/TestDataProse.lua), Tester Testerson, with a week of
 -- history -- questing sessions, two dungeon visits, rares, trades, chat, a
 -- seen-around stretch, notes the user wrote -- so the profile timeline
 -- (TLN-1 to TLN-10) can be looked at in the client without playing it all
@@ -57,6 +58,7 @@ local function Visit(visit)
     visit.test = true
     return ns.Instances.New(visit)
 end
+TestData.Visit = Visit
 
 -- The zone alone, as written: where the user stands now would be wrong. The
 -- session is the one given or none, never whatever happens to be open.
@@ -513,10 +515,11 @@ ns.Slash.Register("testdata", function(rest)
         ns.Fire("SD_DIARY_CHANGED")
     elseif TestData.Write() then
         ns.Print("wrote |cffffffffTester Testerson|r: a week of sessions, two dungeon runs, rares,"
-            .. " trades and chat; and a made-up route for this character in Your Diary (yours is put"
+            .. " trades and chat; |cffffffffTessa Testerson|r: three months of sessions for |cffffd100/sd prose|r;"
+            .. " and a made-up route for this character in Your Diary (yours is put"
             .. " aside meanwhile). |cffffd100/sd testdata remove|r takes it out again.")
         ns.UI.ShowJournal(GUID)
         ns.Fire("SD_DIARY_CHANGED")
     end
-end, "write a made-up diary entry, Tester Testerson, with a week of history, and a made-up route"
-    .. " in Your Diary; |cffffd100/sd testdata remove|r removes both", { dev = true })
+end, "write two made-up diary entries, Tester Testerson with a week of history and Tessa Testerson"
+    .. " with three months for /sd prose, and a made-up route in Your Diary; |cffffd100/sd testdata remove|r removes both", { dev = true })

@@ -1,11 +1,12 @@
 -- A together session told in prose (experimental): the planner between a
 -- person's timeline and the page writer (Core/Pages/Render.lua).
 --
--- Reads one session episode (Core/Timeline.lua) into the facts the
--- `together` and `ding` angles take (UI/Words/Pages/WRITING.md, "The fact
+-- Reads one session episode (Core/Timeline.lua) into beats for the angles
+-- UI/Words/SessionCandidates.lua lists (UI/Words/Pages/WRITING.md, "The fact
 -- contract") and has the page writer say them. Nothing is saved: every
--- choice is seeded by the session and the person, so a row reads the same
--- each time it is drawn, until the words themselves change.
+-- choice is seeded by the session and the person, and the words are varied
+-- against that person's earlier rows (SessionProse.PicksFor), so a row reads
+-- the same each time it is drawn, until the words themselves change.
 --
 -- Off until `/sd prose <voice>` (a dev command, for this session only); the
 -- timeline's own headline (UI/Words/Timeline.lua's SessionHeadline) is used
@@ -169,17 +170,15 @@ end
 -- How many points to try before giving up on prose for a row.
 local TRIES = 3
 
--- The session's prose and what it said, in the timeline's `said` keys
--- (rare, deaths, level, quest, dungeon, trade), for the details line to
--- leave out; nil when the writer had nothing to say. When the lead can't
--- say why it was chosen, the next candidate becomes the point.
-function SessionProse.Write(episode, guid)
-    if not SessionProse.On() or not episode.session then return nil end
+-- The writer's text, its report and the chosen beats, or nil when it had
+-- nothing to say. When the lead can't say why it was chosen, the next
+-- candidate becomes the point. `opts` is Pages.Render's.
+function SessionProse.Attempt(episode, guid, opts)
     local skip = {}
     for _ = 1, TRIES do
         local plan, beats = Plan(episode, guid, skip)
         if not plan then return nil end
-        local text, report = Pages.Render(plan, { voice = SessionProse.voice, epithets = false })
+        local text, report = Pages.Render(plan, opts)
 
         local leadFailed = false
         for _, entry in ipairs(report.skipped) do
@@ -188,18 +187,30 @@ function SessionProse.Write(episode, guid)
         if leadFailed then
             skip[beats[1].c] = true
         elseif text and text ~= "" then
-            local said = {}
-            for key in pairs(report.picks) do
-                local bi = tonumber(key:match("^.-/1/(%d+)/"))
-                local c = bi and beats[bi] and beats[bi].c
-                if c and c.said then said[c.said] = true end
-            end
-            return text, said, beats
+            return text, report, beats
         else
             return nil
         end
     end
     return nil
+end
+
+-- The session's prose and what it said, in the timeline's `said` keys
+-- (rare, deaths, level, quest, dungeon, trade), for the details line to
+-- leave out; nil when the writer had nothing to say.
+function SessionProse.Write(episode, guid)
+    if not SessionProse.On() or not episode.session then return nil end
+    local voice = SessionProse.voice
+    local text, report, beats = SessionProse.Attempt(episode, guid, { voice = voice, epithets = false,
+        picks = SessionProse.PicksFor(episode, guid, voice) })
+    if not text then return nil end
+    local said = {}
+    for key in pairs(report.picks) do
+        local bi = tonumber(key:match("^.-/1/(%d+)/"))
+        local c = bi and beats[bi] and beats[bi].c
+        if c and c.said then said[c.said] = true end
+    end
+    return text, said, beats
 end
 
 -- The chosen beats, for the trace: "point  visit:77/run", "but  ...".

@@ -50,7 +50,9 @@ end
 -- Each rule: { why, kind, test(c, h), step = 1, must = tag }. The kind
 -- breaks ties between points: a first beats a record beats a size. `must`
 -- is the fact that says why, when the words have one: a lead beat must
--- say it (stage 3), or it isn't the point.
+-- say it (stage 3), or it isn't the point. `once`: a row that led with that
+-- fact has told it, so later rows neither rise on it nor say it. Only for
+-- what stays true after it happens; a new record or a new clear is news.
 local RULES = {
     ["rescue/saved"] = { start = HEADLINE,
         up = { { "the first time", "first", function(c) return c.facts.firstByThem end, must = "firstByThem" } } },
@@ -87,7 +89,7 @@ local RULES = {
     trade = { start = NOTABLE,
         up = {
             { "our first trade", "first", function(c) return c.facts.first end, must = "first" },
-            { "returning a favour", "first", function(c) return c.facts.returned end, must = "returned" },
+            { "returning a favour", "first", function(c) return c.facts.returned end, must = "returned", once = true },
         },
         down = { { "routine between us", nil, function(c, h)
             return not c.facts.first and (h.tradeShare or 0) >= ROUTINE_SHARE
@@ -152,6 +154,7 @@ function SessionProse.Weigh(list, h, ledger)
         local rule = Rule(c)
         local tier, ups, reasons, surprise, musts = rule.start, 0, {}, 0, {}
         for _, up in ipairs(rule.up or {}) do
+            if up.once and ledger and ledger.told[up.must] then c.facts[up.must] = nil end
             if ups < 2 and up[3](c, h) then
                 local step = math.min(up.step or 1, 2 - ups)
                 tier, ups = tier + step, ups + step
