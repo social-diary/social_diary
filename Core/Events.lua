@@ -272,6 +272,19 @@ end
 -- existing beat, so its first run can come sooner than `seconds`.
 local every = {}  -- [seconds] = { job, ... }; false where one was cancelled
 
+-- One handler, protected: an error in it goes to the client's error
+-- handler (the usual Lua error frame) and the next handler for the same
+-- event still runs, so a fault in one module -- Your Diary's capture, say
+-- -- cannot silence another's. Without an error handler (the tests' mock)
+-- the error is raised as it always was, so nothing fails quietly there.
+-- The ticker's jobs and the login's steps go through it too.
+local function Call(handler, event, ...)
+    local handle = geterrorhandler and geterrorhandler()
+    if not handle then return handler(event, ...) end
+    local ok, err = pcall(handler, event, ...)
+    if not ok then handle(err) end
+end
+
 function ns.Every(seconds, fn)
     if not (C_Timer and C_Timer.NewTicker) then return nil end
 
@@ -282,7 +295,7 @@ function ns.Every(seconds, fn)
         C_Timer.NewTicker(seconds, function()
             for i = 1, #jobs do
                 local job = jobs[i]
-                if job then job.fn() end
+                if job then Call(job.fn) end
             end
         end)
     end
@@ -303,18 +316,6 @@ function ns.Every(seconds, fn)
     end
     jobs[slot] = job
     return job
-end
-
--- One handler, protected: an error in it goes to the client's error
--- handler (the usual Lua error frame) and the next handler for the same
--- event still runs, so a fault in one module -- Your Diary's capture, say
--- -- cannot silence another's. Without an error handler (the tests' mock)
--- the error is raised as it always was, so nothing fails quietly there.
-local function Call(handler, event, ...)
-    local handle = geterrorhandler and geterrorhandler()
-    if not handle then return handler(event, ...) end
-    local ok, err = pcall(handler, event, ...)
-    if not ok then handle(err) end
 end
 
 -- Client events and the addon's messages run through the same loop.
@@ -388,13 +389,13 @@ ns.On("PLAYER_ENTERING_WORLD", function() ns.FillBegunZone() end)
 ns.On("ZONE_CHANGED_NEW_AREA", function() ns.FillBegunZone() end)
 
 ns.On("PLAYER_LOGIN", function()
-    ns.TouchOwnCharacter()
-    ns.Interactions.Prune()
-    ns.Diary.FillSeen()
-    ns.Sightings.Rollup()
-    -- After both: a record goes once the rows that held on to it have.
-    ns.Characters.Prune()
-    ns.Reunions.Prune()
+    -- Each on its own: a bad row in one must not stop the rest, login after
+    -- login. The records' prune comes after the rows': a record goes once
+    -- the rows that held on to it have.
+    for _, step in ipairs({ ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
+        ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune }) do
+        Call(step)
+    end
     ns.Debug("v%s loaded. /sd opens the journal, /sd help lists commands.", ns.version)
 
     -- NFR-6 says no data loss on /reload. An empty database looks exactly

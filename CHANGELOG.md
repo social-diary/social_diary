@@ -9,6 +9,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - _Dungeon View_ explains its default route the first time it opens
 
+### Fixes
+
+- Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
+
 ## [2.0.0]
 
 ### Shiny new Things

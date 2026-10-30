@@ -56,6 +56,25 @@ Eq(ns.Diary.IsDiary(GUID), true, "Done after the menu entry did not add anybody"
 buttons = mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "target" })
 Check(buttons[1].text:find("open entry"), "wrong menu entry for an existing entry")
 
+-- The target changed while the menu was open: the token is not passed on,
+-- or the page would be filled in from someone else.
+do
+    local opts
+    local realRemember = ns.UI.Remember
+    ns.UI.Remember = function(_, o) opts = o end
+    mock.SetUnit("party1", F.PUG)
+    ns.Characters.ObserveUnit("party1")
+    local menu = mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "party1" })
+    menu[1].Click()
+    Eq(opts.unit, "party1", "the token was dropped while it still pointed at them")
+    menu = mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "party1" })
+    mock.SetUnit("party1", F.GARRICK)
+    menu[1].Click()
+    Eq(opts.unit, nil, "the token was passed on after it moved to someone else")
+    mock.SetUnit("party1", nil)
+    ns.UI.Remember = realRemember
+end
+
 -- Never offer to remember yourself.
 mock.SetUnit("self", F.SELF)
 Eq(#mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "self" }), 0, "offered to remember the user")

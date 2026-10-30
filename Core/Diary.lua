@@ -197,8 +197,7 @@ local function Clean(text, limit)
     if type(text) ~= "string" then return nil end
     text = text:gsub("^%s+", ""):gsub("%s+$", "")
     if text == "" then return nil end
-    if #text > limit then text = text:sub(1, limit) end
-    return text
+    return ns.CutBytes(text, limit)
 end
 
 -- For the other things the user writes (Core/Notes.lua), so every piece of

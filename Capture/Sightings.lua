@@ -77,13 +77,17 @@ function ns._test.SightingThrottleSize()
     return ns.CountKeys(queuedAt)
 end
 
+local function DropQueue()
+    wipe(queue)
+    head, tail = 1, 0
+    drainer:Hide()
+end
+
 -- Drops everything waiting, and the throttle stamps with it: a stamp says
 -- "already queued", which is no longer true of anything dropped here.
 local function ClearQueue()
-    wipe(queue)
+    DropQueue()
     wipe(queuedAt)
-    head, tail = 1, 0
-    drainer:Hide()
 end
 
 -- A stamp older than the throttle no longer holds anyone back, so it only
@@ -315,8 +319,11 @@ local function Deactivate()
         ticker = nil
     end
 
-    -- Whatever was queued was seen where the user no longer is.
-    ClearQueue()
+    -- Whatever was queued was seen where the user no longer is, and never
+    -- recorded, so its stamps go with it. The rest stay: walking back through
+    -- a city's gate must not read everyone again.
+    for i = head, tail do queuedAt[queue[i].guid] = nil end
+    DropQueue()
 end
 
 -- "active", or why not: "login", "off", "instance", "city" (with the

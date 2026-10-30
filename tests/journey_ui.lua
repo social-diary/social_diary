@@ -2247,6 +2247,21 @@ do
     Check(c.x and math.abs(c.x - cx) + math.abs(c.y - cy) > 1, "the third ring did not step aside")
     line = p.flightLines[5]
     Check(line and line.x1 == c.x and line.y1 == c.y, "a ring stepped aside, its flight's dashes start where it was")
+
+    -- The sheet holds every flight ever on the map, oldest first. Old ones
+    -- past the cap leave the entry's own drawn; only those count against it.
+    local cap = Plate.CAP.flights
+    local many = {}
+    for i = 1, cap + 5 do many[i] = Flight(mapID, 0.5, 0.5, 1413, 0.5, 0.3) end
+    local entryFrom = t + 10000
+    t = entryFrom
+    for _ = 1, 3 do many[#many + 1] = Flight(mapID, 0.5, 0.5, 1413, 0.5, 0.3) end
+    p:Draw(Sheet(many), { from = entryFrom, to = t + 1000 }, window, { moments = {} })
+    Eq(p.counts.flights, 3, "flights past the cap of old ones hid the entry's own")
+    t = entryFrom
+    for i = 1, cap + 5 do many[i] = Flight(mapID, 0.5, 0.5, 1413, 0.5, 0.3) end
+    p:Draw(Sheet(many), { from = entryFrom, to = t + 1000 }, window, { moments = {} })
+    Eq(p.counts.flights, cap, "the entry's own flights are not capped")
     p:Hide()
 end
 

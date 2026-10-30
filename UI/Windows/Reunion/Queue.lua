@@ -2,7 +2,8 @@
 -- time, for TOAST_SECONDS, longer while the mouse is on it.
 --
 -- REU-2: nothing appears in combat. Toasts wait in a queue and the queue
--- moves on PLAYER_REGEN_ENABLED. One toast shows at a time; a raid full of
+-- moves on PLAYER_REGEN_ENABLED, and a card already up when a fight starts
+-- goes back to the front of it, to come again after. One toast shows at a time; a raid full of
 -- friends would otherwise bury the screen, so the queue is capped and the
 -- overflow becomes one "and N more" toast at the end.
 --
@@ -38,9 +39,9 @@ Toast.Dismiss = Dismiss
 local function Hover(over)
     Toast.hovered = over
     if over or not Toast.overdue then return end
-    local snap = Toast.showing
+    local shown = Toast.shown
     C_Timer.After(LINGER_SECONDS, function()
-        if Toast.showing == snap and not Toast.hovered then Dismiss() end
+        if Toast.showing and Toast.shown == shown and not Toast.hovered then Dismiss() end
     end)
 end
 Toast.Hover = Hover
@@ -49,6 +50,11 @@ local function Display(snap)
     Toast.toast = Toast.toast or Toast.Build()
     local toast = Toast.toast
     Toast.showing, Toast.overdue = snap, false
+    -- This showing's own number, for its timers: a card put back in the
+    -- queue comes again as the same snapshot, and a timer left from its
+    -- first showing must not take it for its own and put it away early.
+    Toast.shown = (Toast.shown or 0) + 1
+    local shown = Toast.shown
 
     toast:Show()
     toast:Raise()
@@ -56,7 +62,7 @@ local function Display(snap)
     toast.view:Show()
 
     C_Timer.After(TOAST_SECONDS, function()
-        if Toast.showing ~= snap then return end
+        if not Toast.showing or Toast.shown ~= shown then return end
         if Toast.hovered then Toast.overdue = true else Dismiss() end
     end)
 end
@@ -80,6 +86,23 @@ end
 Toast.Pump = Pump
 
 ns.On("PLAYER_REGEN_ENABLED", function() Pump() end)
+
+-- REU-2 holds for the card already up too, mouse on it or not: it goes, and
+-- comes again first in line. It may take the queue one past MAX_QUEUE, which
+-- only caps who joins: nobody is lost to a fight. An "and N more" card goes
+-- back into the count, to stay last.
+ns.On("PLAYER_REGEN_DISABLED", function()
+    local snap = Toast.showing
+    if not snap then return end
+    Toast.showing, Toast.overdue, Toast.hovered = nil, false, false
+    Toast.toast:Hide()
+    if snap.more then
+        Toast.more = Toast.more + snap.more
+        Toast.moreReason = (Toast.moreReason == nil or Toast.moreReason == snap.reason) and snap.reason or "mixed"
+    else
+        table.insert(Toast.queue, 1, snap)
+    end
+end)
 
 --------------------------------------------------------------------------
 -- Forgetting

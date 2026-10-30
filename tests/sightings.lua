@@ -203,9 +203,8 @@ local found
 for i = 1, #recent do if recent[i].guid == RHEA then found = true end end
 Check(found, "the emote's sighting is not recent")
 
--- The city round trips dropped the queue and its throttle stamps, so the
--- sweep on the way out queued HOSTILE again. Drained here, or it would land
--- after the roll-up below with a month-old time.
+-- Anything the city round trips left waiting is drained here, or it would
+-- land after the roll-up below with a month-old time.
 while Capture.QueueLength() > 0 do Drain() end
 
 -- SIG-7: older than 30 days rolls into the character's summary.
@@ -262,8 +261,34 @@ Eq((Capture.State()), "city", "adding the current city did not pause")
 ns.db.settings.cities[1412] = nil
 mock.mapID = 1412
 mock.fire("ZONE_CHANGED_NEW_AREA")
+-- Rolled rows do not come back, so a day under one is refused, and sooner
+-- than the retention setting has to be meant.
+mock.now = mock.now + 61
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate5")
+Drain()
+Check(next(ns.db.sightings), "no rows to roll up")
+
+-- The way through a city's gate and back keeps the throttle: nobody is read
+-- again for it.
+local stamps = ns._test.SightingThrottleSize()
+Check(stamps > 0, "no throttle stamp to keep")
+mock.mapID = 1454
+mock.fire("ZONE_CHANGED_NEW_AREA")
+Eq((Capture.State()), "city", "the gate did not pause capture")
+Eq(ns._test.SightingThrottleSize(), stamps, "the gate wiped the throttle")
+mock.mapID = 1412
+mock.fire("ZONE_CHANGED_NEW_AREA")
+Eq(Capture.QueueLength(), 0, "the way back through the gate read them again")
+
 SlashCmdList.SOCIALDIARY("sightings rollup 0")
-Eq(next(ns.db.sightings), nil, "/sd sightings rollup 0 kept rows")
+Check(next(ns.db.sightings), "/sd sightings rollup 0 rolled rows up")
+SlashCmdList.SOCIALDIARY("sightings rollup -5")
+Check(next(ns.db.sightings), "/sd sightings rollup -5 rolled rows up")
+mock.now = mock.now + 2 * DAY
+SlashCmdList.SOCIALDIARY("sightings rollup 1")
+Check(next(ns.db.sightings), "a rollup sooner than the retention went ahead unconfirmed")
+SlashCmdList.SOCIALDIARY("sightings rollup 1 confirm")
+Eq(next(ns.db.sightings), nil, "a confirmed rollup kept rows")
 
 --------------------------------------------------------------------------
 Section("seen around and the stranger tooltip (SES-9, REU-6)")
@@ -422,15 +447,26 @@ Check(ns._test.SightingThrottleSize() > 0, "setup: no throttle stamp")
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
 Eq(Capture.QueueLength(), 0, "draining the queue reset the throttle")
 
--- Dropping the queue drops its stamps: whoever was in it was never
--- recorded, so the sweep on the way out of the city queues them again.
-mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
+-- Someone already recorded keeps their stamp through a city's gate: walking
+-- back and forth reads nobody again.
 mock.mapID, mock.zone = 1454, "Orgrimmar"
 mock.fire("ZONE_CHANGED_NEW_AREA")
-Eq(ns._test.SightingThrottleSize(), 0, "entering a city kept the throttle stamps")
+Check(ns._test.SightingThrottleSize() > 0, "entering a city dropped a recorded player's stamp")
 mock.mapID, mock.zone = 1412, "Mulgore"
 mock.fire("ZONE_CHANGED_NEW_AREA")
-Eq(Capture.QueueLength(), 1, "the sweep after the city was throttled by dropped stamps")
+Eq(Capture.QueueLength(), 0, "the way back through the gate read a recorded player again")
+
+-- Dropping the queue drops the stamps of those in it: whoever was waiting
+-- was never recorded, so the sweep on the way out of the city queues them.
+mock.now = mock.now + 61
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
+Eq(Capture.QueueLength(), 1, "setup: not queued")
+mock.mapID, mock.zone = 1454, "Orgrimmar"
+mock.fire("ZONE_CHANGED_NEW_AREA")
+Eq(Capture.QueueLength(), 0, "entering a city kept the queue")
+mock.mapID, mock.zone = 1412, "Mulgore"
+mock.fire("ZONE_CHANGED_NEW_AREA")
+Eq(Capture.QueueLength(), 1, "the sweep after the city was throttled by a dropped stamp")
 Drain()
 
 -- The sweep prunes stamps that no longer hold anyone back.

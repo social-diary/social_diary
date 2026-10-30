@@ -38,14 +38,41 @@ local function ActionName(before, action)
     return _G["BINDING_NAME_" .. before] or before
 end
 
--- Keys that type, move or open the chat. Bound on their own they would take
--- that away from the user without a word, so they need a modifier with them.
--- Modifiers alone never bind, and Escape cancels.
+-- The named keys that need a modifier: moving, the chat, the action bars and
+-- the keys beside them. F13 and up are nobody's, so they stay free to bind.
+local BARE_KEYS = {
+    SPACE = true, ENTER = true, TAB = true, BACKSPACE = true, BACKSLASH = true,
+    UP = true, DOWN = true, LEFT = true, RIGHT = true,
+    SLASH = true, MINUS = true, EQUALS = true, COMMA = true, PERIOD = true, SEMICOLON = true,
+    APOSTROPHE = true, LEFTBRACKET = true, RIGHTBRACKET = true, GRAVE = true,
+    DELETE = true, HOME = true, END = true, PAGEUP = true, PAGEDOWN = true, INSERT = true,
+    NUMLOCK = true,
+}
+for i = 1, 12 do BARE_KEYS["F" .. i] = true end
+
+-- Keys that type, move, open the chat or sit on the action bars. Bound on
+-- their own, one stray press would take that away from the user without a
+-- word, so they need a modifier with them. Any one character is such a key:
+-- the bindings write most punctuation as itself ("-", "/"), and a keyboard's
+-- own letters (an "Ö") are one character of several bytes. Asked of the bare
+-- key only: a combo goes through. Modifiers alone never bind, and Escape
+-- cancels.
 function Keys.NeedsModifier(key)
-    return key:match("^[A-Z0-9]$") ~= nil or key == "SPACE" or key == "ENTER" or key == "BACKSLASH"
+    return BARE_KEYS[key] == true or key:find("^NUMPAD") ~= nil
+        or key:find("^[\1-\127\194-\244][\128-\191]*$") ~= nil
 end
-Keys.MODIFIER_HINT = "That key is needed for typing or moving. Hold Shift, Ctrl or Alt with it."
+Keys.MODIFIER_HINT = "That key is better left to the game. Hold Shift, Ctrl or Alt with it."
 Keys.COMBAT = "Not during a fight. Try again after it."
+
+-- What the setter asks before it takes `key` from what has it; nil when the
+-- key is free, or already `action`'s, and there is nothing to ask.
+function Keys.Question(action, key)
+    local taken = ActionName(GetBindingAction(key), action)
+    if not taken then return nil end
+    local shown = GetBindingText and GetBindingText(key) or key
+    return ("%s is set to %s.\n\nUse it for %s instead?"):format(shown, taken, ActionName(action))
+end
+Keys.TAKE = "Use it"
 
 -- Binds `key` to `action` in place of whatever had it, and of the key
 -- `action` had. Saved with the character's or the account's bindings,
@@ -116,7 +143,9 @@ local listening
 -- refusal): a font string of the caller's, or else its own, under the
 -- keycap, for the caller to size and to anchor what follows to.
 -- `.listening` while it waits for a key; `.catcher` takes the keyboard
--- then. `onBound`, if set, runs after a key is bound.
+-- then. `onBound`, if set, runs after a key is bound. A key something else
+-- has is asked about first, with the listening over and the keyboard given
+-- back: bound on yes, nothing touched otherwise.
 function Keys.Setter(parent, action, status)
     local s = CreateFrame("Frame", nil, parent)
     s.action = action
@@ -188,12 +217,25 @@ function Keys.Setter(parent, action, status)
                 self.status:SetText(Keys.MODIFIER_HINT)
                 return
             end
-            local bound, said = Keys.Bind(self.action, combo)
             self:Stop()
-            self.status:SetText(said or "")
-            if bound and self.onBound then self.onBound(self) end
+            local question = Keys.Question(self.action, combo)
+            if question then
+                self.status:SetText("")
+                ns.UI.Dialog.Confirm(question, function() self:Take(combo) end, Keys.TAKE)
+            else
+                self:Take(combo)
+            end
         end)
         self:Refresh()
+    end
+
+    -- Binds and says so. Bind refuses in a fight itself, and the question may
+    -- be answered in one: nothing is bound then, and the line says why.
+    function s:Take(key)
+        local bound, said = Keys.Bind(self.action, key)
+        self.status:SetText(said or "")
+        self:Refresh()
+        if bound and self.onBound then self.onBound(self) end
     end
 
     s:SetScript("OnHide", function(self) self:Stop() end)

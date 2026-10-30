@@ -1106,3 +1106,45 @@ Eq(#text.who, 4, "who lines to choose from")
 Eq(Plain(text.who[1]), "Level 60 Night Elf Warrior  ·  Alliance  <Knights of the Ashen Vow>", "the whole who line")
 Eq(Plain(text.who[3]), "Level 60 Warrior  ·  Alliance", "the who line without the race")
 Eq(Plain(text.who[4]), "Warrior  ·  Alliance", "the shortest who line")
+
+--------------------------------------------------------------------------
+Section("the last-seen throttle counts from the last read")
+
+do
+    local guid = F.GARRICK.guid
+    mock.SetUnit("target", F.GARRICK)
+    ns.Characters.ObserveUnit("target")
+    if not ns.Diary.IsDiary(guid) then ns.Diary.Add(guid, { source = "test" }) end
+    local realAdd, heats = ns.Heat.Add, 0
+    ns.Heat.Add = function(...) heats = heats + 1 return realAdd(...) end
+    local record = ns.Characters.Get(guid)
+    record.seen = nil
+
+    mock.mapID = 1412
+    ns.Characters.Seen(guid)
+    Eq(heats, 1, "the first read counts")
+
+    -- A steady burst: each call inside 15 s of the last, none of the last read.
+    mock.mapID = 1413
+    for _ = 1, 3 do
+        mock.now = mock.now + 6
+        ns.Characters.Seen(guid)
+    end
+    Eq(record.seen.mapID, 1413, "a steady burst never read the place again")
+    Eq(heats, 2, "a steady burst did not count once per throttle")
+
+    -- A place handed in is kept at once, and counts only past the throttle.
+    mock.now = mock.now + 1
+    ns.Characters.Seen(guid, { zone = "Elsewhere", mapID = 1414, x = 0.5, y = 0.5 })
+    Eq(record.seen.mapID, 1414, "a place handed in was not kept")
+    Eq(heats, 2, "a place handed in inside the throttle counted")
+    mock.now = mock.now + 15
+    ns.Characters.Seen(guid, { zone = "Elsewhere", mapID = 1414, x = 0.5, y = 0.5 })
+    Eq(heats, 3, "a place handed in past the throttle did not count")
+
+    -- A `seen` saved before `read` existed goes by its time.
+    record.seen = { time = mock.now, mapID = 1414 }
+    ns.Characters.Seen(guid)
+    Eq(heats, 3, "an old seen broke the throttle")
+    ns.Heat.Add = realAdd
+end

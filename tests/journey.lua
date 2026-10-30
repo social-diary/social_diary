@@ -2234,3 +2234,41 @@ do
     Eq(R2.DOOR_ONLY.arrive and R2.DOOR_ONLY.level and not R2.DOOR_ONLY.stay, true,
         "an arrival and a pin go with the door; a stay does not")
 end
+
+--------------------------------------------------------------------------
+Section("a road's and a dungeon's act, saved")
+
+local actRoad = { kind = "road", from = 100, to = 160, mapID = 1412, levelFrom = 5, levelTo = 5,
+    pts = "100,200 300,400", act = { combat = 40, deaths = 1 } }
+local line = J.Pack(actRoad)
+Eq(line:sub(1, 1), "R", "a road with an act is not an R")
+local actBack = J.Unpack(line)
+Eq(actBack.kind, "road", "an R's kind")
+Eq(actBack.pts, actRoad.pts, "an R's points")
+Eq(actBack.act.combat, 40, "a road's combat lost")
+Eq(actBack.act.deaths, 1, "a road's death lost")
+
+local actDungeon = { kind = "dungeon", from = 100, to = 400, levelFrom = 13, levelTo = 13, instanceID = 43,
+    instanceType = "party", seconds = 300, name = "Odd; Caverns", act = { deaths = 2 } }
+line = J.Pack(actDungeon)
+Eq(line:sub(1, 1), "D", "a dungeon with an act is not a D")
+actBack = J.Unpack(line)
+Eq(actBack.kind, "dungeon", "a D's kind")
+Eq(actBack.act.deaths, 2, "a dungeon's death lost")
+Eq(actBack.name, "Odd; Caverns", "a D's name, whatever it holds")
+Eq(actBack.seconds, 300, "a D's seconds")
+Eq(actBack.instanceID, 43, "a D's instance")
+
+-- Nothing done: the line stays as it was, a little r or d.
+Eq(J.Pack({ kind = "road", from = 1, to = 2, levelFrom = 1, levelTo = 1, pts = "" }):sub(1, 1), "r", "an idle road")
+Eq(J.Pack({ kind = "road", from = 1, to = 2, levelFrom = 1, levelTo = 1, pts = "", act = { combat = 0 } }):sub(1, 1),
+    "r", "a road with nothing to save in its act")
+
+-- Lines saved before these two read as they did.
+local oldRoad = J.Unpack("r;100;60;1412;5;;c40 not an act")
+Eq(oldRoad.pts, "c40 not an act", "an old road's points")
+Eq(oldRoad.act, nil, "an old road grew an act")
+local oldDungeon = J.Unpack("d;100;300;;13;;43;party;;;300;Wailing; Caverns")
+Eq(oldDungeon.name, "Wailing; Caverns", "an old dungeon's name")
+Eq(oldDungeon.seconds, 300, "an old dungeon's seconds")
+Eq(oldDungeon.act, nil, "an old dungeon grew an act")

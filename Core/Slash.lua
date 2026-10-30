@@ -386,9 +386,22 @@ Sub("city", SightingCity, "the city list; without an id, the map you are on",
     { usage = "city [add or remove] [mapID]" })
 Sub("on", SightingSwitch, "switch passive detection", { alias = { "off" }, usage = "on | off" })
 Sub("rollup", function(rest)
-    local rolled, touched = ns.Sightings.Rollup(nil, tonumber(rest))
+    local word, sure = (rest or ""):match("^(%S*)%s*(%S*)")
+    local days = tonumber(word)
+    -- Rolled rows do not come back: under a day is refused, and sooner than
+    -- the retention setting has to be meant.
+    if days and days < 1 then
+        ns.Print("nothing rolled up: that would take even today's sightings. Use 1 day or more.")
+        return
+    end
+    if days and days < ns.BufferDays() and sure ~= "confirm" then
+        ns.Print("sightings stay in full for %d days. Rolling them up sooner cannot be undone. To go ahead: |cffffd100/sd sightings rollup %s confirm|r",
+            ns.BufferDays(), word)
+        return
+    end
+    local rolled, touched = ns.Sightings.Rollup(nil, days)
     ns.Print("rolled %d row(s) of %d character(s) into summaries.", rolled, touched)
-end, "roll raw sightings older than [days] into summaries now", { usage = "rollup [days]" })
+end, "roll sightings older than [days] into summaries now", { usage = "rollup [days] [confirm]" })
 Sub("reset", function()
     ns.SightingCapture.ResetStats()
     ns.Print("sighting counters reset.")

@@ -193,8 +193,11 @@ end
 -- position at that moment, as with every other location the addon stores --
 -- the API does not give anyone else's, and the diary would not keep it.
 --
--- Mouseover and nameplates fire in bursts, so within SEEN_THROTTLE only the
--- time moves; the location is read again once the throttle has passed.
+-- Mouseover and nameplates fire in bursts, so within SEEN_THROTTLE of the
+-- last read (`read`; an older `seen` has only its time) only the time moves;
+-- the location is read again once the throttle has passed, however steady
+-- the burst. A place handed in (`where`) is kept at once, but counts on the
+-- map only past the throttle too.
 local SEEN_THROTTLE = 15
 
 function Characters.Seen(guid, where)
@@ -203,7 +206,9 @@ function Characters.Seen(guid, where)
 
     local now = ns.Now()
     local seen = record.seen
-    if seen and now - seen.time < SEEN_THROTTLE and not where then
+    local read = seen and (seen.read or seen.time)
+    local throttled = read and now - read < SEEN_THROTTLE
+    if throttled and not where then
         seen.time = now
         return seen
     end
@@ -211,6 +216,7 @@ function Characters.Seen(guid, where)
     where = where or ns.Where()
     record.seen = {
         time = now,
+        read = throttled and read or now,
         zone = where.zone,
         subZone = where.subZone,
         mapID = where.mapID,
@@ -219,7 +225,7 @@ function Characters.Seen(guid, where)
     }
 
     -- The journal's map (ns.Heat) keeps where, for diary entries only.
-    if ns.Diary.IsDiary(guid) then ns.Heat.Add(record, where) end
+    if not throttled and ns.Diary.IsDiary(guid) then ns.Heat.Add(record, where) end
 
     return record.seen
 end
@@ -267,6 +273,7 @@ function Characters.Prune(cutoff)
             dropped = dropped + 1
         end
     end
+    ns.Sessions.PruneLeftovers()
 
     if dropped > 0 then ns.Debug("forgot %d character(s) outside the diary", dropped) end
     return dropped

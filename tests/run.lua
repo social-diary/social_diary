@@ -73,6 +73,8 @@ local FILES = {
     "pages",
     "paper_strip",
     "ui_layout",
+    "toast_fight",
+    "fonts",
 }
 
 dofile(here .. "/harness.lua").Run(here, FILES, arg)

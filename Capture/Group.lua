@@ -64,7 +64,20 @@ ns.On("PLAYER_ENTERING_WORLD", function(_, isLogin, isReload)
     end)
 end)
 
-ns.On("GROUP_ROSTER_UPDATE", Group.Scan)
+-- A raid's roster comes in bursts, and each scan reads up to 40 units: a
+-- burst is one scan, just after it. A party's is read as it comes.
+local RAID_SETTLE = 0.5
+local scanWaiting = false
+
+ns.On("GROUP_ROSTER_UPDATE", function()
+    if not (IsInRaid and IsInRaid()) then return Group.Scan() end
+    if scanWaiting then return end
+    scanWaiting = true
+    ns.After(RAID_SETTLE, function()
+        scanWaiting = false
+        Group.Scan()
+    end)
+end)
 
 -- Levels move while grouped, and SES-4 wants their level at the end.
 ns.On("UNIT_LEVEL", function(_, unit)

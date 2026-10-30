@@ -488,3 +488,54 @@ ns.CreatureNames.Note(2000, "Gnoll Brute", mock.now)
 Eq(j.names[2000], nil, "a name kept with the route off")
 ns.db.settings.keepRoute = true
 
+
+--------------------------------------------------------------------------
+Section("the guess: the target is gone by PLAYER_DEAD")
+
+local guessed
+ns.On("SD_YOU_DIED", function(_, told) guessed = told end)
+local function DieWith()
+    guessed = nil
+    mock.fire("PLAYER_DEAD")
+    return guessed and guessed.guess
+end
+
+mock.now = mock.now + 600
+mock.SetUnit("target", Mob(THUNDERHOOF, "Plainstrider"))
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.SetUnit("target", nil)
+local kept = DieWith()
+Eq(kept and kept.name, "Plainstrider", "the foe held during the fight was not kept")
+Eq(kept and kept.source, "target", "a kept foe's source")
+Eq(kept and kept.npcID, 2955, "a kept foe's NPC id")
+Eq(DieWith(), nil, "one fight's foe guessed at a second death")
+
+-- Combat over just before the death is told: still that fight's.
+mock.SetUnit("target", Mob(THUNDERHOOF, "Plainstrider"))
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.SetUnit("target", nil)
+mock.fire("PLAYER_REGEN_ENABLED")
+mock.now = mock.now + 3
+kept = DieWith()
+Eq(kept and kept.name, "Plainstrider", "the foe was lost as combat ended")
+
+-- Long after: a fall is nobody's doing.
+mock.SetUnit("target", Mob(THUNDERHOOF, "Plainstrider"))
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.SetUnit("target", nil)
+mock.fire("PLAYER_REGEN_ENABLED")
+mock.now = mock.now + 60
+Eq(DieWith(), nil, "an old fight's foe guessed at a later death")
+
+-- A foe targeted out of combat is not kept; one changed to in a fight is.
+mock.SetUnit("target", Mob(THUNDERHOOF, "Plainstrider"))
+mock.fire("PLAYER_TARGET_CHANGED")
+mock.SetUnit("target", nil)
+Eq(DieWith(), nil, "a target outside any fight was kept")
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.SetUnit("target", Mob(LONGHOOF, "Longhoof"))
+mock.fire("PLAYER_TARGET_CHANGED")
+mock.SetUnit("target", nil)
+kept = DieWith()
+Eq(kept and kept.name, "Longhoof", "a foe targeted during the fight")
+mock.fire("PLAYER_REGEN_ENABLED")

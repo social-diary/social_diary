@@ -84,12 +84,8 @@ local function UnitFor(guid)
     end)
 end
 
--- What the victim was fighting, if anything.
-local function Guess(guid)
-    local unit = UnitFor(guid)
-    if not unit then return nil end
-
-    local target = unit == "player" and "target" or (unit .. "target")
+-- The foe `target` is to `unit`, if it is one.
+local function FoeOn(unit, target)
     if not ns.Plain(UnitExists(target)) or not ns.Plain(UnitCanAttack(unit, target)) then return nil end
 
     local name = ns.Plain((UnitName(target)))
@@ -100,6 +96,52 @@ local function Guess(guid)
     -- points at them.
     if killer.player then ns.Characters.ObserveUnit(target) end
     return killer
+end
+
+-- The user's target is gone by the time PLAYER_DEAD fires (probe, 14 Oct:
+-- Witnesses' Mine), so the last foe it held is kept as the fight goes:
+-- { killer, ended }. Combat can end just before the death is told, so it
+-- is good for FOE_GRACE seconds past the fight's end.
+local FOE_GRACE = 5
+local fighting, lastFoe = false, nil
+
+local function NoteFoe()
+    local killer = FoeOn("player", "target")
+    if killer then lastFoe = { killer = killer } end
+end
+
+local function KeptFoe()
+    local kept = lastFoe
+    lastFoe = nil
+    if not kept or (kept.ended and ns.Now() - kept.ended > FOE_GRACE) then return nil end
+    local killer = {}
+    for key, value in pairs(kept.killer) do killer[key] = value end
+    return killer
+end
+
+ns.On("PLAYER_REGEN_DISABLED", function()
+    fighting, lastFoe = true, nil
+    NoteFoe()
+end)
+
+ns.On("PLAYER_TARGET_CHANGED", function()
+    if fighting then NoteFoe() end
+end)
+
+ns.On("PLAYER_REGEN_ENABLED", function()
+    fighting = false
+    if lastFoe then lastFoe.ended = ns.Now() end
+end)
+
+-- What the victim was fighting, if anything.
+local function Guess(guid)
+    local unit = UnitFor(guid)
+    if not unit then return nil end
+    if unit ~= "player" then return FoeOn(unit, unit .. "target") end
+
+    local killer = FoeOn(unit, "target")
+    local kept = KeptFoe()
+    return killer or kept
 end
 
 --------------------------------------------------------------------------

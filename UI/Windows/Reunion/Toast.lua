@@ -35,11 +35,13 @@
 --   .queue               the toasts waiting, oldest first
 --   .more, .moreReason   the overflow past the queue's cap, and why
 --   .showing             the snapshot on the card now, else nil
+--   .shown               which showing that is, a number, for its timers
 --   .toast               the card's frame (SocialDiaryToastFrame), once built
 --   .hovered, .overdue   the mouse on the card, and a card past its time
 --                        waiting for it to leave
 --   .placing             while the card is being placed: { onDone }. No
 --                        toast shows meanwhile
+--   .heldDone            an onDone a fight held back, until the fight ends
 --   .Build               this file's; .Snapshot Words.lua's; .Dismiss,
 --                        .Hover, .Pump, .InCombat Queue.lua's
 

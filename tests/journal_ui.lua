@@ -639,6 +639,18 @@ mock.modifiers.alt = true
 W.key.catcher.scripts.OnKeyDown(W.key.catcher, "B")
 mock.modifiers.alt = false
 Check(not W.key.listening, "a key did not end the listening")
+-- It belongs to Open All Bags, so it asks first; no answer leaves it be.
+Eq(mock.bindings["ALT-B"], "OPENALLBAGS", "a taken key was bound before the answer")
+Check(mock.popups[#mock.popups].args[1]:find("Open All Bags"), "the question does not say what has the key")
+Eq(W.key.bind:GetText(), "Choose one", "the page does not read as before while it asks")
+mock.AnswerPopup("cancel")
+Eq(mock.bindings["ALT-B"], "OPENALLBAGS", "cancel changed the binding")
+Eq(W.key.keycap.text:GetText(), "no key", "cancel showed a key")
+W.key.bind:Click()
+mock.modifiers.alt = true
+W.key.catcher.scripts.OnKeyDown(W.key.catcher, "B")
+mock.modifiers.alt = false
+mock.AnswerPopup("accept")
 Eq(mock.bindings["ALT-B"], "SOCIALDIARY_REMEMBER", "the key was not bound to Remember this")
 Eq(mock.bindingSaves, 1, "the binding was not saved")
 Eq(W.key.keycap.text:GetText(), "ALT-B", "the bound key is not shown")
@@ -652,7 +664,7 @@ Check(not W.key.listening, "Escape did not cancel")
 Eq(mock.bindings["ALT-B"], "SOCIALDIARY_REMEMBER", "Escape changed the binding")
 W.key.bind:Click()
 -- Keys for typing and moving need a modifier: refused alone, still listening.
-for _, key in ipairs({ "F", "W", "7", "SPACE", "ENTER", "BACKSLASH" }) do
+for _, key in ipairs({ "F", "W", "7", "SPACE", "ENTER", "BACKSLASH", "UP", "TAB", "F5", "-", "NUMPAD1" }) do
     W.key.catcher.scripts.OnKeyDown(W.key.catcher, key)
     Check(W.key.listening, key .. " alone ended the listening")
     Eq(mock.bindings[key], nil, key .. " alone was bound")
@@ -663,8 +675,8 @@ W.key.catcher.scripts.OnKeyDown(W.key.catcher, "W")
 mock.modifiers.shift = false
 Eq(mock.bindings["SHIFT-W"], "SOCIALDIARY_REMEMBER", "a letter with a modifier was not bound")
 W.key.bind:Click()
-W.key.catcher.scripts.OnKeyDown(W.key.catcher, "F5")
-Eq(mock.bindings["F5"], "SOCIALDIARY_REMEMBER", "the new key was not bound")
+W.key.catcher.scripts.OnKeyDown(W.key.catcher, "F15")
+Eq(mock.bindings["F15"], "SOCIALDIARY_REMEMBER", "the new key was not bound")
 Eq(mock.bindings["SHIFT-W"], nil, "the old key still runs Remember this")
 Eq(mock.bindings["ALT-B"], nil, "the old key still runs Remember this")
 mock.inCombat = true

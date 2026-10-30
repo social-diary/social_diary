@@ -119,7 +119,10 @@ local function OnMenu(tag, _, rootDescription, contextData)
         end)
     else
         rootDescription:CreateButton("Social Diary: remember this", function()
-            ns.UI.Remember(guid, { unit = unit, source = "menu:" .. tag })
+            -- The token only while it is still them: the party slots or the
+            -- target can move while the menu is open.
+            local still = unit and ns.Plain(UnitGUID(unit)) == guid and unit or nil
+            ns.UI.Remember(guid, { unit = still, source = "menu:" .. tag })
         end)
     end
 end

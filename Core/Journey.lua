@@ -129,11 +129,13 @@ end
 -- letter and a number for each thing done ("c300o2": 300 s fighting, two
 -- quests turned in). An empty field is nil; levelTo is empty when it is
 -- levelFrom, and a stop's seconds when they are its duration. Text comes
--- last, so a name can hold anything. A segment saved as a table (an older
--- build, a test) is read as it is.
+-- last, so a name can hold anything. A road or a dungeon with something done
+-- on it is an R or a D: its act comes before its last field, and an r or a d
+-- has none (nothing was saved of it before these two). A segment saved as a
+-- table (an older build, a test) is read as it is.
 
 local KIND = { stop = "s", road = "r", flight = "f", dungeon = "d" }
-local KIND_OF = { s = "stop", S = "stop", r = "road", f = "flight", d = "dungeon" }
+local KIND_OF = { s = "stop", S = "stop", r = "road", R = "road", f = "flight", d = "dungeon", D = "dungeon" }
 local ACT = { { "combat", "c" }, { "questsIn", "i" }, { "questsOut", "o" }, { "deaths", "d" }, { "resting", "r" } }
 local ACT_OF = {}
 for _, a in ipairs(ACT) do ACT_OF[a[2]] = a[1] end
@@ -159,9 +161,12 @@ end
 local function Pack(seg)
     local duration = seg.to - seg.from
     local shaped = seg.kind == "stop" and seg.sdx ~= nil
-    local fields = { shaped and "S" or KIND[seg.kind], Int(seg.from), Int(duration), Int(seg.mapID),
-        Int(seg.levelFrom), seg.levelTo ~= seg.levelFrom and Int(seg.levelTo) or "" }
     local kind = seg.kind
+    local act = (kind == "road" or kind == "dungeon") and PackAct(seg.act) or ""
+    local letter = shaped and "S" or KIND[kind]
+    if act ~= "" then letter = letter:upper() end
+    local fields = { letter, Int(seg.from), Int(duration), Int(seg.mapID),
+        Int(seg.levelFrom), seg.levelTo ~= seg.levelFrom and Int(seg.levelTo) or "" }
     if kind == "stop" then
         fields[#fields + 1] = Milli(seg.x)
         fields[#fields + 1] = Milli(seg.y)
@@ -175,6 +180,7 @@ local function Pack(seg)
         fields[#fields + 1] = PackAct(seg.act)
         fields[#fields + 1] = seg.subZone or ""
     elseif kind == "road" then
+        if act ~= "" then fields[#fields + 1] = act end
         fields[#fields + 1] = seg.pts or ""
     elseif kind == "flight" then
         fields[#fields + 1] = Int(seg.mapID1)
@@ -189,6 +195,7 @@ local function Pack(seg)
         fields[#fields + 1] = Milli(seg.x)
         fields[#fields + 1] = Milli(seg.y)
         fields[#fields + 1] = Int(seg.seconds)
+        if act ~= "" then fields[#fields + 1] = act end
         fields[#fields + 1] = seg.name or ""
     end
     return table.concat(fields, ";")
@@ -196,12 +203,23 @@ end
 Journey.Pack = Pack
 
 -- How many fields each kind has: the last takes the rest of the line.
-local FIELDS = { s = 12, S = 15, r = 7, f = 12, d = 12 }
+local FIELDS = { s = 12, S = 15, r = 7, R = 8, f = 12, d = 12, D = 13 }
+
+local function UnpackAct(text)
+    if not text or text == "" then return nil end
+    local act = {}
+    for letter, n in text:gmatch("(%a)(%d+)") do
+        local key = ACT_OF[letter]
+        if key then act[key] = tonumber(n) end
+    end
+    return act
+end
 
 local function Unpack(line)
-    local kind = KIND_OF[line:sub(1, 1)]
+    local letter = line:sub(1, 1)
+    local kind = KIND_OF[letter]
     if not kind then return nil end
-    local count = FIELDS[line:sub(1, 1)]
+    local count = FIELDS[letter]
     local f, at = {}, 1
     for i = 1, count - 1 do
         local stop = line:find(";", at, true)
@@ -225,27 +243,32 @@ local function Unpack(line)
         seg.x, seg.y, seg.r = M(7), M(8), N(9)
         seg.seconds = N(10) or (seg.to - seg.from)
         local at = 11
-        if line:sub(1, 1) == "S" then
+        if letter == "S" then
             local sdx, sdy, rho = N(11), N(12), N(13)
             if sdx and sdy then seg.sdx, seg.sdy, seg.rho = sdx / 100000, sdy / 100000, (rho or 0) / 100 end
             at = 14
         end
-        if f[at] and f[at] ~= "" then
-            seg.act = {}
-            for letter, n in f[at]:gmatch("(%a)(%d+)") do
-                local key = ACT_OF[letter]
-                if key then seg.act[key] = tonumber(n) end
-            end
-        end
+        seg.act = UnpackAct(f[at])
         seg.subZone = S(at + 1)
     elseif kind == "road" then
-        seg.pts = f[7] or ""
+        if letter == "R" then
+            seg.act = UnpackAct(f[7])
+            seg.pts = f[8] or ""
+        else
+            seg.pts = f[7] or ""
+        end
     elseif kind == "flight" then
         seg.mapID1, seg.x1, seg.y1 = N(7), M(8), M(9)
         seg.mapID2, seg.x2, seg.y2 = N(10), M(11), M(12)
     else
         seg.instanceID, seg.instanceType = N(7), S(8)
-        seg.x, seg.y, seg.seconds, seg.name = M(9), M(10), N(11) or 0, S(12)
+        seg.x, seg.y, seg.seconds = M(9), M(10), N(11) or 0
+        if letter == "D" then
+            seg.act = UnpackAct(f[12])
+            seg.name = S(13)
+        else
+            seg.name = S(12)
+        end
     end
     return seg
 end

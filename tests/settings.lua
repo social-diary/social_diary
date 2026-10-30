@@ -989,23 +989,93 @@ REMEMBER.bind:Click()
 Check(REMEMBER.listening and not JOURNAL.listening, "two keys listened at once")
 REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "ESCAPE")
 JOURNAL.bind:Click()
-JOURNAL.catcher.scripts.OnKeyDown(JOURNAL.catcher, "F6")
-Eq(mock.bindings.F6, "SOCIALDIARY_JOURNAL", "the key was not bound to the journal")
-Eq(JOURNAL.keycap.text:GetText(), "F6", "the journal's new key is not shown")
+JOURNAL.catcher.scripts.OnKeyDown(JOURNAL.catcher, "F16")
+Eq(mock.bindings.F16, "SOCIALDIARY_JOURNAL", "the key was not bound to the journal")
+Eq(JOURNAL.keycap.text:GetText(), "F16", "the journal's new key is not shown")
 Eq(JOURNAL.bind:GetText(), "Change", "a bound key does not offer to change it")
 
 -- The journal's key taken for Remember this: both rows read again, and
 -- the line under them says what the key did before.
 REMEMBER.bind:Click()
-REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "F6")
-Eq(mock.bindings.F6, "SOCIALDIARY_REMEMBER", "the key was not moved to Remember this")
-Eq(REMEMBER.keycap.text:GetText(), "F6", "Remember this's key is not shown")
+REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "F16")
+Eq(mock.bindings.F16, "SOCIALDIARY_JOURNAL", "the key moved before the question was answered")
+mock.AnswerPopup("accept")
+Eq(mock.bindings.F16, "SOCIALDIARY_REMEMBER", "the key was not moved to Remember this")
+Eq(REMEMBER.keycap.text:GetText(), "F16", "Remember this's key is not shown")
 Eq(JOURNAL.keycap.text:GetText(), "no key", "the journal still shows the key it lost")
 Check(P.keyStatus:GetText():find("Open the journal"), "what the key did before is not said: " .. P.keyStatus:GetText())
 REMEMBER.bind:Click()
 REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "Q")
 Check(REMEMBER.listening and P.keyStatus:GetText() == Keys.MODIFIER_HINT, "a typing key alone was not refused")
 REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "ESCAPE")
+
+-- A bare key refused keeps listening; the same with a modifier goes through.
+for _, key in ipairs({ "UP", "LEFT", "TAB", "F1", "F12", "NUMPAD0", "NUMPADPLUS", "SLASH", "MINUS", "EQUALS",
+    "/", "-", "=", ",", ".", ";", "'", "[", "]", "\195\150", "BACKSPACE", "DELETE", "HOME", "END", "PAGEUP",
+    "PAGEDOWN", "INSERT" }) do
+    Check(Keys.NeedsModifier(key), key .. " can be bound alone")
+end
+for _, key in ipairs({ "F13", "F24", "BUTTON4", "PAUSE", "PRINTSCREEN" }) do
+    Check(not Keys.NeedsModifier(key), key .. " needs a modifier")
+end
+
+-- A key something else has is asked about: the listening over, the status
+-- line clear of the refusal, nothing bound until yes. Cancel leaves it all.
+mock.bindings = { ["ALT-G"] = "TOGGLEBAG", F20 = "SOCIALDIARY_JOURNAL" }
+BINDING_NAME_TOGGLEBAG = "Open a Bag"
+local saves = mock.bindingSaves
+local function PressAltG()
+    REMEMBER:Refresh()
+    REMEMBER.bind:Click()
+    REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "Q")
+    mock.modifiers.alt = true
+    REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "G")
+    mock.modifiers.alt = false
+end
+PressAltG()
+Check(not REMEMBER.listening, "it kept the keyboard while asking")
+Eq(P.keyStatus:GetText(), "", "the refusal stayed up over the question")
+Eq(REMEMBER.keycap.text:GetText(), "no key", "the key shown before the answer")
+Eq(mock.bindings["ALT-G"], "TOGGLEBAG", "a taken key was bound before the answer")
+Eq(mock.bindingSaves, saves, "the bindings were saved before the answer")
+Eq(mock.popups[#mock.popups].args[1], "ALT-G is set to Open a Bag.\n\nUse it for Remember this instead?",
+    "the question")
+Eq(StaticPopupDialogs.SOCIAL_DIARY_CONFIRM.button1, "Use it", "the question's button")
+Check(not StaticPopupDialogs.SOCIAL_DIARY_CONFIRM.showAlert, "the question comes with the alert sign")
+mock.AnswerPopup("cancel")
+Eq(mock.bindings["ALT-G"], "TOGGLEBAG", "cancel changed the binding")
+Eq(mock.bindingSaves, saves, "cancel saved the bindings")
+Eq(P.keyStatus:GetText(), "", "cancel said something")
+
+-- A fight between the question and the answer: refused, and said.
+PressAltG()
+mock.inCombat = true
+mock.AnswerPopup("accept")
+mock.inCombat = false
+Eq(mock.bindings["ALT-G"], "TOGGLEBAG", "the answer bound a key in a fight")
+Eq(mock.bindingSaves, saves, "the answer saved the bindings in a fight")
+Eq(P.keyStatus:GetText(), Keys.COMBAT, "the fight's refusal is not said")
+Eq(REMEMBER.keycap.text:GetText(), "no key", "a refused key is shown")
+
+-- Yes: bound, saved, said, and both rows read again.
+PressAltG()
+mock.AnswerPopup("accept")
+Eq(mock.bindings["ALT-G"], "SOCIALDIARY_REMEMBER", "yes did not bind the key")
+Eq(mock.bindingSaves, saves + 1, "yes did not save the bindings")
+Eq(REMEMBER.keycap.text:GetText(), "ALT-G", "the new key is not shown after yes")
+Check(not REMEMBER.listening, "yes left it listening")
+Check(P.keyStatus:GetText():find("Open a Bag"), "what the key did before is not said after yes")
+
+-- A key nothing has, or its own already, asks nothing.
+local asked = #mock.popups
+REMEMBER.bind:Click()
+REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "F21")
+Eq(mock.bindings.F21, "SOCIALDIARY_REMEMBER", "a free key was not bound at once")
+REMEMBER.bind:Click()
+REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "F21")
+Eq(#mock.popups, asked, "a free key, or its own, was asked about")
+BINDING_NAME_TOGGLEBAG = nil
+
 mock.inCombat = true
 JOURNAL.bind:Click()
 Check(not JOURNAL.listening, "it listened for a key in a fight")

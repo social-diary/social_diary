@@ -341,3 +341,56 @@ Check(not ns.Sessions.MyLevel("72"), "MyLevel took a non-number")
 Eq(ns.Sessions.Current().myLevelEnd, 72, "a non-number level was stored")
 ns.Sessions.Close(ns.Sessions.Current())
 Check(not ns.Sessions.MyLevel(73), "MyLevel without a session")
+
+--------------------------------------------------------------------------
+Section("a raid's roster burst is one scan")
+
+do
+    local realUpdate, scans = ns.Roster.Update, 0
+    ns.Roster.Update = function(...) scans = scans + 1 return realUpdate(...) end
+    mock.RunTimers()
+    scans = 0
+    mock.inRaid = true
+    for _ = 1, 5 do mock.fire("GROUP_ROSTER_UPDATE") end
+    Eq(scans, 0, "a raid scanned before its burst was over")
+    mock.RunTimers()
+    Eq(scans, 1, "a raid's burst was not one scan")
+    mock.fire("GROUP_ROSTER_UPDATE")
+    mock.RunTimers()
+    Eq(scans, 2, "the next burst was not scanned")
+    mock.inRaid = false
+    scans = 0
+    mock.fire("GROUP_ROSTER_UPDATE")
+    Eq(scans, 1, "a party's update waited")
+    ns.Roster.Update = realUpdate
+end
+
+--------------------------------------------------------------------------
+Section("what's left of someone removed, once their record has gone")
+
+do
+    local GONE, KEPT = "Player-1-0000DEAD", GUID
+    if not ns.Diary.IsDiary(KEPT) then ns.Diary.Add(KEPT, { source = "test" }) end
+    ns.Characters.Get(KEPT).lastSeen = mock.now
+
+    local shared = ns.Sessions.New({ startedAt = mock.now, source = "test" })
+    shared.participants[GONE] = { last = mock.now }
+    shared.participants[KEPT] = { last = mock.now }
+    shared.deaths[GONE] = 1
+    shared.deathLog = { { guid = GONE, time = mock.now }, { guid = KEPT, time = mock.now,
+        killer = { guid = GONE, name = "Bramble" } } }
+    local alone = ns.Sessions.New({ startedAt = mock.now, source = "test" })
+    alone.participants[GONE] = { last = mock.now }
+    ns.db.around[GONE] = { { start = mock.now, count = 3 } }
+    ns.db.around[KEPT] = { { start = mock.now, count = 3 } }
+
+    ns.Characters.Prune()
+    Eq(shared.participants[GONE], nil, "a gone participant stayed")
+    Check(shared.participants[KEPT], "a diary entry lost their session")
+    Eq(shared.deaths[GONE], nil, "a gone participant's death count stayed")
+    Eq(#shared.deathLog, 1, "their death stayed in the log")
+    Eq(shared.deathLog[1].killer.name, "Bramble", "a death they caused lost its killer")
+    Eq(ns.db.sessions[alone.id], nil, "a session left with nobody stayed")
+    Eq(ns.db.around[GONE], nil, "their stretches stayed")
+    Check(ns.db.around[KEPT], "a diary entry lost their stretches")
+end

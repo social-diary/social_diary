@@ -28,7 +28,8 @@ local function Escapable(on)
     if on then UISpecialFrames[#UISpecialFrames + 1] = SPECIAL end
 end
 
--- `onDone` runs once it is placed: Settings opens the book again.
+-- `onDone` runs once it is placed: Settings opens the book again. A fight
+-- ending it holds `onDone` until the fight is over (below).
 function ns.UI.PlaceToast(onDone)
     if Toast.InCombat() then
         ns.Print("the toast can be moved once the fight is over.")
@@ -40,6 +41,9 @@ function ns.UI.PlaceToast(onDone)
         placing.onDone = onDone or placing.onDone
         return true
     end
+
+    -- Placing again: a book still waiting from the last time stays shut.
+    Toast.heldDone = nil
 
     -- The toast showing comes back after, first in line.
     if Toast.showing then
@@ -70,7 +74,21 @@ function ns.UI.PlacingToast()
     return Toast.placing ~= nil
 end
 
-ns.On("PLAYER_REGEN_DISABLED", function() Toast.StopPlacing() end)
+-- A fight ends it, but must not open the book in the middle of a pull: what
+-- was to run after waits for the fight's end, once. Every other way of
+-- stopping runs it at once.
+ns.On("PLAYER_REGEN_DISABLED", function()
+    local placing = Toast.placing
+    if not placing then return end
+    Toast.heldDone, placing.onDone = placing.onDone, nil
+    Toast.StopPlacing()
+end)
+
+ns.On("PLAYER_REGEN_ENABLED", function()
+    local onDone = Toast.heldDone
+    Toast.heldDone = nil
+    if onDone then onDone() end
+end)
 
 if EventRegistry and EventRegistry.RegisterCallback then
     local owner = {}

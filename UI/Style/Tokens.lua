@@ -127,12 +127,68 @@ local GOODMOUNTAIN = "Interface\\AddOns\\" .. addonName .. "\\Fonts\\Goodmountai
 Style.MORPHEUS, Style.FRIZ, Style.NEUTON_ITALIC = MORPHEUS, FRIZ, NEUTON_ITALIC
 Style.GOODMOUNTAIN = GOODMOUNTAIN
 
-local function Font(name, file, size, color)
-    local font = CreateFont(name)
-    font:SetFont(file, size, "")
+-- All four are Latin only, and a name can be in any alphabet. Where the client
+-- has font families, each font here is one: its own file as the roman member,
+-- and for the other alphabets the client's own files, as its Fonts.xml pairs
+-- them (Morpheus's with QuestFont_30's, the rest with Friz's). Goodmountain's
+-- are Friz's: it is set small too, where Morpheus turns to glyphs.
+local OTHER_ALPHABETS = {
+    { "korean", "Fonts\\2002.TTF", "Fonts\\K_Pagetext.TTF" },
+    { "simplifiedchinese", "Fonts\\ARKai_T.ttf", "Fonts\\ARKai_T.ttf" },
+    { "traditionalchinese", "Fonts\\blei00d.TTF", "Fonts\\blei00d.TTF" },
+    { "russian", "Fonts\\FRIZQT___CYR.TTF", "Fonts\\MORPHEUS_CYR.TTF" },
+}
+
+-- A client in one of these reads a family through that alphabet's member,
+-- Latin too, so our Latin would change face there: those clients keep the
+-- plain fonts, boxes for other alphabets' names and all, as they always had.
+local NOT_ROMAN = { koKR = true, zhCN = true, zhTW = true, ruRU = true }
+
+local function SamePath(a, b)
+    return type(a) == "string" and a:gsub("/", "\\"):lower() == b:lower()
+end
+
+-- `file` at `size` as a family, or nil where it can't be one, or comes back
+-- without its roman font: the plain font is always there to fall back on.
+local function Family(name, file, size)
+    if not CreateFontFamily or not GetLocale or NOT_ROMAN[GetLocale()] then return nil end
+    local members = { { alphabet = "roman", file = file, height = size, flags = "" } }
+    for _, other in ipairs(OTHER_ALPHABETS) do
+        members[#members + 1] = { alphabet = other[1], file = file == MORPHEUS and other[3] or other[2],
+            height = size, flags = "" }
+    end
+    local ok, family = pcall(CreateFontFamily, name, members)
+    if not ok or not family or not SamePath(family:GetFont(), file) then return nil end
+    return family
+end
+
+local function Ink(font, color)
     font:SetTextColor(color[1], color[2], color[3], 1)
     font:SetShadowOffset(0, 0)
+end
+
+local function PlainFont(name, file, size, color)
+    local font = CreateFont(name)
+    font:SetFont(file, size, "")
+    Ink(font, color)
     return font
+end
+
+-- Every font string takes these through SetFontObject, so a family needs
+-- nothing else. A string given a size of its own by SetFont leaves the family
+-- for that one file, and shows Latin only, as it always has. Each member is
+-- inked as well as the family, as the members are font objects of their own.
+local function Font(name, file, size, color)
+    local family = Family(name, file, size)
+    if not family then return PlainFont(name, file, size, color) end
+    Ink(family, color)
+    if family.GetFontObjectForAlphabet then
+        Ink(family:GetFontObjectForAlphabet("roman") or family, color)
+        for _, other in ipairs(OTHER_ALPHABETS) do
+            Ink(family:GetFontObjectForAlphabet(other[1]) or family, color)
+        end
+    end
+    return family
 end
 
 Style.FONT = {
@@ -181,7 +237,8 @@ Style.FONT = {
     runTitle = Font("SocialDiaryFontRunTitle", GOODMOUNTAIN, 17, Style.RUBRIC),
     -- The title tooled in gold on the closed book (Style.ClosedBook): GameFont
     -- gold on leather, pressed in, so its dark lip is up and to the left.
-    cover = Font("SocialDiaryFontCover", MORPHEUS, 21, { 0.89, 0.73, 0.39 }),
+    -- Plain: only ever the title, and its shadow is set on it below.
+    cover = PlainFont("SocialDiaryFontCover", MORPHEUS, 21, { 0.89, 0.73, 0.39 }),
 }
 Style.FONT.cover:SetShadowColor(0, 0, 0, 0.6)
 Style.FONT.cover:SetShadowOffset(-1, 1)

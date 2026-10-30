@@ -307,3 +307,15 @@ Eq(HEX.faded, "705936", "HEX.faded from INK_FADED")
 Eq(HEX.accent, "6b240a", "HEX.accent from ACCENT")
 Eq(HEX.horde, "8c1a12", "HEX.horde from HORDE")
 Eq(HEX.alliance, "143c86", "HEX.alliance from ALLIANCE")
+
+--------------------------------------------------------------------------
+Section("cutting text between characters (ns.CutBytes)")
+
+local Cut = ns.CutBytes
+Eq(Cut("short", 10), "short", "short text was cut")
+Eq(Cut("abcdef", 3), "abc", "plain text")
+Eq(Cut("ab\195\169d", 3), "ab", "through a two-byte character")
+Eq(Cut("ab\195\169d", 4), "ab\195\169", "right after a two-byte character")
+Eq(Cut("a\227\129\130b", 2), "a", "through a three-byte character, first gap")
+Eq(Cut("a\227\129\130b", 3), "a", "through a three-byte character, second gap")
+Eq(Cut("\240\159\152\128", 2), "", "nothing fits")

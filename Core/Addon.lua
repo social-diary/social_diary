@@ -56,6 +56,19 @@ function ns.Plain(value, fallback)
     return value
 end
 
+-- `text` in at most `limit` bytes, never through the middle of a UTF-8
+-- character: a cut that lands on a continuation byte steps back to its start.
+function ns.CutBytes(text, limit)
+    if #text <= limit then return text end
+    local stop = limit
+    while stop > 0 do
+        local byte = text:byte(stop + 1)
+        if byte < 0x80 or byte >= 0xC0 then break end
+        stop = stop - 1
+    end
+    return text:sub(1, stop)
+end
+
 -- DAT-4: one clock for everything that gets stored.
 function ns.Now()
     return GetServerTime()

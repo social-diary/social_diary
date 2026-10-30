@@ -116,6 +116,25 @@ Eq(after, 1, "the next handler did not run after an error")
 Check(tostring(caught[1]):find("boom") ~= nil, "the error handler got something else")
 ns.Off("SD_TEST_GUARD", Boom)
 ns.Off("SD_TEST_GUARD", Next)
+
+-- The same for the jobs on a shared ticker: the one after still runs.
+caught, after = {}, 0
+ns.Every(777, Boom)
+ns.Every(777, Next)
+mock.tickers[#mock.tickers].fn()
+Eq(#caught, 1, "a job's error did not reach the error handler")
+Eq(after, 1, "the job after a failing one did not run")
+
+-- And for the cleanups at login: the ones after still run.
+caught = {}
+local realPrune, pruned = ns.Interactions.Prune, 0
+local realReunions = ns.Reunions.Prune
+ns.Interactions.Prune = Boom
+ns.Reunions.Prune = function() pruned = pruned + 1 end
+mock.fire("PLAYER_LOGIN")
+ns.Interactions.Prune, ns.Reunions.Prune = realPrune, realReunions
+Eq(#caught, 1, "a failing cleanup did not reach the error handler")
+Eq(pruned, 1, "the cleanups after a failing one did not run")
 _G.geterrorhandler = nil
 
 --------------------------------------------------------------------------

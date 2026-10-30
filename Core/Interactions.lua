@@ -137,7 +137,7 @@ local function Excerpt(text)
     local plain = ns.Plain(text)
     if type(plain) ~= "string" or plain == "" then return nil end
     if #plain > MAX_EXCERPT_CHARS then
-        plain = plain:sub(1, MAX_EXCERPT_CHARS - 1) .. "\226\128\166"  -- ellipsis
+        plain = ns.CutBytes(plain, MAX_EXCERPT_CHARS - 1) .. "\226\128\166"  -- ellipsis
     end
     return plain
 end

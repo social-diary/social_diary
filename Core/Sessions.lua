@@ -558,6 +558,54 @@ function Sessions.AroundFor(guid)
     return list
 end
 
+-- `guid` leaves `session`, and a session left with nobody in it goes too.
+-- Whether it went.
+local function Leave(id, session, guid)
+    session.participants[guid] = nil
+    session.deaths[guid] = nil
+    local log = session.deathLog or {}
+    for i = #log, 1, -1 do
+        if log[i].guid == guid then table.remove(log, i) end
+    end
+
+    if next(session.participants) ~= nil then return false end
+    ns.db.sessions[id] = nil
+    if ns.db.meta.openSession == id then ns.db.meta.openSession = nil end
+    return true
+end
+
+-- At login, once the records have been pruned: someone removed from the
+-- diary with their history kept, whose record has since gone, leaves their
+-- sessions and stretches too, or those would show a bare GUID. A death they
+-- caused keeps its killer, as Characters.Prune leaves it.
+function Sessions.PruneLeftovers()
+    local function Gone(guid)
+        return ns.db.characters[guid] == nil and not ns.Diary.IsDiary(guid)
+    end
+
+    local changed = false
+    for id, session in pairs(ns.db.sessions) do
+        local leaving = {}
+        for guid in pairs(session.participants) do
+            if Gone(guid) then leaving[#leaving + 1] = guid end
+        end
+        for _, guid in ipairs(leaving) do
+            Leave(id, session, guid)
+            changed = true
+        end
+    end
+    for guid in pairs(ns.db.around) do
+        if Gone(guid) then
+            ns.db.around[guid] = nil
+            changed = true
+        end
+    end
+    if changed then
+        byGuid = nil
+        ns.Touch()
+    end
+end
+
 -- DIA-7's "delete everything": the person leaves every session, and a session
 -- left with nobody in it goes too. nil forgets everyone (PRV-3); checked
 -- before SafeGUID, which turns an unreadable GUID into nil as well.
@@ -582,20 +630,7 @@ function Sessions.Forget(guid)
             if death.killer and death.killer.guid == guid then death.killer = nil end
         end
 
-        if session.participants[guid] then
-            session.participants[guid] = nil
-            session.deaths[guid] = nil
-            local log = session.deathLog or {}
-            for i = #log, 1, -1 do
-                if log[i].guid == guid then table.remove(log, i) end
-            end
-
-            if next(session.participants) == nil then
-                ns.db.sessions[id] = nil
-                if ns.db.meta.openSession == id then ns.db.meta.openSession = nil end
-                dropped = dropped + 1
-            end
-        end
+        if session.participants[guid] and Leave(id, session, guid) then dropped = dropped + 1 end
     end
     ns.db.around[guid] = nil
     byGuid = nil

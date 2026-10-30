@@ -1587,10 +1587,15 @@ local function New(parent, slot)
         -- Each flight of the open entry with an end on this map: `a` the
         -- node of that end (the take-off's when both are here), `b` the
         -- other end's node when it is here too, else `other`, `ox`, `oy`.
-        local list = {}
-        for i = 1, math.min(#flights, CAP.flights) do
-            local seg = flights[i]
+        -- The sheet holds every flight ever on this map, oldest first, so
+        -- only the entry's own count against the cap: taken before the
+        -- check, a zone flown through forty times had none on its newer
+        -- plates.
+        local list, inEntry = {}, 0
+        for _, seg in ipairs(flights) do
+            if inEntry >= CAP.flights then break end
             if During(seg.from, seg.to, entry) then
+                inEntry = inEntry + 1
                 local here1 = seg.mapID1 == mapID and seg.x1 and seg.y1
                 local here2 = seg.mapID2 == mapID and seg.x2 and seg.y2
                 local f = { seg = seg }
