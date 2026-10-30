@@ -1,14 +1,12 @@
--- /sd handtest: the handwritten notes on the party's cards (UI/Dungeon/
--- Cards.lua) tried on a real save, before any real run has a note to show.
--- While it is on, a card whose holder won an item in the run (a `won`
--- fact, Core/DungeonRun.lua's Person) has the note a snagged item would
--- have ("snagged an item / from me"), with that item's tooltip over it;
--- never the user's own card. A run out on the table is laid again at once.
+-- /sd handtest: tried the handwritten notes (UI/Ink/Hand.lua) on a real
+-- save. It stood in front of DungeonPage.CardJot, the question of what to
+-- jot that the party's cards asked; the cards are gone and nothing asks it
+-- now, so it draws nothing: it toggles and lays the run out again. Kept
+-- for whatever writes with the hand next.
 --
 -- Kept in memory only, so a /reload turns it off. It reads and writes no
--- saved data and leaves Core alone: it only stands in front of
--- DungeonPage.CardJot, the cards' one question of what to jot. Development
--- tooling, listed in /sd help only while debug is on.
+-- saved data and leaves Core alone. Development tooling, listed in /sd help
+-- only while debug is on.
 
 local addonName, ns = ...
 

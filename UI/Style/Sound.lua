@@ -17,9 +17,6 @@ local Style = ns.Style
 --                          added, a new note saved. The quill of a quest
 --                          written into the log
 --   tear                   the parcel at login torn open: a bag opened
---   fanOpen, fanClose      the party's cards fanned out of their stack on
---                          a dungeon's table, and gathered back: paper
---                          riffled, the ability book's page
 --   foeAlert               a foe in view (Core/Reunions.lua): the raid
 --                          warning, on the master channel, so it is heard
 --                          with sound effects turned down
@@ -33,8 +30,6 @@ Style.SOUNDS = {
     -- wrapping coming off (chosen in-client, 9 Oct; the quest abandon's rip
     -- did not fit), else a sheet laid down.
     tear = { "IG_BACKPACK_OPEN", "IG_QUEST_LOG_OPEN" },
-    fanOpen = { "IG_ABILITY_PAGE_TURN", "IG_SPELLBOOK_OPEN" },
-    fanClose = { "IG_ABILITY_PAGE_TURN", "IG_SPELLBOOK_CLOSE" },
 }
 
 -- `channel` is "SFX" unless given.

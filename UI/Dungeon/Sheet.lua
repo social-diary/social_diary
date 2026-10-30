@@ -495,9 +495,6 @@ function DungeonPage.Sheet(parent)
         view.none:SetText(("The diary has no map of %s yet."):format(visit.name or "this place"))
         K.PlaceText(view.none, W / 2, H / 2, "CENTER")
         view.none:Show()
-        -- The party's cards in their stack all the same.
-        view.stack = DungeonPage.StackPlace(view)
-        if view.onLaid then view.onLaid() end
     end
 
     -- Lays the sheet for `visit`, opened from `guid`'s page: the floor
@@ -580,13 +577,10 @@ function DungeonPage.Sheet(parent)
 
         self.plan = DungeonPage.Ink(plan, P, self.paper)
         Links(floors, index)
-        -- Where the party's cards lie in their stack by it (UI/Dungeon/
-        -- Cards.lua), and the pencil's slip on its top edge (UI/Dungeon/
-        -- Way.lua), before the strips, which keep out from under both.
-        self.stack = DungeonPage.StackPlace(self)
+        -- The pencil's slip on its top edge (UI/Dungeon/Way.lua), before
+        -- the strips, which keep out from under it.
         DungeonPage.WayLaid(self)
         DungeonPage.LayNotes(self, self.plan, P, K)
-        if self.onLaid then self.onLaid() end
         -- Laid again while the pen is out (another floor, the screen
         -- changed): it is taken up again on what is shown now.
         DungeonPage.WayAfter(self)

@@ -1,10 +1,8 @@
 -- The table spread (.claude/dungeon-visits-prd.md §8, DGN-1 to DGN-3,
 -- TLN-12): a dungeon run laid out on a table, not a page in the book: the
 -- run's map, a big folded sheet (UI/Dungeon/Sheet.lua), with its strips
--- near what they are about (UI/Dungeon/Notes.lua), the party's cards in a
--- small stack by its bottom-left corner, fanned out of it on a click
--- (UI/Dungeon/Cards.lua), all lying over the game world under the one
--- lamp the map obeys (UI/Paper/Light.lua; each thing's height in
+-- near what they are about (UI/Dungeon/Notes.lua), lying over the game
+-- world under the one lamp the map obeys (UI/Paper/Light.lua; each thing's height in
 -- UI/Dungeon/Heights.lua). Nothing is laid under them: the world shows
 -- round the sheet, and what lies past its edge casts its shadow on it.
 --
@@ -29,12 +27,9 @@
 -- beside the sheet, the bookmark lying by the map's top-left corner with "<their name>'s story" pencilled on
 -- it (BOOKMARK: the dog-eared corner went with the book), Escape, the card
 -- again, choosing someone else, turning the book to another page, or
--- shutting the book. Escape puts the fanned cards back first, then takes
--- the spread away, and the book only with the next press: while the
--- spread is out it stands in the book's place in UISpecialFrames, and
--- while the cards are fanned their catcher stands in the spread's (one
--- place, swapped: StandIn). Put away fanned, the cards go back into their
--- stack at once, so the next run opens with them gathered.
+-- shutting the book. Escape takes the spread away, and the book only with
+-- the next press: while the spread is out it stands in the book's place in
+-- UISpecialFrames (one place, swapped: StandIn).
 
 local addonName, ns = ...
 
@@ -103,10 +98,10 @@ end
 -- map's shape: UI/Dungeon/Sheet.lua) lies for a book whose middle is at
 -- bx, by on a screen sw by sh (all in the book's own units, x right and y
 -- up from the screen's bottom left; no book given, the screen's middle),
--- with `left` and `right` px more beside it (the cards' stack and the
--- bookmark: their room past the sheet's edge): on the book's middle, the
--- sheet's `down` under it, slid along each way as far as it must to stay
--- `edge` px inside the screen, shadow, stack and all. Returns its middle's
+-- with `left` and `right` px more beside it (the bookmark: its room past
+-- the sheet's edge): on the book's middle, the sheet's `down` under it,
+-- slid along each way as far as it must to stay `edge` px inside the
+-- screen, shadow, bookmark and all. Returns its middle's
 -- offset from the screen's middle in the spread's own units (as SetPoint
 -- takes it), the spread's own scale (1, unless the screen is too small for
 -- the sheet at all: then just small enough), and whether it slid. A screen
@@ -132,17 +127,14 @@ function DungeonPage.Lie(sw, sh, bx, by, w, h, left, right)
     return (cx - sw / 2) / k, (cy - sh / 2) / k, k, slid
 end
 
--- Escape: one place in UISpecialFrames, held by the book, the spread
--- while it is out, or the fanned cards' catcher (UI/Dungeon/Cards.lua's
--- FAN.catcher) while they are fanned: `to` of those three, so the first
--- press puts the cards back, the next the spread away, the last shuts the
--- book. Swapped in place, never added or removed, as the client may be
+-- Escape: one place in UISpecialFrames, held by the book, or the spread
+-- while it is out: `to` of those two, so the first press puts the spread
+-- away, the next shuts the book. Swapped in place, never added or removed, as the client may be
 -- going through the list as it hides one: what stands in the place next
 -- is not reached by the same press.
 local function StandIn(to)
-    local fan = DungeonPage.FAN.catcher
     for i, name in ipairs(UISpecialFrames) do
-        if name == SPREAD.book or name == SPREAD.name or name == fan then
+        if name == SPREAD.book or name == SPREAD.name then
             UISpecialFrames[i] = to
             return
         end
@@ -169,8 +161,8 @@ end
 --------------------------------------------------------------------------
 
 -- The bookmark on the sheet's view `map` (BOOKMARK): a button the size of
--- the turned slip's box, drawn on a turned plane (UI/Paper/Surface.lua) as
--- a card is. :Set(first) writes the words, :LayAt(x, y) lays it, :Draw
+-- the turned slip's box, drawn on a turned plane (UI/Paper/Surface.lua).
+-- :Set(first) writes the words, :LayAt(x, y) lays it, :Draw
 -- (lifted) draws it lying or picked up.
 local function Bookmark(map)
     local mark = CreateFrame("Button", nil, map)
@@ -353,7 +345,7 @@ function DungeonPage.BookmarkAt(dx, dy, w, h, length)
 end
 
 -- How much room past the sheet's left edge the bookmark needs, for the
--- fit (as the stack's: DungeonPage.StackFlank).
+-- fit.
 local function BookmarkFlank(mark)
     return (mark.w or BOOKMARK.least) - BOOKMARK.tuck + SPREAD.edge
 end
@@ -372,10 +364,9 @@ local function Fit(w, h)
     local S = DungeonPage.SHEET
     w, h = w or S.w, h or S.h
     local sw, sh = UIParent:GetWidth() / scale, UIParent:GetHeight() / scale
-    -- Room beside it for the cards' stack by its bottom-left corner and
-    -- the bookmark by its top-left.
+    -- Room beside it for the bookmark by its top-left corner.
     local back = spread.back
-    local flank = math.max(DungeonPage.StackFlank(w, h), BookmarkFlank(back))
+    local flank = BookmarkFlank(back)
     local dx, dy, k, slid = DungeonPage.Lie(sw, sh, bx, by, w, h, flank, 0)
     spread.flank = flank
     spread:SetScale(scale * k)
@@ -390,13 +381,10 @@ local function Fit(w, h)
 end
 
 -- However the spread went (put away, Escape, the book shut): the run is
--- closed, the cards back in their stack at once, the book given back as it
--- was and Escape with it, and the paper rustles, unless it went `quiet`ly
--- or with the book.
+-- X
 local function Gone()
     local open = J.visit ~= nil
     J.visit = nil
-    if spread.fanned then DungeonPage.Fan(spread, false, true) end
     -- The pen put down, what it drew kept (WAY-11).
     DungeonPage.WayPutDown(spread.map)
     spread.map:Hide(true)
@@ -422,21 +410,11 @@ local function Build()
     host.map = DungeonPage.Sheet(host)
     host.map.onPutAway = function() DungeonPage.Close() end
     host.map.onMeasure = Fit
-    -- Laid again (another floor, the screen changed): its cards with it.
-    host.map.onLaid = function()
-        if J.visit and host.map.visit then
-            DungeonPage.LayCards(host, host.map.visit, J.visit.guid, host.partyList or {})
-        end
-    end
     -- The wheel stops at the table: the book under it, put aside, keeps
     -- its timeline where it was.
     host.map:EnableMouseWheel(true)
     host.map:SetScript("OnMouseWheel", function() end)
     host.back = Bookmark(host.map)
-    -- The cards fanned: Escape puts them back first.
-    host.onFan = function(open)
-        if host:IsShown() then StandIn(open and DungeonPage.FAN.catcher or SPREAD.name) end
-    end
     Above(host)
 
     host:SetScript("OnHide", Gone)
@@ -457,10 +435,7 @@ end
 local function Open(visit, guid, from)
     spread = spread or Build()
     if not spread:IsShown() then StandIn(SPREAD.name) end
-    -- The party's cards (UI/Dungeon/Cards.lua), in their stack; the
-    -- bookmark's words, for its room beside the map.
-    local party = DungeonPage.Party(visit, guid)
-    spread.partyList = party
+    -- The bookmark's words, for its room beside the map.
     spread.back:Set(ns.Characters.Name(guid), from == "journey" and BOOKMARK.journey or nil)
     J.visit = { id = visit.id, guid = guid, from = from }
     -- Its card says a click puts it away, the timeline kept where it was.
@@ -475,8 +450,6 @@ local function Open(visit, guid, from)
         end
         f = f:GetParent()
     end
-    -- Another run laid over this one opens with its cards in their stack.
-    if spread.fanned then DungeonPage.Fan(spread, false, true) end
     Away(true)
     Above(spread)
     spread:Show()

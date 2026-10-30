@@ -77,8 +77,7 @@ local PENCIL = { len = 54, w = 7, turn = 7, out = 10, wood = 9, lead = 3, ferrul
 local PEN = { width = 1.6, grey = 0.45, dash = 4, space = 4, dot = 5, halo = 9, stop = 6, step = 7, ring = 8,
     strokes = 18, cut = 9, marker = 11, reach = 9, leg = 7, near = 10, drag = 3, every = 0.03 }
 -- Over the sheet: the pen's ink over the marks and the strips, the frame
--- taking the clicks over that, the slip over both (the cards fanned over
--- everything: UI/Dungeon/Cards.lua's +40).
+-- taking the clicks over that, the slip over both.
 local LEVELS = { ink = 9, catcher = 20, slip = 30 }
 DungeonPage.WAY = { SLIP = SLIP, PENCIL = PENCIL, PEN = PEN, LEVELS = LEVELS }
 

@@ -51,7 +51,6 @@ local FILES = {
     "dungeon_rolls",
     "dungeon_ui",
     "dungeon_spread",
-    "dungeon_cards",
     "dungeon_light",
     "dungeon_way",
     "dungeon_way_ui",

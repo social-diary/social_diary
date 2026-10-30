@@ -13,8 +13,8 @@
 -- foot of a d), so no joint is mitred into a spike. Pure arithmetic, like
 -- the pen. Its table is ns.UI.Hand; the notes are Hand.NOTES.
 --
--- Written with it: the jots on the party's business cards (UI/Dungeon/
--- Cards.lua).
+-- Written with it: nothing at present. Dev/HandTest.lua and tests/hand.lua
+-- are all that still read it.
 
 local addonName, ns = ...
 

@@ -37,8 +37,8 @@ ns.UI.Light = Light
 local LIFT = { base = 1, gain = 0.22, alpha = 0.32, fade = 0.04, reach = 1.8, extra = 1.5, soft = 0.35 }
 -- What a shadow falls on: its `colour`, how much darker than LIFT's it is
 -- there (`strength`), and how much further its soft edge reaches
--- (`spread`). Paper and a card (the book's page, the map sheet, a card
--- under another): ink, as tuned. The world under a dungeon's table (the
+-- (`spread`). Paper (the book's page, the map sheet): ink, as tuned. The
+-- world under a dungeon's table (the
 -- book is put aside, UI/Dungeon/Spread.lua): grass, stone, night, busy
 -- and mostly darker than paper, so black at 0.32 is lost on it; black,
 -- nearly twice as dark, and a little wider, so the soft edge still reads

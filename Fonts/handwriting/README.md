@@ -123,10 +123,10 @@ long phrases can share a slug. Use `manifest.json` as the source of truth.
 
 Social Diary ships no PNG from here: `tools/to_lua.py` turns chosen takes' stroke JSON
 into `UI/Ink/HandData.lua`, which `UI/Ink/Hand.lua` draws with the diary's own pen at any
-size (the jots on the dungeon run's business cards, `UI/Dungeon/Cards.lua`).
+size. Nothing in the addon writes with it at present; the only note baked so far is `snagged`.
 
-1. Bake in the diary's hand, **style 9, bias 1.0**, a line at a time (a card's body fits
-   about 15 characters a line): `python bake.py "snagged an item" "from me" --style 9 --bias 1.0 --takes 4 --sheet --out /tmp/notes`.
+1. Bake in the diary's hand, **style 9, bias 1.0**, a line at a time (about 15
+   characters a line suits a small note): `python bake.py "snagged an item" "from me" --style 9 --bias 1.0 --takes 4 --sheet --out /tmp/notes`.
 2. Look at `sheet.png`; copy the good takes into `notes/<key>/` as `1.json`, `2.json`, ...
    (one per line, top to bottom; `<key>` is the note's name in Lua, e.g. `snagged`).
 3. From this folder, convert every note at once (the file is rewritten whole):
@@ -139,7 +139,7 @@ size (the jots on the dungeon run's business cards, `UI/Dungeon/Cards.lua`).
    from the left end of each line's baseline; points are simplified with
    Ramer–Douglas–Peucker at `--tolerance` x-heights (default 0.035; every segment is a
    texture in game, so keep notes short). Text, style, seed and bias go into the file.
-4. Point a run's fact at the note in `JOTS` (`UI/Dungeon/Cards.lua`) and run `luajit tests/run.lua`.
+4. Draw the note with `ns.UI.Hand.Draw` where it belongs and run `luajit tests/run.lua`.
 
 ## Python API
 

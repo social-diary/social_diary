@@ -731,9 +731,6 @@ function DungeonPage.LayNotes(view, plan, P, K)
     local xs, ys = Folds(K)
     local taken = {}
     if view.labelBox then taken[#taken + 1] = view.labelBox end
-    -- The party's cards in their stack over the map's edge (UI/Dungeon/
-    -- Cards.lua).
-    if view.stack then taken[#taken + 1] = view.stack.keep end
     -- The pencil's slip over its top edge (UI/Dungeon/Way.lua).
     if view.wayKeep then taken[#taken + 1] = view.wayKeep end
     local moreY = (view.labelBox and view.labelBox[2] or H - MORE.inset) - MORE.over

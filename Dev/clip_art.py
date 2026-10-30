@@ -26,7 +26,7 @@ in Header.lua) and leave it off laid flat.
 
 Each texture is 128 px square: the clip is drawn on a 40 px square of
 the screen, 3.2 texels a pixel. 32-bit TGA, no compression, as the
-client takes them (Art/Cards/ are the same). Standard library only: no
+client takes them. Standard library only: no
 PIL. Geometry below is in screen px of the 40 px square, y down; the
 numbers Header.lua places the clip by (where its jaw's top and its lip
 fall, CLIP.at, DENT) are these.
@@ -307,7 +307,7 @@ def write_tga(path, rows):
     """rows: rows of (r, g, b, a 0..1), top first."""
     header = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0, len(rows[0]), len(rows), 32, 8)
     body = bytearray()
-    for row in reversed(rows):   # bottom-left origin, as Art/Cards/ are
+    for row in reversed(rows):   # bottom-left origin
         for r, g, b, a in row:
             body += bytes((clamp8(b), clamp8(g), clamp8(r), clamp8(a * 255)))
     Path(path).parent.mkdir(parents=True, exist_ok=True)

@@ -194,27 +194,6 @@ function Style.SetRaceIcon(texture, record)
     return true
 end
 
--- A race's portrait as art laid on its own (a gnome's badge photo): its
--- file and its part { l, r, t, b }, the largest the client has
--- (RACE_FACES), by the record's race and sex (male where its sex is not
--- known, as SetRaceIcon); nil where the race is unknown or the client has
--- none.
-local RACE_FACES = { "raceicon128-%s-%s", "raceicon-%s-%s" }
-function Style.RaceFace(record)
-    if not (record and type(record.race) == "string") then return nil end
-    if not (C_Texture and C_Texture.GetAtlasInfo) then return nil end
-    local race = RACE_ATLAS[record.race] or record.race:lower()
-    local sex = record.sex == 3 and "female" or "male"
-    for _, form in ipairs(RACE_FACES) do
-        local info = C_Texture.GetAtlasInfo(form:format(race, sex))
-        local file = info and (info.file or info.filename)
-        if file then
-            return file, { info.leftTexCoord or 0, info.rightTexCoord or 1, info.topTexCoord or 0, info.bottomTexCoord or 1 }
-        end
-    end
-    return nil
-end
-
 function Style.SetClassIcon(texture, class)
     local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
     local path = coords and Style.Art("classes")

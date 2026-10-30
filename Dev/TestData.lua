@@ -312,7 +312,7 @@ function TestData.Remove()
     -- them drops those sessions. A visit outlives one member, though, so the
     -- made-up ones go by their mark.
     ns.Characters.Forget(GUID)
-    -- And the runs' other members, seen for their cards.
+    -- And the runs' other members.
     for _, m in ipairs({ BROM, KAELITH, ZURI }) do
         if ns.db.characters[m.guid] and not ns.Diary.IsDiary(m.guid) then ns.Characters.Forget(m.guid) end
     end
@@ -331,8 +331,7 @@ function TestData.Write(now)
         faction = "Horde", level = 22, sex = 2, time = now - 6 * DAY - HOUR,
     })
     -- The dungeon runs' other members, seen as they grouped: strangers, not
-    -- in the diary, of the races their business cards are told by on the
-    -- map (UI/Dungeon/Cards.lua): a dwarf's, a gnome's and a night elf's.
+    -- in the diary.
     for _, m in ipairs({ { BROM, "Dwarf", 22 }, { ZURI, "Gnome", 21 }, { KAELITH, "NightElf", 22 } }) do
         ns.Characters.Observe(m[1].guid, { first = m[1].first, surname = m[1].surname, class = m[1].class,
             race = m[2], faction = "Horde", level = m[3], sex = 2, time = now - 4 * HOUR })

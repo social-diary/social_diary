@@ -4,8 +4,8 @@
 -- the sheet where the book lay (the book never moves or changes size),
 -- slid or, on a screen too small for it, shrunk to stay on the screen, and
 -- every way back to the person's page: the bookmark, a click
--- beside the sheet, Escape (the fanned cards first, then the spread, the
--- book with the next press), the card again, someone else, another page,
+-- beside the sheet, Escape (the spread, the book with the next
+-- press), the card again, someone else, another page,
 -- the book shut. Nothing is laid under it: the world shows round the
 -- sheet. What is on the map is tests/dungeon_ui.lua's;
 -- the light and the shadows are tests/dungeon_light.lua's.
@@ -367,36 +367,7 @@ Eq(Out(), nil, "a click beside the sheet did not put it away")
 -- A click on the sheet itself does not.
 ns.UI.OpenVisit(RFK.id, G)
 Check(map.sheet.recorded.calls.EnableMouse[1], "the sheet lets clicks through to the table")
--- Escape with the cards fanned: the cards back first, then the spread,
--- then the book.
-local FAN = Page.FAN
-Page.Fan(host, true)
-Check(Listed(FAN.catcher) and not Listed("SocialDiaryTableSpread") and not Listed("SocialDiaryJournalFrame"),
-    "the fan not first on Escape's list")
-Check(Escape(), "Escape found nothing to close with the cards fanned")
-Eq(host.fanned, false, "Escape did not put the cards back")
-Eq(Out(), RFK.id, "Escape put the run away with the cards fanned")
-Check(panel:IsShown() and panel:GetAlpha() == 0, "Escape gave the book back with the cards fanned")
-Check(Listed("SocialDiaryTableSpread") and not Listed(FAN.catcher), "the spread not next on Escape's list")
-local driver = host.stack.scripts.OnUpdate
-Check(driver ~= nil, "Escape put the cards back without moving them")
-for _ = 1, 60 do
-    driver = host.stack.scripts.OnUpdate
-    if not driver then break end
-    driver(host.stack, 1 / 60)
-end
-for _, item in ipairs(host.fanItems) do Eq(item.e, 0, "a card not back in the stack after Escape") end
--- Put away fanned: back in the stack at once, Escape back to the book.
-Page.Fan(host, true, true)
-Page.Close(true)
-Eq(host.fanned, false, "the cards left fanned as the run went")
-for _, item in ipairs(host.fanItems) do Eq(item.e, 0, "a card left out as the run went") end
-Check(Listed("SocialDiaryJournalFrame") and not Listed(FAN.catcher) and not Listed("SocialDiaryTableSpread"),
-    "the book not back on Escape's list after a fanned run")
-ns.UI.OpenVisit(RFK.id, G)
-Eq(host.fanned, false, "the run came out again fanned")
-Check(not host.catcher:IsShown(), "the fan's catcher out again with the run")
--- Escape: the spread next, the book with the next press.
+-- Escape: the spread, the book with the next press.
 Check(Escape(), "Escape found nothing to close")
 Eq(Out(), nil, "Escape did not put the run away")
 Check(panel:IsShown(), "Escape shut the book with the spread")
