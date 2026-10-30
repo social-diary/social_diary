@@ -3,33 +3,34 @@
 All notable changes to Social Diary. Versions follow the `## Version` line in
 `social_diary.toc`; a release is the matching `v` tag (for example `v1.0.0`).
 
-## [unreleased]
+## [Unreleased]
+
+## [2.0.0]
 
 ### Shiny new Things
 
-- **Major Feature**: Dungeons activites are now mapped!
-  - Dungeon Routes can be drawn by hand if they diverge from the default route.
-  - They also appear in _Your Diary_ as full-sized pages
+- **Major feature**: _Dungeon View_ now maps your dungeon activities
+  - Routes can be drawn by hand
+  - Dungeons also appear in _Your Diary_ as full-sized pages
 - A minimap button now opens the journal and _Settings_
-- Added a Minimap Button
 
 ### Changes
 
 - Social Diary is now licensed under the GPL v3
-- Sessions on a profile now tell proper stories -- will get better over time with more addtions.
-- _Your Diary_ now lists play sessions instead of levels. This prepares for later levels where too much happens in one level to portray it correctly on one page.
-- Removed Together Sessions Setting to improve clarity in settings.
-- _People_ page entries are not sticky anymore
+- Sessions on a profile now tell proper stories
+- _Your Diary_ now lists play sessions instead of levels
+- Removed Together Sessions from _Settings_
+- _People_ page entries are no longer sticky
   - Editing someone is now a tab beside the page
 
 ### Fixes
 
 - Flight paths in _Your Diary_ now use a single Flight Master node
-- First items in _Your Diary_ do not show up as mail items anymore
+- First items in _Your Diary_ no longer show up as mail items
   - Crafted firsts now say you made them
 - A zone's full map in _Your Diary_ now pans without zooming first
 - Sessions no longer list the same zone over and over
-- Memory page no longer shows file size of all characters combined
+- _Memory_ page no longer shows file size of all characters combined
 
 ## [1.7.0]
 

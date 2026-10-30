@@ -510,7 +510,7 @@ local SHARED_FILE = "WTF\\Account\\<account>\\SavedVariables\\social_diary.lua"
 P:Refresh()
 Eq(ns.diaryShared, false, "the diary is shared before the switch")
 Eq(P.shareDiary:GetChecked(), false, "the switch does not show the diary loaded")
-Check(P.shareDiary.hint:GetText():find("every character", 1, true), "the switch does not say it is account-wide")
+Check(P.shareDiary.label:GetText():find("all my characters", 1, true), "the switch does not say it is account-wide")
 Check(ns.IsAccountSetting("shareDiary"), "the switch is not an account setting")
 Check(P.dataHint:GetText():find(OWN_FILE, 1, true) and P.dataHint:GetText():find("This character's", 1, true),
     "Your data does not name this character's file: " .. P.dataHint:GetText())

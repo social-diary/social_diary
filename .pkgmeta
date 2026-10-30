@@ -14,5 +14,6 @@ ignore:
   - DESCRIPTION.md
   - Dev
   - Features/*/Dev.lua
+  - Fonts/handwriting
   - tests
   - Questie-v12.0.4+v1.0.5
