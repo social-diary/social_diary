@@ -156,7 +156,7 @@ Eq(panel.recorded.calls.SetFrameStrata[1], "HIGH", "the book's strata")
 Eq(host.recorded.calls.SetFixedFrameStrata[1], true, "the host's strata not fixed")
 Check(host.recorded.calls.SetFrameStrata.seq > host.map.sheet.recorded.calls.SetFrameLevel.seq,
     "the host's strata not set after its sheet was made")
-for _, tab in ipairs({ panel.profile.tabStory, panel.profile.tabMap, panel.profile.tabNote }) do
+for _, tab in ipairs({ panel.profile.tabStory, panel.profile.tabMap, panel.profile.tabNote, panel.profile.tabEdit }) do
     Eq(tab.recorded.calls.SetFrameStrata, nil, "a side tab in a strata of its own")
 end
 -- The sheet covers the host: a click beside it lands on the table.

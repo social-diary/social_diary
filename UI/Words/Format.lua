@@ -246,7 +246,8 @@ end
 
 -- "Level 6 Tauren Druid  ·  Horde  <Guild>", inked for the page. With
 -- dropOwn the faction goes when it is the player's own, as it nearly
--- always is out in the world.
+-- always is out in the world; with "always" it goes whoever's it is (the
+-- person's page: the portrait and the book say enough).
 function Format.WhoLine(record, guild, dropOwn)
     record = record or {}
     local parts = {}
@@ -255,7 +256,7 @@ function Format.WhoLine(record, guild, dropOwn)
     parts[#parts + 1] = Format.ClassName(record)
 
     local text = table.concat(parts, " ")
-    local own = dropOwn and record.faction == UnitFactionGroup("player")
+    local own = dropOwn == "always" or (dropOwn and record.faction == UnitFactionGroup("player"))
     if not own and (record.faction == "Horde" or record.faction == "Alliance") then
         local hex = record.faction == "Horde" and ns.Style.HEX.horde or ns.Style.HEX.alliance
         text = text .. (text ~= "" and "  ·  " or "") .. "|cff" .. hex .. record.faction .. "|r"

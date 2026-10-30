@@ -110,7 +110,7 @@ local CHARACTER_SETTINGS = {
     minimapButton = true,  -- the button on the minimap's edge (UI/Blizzard/Minimap.lua)
     minimapAngle = 225,  -- ...and where on the edge, in degrees from east: bottom left until dragged
     bookStack = true,   -- the journal's page stack grows with the diary and turns with the page
-    flatSheets = false,  -- "Flat paper only": loose sheets (the map, notes) without folds, bends or grime
+    flatSheets = false,  -- "Flat paper only": loose sheets (the map, notes) without folds, bends or grime; a person's name straight, no arc
     revealMap = false,  -- "Always show the whole map": the map sheets fill in unexplored areas too (UI/Map/Art.lua)
     dungeonRoute = true,  -- MAP-4: a run's map draws the usual way through (UI/Dungeon/Print.lua)
     -- The parcel at login has been torn open: from then on it comes back

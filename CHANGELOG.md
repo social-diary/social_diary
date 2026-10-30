@@ -20,6 +20,8 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 - Sessions on a profile now tell proper stories -- will get better over time with more addtions.
 - _Your Diary_ now lists play sessions instead of levels. This prepares for later levels where too much happens in one level to portray it correctly on one page.
 - Removed Together Sessions Setting to improve clarity in settings.
+- _People_ page entries are not sticky anymore
+  - Editing someone is now a tab beside the page
 
 ### Fixes
 

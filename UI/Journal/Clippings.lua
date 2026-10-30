@@ -1,8 +1,8 @@
 -- The top of a person's list (the person-page proposal, variant A,
 -- "Clippings"): what the summary paragraph used to say, as things glued
 -- and taped onto the page, in one tall line of the list that scrolls away
--- with the timeline under it (and slides under the clipped name sheet,
--- UI/Journal/Header.lua, as it goes):
+-- with the timeline under it, the person's header on the same line
+-- (UI/Journal/Header.lua):
 --   the plate      where something with them happened (UI/Journal/
 --                  PersonPlate.lua), glued in with photo corners; none
 --                  where nothing of them can be placed
@@ -29,8 +29,8 @@ local Clippings = {}
 ns.UI.Clippings = Clippings
 
 -- The block (x, y from its top left, which is `pad` px under its line's
--- top: the line starts behind the name sheet, its first writing at the
--- sheet's foot; UI/Journal/Header.lua's SHEET.first - SHEET.listTop):
+-- top: the line starts at the paper's top edge, its first writing under the
+-- header; UI/Journal/Header.lua's SHEET.first - SHEET.listTop):
 --   column   the facts' strips with a plate: from `x`, each `step` px
 --            further in than the one above (a hand's stagger), `gap` px
 --            apart, the first `top` px down. Each is as wide as its words
@@ -50,7 +50,7 @@ ns.UI.Clippings = Clippings
 -- (20 Oct, in the client: at a fixed 174 px "First met 11 October" ran to
 -- its strip's edge; strips are now sized from their words.)
 local BLOCK = {
-    pad = 35, width = 458, foot = 10, level = 20,
+    pad = 81, width = 458, foot = 10, level = 20,
     column = { x = 284, step = 12, gap = 11, top = 10, right = 452, least = 246 },
     alone = { x = 16, right = 204 },
     note = { x = 214, y = 158, tilt = -1.3, most = 6, aloneX = 214, aloneY = 14 },
@@ -170,6 +170,7 @@ function Clippings.New(list, open)
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -BLOCK.pad)
         frame:Show()
+        if self.header then self.header:Hold(row) end
     end
     -- `row` was handed another line: put away if it held it.
     function block:Let(row)
@@ -177,6 +178,7 @@ function Clippings.New(list, open)
             self.row = nil
             frame:Hide()
         end
+        if self.header then self.header:Let(row) end
     end
     -- Laid again next time (the diary changed under the same key).
     function block:Forget() self.key = nil end

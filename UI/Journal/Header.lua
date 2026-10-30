@@ -1,82 +1,42 @@
--- The person's page's header: their name sheet, clipped to the page (the
--- person-page proposal, variant A "Clippings", round 2). A short sheet of
--- a lighter stock than the page holds what stays while the list scrolls:
--- the portrait, their name in Goodmountain (mixed case, never capitals),
--- the who line and their tags. A painted bronze binder clip at its top
--- left holds it to the page's top edge: its hinge and the top of its jaw
--- stand out over the edge, its lip bites sheet and page together over the
--- portrait's corner, and the sheet hangs from it, turned 1.6 degrees
--- against the clock about the clip, its right end risen about 12 px, its
--- top right corner just inside the page.
+-- The person's page's header: written straight on the book's page (the
+-- person-header proposal, .claude/ui-proposal/person-header-arc-mockup.html,
+-- layout B), no paper of its own: the portrait, their name in Goodmountain
+-- (mixed case, never capitals), rising a little from its start and levelling
+-- off, the relationship in the hand at the end of the name's line, the who
+-- line and their tags under it.
 --
--- The list passes under it: it starts behind the sheet at every x
--- (SHEET.listTop), so rows and the plate slide in under its foot and are
--- cut off behind the paper, never at a frame line; the sheet throws its
--- soft shadow from its foot onto them, from its height (the house light,
--- UI/Paper/Light.lua). Worn a little (none laid flat): a faint dent where
--- the clip's jaw bites, and its bottom right corner lifted, shaded.
+-- It is part of what scrolls: it lies on the line of the list that holds the
+-- plate and the facts (UI/Journal/Clippings.lua), and leaves with it, cut off
+-- at the paper's top edge (SHEET.listTop). In writing mode the list is put
+-- away and the header stays over the form, on the page itself (`Set`).
 --
--- Frames cannot turn, only textures and font strings: the sheet is laid
--- out flat about its middle and every piece placed turned with it (the
--- turned plane, UI/Paper/Surface.lua), as a strip is. The tag chips are
--- textures, so they turn too; the portrait's discs are round and its mask
--- a circle, so only their middles move. Where the client cannot turn text
--- (the strip's probe), or with "Flat paper only", it lies straight. Edit
--- is pencilled on it in graphite with a dashed underline, and stays
--- straight: it is a control, not paper. The clip is art baked by
--- Dev/clip_art.py (Art/Paper/clip.tga, and its shadow).
+-- Frames cannot turn, only textures and font strings, so the arc is one font
+-- string a letter, each turned to the curve where it stands. With "Flat paper
+-- only", where the client cannot turn text, or for a name too long for the
+-- letters' pool or its room, the name is one straight font string on the same
+-- baseline at its level end.
 --
 -- Its pieces stay on the page as they were (p.name, p.who, p.chips,
--- p.relationship, p.edit), for the page and the tests.
+-- p.relationship), for the page and the tests. p.name always holds the whole
+-- name; under the arc it is laid but clear, so it still measures.
 
 local addonName, ns = ...
 
 local Style = ns.Style
 local FONT = Style.FONT
-local Surface = ns.UI.Surface
-local Width = Surface.Width
+local Width = ns.UI.Surface.Width
 
 local Header = {}
 ns.UI.PersonHeader = Header
 
--- The clip and its shadow (Dev/clip_art.py): each 128 px square, the clip
--- painted at 3.2 texels a px of the screen.
-local ART = "Interface\\AddOns\\" .. addonName .. "\\Art\\Paper\\"
-Style.AddArt("clip", { ART .. "clip" })
-Style.AddArt("clipShadow", { ART .. "clip_shadow" })
-Style.AddArt("clipDent", { ART .. "clip_dent" })
-
--- The sheet, on the right page (466 x 534, y down from its top left):
---   x, y, w, h   where it lies before it turns, and its size
---   pivot        the clip's bite on it, from its top left: what it turns about
---   turn         degrees against the clock (its right end rises)
---   height       how high it stands off the page, for its shadow (px):
---                held up at the clip, a little off the paper under it
---   paper        its stock: lighter than a strip's, a sheet of its own
---   edge         its cut edge in ink (`flatEdge` laid flat); its grain
---   listTop      the list's top: behind the sheet at every x (turned, at
---                the left it spans about -6 to 58, at the right -18 to 46;
---                laid straight, -6 to 58 all along)
---   first        where the list's first line starts: the sheet's foot at
---                its lowest (its bottom left corner, 58.4) and a little
---                room
---   flat         laid flat: a hair of shadow under it, `flat` px at its
---                alpha, so the list still goes under paper
--- The page's paper runs 20 px above the page's frame (UI/Journal/Book.lua's
--- TOP), so its top edge is at y -20 here. The clip bites at the top edge
--- over `pivot` (x 22 of the page), and turned about it the sheet's top
--- right corner rises 432 * sin 1.6 = 12.1 px: with its top at y -6 under
--- the clip, that corner is at -18.1, just inside the page's edge, its
--- inked edge a pixel inside. (20 Oct, in the client: at y 15 the sheet
--- hung some 30 px under the page's top, parchment above it, and a clip
--- holds paper only at the page's edge.)
--- Its height is what the name needs (GOOD and NAME, below): 64, from 50,
--- and the list's top and first line moved down with its foot, 14 px.
--- (21 Oct, in the client: at 50 the tops of "Feivel Emmenthal" rose out
--- of the paper.)
-local SHEET = { x = 6, y = -6, w = 448, h = 64, pivot = { 16, 0 }, turn = 1.6, height = 3,
-    paper = { 0.95, 0.915, 0.805 }, edge = 0.18, flatEdge = 0.30, grain = 0.12, listTop = 26, first = 61,
-    flat = { 2, 0.12 } }
+-- The header's place on the right page (466 x 534, y down from its top left):
+--   w, h     its frame, from the page's top left; its pieces stand out of it
+--   right    where the writing ends (clear of the page's edge)
+--   listTop  the list's top: the paper's top edge, 20 px above the page's
+--            frame (UI/Journal/Book.lua's TOP), so what scrolls away leaves
+--            with the paper, not at a line across it
+--   first    where the list's first writing starts, under the who line
+local SHEET = { w = 466, h = 61, right = 460, listTop = -20, first = 61 }
 -- Goodmountain's metrics, in ems, from the font's own tables
 -- (Fonts/Goodmountain.otf: 1000 units an em, hhea ascender 1000 and
 -- descender 210, the glyphs' bounds 1210 up and 257 down): the client lays
@@ -85,67 +45,48 @@ local SHEET = { x = 6, y = -6, w = 448, h = 64, pivot = { 16, 0 }, turn = 1.6, h
 -- out of the line's box. Taken as one em to the font's size (the larger of
 -- the ways a client may scale it), so the ink is never under-reckoned.
 local GOOD = { line = 1.21, ascent = 1.0, high = 1.21, low = 0.257 }
--- On the sheet (from its top left): the portrait disc, `size` across with
--- its rings (inset, colour: the round portrait's, Style.Portrait, scaled),
--- the race or class icon `zoom` times the inner disc under a round mask;
--- the name's line (`room` px for it before Edit; a long name a size down,
--- `sizes` in turn ({ font, its size }, Style/Tokens.lua's), and past the
--- last cut at the room, never past it): its ink starts `top` px under the
--- sheet's top at the largest size, every size on the same baseline (the
--- largest's ink, GOOD.high ems over it); the who line under the
--- name's lowest ink; the tags on the who line, centred on it in the
--- sheet's turned plane, right-aligned `right` px in from the sheet's edge,
--- chips `gap` apart. The who line gives way to them: it ends at least
--- `clear` px short of them, cut there (the client ends it in an
--- ellipsis); only past the who line's `least` px do the tags give way, a
--- chip at a time, the last first. (21 Oct, the user: the tags belong on
--- the same line as the who line.) Edit on the page, straight, its dashes
--- `dash` long `gap` apart,
--- about 5 px under the sheet's top edge where it lies (moved up with the
--- sheet, 20 Oct).
-local PORTRAIT = { x = 8, y = 12, size = 40, zoom = 1.4, pad = 4.5,
-    rings = { { 0, { 0, 0, 0 } }, { 1.5, { 0.72, 0.58, 0.33 } }, { 3, { 0, 0, 0 } }, { 3.5, { 0.22, 0.15, 0.08 } } } }
-local NAME = { x = 58, top = 4, room = 330,
+-- The portrait disc, `size` across with its rings (inset, colour: the round
+-- portrait's, Style.Portrait, scaled), the race or class icon `zoom` times
+-- the inner disc under a round mask; its `y` (below, once the name and the
+-- who line are known) centres it on their ink.
+local PORTRAIT = { x = 6, size = 44, zoom = 1.4, pad = 4.95,
+    rings = { { 0, { 0, 0, 0 } }, { 1.65, { 0.72, 0.58, 0.33 } }, { 3.3, { 0, 0, 0 } }, { 3.85, { 0.22, 0.15, 0.08 } } } }
+-- The name: from `x`, its level end on `baseline` at every size (the arc
+-- starts lower); `room` px for it; a long name a size down, `sizes` in turn
+-- ({ font, its size }, Style/Tokens.lua's), and past the last cut at the
+-- room, never past it.
+local NAME = { x = 58, baseline = 26, room = 330,
     sizes = { { "personName", 27 }, { "personNameSmall", 22 }, { "personNameLeast", 17 } } }
-NAME.baseline = NAME.top + GOOD.high * NAME.sizes[1][2]
-local WHO = { x = 58, y = 44, h = 16, least = 150 }
-local TAGS = { right = 14, h = 16, pad = 6, gap = 6, clear = 12, most = 12, edge = 0.35 }
-TAGS.y = WHO.y + (WHO.h - TAGS.h) / 2
-local EDIT = { x = 408, y = -12, dash = 2, gap = 1.5, alpha = 0.55, hot = 0.9 }
--- The clip: a `size` px square of art (Dev/clip_art.py) with its middle
--- `at` on the sheet; its shadow the same outline's, `shadow` px down and to
--- the right (the lamp at the top left), at `shadowAlpha`, none laid flat.
--- Only its front is drawn (its back lies behind the page): in the art the
--- thin roll where the jaw turns over the page's edge spans y 3.2 to 5.9 of
--- the square, the page's edge falling at 4.4, the jaw runs from 4.6 to its
--- lip at 24.5, 6 to 34 across, and the wire handles down to 34. So here
--- nothing but a pixel of the roll stands over the page's top edge (y -20
--- of the page), the lip bites 6 px into the sheet, from x 2 to 30, and the
--- handles lie folded down over the portrait's corner. (21 Oct, in the
--- client: its back plate and wire stood up past the page's edge.)
-local CLIP = { size = 40, at = { 16, 1.6 }, shadow = { 1.3, 1.7 }, shadowAlpha = 1, edge = 4.4, roll = 3.2,
-    lip = 24.5 }
--- Wear: the mark the jaw leaves on the sheet, baked by Dev/clip_art.py
--- (Art/Paper/clip_dent.tga) and laid over `w` by `h` at x, y of the sheet,
--- turning with it, under the portrait and the clip: the paper pressed
--- flat and a little sunk in a darker crease right under the lip, a light
--- bow under it where it springs back up toward the lamp (top left, the
--- house light's), and short puckers fanning out from the lip's two ends.
--- Ink and a warm white in one texture, blended as usual, so it darkens and
--- lightens alike. Kept to the clip's corner: it ends at x 48, short of the
--- name (x 58), and over the who line's row. (21 Oct, in the client: two
--- hairlines were too faint to read as a dent.) And the lifted corner, a
--- shade over `w` by `h` at the bottom right, darkest (`alpha`) at the
--- corner. Neither laid flat.
-local DENT = { x = 0, y = 2, w = 48, h = 24 }
-local CORNER = { w = 38, h = 24, alpha = 0.18 }
-Header.SHEET, Header.PORTRAIT, Header.NAME, Header.TAGS, Header.EDIT, Header.CLIP, Header.DENT, Header.CORNER =
-    SHEET, PORTRAIT, NAME, TAGS, EDIT, CLIP, DENT, CORNER
+-- The arc: { fraction of the name's width, degrees }, straight lines between
+-- the stops; less than nothing climbs (against the clock). `pool` letters at
+-- most; each letter's box `swash` ems wider than its advance and tall enough
+-- for its turn (`Letter`), or the client cuts the swashes or adds an ellipsis.
+local ARC = { { 0, -5 }, { 0.30, -1 }, { 1, 0 } }
+local LETTERS = { pool = 24, swash = 0.6 }
+-- The relationship, on the name's line at its right: its middle `y` down,
+-- `gap` px clear of the name; cut there, and gone if cut under `least` px.
+local RELATION = { y = 22, gap = 12, least = 60 }
+-- `ink`: how far under its middle the who line's writing ends.
+local WHO = { x = 58, y = 39, h = 16, least = 150, ink = 3 }
+-- The portrait on the name's and the who line's ink, from the top of the
+-- name's letters at its largest size (its ascender over the baseline) to the
+-- foot of the who line. Fixed: a name a size down keeps its baseline, so its
+-- ink starts lower and the portrait stays. (30 Oct, in the client: at y -6 it
+-- stood well over the name, its foot at the who line's top.)
+local NAME_TOP = NAME.baseline - GOOD.ascent * NAME.sizes[1][2]
+PORTRAIT.y = (NAME_TOP + WHO.y + WHO.h / 2 + WHO.ink - PORTRAIT.size) / 2
+-- The tags after the who line, `clear` px on from it, chips `gap` apart. The
+-- who line gives way to them, cut there (the client ends it in an ellipsis);
+-- only past the who line's WHO.least do the tags give way, a chip at a time,
+-- the last first.
+local TAGS = { y = 39, h = 16, pad = 6, gap = 6, clear = 9, most = 12, edge = 0.35 }
+Header.SHEET, Header.PORTRAIT, Header.NAME, Header.TAGS, Header.ARC, Header.LETTERS, Header.RELATION =
+    SHEET, PORTRAIT, NAME, TAGS, ARC, LETTERS, RELATION
 Header.GOOD, Header.WHO = GOOD, WHO
 
 -- The name's line at font size `size`, the client measuring its line
 -- `measured` px tall: the top of its line's box and its height, and where
--- its ink starts and ends (on the sheet, y down). The line is taken no
+-- its ink starts and ends at the level end (y down). The line is taken no
 -- shorter than GOOD.line ems; its ems from it.
 function Header.NameLine(size, measured)
     local lineH = math.max(measured or 0, size * GOOD.line)
@@ -154,47 +95,73 @@ function Header.NameLine(size, measured)
     return B - em * GOOD.ascent, lineH, B - em * GOOD.high, B + em * GOOD.low
 end
 
--- The clip's art: the file Style.Art finds, else its own path, as the
--- client may not say it has an addon's own file before it is drawn.
-local function ClipArt(key)
-    return Style.Art(key) or (Style.ART[key] or {})[1]
+-- The arc's angle in degrees at `t`, a fraction of the name's width.
+function Header.ArcAngle(t)
+    for i = 2, #ARC do
+        local a, b = ARC[i - 1], ARC[i]
+        if t <= b[1] then return a[2] + (b[2] - a[2]) * (t - a[1]) / (b[1] - a[1]) end
+    end
+    return ARC[#ARC][2]
 end
 
--- The header on the person's page `p`, over its list `list` (frame levels:
--- the sheet over the list and everything laid in it).
+-- The letters of `text`, whole UTF-8 sequences, not bytes.
+function Header.Letters(text)
+    local letters = {}
+    for letter in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do letters[#letters + 1] = letter end
+    return letters
+end
+
+-- Where each letter of `letters` stands on the arc, its level end on
+-- NAME.baseline, measured by `widthOf(text)` (whole strings, so whatever
+-- kerning the client applies is kept: a letter starts at the width of
+-- everything up to and including it, less its own). The baseline is the
+-- integral of its tangent; each letter's baseline's middle lies on it, turned
+-- to the tangent there. Returns one { letter, x, y, deg, adv } a letter: x, y
+-- its baseline's left end (y down), and the name's length.
+function Header.ArcPlace(letters, widthOf)
+    local L = widthOf(table.concat(letters))
+    local n = math.max(64, math.ceil(L * 4))
+    local xs, ys = { [0] = 0 }, { [0] = 0 }
+    local last = math.rad(Header.ArcAngle(0))
+    for i = 1, n do
+        local a = math.rad(Header.ArcAngle(i / n))
+        xs[i] = xs[i - 1] + L / n * (math.cos(last) + math.cos(a)) / 2
+        ys[i] = ys[i - 1] + L / n * (math.sin(last) + math.sin(a)) / 2
+        last = a
+    end
+    local y0 = NAME.baseline - ys[n]
+    local function At(s)
+        local f = math.max(0, math.min(n, L > 0 and s / L * n or 0))
+        local i = math.min(n - 1, math.floor(f))
+        local u = f - i
+        return NAME.x + xs[i] + (xs[i + 1] - xs[i]) * u, y0 + ys[i] + (ys[i + 1] - ys[i]) * u
+    end
+    local placed, prefix = {}, ""
+    for i, letter in ipairs(letters) do
+        prefix = prefix .. letter
+        local adv = widthOf(letter)
+        local mid = widthOf(prefix) - adv / 2
+        local deg = Header.ArcAngle(L > 0 and mid / L or 0)
+        local r = math.rad(deg)
+        local x, y = At(mid)
+        placed[i] = { letter = letter, x = x - adv / 2 * math.cos(r), y = y - adv / 2 * math.sin(r), deg = deg, adv = adv }
+    end
+    return placed, L
+end
+
+-- The header on the person's page `p`, over its list `list`.
 function Header.New(p, list)
-    local W, H = SHEET.w, SHEET.h
+    local W = SHEET.w
     local sheet = CreateFrame("Frame", nil, p)
-    sheet:SetSize(W, H)
-    sheet:SetFrameLevel(list:GetFrameLevel() + 40)
-    -- It takes the mouse over itself (rows under it give no tooltip
-    -- through the paper) and passes the wheel on to the list.
-    sheet:EnableMouse(true)
-    sheet:EnableMouseWheel(true)
-    sheet:SetScript("OnMouseWheel", function(_, delta) if list.Wheel then list.Wheel(list, delta) end end)
+    sheet:SetSize(W, SHEET.h)
+    local level = list:GetFrameLevel() + 40
+    sheet:SetFrameLevel(level)
 
     local function Texture(layer, sublevel)
-        local t = sheet:CreateTexture(nil, layer, nil, sublevel)
-        if t.SetSnapToPixelGrid then
-            t:SetSnapToPixelGrid(false)
-            t:SetTexelSnappingBias(0)
-        end
-        return t
+        return sheet:CreateTexture(nil, layer, nil, sublevel)
     end
 
-    local h = { sheet = sheet, p = p }
-    h.shadows = { soft = Texture("BACKGROUND", -8), core = Texture("BACKGROUND", -7), right = Texture("BACKGROUND", -7) }
-    h.edge = Texture("BACKGROUND", -2)
-    h.paper = Texture("BACKGROUND", -1)
-    h.sheen = Texture("BACKGROUND", 0)
-    local grain = Style.Art("grain")
-    if grain then
-        h.grain = Texture("BORDER", 0)
-        h.grain:SetTexture(grain)
-        h.grain:SetAlpha(SHEET.grain)
-    end
-    h.dent = Texture("BORDER", 1)
-    h.corner = Texture("BORDER", 3)
+    local h = { sheet = sheet, p = p, list = list }
     h.rings = {}
     for i = 1, #PORTRAIT.rings do h.rings[i] = Texture("ARTWORK", i - 1) end
     h.icon = Texture("ARTWORK", 4)
@@ -204,20 +171,37 @@ function Header.New(p, list)
         h.mask:SetTexture(circle, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         h.icon:AddMaskTexture(h.mask)
     end
-    h.clipShadow = Texture("OVERLAY", 6)
-    h.clip = Texture("OVERLAY", 7)
 
-    -- The writing.
+    -- The writing: the name whole, what the arc measures with, its letters.
     h.name = Style.Text(sheet, FONT.personName)
     h.name:SetWordWrap(false)
+    h.measure = Style.Text(sheet, FONT.personName)
+    h.measure:SetWordWrap(false)
+    h.measure:SetPoint("TOPLEFT", sheet, "TOPLEFT", 0, 0)
+    h.measure:SetAlpha(0)
+    h.letters = {}
+    for i = 1, LETTERS.pool do
+        local letter = Style.Text(sheet, FONT.personName)
+        letter:SetWordWrap(false)
+        letter:Hide()
+        h.letters[i] = letter
+    end
+    h.turnsText = h.name.SetRotation ~= nil
     h.who = Style.Text(sheet, FONT.body)
     h.who:SetWordWrap(false)
     -- The relationship is the user's word: in the hand.
-    h.relationship = Style.Text(sheet, FONT.noteQuoted)
+    h.relationship = Style.Text(sheet, FONT.personRelation)
     h.relationship:SetWordWrap(false)
+    h.relationship:SetJustifyH("RIGHT")
 
-    -- The chips: a frame each, to show and hide it whole, its pieces laid
-    -- on the sheet's plane.
+    -- A piece w by ht with its top left at x, y.
+    local function Box(region, x, y, w, ht)
+        region:ClearAllPoints()
+        region:SetPoint("TOPLEFT", sheet, "TOPLEFT", x, -y)
+        region:SetSize(w, ht)
+    end
+
+    -- The chips: a frame each, to show and hide it whole.
     h.chips = {}
     for i = 1, TAGS.most do
         local chip = CreateFrame("Frame", nil, sheet)
@@ -236,197 +220,112 @@ function Header.New(p, list)
         h.chips[i] = chip
     end
 
-    -- Edit, pencilled on the sheet, straight.
-    local edit = CreateFrame("Button", nil, p)
-    edit:SetFrameLevel(sheet:GetFrameLevel() + 2)
-    edit:SetHeight(18)
-    edit:SetPoint("TOPLEFT", p, "TOPLEFT", EDIT.x, -EDIT.y)
-    edit.label = Style.Text(edit, FONT.pencil)
-    edit.label:SetPoint("LEFT")
-    edit.dashes = {}
-    function edit:SetText(text)
-        self.label:SetText(text)
-        local w = math.max(Width(self.label), 8) + 2
-        self:SetWidth(w)
-        local G, step = Style.GRAPHITE, EDIT.dash + EDIT.gap
-        for i = 1, math.ceil(w / step) do
-            local dash = self.dashes[i]
-            if not dash then
-                dash = self:CreateTexture(nil, "ARTWORK")
-                self.dashes[i] = dash
-            end
-            dash:ClearAllPoints()
-            dash:SetPoint("TOPLEFT", self.label, "BOTTOMLEFT", (i - 1) * step, -1)
-            dash:SetSize(math.min(EDIT.dash, w - (i - 1) * step), 1)
-            dash:SetColorTexture(G[1], G[2], G[3], EDIT.alpha)
-            dash:Show()
-        end
-        for i = math.ceil(w / step) + 1, #self.dashes do self.dashes[i]:Hide() end
+    -- The portrait: its rings, its icon under the round mask.
+    local cx, cy = PORTRAIT.x + PORTRAIT.size / 2, PORTRAIT.y + PORTRAIT.size / 2
+    for i, ring in ipairs(PORTRAIT.rings) do
+        local c, d = ring[2], PORTRAIT.size - 2 * ring[1]
+        Style.Disc(h.rings[i], c[1], c[2], c[3], 1)
+        Box(h.rings[i], cx - d / 2, cy - d / 2, d, d)
     end
-    function edit:GetText() return self.label:GetText() end
-    -- Under the mouse the pencil darkens, as a link does.
-    local function Hot(on)
-        local C = on and Style.INK or Style.GRAPHITE
-        edit.label:SetTextColor(C[1], C[2], C[3])
-        for _, dash in ipairs(edit.dashes) do dash:SetColorTexture(C[1], C[2], C[3], on and EDIT.hot or EDIT.alpha) end
-    end
-    edit:SetScript("OnEnter", function() Hot(true) end)
-    edit:SetScript("OnLeave", function() Hot(false) end)
-    edit:SetScript("OnClick", function()
-        if ns.UI.Journal.selected then ns.UI.ShowEntry(ns.UI.Journal.selected) end
-    end)
-    edit:SetText("Edit")
-    h.edit = edit
+    local inner = PORTRAIT.size - 2 * PORTRAIT.pad
+    local icon = h.mask and inner * PORTRAIT.zoom or inner
+    Box(h.icon, cx - icon / 2, cy - icon / 2, icon, icon)
+    if h.mask then Box(h.mask, cx - inner / 2, cy - inner / 2, inner, inner) end
 
-    -- The turned plane: the sheet's middle, turned about the clip.
-    local plane = Surface.New(sheet)
-    local Place, Quad = plane.Place, plane.Quad
-    h.turnsText = h.name.SetRotation ~= nil
-    h.canBend = h.paper.SetVertexOffset ~= nil
-
-    -- A piece w by h with its top left at x, y of the sheet.
-    local function Box(region, x, y, w, ht, more)
-        Place(region, x + w / 2 - W / 2, y + ht / 2 - H / 2, w, ht, more)
+    -- On the page itself while writing (the list is put away), else on the
+    -- list, so its top edge cuts it: the frame level set again, as a new
+    -- parent may move it.
+    local function Mount(self, parent)
+        if self.mount == parent then return end
+        self.mount = parent
+        sheet:SetParent(parent)
+        sheet:SetFrameLevel(level)
+        for _, chip in ipairs(self.chips) do chip:SetFrameLevel(level + 1) end
     end
-    -- A line of writing w by ht at x, y, in a box tall enough for its turn
-    -- (the strip's TURNED: the client cuts what a turn lifts out of it).
-    -- Anchored by its left end, at where its left middle lies turned: the
-    -- client turns a font string about its left end, not its middle (a
-    -- texture it turns about its middle), so a line laid by its middle was
-    -- drawn (w/2) sin t higher than planned, the turn's way. (21 Oct, in
-    -- the client: the who line, some 300 px long, drawn about 4 px over
-    -- its plan, its tag chips, textures, under it.)
-    local function Write(region, x, y, w, ht)
-        local turn = h.turn or 0
-        local X, Y = plane.Screen(x - W / 2, y + ht / 2 - H / 2)
-        region:ClearAllPoints()
-        region:SetPoint("LEFT", sheet, "CENTER", X, Y)
-        region:SetSize(w, ht + w * math.abs(math.sin(turn)) + 4)
-        if region.SetRotation then region:SetRotation(turn) end
-    end
-
-    -- Lays the sheet as it lies now: turned, or straight laid flat or
-    -- where text cannot turn; its shadow, wear and clip.
-    function h:Lay()
-        local flat = ns.Setting("flatSheets") == true
-        local turn = (flat or not self.turnsText) and 0 or math.rad(SHEET.turn)
-        self.turn, self.flat = turn, flat
-        local bends = self.canBend and not flat
-        -- The middle, turned about the pivot.
-        local px, py = SHEET.x + SHEET.pivot[1], SHEET.y + SHEET.pivot[2]
-        local mx, my = Surface.Turned(px, py, W / 2 - SHEET.pivot[1], H / 2 - SHEET.pivot[2], math.cos(turn),
-            math.sin(turn))
-        plane.Set(turn, mx, my, bends)
-        self.middle = { mx, my }
-        -- Where its corners lie on the page (TL, TR, BR, BL, y down), for
-        -- the tests: the page's top edge, the list's top under it.
-        local c, s = math.cos(turn), math.sin(turn)
-        self.corners = {}
-        for i, corner in ipairs({ { 0, 0 }, { W, 0 }, { W, H }, { 0, H } }) do
-            local x, y = Surface.Turned(px, py, corner[1] - SHEET.pivot[1], corner[2] - SHEET.pivot[2], c, s)
-            self.corners[i] = { x, y }
-        end
+    local function OnRow(self)
         sheet:ClearAllPoints()
-        sheet:SetPoint("CENTER", p, "TOPLEFT", mx, -my)
+        if self.row then sheet:SetPoint("TOPLEFT", self.row, "TOPLEFT", 0, SHEET.listTop) end
+        sheet:SetShown(self.row ~= nil)
+    end
 
-        -- The paper, its cut edge, lit across, its grain.
-        local P, I = SHEET.paper, Style.INK
-        self.paper:SetColorTexture(P[1], P[2], P[3], 1)
-        Box(self.paper, 0, 0, W, H)
-        self.edge:SetColorTexture(I[1], I[2], I[3], flat and SHEET.flatEdge or SHEET.edge)
-        Box(self.edge, -1, -1, W + 2, H + 2)
-        if flat then
-            self.sheen:Hide()
-        else
-            ns.UI.Light.Sheen(self.paper, self.sheen, P)
-            Box(self.sheen, 0, 0, W, H)
-            self.sheen:Show()
-        end
-        if self.grain then
-            self.grain:SetTexCoord(0.13, 0.13 + W / 512, 0.41, 0.41 + H / 512)
-            Box(self.grain, 0, 0, W, H)
-        end
+    -- Shown on `row`, the list's line that holds it (Clippings).
+    function h:Hold(row)
+        self.row = row
+        if not self.editing then OnRow(self) end
+    end
+    -- `row` was handed another line: scrolled away, if it held it.
+    function h:Let(row)
+        if self.row ~= row then return end
+        self.row = nil
+        if not self.editing then OnRow(self) end
+    end
 
-        -- Its shadow from its foot onto what passes under it: a core and a
-        -- soft band, down and to the right, from its height; laid flat, a
-        -- hair of shadow only.
-        local S = self.shadows
-        if flat then
-            local d, a = SHEET.flat[1], SHEET.flat[2]
-            Style.Shade(S.core, "VERTICAL", I[1], I[2], I[3], 0, a)
-            Box(S.core, 0, H, W, d)
-            S.core:Show()
-            S.soft:Hide()
-            S.right:Hide()
-        else
-            local near, dark = ns.UI.Light.Fall(SHEET.height)
-            local far, pale = ns.UI.Light.Fall(SHEET.height, true)
-            Style.Shade(S.core, "VERTICAL", I[1], I[2], I[3], pale, dark)
-            Box(S.core, near, H, W, near)
-            Style.Shade(S.soft, "VERTICAL", I[1], I[2], I[3], 0, pale)
-            Box(S.soft, near, H + near, W, far - near)
-            Style.Shade(S.right, "HORIZONTAL", I[1], I[2], I[3], dark, 0)
-            Box(S.right, W, near, near, H)
-            for _, t in pairs(S) do t:Show() end
-        end
+    -- A letter's font string: its baseline's left end at x, y, turned `deg`
+    -- (as the arc's: less than nothing against the clock). The client turns a
+    -- font string about its left end, not its baseline (21 Oct, in the client:
+    -- the who line drawn about 4 px over its plan when laid by its middle), and
+    -- a line's middle lies (ascent - line / 2) ems over its baseline, so it is
+    -- anchored by its left there, along the normal.
+    local function Letter(text, place, em, lineH)
+        local r = math.rad(place.deg)
+        local d = (GOOD.ascent - GOOD.line / 2) * em
+        local x, y = place.x + math.sin(r) * d, place.y - math.cos(r) * d
+        local w = place.adv + LETTERS.swash * em
+        text:ClearAllPoints()
+        text:SetPoint("LEFT", sheet, "TOPLEFT", x, -y)
+        text:SetSize(w, lineH + w * math.abs(math.sin(r)) + 4)
+        if text.SetRotation then text:SetRotation(math.rad(-place.deg)) end
+    end
 
-        -- Wear: the dent under the clip's jaw, the lifted corner.
-        local dent = ClipArt("clipDent")
-        self.dent:SetShown(dent ~= nil and not flat)
-        if dent then
-            self.dent:SetTexture(dent)
-            Box(self.dent, DENT.x, DENT.y, DENT.w, DENT.h)
+    -- The name on the arc, if it may be: true when it was.
+    local function LayArc(self, name, font, em, lineH)
+        local letters = Header.Letters(name)
+        local ink = 0
+        for _, letter in ipairs(letters) do
+            if letter ~= " " then ink = ink + 1 end
         end
-        local corner = self.corner
-        Style.Shade(corner, "HORIZONTAL", I[1], I[2], I[3], 0, CORNER.alpha)
-        local shaded = not flat and Quad(corner, W / 2, H / 2 - CORNER.h, W / 2, H / 2, W / 2, H / 2,
-            W / 2 - CORNER.w, H / 2)
-        corner:SetShown(shaded == true)
-
-        -- The portrait: its rings, its icon under the round mask.
-        local cx, cy = PORTRAIT.x + PORTRAIT.size / 2, PORTRAIT.y + PORTRAIT.size / 2
-        for i, ring in ipairs(PORTRAIT.rings) do
-            local t, c = self.rings[i], ring[2]
-            Style.Disc(t, c[1], c[2], c[3], 1)
-            local d = PORTRAIT.size - 2 * ring[1]
-            Box(t, cx - d / 2, cy - d / 2, d, d)
+        if ink == 0 or ink > LETTERS.pool then return false end
+        local measure = self.measure
+        measure:SetFontObject(font)
+        local placed, L = Header.ArcPlace(letters, function(text)
+            measure:SetText(text)
+            return Width(measure)
+        end)
+        if L + 2 > NAME.room then return false end
+        local used = 0
+        self.placed = {}
+        for _, place in ipairs(placed) do
+            if place.letter ~= " " then
+                used = used + 1
+                local text = self.letters[used]
+                text:SetFontObject(font)
+                text:SetText(place.letter)
+                Letter(text, place, em, lineH)
+                text:Show()
+                self.placed[used] = place
+            end
         end
-        local inner = PORTRAIT.size - 2 * PORTRAIT.pad
-        local icon = self.mask and inner * PORTRAIT.zoom or inner
-        Box(self.icon, cx - icon / 2, cy - icon / 2, icon, icon)
-        if self.mask then Box(self.mask, cx - inner / 2, cy - inner / 2, inner, inner) end
-
-        -- The clip, over the page's edge and the portrait's corner, and its
-        -- shadow (none laid flat).
-        local file, shade = ClipArt("clip"), ClipArt("clipShadow")
-        self.clip:SetShown(file ~= nil)
-        if flat then shade = nil end
-        self.clipShadow:SetShown(shade ~= nil)
-        -- Where its middle lies on the page, for the tests.
-        local cx, cy = plane.Out(CLIP.at[1] - W / 2, CLIP.at[2] - H / 2)
-        self.clipAt = { cx, cy }
-        if file then
-            self.clip:SetTexture(file)
-            Box(self.clip, CLIP.at[1] - CLIP.size / 2, CLIP.at[2] - CLIP.size / 2, CLIP.size, CLIP.size)
-        end
-        if shade then
-            self.clipShadow:SetTexture(shade)
-            self.clipShadow:SetAlpha(CLIP.shadowAlpha)
-            Box(self.clipShadow, CLIP.at[1] - CLIP.size / 2 + CLIP.shadow[1],
-                CLIP.at[2] - CLIP.size / 2 + CLIP.shadow[2], CLIP.size, CLIP.size)
-        end
+        return true
     end
 
     -- Fills it for `record` ({ race, class, ... }), their `name` (as
     -- written: mixed case), the `who` line and the diary `entry`'s tags;
-    -- `editing`, the tags and Edit put away for the form.
+    -- `editing`, the tags put away for the form.
     function h:Set(record, name, who, entry, editing)
-        -- The icon first: its art and part set, then turned as it is laid.
         if not (Style.SetRaceIcon(self.icon, record) or Style.SetClassIcon(self.icon, record and record.class)) then
             Style.SetTexture(self.icon, "book", 0.3, 0.22, 0.12, 1)
             self.icon:SetTexCoord(unpack(Style.ICON_CROP))
         end
-        self:Lay()
+
+        self.editing = editing
+        Mount(self, editing and p or list)
+        if editing then
+            sheet:ClearAllPoints()
+            sheet:SetPoint("TOPLEFT", p, "TOPLEFT", 0, 0)
+            sheet:Show()
+        else
+            OnRow(self)
+        end
 
         -- The name, a size down rather than lose its end; past the
         -- smallest, cut at its room (the client ends it in an ellipsis).
@@ -443,60 +342,72 @@ function Header.New(p, list)
         -- its ink lies, for the tests.
         local top, lineH, inkTop, inkFoot = Header.NameLine(size, math.ceil(text:GetStringHeight() or 0))
         self.nameInk = { inkTop, inkFoot }
-        Write(text, NAME.x, top, nw, lineH)
-        self.edit:SetShown(not editing)
-        -- The tags first, at the who line's right; the who line up to
-        -- them, cut short where it would come nearer than TAGS.clear.
-        local left = self:SetTags(not editing and entry or nil)
+        text:ClearAllPoints()
+        text:SetPoint("LEFT", sheet, "TOPLEFT", NAME.x, -(top + lineH / 2))
+        text:SetSize(nw, lineH)
+        -- The arc, or the whole string straight where it may not be.
+        self.flat = ns.Setting("flatSheets") == true
+        for _, letter in ipairs(self.letters) do letter:Hide() end
+        self.placed = nil
+        self.arced = not self.flat and self.turnsText
+            and LayArc(self, name or "", FONT[self.nameSize], lineH / GOOD.line, lineH) or false
+        text:SetAlpha(self.arced and 0 or 1)
+
+        self:SetRelation(entry and not editing and entry.relationship or nil, nw)
         self.who:SetText(who or "")
-        local ww = math.min(Width(self.who) + 2, left - TAGS.clear - WHO.x)
-        Write(self.who, WHO.x, WHO.y, ww, WHO.h)
-        -- Where it lies on the sheet (x, width, middle), for the tests.
+        local whoW = Width(self.who) + 2
+        local right = self:SetTags(not editing and entry or nil, whoW)
+        local ww = math.min(whoW, right - WHO.x)
+        Box(self.who, WHO.x, WHO.y, ww, WHO.h)
+        -- Where it lies (x, width, middle), for the tests.
         self.whoBox = { WHO.x, ww, WHO.y + WHO.h / 2 }
     end
 
-    -- The tags on the who line, right-aligned, the relationship last: all
-    -- of them, unless they would leave the who line less than WHO.least.
-    -- Returns where the leftmost begins (the sheet's right end, less
-    -- TAGS.right, where none show).
-    function h:SetTags(entry)
+    -- The relationship at the end of the name's line, after a name `nw` wide.
+    function h:SetRelation(relationship, nw)
+        local rel = self.relationship
+        rel:SetText(relationship or "")
+        local room = SHEET.right - (NAME.x + nw + RELATION.gap)
+        local full = Width(rel) + 2
+        local w = math.min(full, room)
+        rel:SetShown(relationship ~= nil and (w == full or w >= RELATION.least))
+        rel:ClearAllPoints()
+        rel:SetPoint("RIGHT", sheet, "TOPLEFT", SHEET.right, -RELATION.y)
+        rel:SetSize(math.max(w, 0), TAGS.h)
+    end
+
+    -- The tags after a who line `whoW` wide: all of them, unless they would
+    -- leave it less than WHO.least. Returns where the who line must end.
+    function h:SetTags(entry, whoW)
         local tags = entry and entry.tags or {}
-        local relationship = entry and entry.relationship or nil
-        self.relationship:SetText(relationship or "")
-        local relW = relationship and (Width(self.relationship) + 2) or 0
         local shown = math.min(#tags, TAGS.most)
         for i = 1, shown do self.chips[i]:SetTag(tags[i]) end
-        local function Total(n, rel)
-            local w = rel and relW or 0
-            for i = 1, n do w = w + self.chips[i].w + ((i > 1 or rel) and TAGS.gap or 0) end
+        local function Total(n)
+            local w = n > 0 and TAGS.clear or 0
+            for i = 1, n do w = w + self.chips[i].w + (i > 1 and TAGS.gap or 0) end
             return w
         end
-        local right = W - TAGS.right
-        local room = right - (WHO.x + WHO.least + TAGS.clear)
-        local rel = relationship ~= nil
-        while shown > 0 and Total(shown, rel) > room do shown = shown - 1 end
-        if rel and Total(shown, rel) > room then rel = false end
-        local x = right - Total(shown, rel)
+        local least = math.min(whoW, WHO.least)
+        while shown > 0 and WHO.x + least + Total(shown) > SHEET.right do shown = shown - 1 end
+        local whoEnd = SHEET.right - Total(shown)
+        local x = math.min(WHO.x + whoW, whoEnd) + TAGS.clear
         local left = x
         for i, chip in ipairs(self.chips) do
             if i <= shown then
                 Box(chip.edge, x, TAGS.y, chip.w, TAGS.h)
                 Box(chip.fill, x + 1, TAGS.y + 1, chip.w - 2, TAGS.h - 2)
-                Write(chip.label, x + TAGS.pad, TAGS.y, chip.w - 2 * TAGS.pad, TAGS.h)
+                Box(chip.label, x + TAGS.pad, TAGS.y, chip.w - 2 * TAGS.pad, TAGS.h)
                 chip:Show()
                 x = x + chip.w + TAGS.gap
             else
                 chip:Hide()
             end
         end
-        self.relationship:SetShown(rel)
-        if rel then Write(self.relationship, x, TAGS.y - 1, relW, TAGS.h + 2) end
         self.shownTags = shown
-        -- Where they lie on the sheet (left, right, middle), for the tests.
-        self.tagsBox = { left, right, TAGS.y + TAGS.h / 2 }
-        return (shown > 0 or rel) and left or right
+        -- Where they lie (left, right, middle), for the tests.
+        self.tagsBox = { left, x - TAGS.gap, TAGS.y + TAGS.h / 2 }
+        return whoEnd
     end
 
-    sheet:Show()
     return h
 end

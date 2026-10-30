@@ -33,8 +33,7 @@ ns.UI.PersonPlate = PersonPlate
 -- Its slot on the page's top block (UI/Journal/Clippings.lua: x, y from
 -- its top left, y down; the plates' slot, UI/Journey/Look.lua's LAYOUT):
 -- 262 x 178, its art 248 x 164 inside a 7 px margin, turned 1.4 degrees
--- against the clock, four photo corners, none lifted (one wear is the
--- name sheet's corner).
+-- against the clock, four photo corners, none lifted.
 local SLOT = { x = 4, y = 8, w = 262, h = 178, t = -1.4, pad = 7, pc = 18, corners = { "tl", "tr", "bl", "br" } }
 -- A dungeon's door is the route's own dungeon segment's entrance where the
 -- run began within `door` seconds of it.

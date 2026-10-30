@@ -386,12 +386,12 @@ Eq(J.count:GetText(), "3 in the diary", "filler not cleaned up")
 
 -- Edit turns the right page to writing mode, in the journal, not a dialog.
 ns.UI.SelectPerson(A)
-J.profile.edit:Click()
+J.profile.tabEdit:Click()
 local form = J.profile.form
 Check(form:IsShown() and not J.profile.timeline:IsShown(), "Edit did not turn the page to writing mode")
 local sheet = _G.SocialDiaryEntryFrame  -- built only once something opens it
 Check(not (sheet and sheet:IsShown()), "Edit opened the loose sheet over the journal")
-Check(not J.profile.edit:IsShown(), "the Edit link still shows while writing")
+Check(J.profile.tabEdit.selected, "the edit tab is not lit while writing")
 Check(not form.note:HasFocus(), "Edit grabbed the keyboard")
 form.presets.helper:Click()
 form.done:Click()
@@ -403,7 +403,7 @@ end
 Check(chipFound, "an edit on the page did not reach the profile")
 
 -- Choosing someone else leaves writing mode.
-J.profile.edit:Click()
+J.profile.tabEdit:Click()
 ns.UI.SelectPerson(A)
 Check(not form:IsShown(), "selecting a person stayed in writing mode")
 
@@ -581,7 +581,7 @@ do
 
     -- Edit turns the page to writing mode, and the sheet goes.
     P.tabNote:Click()
-    P.edit:Click()
+    P.tabEdit:Click()
     Check(not N:IsShown() and not P.tabNote.selected, "the note sheet lay over writing mode")
     P.form.done:Click()
 
@@ -592,7 +592,7 @@ do
 end
 
 -- Removing them from the page empties the profile.
-J.profile.edit:Click()
+J.profile.tabEdit:Click()
 form.remove:Click()
 mock.AnswerPopup("accept")
 Eq(J.count:GetText(), "2 in the diary", "a removed entry is still listed")

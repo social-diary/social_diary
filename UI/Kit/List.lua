@@ -222,9 +222,8 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
 
     -- Smooth (list:SetSmooth): scrolled by the pixel, not by the item, in a
     -- list `smooth` px tall that cuts off what lies past its edges, so a
-    -- tall item slides away under whatever lies over the list's top (the
-    -- person's page: its timeline under the clipped name sheet, the
-    -- person-page proposal, variant A, round 2). `pos` is how far down it
+    -- tall item leaves at the list's top (the person's page: at the paper's
+    -- top edge, UI/Journal/Header.lua). `pos` is how far down it
     -- is scrolled, `tops[i]` where item i starts, `total` all of them;
     -- `offset` stays the number of items before the first one shown, so
     -- SetOffset(n) still scrolls to item n + 1.

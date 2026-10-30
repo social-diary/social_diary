@@ -343,6 +343,7 @@ local function NewWidget(frameType, name, parent, template)
         return ((text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[^:|]*:", ""):gsub("|H.-|h", ""):gsub("|h", "")
             :gsub("|r", ""))
     end
+    function w:SetParent(parent) self.parent = parent end
     function w:GetStringWidth() return #Shown(self.text) * 6 end
     function w:GetStringHeight() return self.text ~= "" and 14 or 0 end
     function w:GetUnboundedStringWidth() return #Shown(self.text) * 6 end

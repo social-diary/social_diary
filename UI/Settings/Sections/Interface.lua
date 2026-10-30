@@ -27,7 +27,7 @@ local function BuildInterface(pane, c)
         function() ns.UI.Journal.TurnStack() end,
         "New Diary entries add pages, and the book turns to the new page.")
     page.flatSheets = Switch(c, "Flat paper only", "flatSheets", nil, nil,
-        "Disable folded & bent look of Heatmap & other sheets")
+        "No folds or bends on the sheets, and a person’s name sits straight on their page.")
     page.revealMap = Switch(c, "Use fully discovered map for map sheets", "revealMap", nil, nil,
         nil)
 end

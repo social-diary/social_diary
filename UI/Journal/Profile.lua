@@ -1,12 +1,12 @@
 -- The open person's page (JNL-2), on the right (the person-page proposal,
--- variant A, "Clippings"): their name sheet clipped to the page
--- (UI/Journal/Header.lua: portrait, name, who they are, tags, Edit), and
--- under it a list that scrolls by the pixel and slides under the sheet: the
--- plate, the facts' strips and your note in one tall line
+-- variant A, "Clippings"): a list that scrolls by the pixel: their header
+-- written on the page (UI/Journal/Header.lua: portrait, name, who they are,
+-- tags), the plate, the facts' strips and your note in one tall line
 -- (UI/Journal/Clippings.lua), then the timeline. Its tabs lay a
 -- loose sheet over the book: the map, or a note for the timeline (DIA-11);
--- the page itself only ever shows what is written. In writing mode the
--- entry form (UI/Windows/Entry.lua) takes its place. A dungeon run opened
+-- the page itself only ever shows what is written. In writing mode (the
+-- edit tab) the entry form (UI/Windows/Entry.lua) takes its place, under the
+-- header. A dungeon run opened
 -- from its card is laid out on the table over the book (J.visit,
 -- UI/Dungeon/Spread.lua); the page stays as it is under it.
 --
@@ -26,14 +26,13 @@ local BOOK = ns.UI.Journal.BOOK
 local RIGHT_X, PROFILE_W, PROFILE_TOP, PROFILE_H = BOOK.RIGHT_X, BOOK.RIGHT_W, BOOK.TOP, BOOK.RIGHT_H
 local TIMELINE_ROW_HEIGHT = J.TIMELINE_ROW_HEIGHT
 local SHEET = ns.UI.PersonHeader.SHEET
--- The list: from behind the name sheet (SHEET.listTop) to the page's foot,
+-- The list: from the paper's top edge (SHEET.listTop) to the page's foot,
 -- scrolled by the pixel; as many rows built as the shortest lines could
 -- fill, and two more for the ones cut off at its top and foot. Its
--- scrollbar starts at the sheet's foot (SHEET.first), clear of the paper.
+-- scrollbar starts under the header (SHEET.first), clear of its writing.
 local LIST_TOP, LIST_H = SHEET.listTop, PROFILE_H - SHEET.listTop
-local TIMELINE_MAX_ROWS = math.floor(PROFILE_H / TIMELINE_ROW_HEIGHT) + 2
--- Writing mode: the "added" line under the sheet (its foot is at most at
--- y 58.4, UI/Journal/Header.lua), the form under it.
+local TIMELINE_MAX_ROWS = math.floor(LIST_H / TIMELINE_ROW_HEIGHT) + 2
+-- Writing mode: the "added" line under the header, the form under it.
 local WRITING = { metaX = 64, metaY = 65, formY = 87 }
 
 --------------------------------------------------------------------------
@@ -41,7 +40,7 @@ local WRITING = { metaX = 64, metaY = 65, formY = 87 }
 --------------------------------------------------------------------------
 
 local function Who(s)
-    return ns.UI.Format.WhoLine(s.record, s.entry.guildAtAdd)
+    return ns.UI.Format.WhoLine(s.record, s.entry.guildAtAdd, "always")
 end
 
 -- The list: the page's own line (the plate, the facts, your note), then
@@ -117,6 +116,7 @@ function RefreshProfile()
         p.tabStory:SetSelected(false)
         p.tabMap:SetSelected(false)
         p.tabNote:SetSelected(false)
+        p.tabEdit:SetSelected(true)
         return
     end
 
@@ -132,6 +132,7 @@ function RefreshProfile()
     p.tabStory:SetSelected(not onMap and not onNote)
     p.tabMap:SetSelected(onMap)
     p.tabNote:SetSelected(onNote)
+    p.tabEdit:SetSelected(false)
 
     FillTimeline(p, s)
     if onMap then p.map:SetPerson(s.guid) end
@@ -146,8 +147,8 @@ local function BuildProfile(panel, book)
     p:SetPoint("TOPLEFT", RIGHT_X, -PROFILE_TOP)
     p:SetSize(PROFILE_W, PROFILE_H)
 
-    -- The plate, the facts, your note and the timeline, scrolled together
-    -- by the pixel, from behind the name sheet.
+    -- The header, the plate, the facts, your note and the timeline, scrolled
+    -- together by the pixel, from the paper's top edge.
     p.timeline = J.List(p, TIMELINE_ROW_HEIGHT, TIMELINE_MAX_ROWS, BuildTimelineRow, UpdateTimelineRow,
         PROFILE_W, "TOPLEFT", p, "TOPLEFT", 0, -LIST_TOP)
     p.timeline:SetSmooth(LIST_H)
@@ -163,13 +164,13 @@ local function BuildProfile(panel, book)
         RefreshProfile()
     end)
 
-    -- The name sheet over it all, clipped to the page; its pieces where the
-    -- page has always kept them.
+    -- The header, on that same line (or on the page, in writing mode); its
+    -- pieces where the page has always kept them.
     p.header = ns.UI.PersonHeader.New(p, p.timeline)
-    p.name, p.who, p.chips, p.relationship, p.edit = p.header.name, p.header.who, p.header.chips,
-        p.header.relationship, p.header.edit
+    p.clippings.header = p.header
+    p.name, p.who, p.chips, p.relationship = p.header.name, p.header.who, p.header.chips, p.header.relationship
 
-    -- Writing mode: the form below the sheet, the "added" line over it.
+    -- Writing mode: the form below the header, the "added" line over it.
     p.meta = Style.Text(p, FONT.small)
     p.meta:SetPoint("TOPLEFT", WRITING.metaX, -WRITING.metaY)
     p.meta:Hide()
@@ -211,6 +212,19 @@ local function BuildProfile(panel, book)
     end
     p.tabNote = Style.SideTab(p, "note", "Add a note", function() OpenNote(nil) end)
     p.tabNote:SetPoint("TOPLEFT", p.tabMap, "BOTTOMLEFT", 0, -6)
+
+    -- Writing mode is a page of its own, so this tab is lit while it shows,
+    -- and puts it away again as the map's does. Going there leaves any loose
+    -- sheet, so the tabs still say what is open when it is done.
+    p.tabEdit = Style.SideTab(p, "added", "edit", function()
+        if J.editing then
+            J.EndEdit()
+        elseif J.selected then
+            J.tab = "timeline"
+            ns.UI.ShowEntry(J.selected)
+        end
+    end)
+    p.tabEdit:SetPoint("TOPLEFT", p.tabNote, "BOTTOMLEFT", 0, -6)
 
     return p
 end

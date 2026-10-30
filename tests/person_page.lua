@@ -1,6 +1,7 @@
 -- The person's page as laid (the person-page proposal, variant A,
--- "Clippings"): the name sheet clipped at the page's top edge, the list
--- passing under it, and every strip, slip and card as wide as its words.
+-- "Clippings", and the person-header proposal, layout B): the header written
+-- on the page, its name on an arc, scrolling with the list, and every strip,
+-- slip and card as wide as its words.
 --
 -- The mock measures every string at about 6 px a character, whatever its
 -- font, so the checks here compare a piece's writing with the room inside
@@ -20,173 +21,220 @@ local G = ns.TestData.GUID
 local J = ns.UI.Journal
 local P = _G.SocialDiaryJournalFrame.profile
 local H = ns.UI.PersonHeader
-local SHEET, CLIP, EDIT = H.SHEET, H.CLIP, H.EDIT
+local SHEET = H.SHEET
 local h = P.header
 Check(P:IsShown() and h, "the test entry's page is not open")
 
 --------------------------------------------------------------------------
-Section("the name sheet hangs from its clip at the page's top edge")
+Section("the header is written on the page and scrolls with the list")
 
--- The page's paper runs BOOK.TOP above its frame: its top edge, here.
 local EDGE = -J.BOOK.TOP
-local tl, tr, br, bl = h.corners[1], h.corners[2], h.corners[3], h.corners[4]
-Check(Near(h.turn, math.rad(SHEET.turn)), "the sheet is not turned 1.6 degrees")
-Check(tr[2] < tl[2], "its right end does not rise (counter-clockwise)")
-Check(tr[2] > EDGE and tr[2] < EDGE + 3, ("its top right corner is not just inside the page's top edge: %.1f"):format(tr[2]))
--- Its inked edge (a px out) inside too.
-Check(tr[2] - 1 > EDGE, "the sheet's cut edge runs past the page's top")
-Check(tl[2] - EDGE < 16, "the sheet still floats under the page's top at its clip")
-Check(tr[1] + 1 <= J.BOOK.RIGHT_W - 8, "the sheet's right end is not well inside the page (the close box is past it)")
-
--- Only the clip's front shows: its jaw from the page's top edge down to
--- its lip on the sheet, nothing over the edge but a pixel or so of the
--- roll where it turns over (Dev/clip_art.py's EDGE, roll, lip).
-local top = h.clipAt[2] - CLIP.size / 2
-Check(math.abs(top + CLIP.edge - EDGE) < 1, "the clip's art is not laid with its edge on the page's top edge")
-Check(top + CLIP.roll >= EDGE - 1.5, "more of the clip than its roll stands over the page's top edge")
-Check(top + CLIP.lip > tl[2] + 2, "the clip's lip does not bite into the sheet")
-Check(top + CLIP.lip < tl[2] + 12, "the clip's lip bites too far into the sheet")
-
--- Edit, straight, on the sheet near its right end, under its top edge.
-local function SheetTop(x) return tl[2] + (tr[2] - tl[2]) * (x - tl[1]) / (tr[1] - tl[1]) end
--- (EDIT.y is down the page, as the sheet's corners are.)
-Check(EDIT.y > SheetTop(EDIT.x) + 2, "Edit is not on the sheet, under its top edge")
-Check(EDIT.x + Width(h.edit.label) + 4 < tr[1], "Edit runs off the sheet's right end")
-
--- The list starts behind the sheet at every x, and its first writing at
--- the sheet's foot.
-Check(SHEET.listTop > math.max(tl[2], tr[2]) + 4, "the list's top is above the sheet")
-Check(SHEET.listTop < math.min(bl[2], br[2]) - 4, "the list's top is below the sheet's foot")
-Check(SHEET.first >= math.max(bl[2], br[2]), "the list's first line starts over the sheet's foot")
-Check(SHEET.first - math.max(bl[2], br[2]) < 6, "the list's first line starts well under the sheet's foot")
-Eq(P.timeline.recorded.points[1].args[4], -SHEET.listTop, "the list does not start behind the sheet")
-Eq(ns.UI.Clippings.BLOCK.pad, SHEET.first - SHEET.listTop, "the top block does not start at the sheet's foot")
-
--- Its foot throws its shadow on what passes under it; the wear shows.
-for name, t in pairs(h.shadows) do Check(t:IsShown(), "the sheet's " .. name .. " shadow does not show") end
-Check(h.dent:IsShown(), "the dent under the clip's jaw does not show")
--- The jaw's mark: under the lip, kept to the clip's corner, clear of the
--- name and over the who line's row; turned with the sheet.
-local D = H.DENT
-local lipY = CLIP.at[2] - CLIP.size / 2 + CLIP.lip
-Check(D.y < lipY and D.y + D.h > lipY + 8, "the dent's box does not reach under the clip's lip")
-Check(D.x >= 0 and D.x + D.w <= H.NAME.x - 6, "the dent runs off the sheet or into the name")
-Check(D.y + D.h <= H.WHO.y, "the dent runs into the who line's row")
-Check(Near(h.dent.recorded.calls.SetRotation[1], h.turn), "the dent is not turned with the sheet")
-Check(h.clip:IsShown(), "no clip")
-Check(h.clipShadow:IsShown(), "no shadow under the clip")
-
--- The clip's art: baked, 128 px square, 32 bits (not in every checkout).
-local SIZES = { ["Art/Paper/clip.tga"] = { 128, 128 }, ["Art/Paper/clip_shadow.tga"] = { 128, 128 },
-    ["Art/Paper/clip_dent.tga"] = { 128, 64 } }
-for file, want in pairs(SIZES) do
-    local f = io.open(file, "rb")
-    if f then
-        local head = f:read(18)
-        f:close()
-        local w, ht = head:byte(13) + 256 * head:byte(14), head:byte(15) + 256 * head:byte(16)
-        Eq(head:byte(3), 2, file .. " is not an uncompressed true-colour TGA")
-        Check(w == want[1] and ht == want[2] and head:byte(17) == 32, file .. " is not its size in 32 bits")
-    end
-end
-
---------------------------------------------------------------------------
-Section("laid flat, or where text cannot turn: straight, from the same clip")
-
-ns.SetSetting("flatSheets", true)
-h:Lay()
-Eq(h.turn, 0, "laid flat, the sheet is turned")
-Check(Near(h.corners[1][2], h.corners[2][2]), "laid flat, the sheet's top is not level")
-Check(h.corners[2][2] > EDGE and h.corners[3][2] <= SHEET.first, "laid flat, the sheet leaves the page or the list's room")
-Check(SHEET.listTop > h.corners[1][2] and SHEET.listTop < h.corners[4][2], "laid flat, the list does not start under the sheet")
-Check(not h.clipShadow:IsShown(), "laid flat, the clip still throws a shadow")
-Check(not h.dent:IsShown() and not h.corner:IsShown(), "laid flat, the sheet still shows its wear")
-Check(h.shadows.core:IsShown() and not h.shadows.soft:IsShown(), "laid flat, not a hair of shadow under the sheet")
-Check(h.clip:IsShown(), "laid flat, the clip went")
-ns.SetSetting("flatSheets", false)
-
-h.turnsText = false
-h:Lay()
-Eq(h.turn, 0, "where text cannot turn, the sheet is turned")
-Check(h.shadows.soft:IsShown(), "where text cannot turn, the sheet lost its shadow")
-h.turnsText = true
-h:Lay()
-Check(Near(h.turn, math.rad(SHEET.turn)), "the sheet does not turn again")
-
---------------------------------------------------------------------------
-Section("the name's ink inside the sheet at every size")
-
--- Goodmountain's tall ascenders reach over its line's box: at each size,
--- however the client scales the font (one em to the size, or the line to
--- it), the name's ink lies inside the sheet, clear of its edge and over
--- the who line.
 local NAME, WHO, GOOD = H.NAME, H.WHO, H.GOOD
+local DIARY_ENTRY = ns.Diary.Get(G)
+local RECORD = ns.People.Stats(G).record
+-- No paper, no clip: nothing of the old sheet is left to draw.
+for _, gone in ipairs({ "paper", "edge", "sheen", "grain", "dent", "clip", "clipShadow", "shadows", "edit" }) do
+    Eq(h[gone], nil, "the header still has its " .. gone)
+end
+-- The list starts at the paper's top edge, its first writing under the header.
+Eq(SHEET.listTop, EDGE, "the list does not start at the paper's top edge")
+Eq(P.timeline.recorded.points[1].args[4], -SHEET.listTop, "the list is not placed at its top")
+Eq(ns.UI.Clippings.BLOCK.pad, SHEET.first - SHEET.listTop, "the top block does not start under the header")
+Check(WHO.y + WHO.h <= SHEET.first, "the who line runs into the first writing")
+-- Centred on the ink: the name's letters at 27 to the who line's foot.
+local inkTop, inkFoot = NAME.baseline - GOOD.ascent * 27, WHO.y + WHO.h / 2 + WHO.ink
+Check(Near(H.PORTRAIT.y + H.PORTRAIT.size / 2, (inkTop + inkFoot) / 2), "the portrait is not centred on the name and who line")
+Eq(H.PORTRAIT.y, 2.5, "the portrait's place moved")
+Check(H.PORTRAIT.y >= EDGE and H.PORTRAIT.y + H.PORTRAIT.size <= SHEET.first, "the portrait is off its place")
+-- The header is on the list, on the line that holds the block, so it goes
+-- when that line does and comes back with it.
+Eq(h.sheet.parent, P.timeline, "the header is not on the list")
+local held = h.row
+Check(held and held.item and held.item.clippings, "the header is not on the list's first line")
+local at = h.sheet.recorded.points[#h.sheet.recorded.points]
+Eq(at.args[1], held, "the header is not anchored to its line")
+Eq(at.args[4], SHEET.listTop, "the header is not at the page's frame on its line")
+Check(h.sheet:IsShown(), "the header does not show")
+P.timeline:SetPosition(ns.UI.Clippings.BLOCK.pad + 400)
+Eq(h.row, nil, "the header stayed when its line scrolled away")
+Check(not h.sheet:IsShown(), "the header still shows, scrolled away")
+P.timeline:SetPosition(0)
+Check(h.row and h.sheet:IsShown(), "the header did not come back")
+-- The scrollbar starts under the writing.
+Eq(P.timeline.bar.recorded.points[#P.timeline.bar.recorded.points - 1].args[4], -(SHEET.first - SHEET.listTop),
+    "the scrollbar does not start under the header")
+
+--------------------------------------------------------------------------
+Section("the arc")
+
+local Near1 = function(a, b) return Near(a, b, 0.0001) end
+Check(Near1(H.ArcAngle(0), -5), "the arc does not start at -5 degrees")
+Check(Near1(H.ArcAngle(0.30), -1), "the arc is not at -1 degree at 0.30")
+Check(Near1(H.ArcAngle(1), 0), "the arc does not end level")
+Check(Near1(H.ArcAngle(0.15), -3), "the arc is not a straight line to its middle stop")
+Check(Near1(H.ArcAngle(0.65), -0.5), "the arc is not a straight line from its middle stop")
+
+-- By UTF-8 sequence, not by byte.
+local L1 = H.Letters("Zoë Ñandú")
+Eq(#L1, 9, "not split by letter")
+Eq(L1[3], "ë", "a two-byte letter was split")
+Eq(L1[5], "Ñ", "a two-byte capital was split")
+Eq(table.concat(L1), "Zoë Ñandú", "letters lost")
+Eq(#H.Letters("日本語"), 3, "three-byte letters were split")
+
+-- With kerning by prefixes: a pair that kerns moves the second letter in.
+local function Kerned(text)
+    local w = #H.Letters(text) * 10
+    if text:find("AV", 1, true) then w = w - 2 end
+    return w
+end
+local placed, L = H.ArcPlace(H.Letters("AVA"), Kerned)
+Eq(L, 28, "the name's length is not measured whole")
+Eq(#placed, 3, "a place a letter")
+-- The letters' angles follow the curve, climbing to level.
+Check(placed[1].deg < placed[2].deg and placed[2].deg < placed[3].deg, "the arc does not level off")
+Check(placed[1].y > placed[3].y, "the name does not climb")
+Check(math.abs(placed[3].y + placed[3].adv * math.sin(math.rad(placed[3].deg)) - NAME.baseline) < 1,
+    "the name's end is not on its baseline")
+Check(placed[2].x - placed[1].x < 10, "kerning was lost")
+
+h:Set(RECORD, "Feivel Emmenthal", "Level 16 Human Warrior", DIARY_ENTRY, false)
+Check(h.arced, "the name is not on the arc")
+Eq(h.name:GetText(), "Feivel Emmenthal", "the whole name is not kept")
+Eq(h.name:GetAlpha(), 0, "the whole name shows under the arc")
+Eq(#h.placed, 15, "not a font string a letter, spaces left out")
+for i, place in ipairs(h.placed) do
+    local letter = h.letters[i]
+    Check(letter:IsShown(), "a letter does not show")
+    Eq(letter:GetText(), place.letter, "a letter out of place")
+    Check(Near(letter.recorded.calls.SetRotation[1], math.rad(-place.deg), 1e-6), "a letter not turned to the curve")
+    Check(letter.recorded.calls.SetRotation[1] >= 0, "a letter turned the wrong way")
+    local pt = letter.recorded.points[#letter.recorded.points]
+    Eq(pt.point, "LEFT", "a letter is not anchored by its left end")
+    -- Its line's middle along the normal from its baseline's left end.
+    local d = (GOOD.ascent - GOOD.line / 2) * (14 < 27 * GOOD.line and 27 or 14 / GOOD.line)
+    local r = math.rad(place.deg)
+    Check(Near(pt.args[3], place.x + math.sin(r) * d, 0.01) and Near(-pt.args[4], place.y - math.cos(r) * d, 0.01),
+        "a letter is not anchored at its baseline's normal")
+    Check(letter.recorded.width > place.adv, "a letter's box is not wider than its advance")
+end
+Check(not h.letters[16]:IsShown(), "a letter left over from nothing shows")
+
+--------------------------------------------------------------------------
+Section("flat: one straight string in the same place")
+
+local arcY = h.name.recorded.points[#h.name.recorded.points].args[4]
+ns.SetSetting("flatSheets", true)
+h:Set(RECORD, "Feivel Emmenthal", "Level 16 Human Warrior", DIARY_ENTRY, false)
+Check(not h.arced, "laid flat, the name still arcs")
+Eq(h.name:GetAlpha(), 1, "laid flat, the whole name does not show")
+for _, letter in ipairs(h.letters) do Check(not letter:IsShown(), "laid flat, a letter still shows") end
+Eq(h.name.recorded.points[#h.name.recorded.points].args[4], arcY, "laid flat, the name moved")
+ns.SetSetting("flatSheets", false)
+h.turnsText = false
+h:Set(RECORD, "Feivel Emmenthal", "Level 16 Human Warrior", DIARY_ENTRY, false)
+Check(not h.arced and h.name:GetAlpha() == 1, "where text cannot turn, the name still arcs")
+h.turnsText = true
+-- More letters than the pool: straight, not cut.
+h:Set(RECORD, ("Thistle"):rep(4), "Level 16 Human Warrior", DIARY_ENTRY, false)
+Check(not h.arced and h.name:GetAlpha() == 1, "a name past the pool is not straight")
+h:Set(RECORD, "Feivel Emmenthal", "Level 16 Human Warrior", DIARY_ENTRY, false)
+Check(h.arced, "the arc did not come back")
+
+--------------------------------------------------------------------------
+Section("the who line and the tags")
+
+local record16 = { level = 16, race = "Human", class = "WARRIOR", faction = "Alliance" }
+Eq(ns.UI.Format.WhoLine(record16, nil, "always"), "Level 16 Human Warrior", "the faction on the header's who line")
+ns.Characters.Get(G).faction = "Alliance"
+ns.UI.RefreshJournal()
+Check(not h.who:GetText():find("Alliance", 1, true), "the page's who line still names the faction: " .. h.who:GetText())
+-- Other readers still get it.
+Check(ns.UI.Format.WhoLine(record16):find("Alliance", 1, true), "the faction went from the other who lines")
+
+-- The chips after the who line, on its middle; the relationship on the
+-- name's line at the right.
+local tags, relationship = DIARY_ENTRY.tags, DIARY_ENTRY.relationship
+DIARY_ENTRY.tags, DIARY_ENTRY.relationship = { "friend", "guild" }, "Good Guy"
+h:Set(RECORD, "Feivel Emmenthal", "Level 16 Human Warrior", DIARY_ENTRY, false)
+Eq(h.shownTags, 2, "the tags are not shown")
+Check(math.abs(h.tagsBox[3] - h.whoBox[3]) <= 1, "the tags are not centred on the who line")
+Eq(h.tagsBox[1], WHO.x + h.whoBox[2] + H.TAGS.clear, "the tags do not follow the who line")
+Check(h.tagsBox[2] <= SHEET.right, "the tags run off the page")
+Check(h.relationship:IsShown(), "the relationship does not show")
+Eq(h.relationship.recorded.points[#h.relationship.recorded.points].args[3], SHEET.right, "the relationship is not at the right")
+-- A long who line gives way to them, never the tags.
+h:Set(RECORD, "Feivel Emmenthal", "Level 60 Human Warrior <The Exceedingly Long Guild of Westfall Farmers and Friends>",
+    DIARY_ENTRY, false)
+Eq(h.shownTags, 2, "a long who line pushed a tag off")
+Check(h.whoBox[1] + h.whoBox[2] + H.TAGS.clear <= h.tagsBox[1] + 0.5, "a long who line runs into the tags")
+Check(h.tagsBox[2] <= SHEET.right + 0.5, "with a long who line the tags ran off the page")
+-- A long name takes the room; the relationship is cut at it, or goes.
+h:Set(RECORD, ("Thistle"):rep(9), "Level 20 Tauren Druid", DIARY_ENTRY, false)
+Check(h.relationship:IsShown(), "a short relationship went beside a long name")
+DIARY_ENTRY.relationship = ("A very good friend of mine "):rep(3)
+h:Set(RECORD, ("Thistle"):rep(9), "Level 20 Tauren Druid", DIARY_ENTRY, false)
+Check(h.relationship:IsShown(), "a long relationship went while it had room")
+Eq(h.relationship.recorded.width, SHEET.right - (NAME.x + NAME.room + H.RELATION.gap), "a long relationship not cut at the name")
+DIARY_ENTRY.tags, DIARY_ENTRY.relationship = tags, relationship
+ns.UI.RefreshJournal()
+
+--------------------------------------------------------------------------
+Section("the name steps down and stays in its room")
+
 for _, step in ipairs(NAME.sizes) do
     local size = step[2]
     for _, measured in ipairs({ 0, size, size * GOOD.line, 14 }) do
         local boxTop, lineH, inkTop, inkFoot = H.NameLine(size, measured)
-        Check(inkTop >= 3, ("the name's ink at %d rises out of the sheet: %.1f"):format(size, inkTop))
+        Check(inkTop >= EDGE, ("the name's ink at %d rises out of the page: %.1f"):format(size, inkTop))
         Check(inkFoot <= WHO.y, ("the name's ink at %d runs into the who line: %.1f"):format(size, inkFoot))
-        Check(boxTop >= 0 and boxTop + lineH <= WHO.y + 1, ("the name's line at %d is off the sheet"):format(size))
+        Check(boxTop + lineH <= WHO.y + 1, ("the name's line at %d runs into the who line"):format(size))
     end
 end
-Check(WHO.y + WHO.h <= SHEET.h - 2, "the who line runs off the sheet's foot")
-Check(H.PORTRAIT.y >= 2 and H.PORTRAIT.y + H.PORTRAIT.size <= SHEET.h - 2, "the portrait is off the sheet")
-h:Set(ns.People.Stats(G).record, "Feivel Emmenthal", "Level 20 Tauren Druid", ns.Diary.Get(G), false)
-Check(h.nameInk[1] >= 3 and h.nameInk[2] <= WHO.y, "the name as laid is not inside its sheet")
--- The tags on the who line, centred on it (in the sheet's turned plane),
--- right-aligned, well under Edit (its label and dashed underline about 15
--- px from its top).
-local diaryEntry = ns.Diary.Get(G)
-local tags, relationship = diaryEntry.tags, diaryEntry.relationship
-diaryEntry.tags, diaryEntry.relationship = { "friend", "guild" }, nil
-h:Set(ns.People.Stats(G).record, "Feivel Emmenthal", "Level 16 Human Warrior", diaryEntry, false)
-Eq(h.shownTags, 2, "the tags are not shown")
-Check(math.abs(h.tagsBox[3] - h.whoBox[3]) <= 1, "the tags are not centred on the who line")
-Check(math.abs(h.tagsBox[2] - (SHEET.w - H.TAGS.right)) < 0.5, "the tags are not at the sheet's right end")
-Check(SheetTop(SHEET.x + h.tagsBox[2]) + H.TAGS.y >= EDIT.y + 15 + 8, "the tags crowd Edit")
--- ... and as drawn: the client turns a font string about its left end
--- (its box's left middle) and a texture about its middle, so a wide line
--- of writing laid by its middle is drawn (w/2) sin t off where it was
--- planned. (21 Oct, in the client: the chip sat some 6 px under the
--- who line though the planned middles agreed.) Where each is drawn, from
--- the anchors as recorded, y up from the sheet's middle:
-local function Drawn(region)
-    local pt = region.recorded.points[1]
-    local X, Y = pt.args[3], pt.args[4]
-    if region.frameType == "FontString" and pt.point == "CENTER" then X = X - (region.recorded.width or 0) / 2 end
-    return X, Y, pt.point
-end
-local wx, wy = Drawn(h.who)
-local cx, cy = Drawn(h.chips[1].edge)
-local lx, ly = Drawn(h.chips[1].label)
-local slope = math.tan(h.turn)
-Check(math.abs(cy - (wy + slope * (cx - wx))) <= 1,
-    ("the chip is not drawn on the who line: %.1f px off it"):format(cy - (wy + slope * (cx - wx))))
-Check(math.abs(ly - (wy + slope * (lx - wx))) <= 1, "the chip's label is not drawn on the who line")
--- A long who line gives way to them, never the tags.
-h:Set(ns.People.Stats(G).record, "Feivel Emmenthal",
-    "Level 60 Human Warrior · Alliance · <The Exceedingly Long Guild of Westfall Farmers>", diaryEntry, false)
-Eq(h.shownTags, 2, "a long who line pushed a tag off")
-Check(h.whoBox[1] + h.whoBox[2] + H.TAGS.clear <= h.tagsBox[1] + 0.5, "a long who line runs into the tags")
-Check(math.abs(h.tagsBox[3] - h.whoBox[3]) <= 1, "with a long who line the tags left its line")
-diaryEntry.tags, diaryEntry.relationship = tags, relationship
-ns.UI.RefreshJournal()
-
---------------------------------------------------------------------------
-Section("a long name steps down, then stays in its room")
-
 local entry = ns.Diary.Get(G)
 local record = ns.People.Stats(G).record
 h:Set(record, "Bartholomew Thistlewaite", "Level 20 Tauren Druid", entry, false)
 Check(Width(h.name) + 2 <= H.NAME.room, "a long name runs past its room")
 h:Set(record, ("Bartholomew Thistlewaite "):rep(3), "Level 20 Tauren Druid", entry, false)
 Eq(h.nameSize, "personNameLeast", "a name too long for its room is not at the smallest size")
-local size = h.name.recorded.calls.SetSize
-local nameW = size and size[1] or (h.name.GetWidth and h.name:GetWidth())
+local nameW = h.name.recorded.width
 Check(nameW and nameW <= H.NAME.room, "a name too long for its room is laid wider than it")
-Check(h.shownTags ~= nil, "the tags were not laid after a long name")
+Check(not h.arced, "a name past its room is arced")
 ns.UI.RefreshJournal()
+
+--------------------------------------------------------------------------
+Section("the edit tab")
+
+local tab = P.tabEdit
+Eq(h.edit, nil, "the Edit link is still on the header")
+Check(not tab.selected, "the edit tab is lit on their story")
+Eq(tab.recorded.points[1].args[1], P.tabNote, "the edit tab is not with its siblings")
+tab:GetScript("OnEnter")(tab)
+Eq(GameTooltip.text, "edit", "the edit tab's words")
+tab:GetScript("OnLeave")(tab)
+tab:Click()
+Check(J.editing and P.form:IsShown(), "the edit tab did not turn the page to writing mode")
+Check(tab.selected and not P.tabStory.selected and not P.tabMap.selected and not P.tabNote.selected,
+    "the tabs do not say writing mode is open")
+-- In writing mode the list is away and the header on the page, over the form.
+Check(not P.timeline:IsShown(), "the list shows while writing")
+Eq(h.sheet.parent, P, "the header is not on the page while writing")
+Check(h.sheet:IsShown(), "the header went while writing")
+Eq(h.sheet.recorded.points[#h.sheet.recorded.points].args[1], P, "the header is not anchored to the page while writing")
+tab:Click()
+Check(not J.editing and not tab.selected and P.tabStory.selected, "a second click did not go back to their story")
+Eq(h.sheet.parent, P.timeline, "the header did not go back on the list")
+Check(h.sheet:IsShown() and h.row, "the header did not come back on its line")
+-- From a loose sheet: the sheet goes and stays gone after.
+P.tabMap:Click()
+tab:Click()
+Check(not P.map:IsShown() and tab.selected and not P.tabMap.selected, "the map lay over writing mode")
+tab:Click()
+Check(not P.map:IsShown() and P.tabStory.selected and not P.tabMap.selected, "the map came back after writing")
+-- Anyone else's page leaves writing mode, the tab unlit.
+tab:Click()
+ns.UI.SelectPerson(G)
+Check(not J.editing and not tab.selected, "selecting a person left the edit tab lit")
 
 --------------------------------------------------------------------------
 Section("strips, slips and cards as wide as their words")
