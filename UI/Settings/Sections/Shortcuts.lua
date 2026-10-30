@@ -91,4 +91,4 @@ local function BuildShortcuts(pane, c)
 end
 
 SettingsUI.RegisterSection("shortcuts", { order = 24, label = "Keybinds & Shortcuts", parent = "interface",
-    about = "Keys, a button, and /sd", build = BuildShortcuts })
+    about = "Keys, macros, and /sd", build = BuildShortcuts })

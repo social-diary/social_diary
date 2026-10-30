@@ -24,7 +24,7 @@ Find a thing by its area first:
 | `Journey/` | Your Diary: the page's parts, the plate, its words (`Text/`) | `ns.UI.YourDiary`, `JourneyPlate`, `JourneyText` |
 | `Settings/` | the settings page, its kit, `Sections/` one file per section | `ns.UI.Settings` |
 | `Windows/` | what opens outside the book: entry, picker, `Reunion/` toast, `Intro/` parcel | `ns.UI.Entry`, `Toast`, `Parcel` |
-| `Blizzard/` | hooks into Blizzard's frames: tooltip, Social tab, AddOns settings signpost, key bindings | — |
+| `Blizzard/` | hooks into Blizzard's frames: tooltip, Social tab, AddOns settings signpost, key bindings, the minimap button | — |
 
 ## Namespaces
 

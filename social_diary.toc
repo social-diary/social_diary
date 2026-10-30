@@ -184,6 +184,7 @@ UI/Windows/Intro/Torn.lua
 UI/Windows/Intro/Parcel.lua
 UI/Blizzard/SocialTab.lua
 UI/Blizzard/Bindings.lua
+UI/Blizzard/Minimap.lua
 
 # Features: each detection in a folder of its own (Features/<Name>/), which
 # registers itself into the registries of Core/ and UI/ above, so it loads

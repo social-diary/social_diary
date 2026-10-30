@@ -1,5 +1,6 @@
 -- Settings: Interface (UI/Settings/Page.lua lists the sections; the
--- controls are UI/Settings/Kit.lua's): tooltips, and how the book looks. Its
+-- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, and how
+-- the book looks. Its
 -- subpages are Toasts.lua, Shortcuts.lua and Dungeons.lua beside it.
 
 local addonName, ns = ...
@@ -17,6 +18,10 @@ local function BuildInterface(pane, c)
     page.tooltipSeen = Switch(c, "For everyone else, how often you have seen them", "tooltipSeen", INDENT)
     DependsOn(page.tooltipSeen, "tooltips")
 
+    c:Heading("Minimap")
+    page.minimapButton = Switch(c, "Show a button on the minimap", "minimapButton", nil,
+        function() ns.UI.MinimapButton.Refresh() end)
+
     c:Heading("Look and Feel")
     page.bookStack = Switch(c, "Simulate Page Turns", "bookStack", nil,
         function() ns.UI.Journal.TurnStack() end,
@@ -28,4 +33,4 @@ local function BuildInterface(pane, c)
 end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = "Interface",
-    about = "Tooltips, and how the book looks", build = BuildInterface })
+    about = "Tooltips, minimap, how the book looks", build = BuildInterface })

@@ -9,6 +9,7 @@ ignore:
   - .github
   - .impeccable.md
   - AGENTS.md
+  - Art/sd_logo.jpg
   - CONTRIBUTING.md
   - DESCRIPTION.md
   - Dev

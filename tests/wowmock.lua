@@ -162,7 +162,7 @@ local NOOPS = {
     "SetNumeric", "SetSpacing", "SetClipsChildren", "SetBlendMode", "SetScale",
     "SetShadowOffset", "SetShadowColor", "SetGradient", "SetDesaturated",
     "SetAtlas", "AddMaskTexture", "SetRotation", "SetHitRectInsets",
-    "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetVertexOffset",
+    "SetFixedFrameStrata", "SetFixedFrameLevel", "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetVertexOffset",
     "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
 }
 
@@ -495,6 +495,15 @@ _G.GetFileIDFromPath = function(path)
 end
 
 _G.UIParent = NewWidget("Frame", "UIParent")
+
+-- The minimap: 140 wide, its middle at (700, 500) on the screen. A test may
+-- set _G.GetMinimapShape as an addon that reshapes it would.
+local function NewMinimap()
+    local minimap = NewWidget("Frame", "Minimap")
+    minimap.width, minimap.at = 140, { 700, 570, 500 }
+    return minimap
+end
+_G.Minimap = NewMinimap()
 
 -- Blizzard's callback registry, as far as Edit Mode's two events: a test
 -- calls M.EditMode(true) to open it and M.EditMode(false) to close it.
@@ -1171,6 +1180,8 @@ function M.Reset()
     M.frames, M.registered, M.sounds = {}, {}, {}
 
     _G.UIParent = NewWidget("Frame", "UIParent")
+    _G.Minimap = NewMinimap()
+    _G.GetMinimapShape = nil
     _G.EventRegistry = NewEventRegistry()
     _G.UISpecialFrames = {}
     _G.SlashCmdList = {}
