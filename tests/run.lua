@@ -54,6 +54,7 @@ local FILES = {
     "dungeon_light",
     "dungeon_way",
     "dungeon_way_ui",
+    "dungeon_tutorial",
     "run_page",
     "events",
     "slash",

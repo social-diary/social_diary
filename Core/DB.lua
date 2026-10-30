@@ -85,6 +85,9 @@ local ACCOUNT_SETTINGS = {
     -- The introduction turned through to its end, or its label under
     -- the book dismissed: the label stops asking (UI/Journal/IntroLabel.lua).
     introDone = false,
+    -- The note on the dungeon map has been shown: only ever the once
+    -- (UI/Dungeon/Tutorial.lua).
+    dungeonTutorialSeen = false,
     debug = false,
 }
 

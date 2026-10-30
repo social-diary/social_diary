@@ -29,7 +29,9 @@
 -- again, choosing someone else, turning the book to another page, or
 -- shutting the book. Escape takes the spread away, and the book only with
 -- the next press: while the spread is out it stands in the book's place in
--- UISpecialFrames (one place, swapped: StandIn).
+-- UISpecialFrames (one place, swapped: StandIn). The first run ever laid
+-- out brings a note about the map (UI/Dungeon/Tutorial.lua), which holds
+-- that place while it is up.
 
 local addonName, ns = ...
 
@@ -128,19 +130,21 @@ function DungeonPage.Lie(sw, sh, bx, by, w, h, left, right)
 end
 
 -- Escape: one place in UISpecialFrames, held by the book, or the spread
--- while it is out: `to` of those two, so the first press puts the spread
--- away, the next shuts the book. Swapped in place, never added or removed, as the client may be
+-- while it is out, or the note on it while that is up: `to` of those, so
+-- each press takes only the top one. Swapped in place, never added or removed, as the client may be
 -- going through the list as it hides one: what stands in the place next
 -- is not reached by the same press.
 local function StandIn(to)
     for i, name in ipairs(UISpecialFrames) do
-        if name == SPREAD.book or name == SPREAD.name then
+        if name == SPREAD.book or name == SPREAD.name or name == DungeonPage.TUTORIAL.NOTE.name then
             UISpecialFrames[i] = to
             return
         end
     end
     if to ~= SPREAD.book then UISpecialFrames[#UISpecialFrames + 1] = to end
 end
+
+DungeonPage.StandIn = StandIn
 
 -- The book put aside while the run is out (`away`), and back as it was:
 -- see-through, and nothing else about it touched. Its own alpha kept, to
@@ -385,6 +389,7 @@ end
 local function Gone()
     local open = J.visit ~= nil
     J.visit = nil
+    DungeonPage.TutorialGone()
     -- The pen put down, what it drew kept (WAY-11).
     DungeonPage.WayPutDown(spread.map)
     spread.map:Hide(true)
@@ -456,6 +461,7 @@ local function Open(visit, guid, from)
     spread:Raise()
     spread.map:Open(visit, guid)
     spread.map:Show()
+    DungeonPage.Tutorial(spread)
 end
 
 -- Opens visit `visitId` from `guid`'s page (the selected person's by
@@ -516,7 +522,12 @@ end
 function DungeonPage.Refresh()
     if not (spread and spread:IsShown() and J.visit) then return end
     local visit = J.visit.from == "journey" and ns.db.instances[J.visit.id] or DungeonPage.Visit(J.visit.guid, J.visit.id)
-    if visit then spread.map:Open(visit, J.visit.guid) else DungeonPage.Close(true) end
+    if visit then
+        spread.map:Open(visit, J.visit.guid)
+        DungeonPage.TutorialLay()
+    else
+        DungeonPage.Close(true)
+    end
 end
 
 -- The host, for the tests: nil until a run has been laid out.

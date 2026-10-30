@@ -21,6 +21,8 @@ mock.now = 1795000000
 SlashCmdList.SOCIALDIARY("testdata")
 local G = ns.TestData.GUID
 local panel = _G.SocialDiaryJournalFrame
+-- The first run's note and its Escape are tests/dungeon_tutorial.lua's.
+ns.db.settings.dungeonTutorialSeen = true
 local TL = panel.profile.timeline
 
 local RFK

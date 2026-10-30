@@ -137,7 +137,7 @@ UI/Journal/Profile.lua
 # A dungeon run laid out on the table over the book (ns.UI.DungeonPage):
 # the marks on its map first, how high everything on it lies (its
 # shadows), their words, the margin notes (step 2), the map sheet, then
-# the spread that hosts it.
+# the spread that hosts it, the pencil, and the note on the first run out.
 UI/Dungeon/Print.lua
 UI/Dungeon/Heights.lua
 UI/Dungeon/Words.lua
@@ -145,6 +145,7 @@ UI/Dungeon/Notes.lua
 UI/Dungeon/Sheet.lua
 UI/Dungeon/Spread.lua
 UI/Dungeon/Way.lua
+UI/Dungeon/Tutorial.lua
 UI/Journal/Nearby.lua
 UI/Journal/Front.lua
 UI/Journal/Corner.lua

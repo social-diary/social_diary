@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- _Dungeon View_ explains its default route the first time it opens
+
 ## [2.0.0]
 
 ### Shiny new Things
