@@ -20,7 +20,8 @@
 --                              entry form, the settings page's deletes,
 --                              /sd testdata. UI/Journal/Book.lua refreshes the
 --                              journal and the loose entry sheet.
---   SD_PAPER_CHANGED ()        the paper or its grain changed (/sd art).
+--   SD_PAPER_CHANGED ()        the paper or its grain changed (/sd art, the
+--                              Paper Texture Intensity setting).
 --                              Fired by UI/Style/Art.lua and UI/Style/Book.lua;
 --                              the journal's book repaints.
 --   SD_WORLD_SETTLED ()        a few seconds after entering the world (a

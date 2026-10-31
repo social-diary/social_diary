@@ -716,7 +716,10 @@ function Style.PastedPlate(parent, x, y, w, h, P)
         grain:SetAllPoints()
         grain:SetTexture(grainPath)
         grain:SetTexCoord(0.31, 0.58, 0.12, 0.47)
-        grain:SetAlpha(P.grain)
+        plate.grain = grain
+        local function Apply() grain:SetAlpha(P.grain * Style.GrainStrength()) end
+        Apply()
+        ns.On("SD_PAPER_CHANGED", Apply)
     end
 
     local glue = { 1, 0.7, 0.85, 1.25 }

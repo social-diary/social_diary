@@ -592,7 +592,6 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     local grainPath = Style.Art("grain")
     local grainPool = Pool("BORDER", 0, function(t)
         t:SetTexture(grainPath)
-        t:SetAlpha(0.14)
     end)
     -- The creases: a valley's dark line, a ridge's lit side and shaded side.
     local creasePool = Pool("ARTWORK", 4)
@@ -661,6 +660,7 @@ function ns.UI.LooseSheet(parent, W, H, opts)
                 end
                 if grainPath then
                     local grain = grainPool:Next()
+                    grain:SetAlpha(0.14 * Style.GrainStrength())
                     grain:SetTexCoord(x0 / W, x1 / W, y0 / H, y1 / H)
                     Bend(grain, x0, y0, x1, y1)
                 end

@@ -1306,7 +1306,7 @@ local function New(parent, slot)
                 local grain = matGrainPool:Next()
                 grain:SetTexture(grainPath)
                 grain:SetVertexColor(1, 1, 1, 1)
-                grain:SetAlpha(MAT.grain)
+                grain:SetAlpha(MAT.grain * Style.GrainStrength())
                 grain:SetTexCoord(r[1] / W, r[3] / W, r[2] / H, r[4] / H)
                 Place(grain, r[1], r[2], r[3] - r[1], r[4] - r[2])
             end

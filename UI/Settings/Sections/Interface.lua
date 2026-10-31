@@ -5,10 +5,14 @@
 
 local addonName, ns = ...
 
+local Style = ns.Style
 local SettingsUI = ns.UI.Settings
 local Kit = SettingsUI.Kit
 local Switch, DependsOn = Kit.Switch, Kit.DependsOn
 local INDENT = Kit.INDENT
+
+-- The paper's grain, in percent of its designed strength.
+local GRAIN = { min = 0, max = 200, step = 25, unit = "%", mark = 100 }
 
 local function BuildInterface(pane, c)
     local page = SettingsUI.page
@@ -23,6 +27,7 @@ local function BuildInterface(pane, c)
         function() ns.UI.MinimapButton.Refresh() end)
 
     c:Heading("Look and Feel")
+    page.paperGrain = Kit.Slider(c, "Paper Texture Intensity", "paperGrain", GRAIN, Style.SetGrain)
     page.bookStack = Switch(c, "Simulate Page Turns", "bookStack", nil,
         function() ns.UI.Journal.TurnStack() end,
         "New Diary entries add pages, and the book turns to the new page.")
@@ -34,3 +39,10 @@ end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = "Interface",
     about = "Tooltips, minimap, how the book looks", build = BuildInterface })
+
+-- The saved grain, as soon as the saved settings are there (Core/Events.lua
+-- loads first, so its handler has run) and before anything is built with it.
+ns.On("ADDON_LOADED", function(_, loaded)
+    if loaded ~= addonName then return end
+    Style.SetGrain(Style.OnScale(Kit.Saved().paperGrain, GRAIN.min, GRAIN.max, GRAIN.step))
+end)

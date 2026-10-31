@@ -1,8 +1,9 @@
 -- The small pieces drawn on the pages (Style, from UI/Style/Tokens.lua):
 -- text, rules, links, grouped rows, tooltips, choice menus, index tabs,
--- tags, search fields, writing lines, boxes to tick and number fields. A
--- person's pieces (portrait, heading, medallion, boss marks, rubric) are in
--- UI/Style/Person.lua; strokes and the other drawing in UI/Style/Draw.lua.
+-- tags, search fields, writing lines, boxes to tick, number fields and
+-- sliders. A person's pieces (portrait, heading, medallion, boss marks,
+-- rubric) are in UI/Style/Person.lua; strokes and the other drawing in
+-- UI/Style/Draw.lua.
 
 local addonName, ns = ...
 
@@ -577,6 +578,105 @@ function Style.NumberField(parent, width, min, max, get, set)
     end)
 
     return box
+end
+
+-- A slider's measure: its height, the nib's (the lozenge you drag) size and
+-- the room it travels in, and the ticks' lengths: every step, and the longer
+-- one at `spec.mark`.
+local SCALE = { height = 16, nib = 8, thumb = 10, tick = 5, markTick = 9 }
+
+-- `value` as a number on a scale: inside [min, max], on a step, the nearest.
+-- What is not a number is `min`.
+function Style.OnScale(value, min, max, step)
+    value = math.max(min, math.min(max, tonumber(value) or min))
+    return min + math.floor((value - min) / step + 0.5) * step
+end
+
+-- A number chosen on a ruled scale: an ink line with a tick at each step,
+-- and a lozenge on it to drag or to click along the line. `width` is the
+-- scale's; `height` what it takes on the page. `.reading`, for the caller to
+-- place, says the value with `spec.unit` after it. `spec` is min, max, step,
+-- unit, and `mark`, the value whose tick is longer, if any. Refresh shows
+-- `get()`, put on the scale; only a move to another step reaches `set`, so
+-- a drag writes once per step.
+function Style.Slider(parent, width, spec, get, set)
+    local INK, STRONG = Style.INK, Style.INK_STRONG
+    local min, max, step = spec.min, spec.max, spec.step
+    local slider = CreateFrame("Slider", nil, parent)
+    slider.height = SCALE.height
+    slider:SetSize(width, SCALE.height)
+    slider:SetOrientation("HORIZONTAL")
+    slider:EnableMouse(true)
+    slider:SetMinMaxValues(min, max)
+    slider:SetValueStep(step)
+    slider:SetObeyStepOnDrag(true)
+
+    -- The nib's centre stops half the thumb short of each end, so the line
+    -- and the ticks do too. The thumb is clear, with the nib on it.
+    local inset, travel = SCALE.thumb / 2, width - SCALE.thumb
+    local thumb = slider:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(0, 0, 0, 0)
+    thumb:SetSize(SCALE.thumb, SCALE.height)
+    slider:SetThumbTexture(thumb)
+    local nib = Style.Lozenge(slider, "OVERLAY", SCALE.nib, STRONG, 1)
+    nib:SetPoint("CENTER", thumb, "CENTER")
+
+    local line = slider:CreateTexture(nil, "ARTWORK")
+    line:SetHeight(1)
+    line:SetPoint("LEFT", inset, 0)
+    line:SetPoint("RIGHT", -inset, 0)
+
+    local ticks = {}
+    local steps = math.floor((max - min) / step + 0.5)
+    for i = 0, steps do
+        local tick = slider:CreateTexture(nil, "ARTWORK")
+        tick:SetSize(1, min + i * step == spec.mark and SCALE.markTick or SCALE.tick)
+        tick:SetPoint("CENTER", slider, "LEFT", math.floor(inset + travel * i / steps + 0.5), 0)
+        ticks[#ticks + 1] = tick
+    end
+
+    -- Darker while the mouse is on it, as a box to tick is.
+    local function Ink(hot)
+        local c = hot and STRONG or INK
+        local alpha = hot and Style.HAIRLINE_HOT or Style.HAIRLINE + 0.2
+        line:SetColorTexture(c[1], c[2], c[3], alpha)
+        for _, tick in ipairs(ticks) do tick:SetColorTexture(c[1], c[2], c[3], alpha) end
+    end
+    Ink(false)
+
+    slider.reading = Style.Text(slider, Style.FONT.strong)
+    slider.reading:SetJustifyH("RIGHT")
+
+    local function Show(value) slider.reading:SetText(value .. (spec.unit or "")) end
+
+    function slider:Refresh()
+        local value = Style.OnScale(get(), min, max, step)
+        self:SetValue(value)
+        Show(value)
+    end
+
+    -- Faded and deaf while what it depends on is off.
+    function slider:SetAvailable(available)
+        self.unavailable = not available
+        self:SetAlpha(available and 1 or 0.45)
+        if available then self:Enable() else self:Disable() end
+    end
+
+    slider:SetScript("OnEnter", function(self) Ink(not self.unavailable) end)
+    slider:SetScript("OnLeave", function() Ink(false) end)
+    slider:SetScript("OnValueChanged", function(self, value)
+        local stepped = Style.OnScale(value, min, max, step)
+        -- Between the steps (a value set from outside): on to the nearest,
+        -- which comes back here.
+        if stepped ~= value then
+            self:SetValue(stepped)
+            return
+        end
+        Show(stepped)
+        if stepped ~= Style.OnScale(get(), min, max, step) then set(stepped) end
+    end)
+
+    return slider
 end
 
 -- A tag as a small inked label: colour plus its text.

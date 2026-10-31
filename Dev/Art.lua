@@ -28,6 +28,7 @@ ns.Slash.Register("art", function(rest)
     local percent = rest:match("^grain%s+(%d+)$")
     if percent then
         Style.SetGrain(tonumber(percent))
+        ns.Print("paper grain at %d%%.", Style.GrainStrength() * 100)
     elseif rest == "paper" then
         Style.NextPaper()
     else

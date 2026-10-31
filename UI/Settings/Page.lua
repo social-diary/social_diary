@@ -4,8 +4,9 @@
 -- sections (Recording, Interface, Sounds, Integrations, Memory, About), with Interface's
 -- two subpages (Toasts, Keybinds & Shortcuts) hung under it, and the right
 -- page shows the chosen one's settings. Written in the same ink as the
--- rest of the book: boxes to tick and numbers on a line (Style.Checkbox,
--- Style.NumberField) rather than Blizzard's controls.
+-- rest of the book: boxes to tick, numbers on a line and ruled scales
+-- (Style.Checkbox, Style.NumberField, Style.Slider) rather than Blizzard's
+-- controls.
 --
 -- Blizzard's AddOns settings keep a small page that sends you here, since
 -- that is where players look first (UI/Blizzard/Signpost.lua).

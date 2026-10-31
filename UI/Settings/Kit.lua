@@ -1,8 +1,8 @@
 -- The settings' kit (ns.UI.Settings.Kit): what a section's builder lays
 -- its pane out with. The column it is filled down (Column: Place, Heading,
--- Hint, Checkbox, Number), the pane on the right page (Pane), and the
+-- Hint, Checkbox, Number, Slider), the pane on the right page (Pane), and the
 -- settings written through ns.SetSetting and read again with the page
--- (Switch, Number, DependsOn, Saved). The page and its registry are in
+-- (Switch, Number, Slider, DependsOn, Saved). The page and its registry are in
 -- UI/Settings/Page.lua; the sections in UI/Settings/Sections/.
 
 local addonName, ns = ...
@@ -15,6 +15,7 @@ local SettingsUI = ns.UI.Settings
 
 local INDENT = 20               -- a setting that depends on the one above it
 local FIELD_W, UNIT_W = 34, 34  -- a number's line, and the word after it
+local SCALE_W, READING_W = 170, 38  -- a slider's scale, and what it reads, on the right
 local SECTION_GAP = 14
 
 --------------------------------------------------------------------------
@@ -94,6 +95,31 @@ local function Column(parent, x, y, width)
         return self:Place(row, height)
     end
 
+    -- "Paper Texture Intensity ---+--- 100%": the sentence on the left and the
+    -- scale and its reading on the right, the reading on the column's edge.
+    -- `.slider` is the scale; `spec` is Style.Slider's.
+    function column:Slider(text, spec, get, set)
+        local row = CreateFrame("Frame", nil, self.parent)
+
+        row.label = Style.Text(row, FONT.body)
+        row.label:SetPoint("TOPLEFT")
+        row.label:SetWidth(self.width - SCALE_W - READING_W - 8)
+        row.label:SetText(text)
+
+        row.slider = Style.Slider(row, SCALE_W, spec, get, set)
+        row.slider:SetPoint("TOPRIGHT", row, "TOPRIGHT", -READING_W, 1)
+        row.slider.reading:SetWidth(READING_W)
+        row.slider.reading:SetPoint("RIGHT", row, "TOPRIGHT", 0, 1 - row.slider.height / 2)
+
+        local height = math.max(18, row.label:GetStringHeight())
+        row:SetSize(self.width, height)
+
+        function row:Refresh() self.slider:Refresh() end
+        function row:SetAvailable(available) self.slider:SetAvailable(available) end
+
+        return self:Place(row, height)
+    end
+
     return column
 end
 
@@ -153,6 +179,16 @@ local function Number(c, text, unit, key, min, max, after)
     return row
 end
 
+local function Slider(c, text, key, spec, after)
+    local page = SettingsUI.page
+    local row = c:Slider(text, spec, function() return Saved()[key] end, function(v)
+        ns.SetSetting(key, v)
+        if after then after(v) end
+    end)
+    page.controls[#page.controls + 1] = row
+    return row
+end
+
 -- `on` is the key of the setting it depends on, or a function saying
 -- whether it is available.
 local function DependsOn(control, on)
@@ -165,6 +201,6 @@ local function DependsOn(control, on)
 end
 
 SettingsUI.Kit = {
-    Column = Column, Pane = Pane, Switch = Switch, Number = Number, DependsOn = DependsOn,
+    Column = Column, Pane = Pane, Switch = Switch, Number = Number, Slider = Slider, DependsOn = DependsOn,
     Saved = Saved, INDENT = INDENT,
 }

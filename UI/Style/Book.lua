@@ -422,15 +422,15 @@ function Style.Grain(book, leftWidth)
     book:ApplyGrain()
 end
 
+-- "Paper Texture Intensity" in the settings, passed in from there, and
 -- `/sd art grain <percent>`: 100 is the designed strength, 0 is flat colour.
 function Style.SetGrain(percent)
     grainStrength = math.max(0, math.min(percent, 300)) / 100
-    ns.Print("paper grain at %d%%.", grainStrength * 100)
     ns.Fire("SD_PAPER_CHANGED")
 end
 
--- How strong the grain is now (Style.SetGrain), for the loose sheet's
--- (UI/Style/Cover.lua).
+-- How strong the grain is now (Style.SetGrain), for the paper that is not
+-- the book's: whatever carries the grain art multiplies its alpha by this.
 function Style.GrainStrength() return grainStrength end
 
 -- A red cloth bookmark hanging from the top edge of a page, its tail cut in

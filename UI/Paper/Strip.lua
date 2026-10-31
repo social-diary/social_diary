@@ -286,7 +286,6 @@ function ns.UI.PaperStrip(parent, card)
     if grainPath then
         strip.grain = Texture("BORDER", 0)
         strip.grain:SetTexture(grainPath)
-        strip.grain:SetAlpha(STRIP.grain)
     end
     strip.rival = Texture("ARTWORK", 0)
     strip.tapeShadow = Texture("OVERLAY", 1)
@@ -749,6 +748,7 @@ function ns.UI.PaperStrip(parent, card)
         for i = #(G and G.layers or {}) + 1, #self.grounds do self.grounds[i]:Hide() end
         if self.grain then
             local u, v = Noise(seed + 1) * 0.6, Noise(seed + 2) * 0.6
+            self.grain:SetAlpha(STRIP.grain * Style.GrainStrength())
             self.grain:SetTexCoord(u, u + W / 512, v, v + H / 512)
             Body(self.grain, 0)
         end

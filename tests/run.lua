@@ -40,6 +40,7 @@ local FILES = {
     "people",
     "reunion",
     "settings",
+    "paper_grain",
     "minimap",
     "sightings",
     "timeline",

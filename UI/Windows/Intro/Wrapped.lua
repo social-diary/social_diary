@@ -61,7 +61,7 @@ function Parcel.BuildWrapped(host, S)
         fibres:SetTexture(grain)
         fibres:SetTexCoord(0.05, 0.95, 0.10, 0.40)
         fibres:SetVertexColor(0.35, 0.22, 0.10)
-        fibres:SetAlpha(P.fibres)
+        fibres:SetAlpha(P.fibres * Style.GrainStrength())
     end
     -- The light on it, from the top left.
     Style.Gradient(S.Rect(F, "BACKGROUND", -3, px, py, pw, ph), "HORIZONTAL",
