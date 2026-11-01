@@ -158,11 +158,11 @@ end
 -- A killer's name in a sentence: "a Sunscale Lashtail", "an Ornery
 -- Plainstrider"; a rare or a boss is most often one of a kind, named
 -- ("Hogger", "The Rake"), so it goes bare, as does a name that brings its
--- own article.
+-- own article. `bare`: the player said it goes bare (a custom card's choice).
 function Text.KillerName(k)
     local name = k and k.name
     if not name or name == "" then return nil end
-    if name:find("^[Tt]he ") or k.rank == "rare" or k.rank == "rareelite" or k.rank == "worldboss" then
+    if k.bare or name:find("^[Tt]he ") or k.rank == "rare" or k.rank == "rareelite" or k.rank == "worldboss" then
         return name
     end
     return (name:find("^[AEIOUaeiou]") and "an " or "a ") .. name

@@ -46,7 +46,9 @@ ns.RunPage = RunPage
 --           names, turned `turn`
 --   sig     the signatures: the first at x, its baseline at y (each odd
 --           one `drop` px lower), `gap` px between, none past `stop`;
---           sizes `size` to `size + grow`, turned up to `turn` either way
+--           sizes `size` to `size + grow`, turned up to `turn` either way;
+--           a name's "+ Add" `add` px under its baseline. Everyone who does
+--           not fit that one row goes on `roster` (RunPage.Signatures)
 --   title   the dungeon's name: centred at `x` (the page's middle, 233, and
 --           room for the seal at its left), baseline `base`, the first of
 --           `sizes` at which it is no wider than `most`; past that two
@@ -68,7 +70,14 @@ local RUN = {
     bosses = { dx = 10, dy = -12, alone = { 28, 306 }, aloneNone = 216, h = 26, pad = 18, turn = -1.6 },
     quiet = { x = 233, y = 330 },
     fallen = { x = 250, y = 418, w = 190, lines = 3, turn = -4 },
-    sig = { x = 26, y = 494, drop = 6, gap = 20, stop = 440, size = 19, grow = 4, turn = 4 },
+    sig = { x = 26, y = 494, drop = 6, gap = 20, stop = 440, size = 19, grow = 4, turn = 4, add = 15,
+        -- The full list, for a big party or a raid: names at `size`, `gap`
+        -- px apart, `add` px over their "+ Add", on these rows (baselines),
+        -- turned a share `turn` of a signature's so rows do not touch. The
+        -- first row stops short of the fallen note (x 246), unless nobody
+        -- fell and the note is one short line at the top; the scrap's foot
+        -- (459) lies over it, and the last "+ Add" ends by 521.
+        roster = { size = 14, gap = 12, add = 10, turn = 0.5, rows = { { y = 474, stop = 236 }, { y = 504, stop = 440 } } } },
     title = { x = 255, base = 76, sizes = { 46, 38, 32, 28 }, most = 360, two = 32, lines = { 64, 98 }, shift = 22,
         seal = 46, sealX = 30, sealY = 60, sealTwo = 70 },
     sub = { x = 233, y = 112 },
@@ -173,6 +182,67 @@ function RunPage.Plan(input)
 
     if n == 0 then plan.quiet = { x = RUN.quiet.x, y = RUN.quiet.y } end
     return plan
+end
+
+-- Where everyone's name goes, along the foot (`RUN.sig`). `input`:
+--   people  in order, each { big, small }: the name's width at its own
+--           signature size and at the roster's (the same for a line of words
+--           that is not a name)
+--   addW    "+ Add"'s width: every name's place is at least this wide, whether
+--           it has one or not, so nobody moves as one is added
+--   moreW   the widest "and n others"
+--   open    nobody fell: the first row may run the page's width
+-- Everyone on one row at their signature size where they fit (`roster`
+-- false). Else the roster, turned over in `pages`: a raid does not fit the
+-- foot of a page at any size a name can be read at, and nothing else on the
+-- page can give way. Returns { roster, pages = { { { i, x, y, w, row }, ... ,
+-- more = { x, y } } } }: person `people[i]` in the place x, w with its
+-- baseline at y; `more` where "and n others" goes, on a page with others.
+function RunPage.Signatures(input)
+    local S, people, addW = RUN.sig, input.people or {}, input.addW or 0
+    local page, x = {}, S.x
+    for i, p in ipairs(people) do
+        local w = math.max(p.big or 0, addW)
+        if x + w > S.stop then
+            page = nil
+            break
+        end
+        page[i] = { i = i, x = x, y = S.y + ((i % 2 == 0) and S.drop or 0), w = w, row = 1 }
+        x = x + w + S.gap
+    end
+    if page then return { roster = false, pages = { page } } end
+
+    local R = S.roster
+    local function Lay(reserve)
+        local pages, row, at = { {} }, 1, S.x
+        for i, p in ipairs(people) do
+            local w = math.max(p.small or 0, addW)
+            while true do
+                local last = row == #R.rows
+                local stop = (row == 1 and input.open) and S.stop or R.rows[row].stop
+                if last and (reserve or i < #people) then stop = stop - (input.moreW or 0) - R.gap end
+                local here = pages[#pages]
+                -- A name too wide for any row still goes on one.
+                if at + w <= stop or (at == S.x and last and #here == 0) then
+                    here[#here + 1] = { i = i, x = at, y = R.rows[row].y, w = w, row = row }
+                    at = at + w + R.gap
+                    break
+                end
+                if last then pages[#pages + 1] = {} end
+                row, at = last and 1 or row + 1, S.x
+            end
+        end
+        return pages
+    end
+    local pages = Lay(false)
+    if #pages > 1 then
+        pages = Lay(true)
+        for _, here in ipairs(pages) do
+            local last, y = here[#here], R.rows[#R.rows].y
+            here.more = { x = last.row == #R.rows and last.x + last.w + R.gap or S.x, y = y }
+        end
+    end
+    return { roster = true, pages = pages }
 end
 
 -- The four corners of box `b` ({ x, y, w, h, turn }) as laid, turned about

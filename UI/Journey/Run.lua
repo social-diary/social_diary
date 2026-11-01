@@ -8,7 +8,8 @@
 -- its quality's ink, whose it was in pencil), and the rest counted on a
 -- slip pinned under the last of them; a torn scrap of the floor's map with
 -- the boss strip pasted over its top edge; everyone who fell, named, in a
--- pencilled note; and the party's signatures along the foot.
+-- pencilled note; and everyone on the run along the foot: signatures for
+-- those in the diary, pencil with a "+ Add" for those who are not.
 --
 -- Where everything goes is Core/RunPage.lua's plan (pure, tested
 -- offline): fixed places taken in rank order, nothing searched, nothing
@@ -54,14 +55,16 @@ local RUN = ns.RunPage.RUN
 --   whose     whose it was: the hand, `size` pt, in graphite
 --   tape      a keepsake's tape: at its top's middle (`at` of its width),
 --             `w` by `h`, `slant` degrees
---   floor     the scrap's print: `inset` px of stock round it, greyed
---             `grey` and tinted `tint` at `alpha` (faint, a scrap kept)
+--   floor     the scrap's print: `inset` px of stock round it, the map at
+--             full strength (1 Nov 2026, the user: greyed 0.55, tinted and at
+--             alpha 0.45 it read as washed out, and irritated)
 --   title     the seal's size; the underline: `under` px under the last
 --             baseline, from `lead` left of the words to `run` past them,
 --             sagging `sag`, `width` px at its thickest, in `pieces`
 --   words     the hand's size on the slips (`slip`, `bosses`), the fallen
 --             note (`fell`, `names`, `lh` between lines), the quiet lines
---             (`quiet`), the strangers (`strangers`); the subtitle `sub`
+--             (`quiet`), the strangers (`strangers`); the subtitle `sub`;
+--             "+ Add" and "and n others" in Friz (`add`, `others`)
 --   full      "Full run"'s ink underline: `under` px under the baseline,
 --             `width` px, sagging `sag`
 --   tally     the fallen note's tally: strokes `h` px tall `gap` apart,
@@ -74,9 +77,9 @@ local LOOK = {
     name = { big = 13, size = 12 },
     whose = { size = 14 },
     tape = { at = 0.5, w = 30, h = 11, slant = -8 },
-    floor = { inset = 6, grey = 0.55, tint = { 0.86, 0.78, 0.62 }, alpha = 0.45 },
+    floor = { inset = 6 },
     title = { under = 12, lead = 4, run = 10, sag = 3, width = 1.6, pieces = 14 },
-    words = { slip = 14, bosses = 15, fell = 15, names = 14, lh = 16, quiet = 15, strangers = 13, sub = 15 },
+    words = { slip = 14, bosses = 15, fell = 15, names = 14, lh = 16, quiet = 15, strangers = 13, sub = 15, add = 11, others = 11 },
     full = { under = 4, width = 1.4, sag = 1.5 },
     tally = { h = 12, gap = 3.6, width = 1.3, apart = 8, cross = 9, most = 25 },
     sig = { Style.INK_STRONG, Style.INK, { 0.17, 0.21, 0.31 }, { 0.29, 0.16, 0.08 } },
@@ -312,6 +315,7 @@ local function Hit(run, b, onEnter, onClick)
     hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
     hit:SetScript("OnClick", onClick)
     hit.box = b
+    hit.item, hit.add, hit.others = nil, nil, nil
     return hit
 end
 
@@ -421,7 +425,7 @@ local function Keepsake(run, s, b, it, lines, whose, seed)
     StripText(s, p.whose, 0, y + 2, true)
 end
 
--- The map scrap on strip `s`: the run's main floor printed faint.
+-- The map scrap on strip `s`: the run's main floor, as it was drawn.
 local function Scrap(run, s, b, visit, seed)
     local L = LOOK
     LayStrip(s, b, seed, L.paper.scrap)
@@ -442,12 +446,7 @@ local function Scrap(run, s, b, visit, seed)
             end
             t:SetTexture(piece.file)
             t:SetTexCoord(piece.u0, piece.u1, piece.v0, piece.v1)
-            local T = L.floor.tint
-            t:SetVertexColor(T[1], T[2], T[3], L.floor.alpha)
-            -- Greyed part way where the client can (asked under pcall: a
-            -- build without the method may raise on it, as the printer's).
-            local asked, fn = pcall(function() return t.SetDesaturation end)
-            if asked and type(fn) == "function" then t:SetDesaturation(L.floor.grey) end
+            t:SetVertexColor(1, 1, 1, 1)
             local x0, y0 = ox + piece.x0 * scale, oy + piece.y0 * scale
             local w, h = (piece.x1 - piece.x0) * scale, (piece.y1 - piece.y0) * scale
             s:Lay(t, x0 + w / 2, y0 + h / 2, w + 0.3, h + 0.3)
@@ -552,51 +551,143 @@ local function FallenNote(run, visit)
     return { x = F.x - 4, y = F.y - 6, w = F.w + 8, h = 20 + #lines * L.words.lh + 8 }, fallen, deaths
 end
 
--- The signatures: the party's diary entries, each in their own size and
--- ink; strangers counted after them. Returns their hit boxes' guids.
-local function Signatures(run, visit)
+-- A member put in the diary from the page: the list drawn again where it
+-- lies, on this run's page (holdAt: a new recap's piece found again by time).
+local function AddMember(visit, guid)
+    local entry, added = ns.DungeonRun.Keep(visit, guid)
+    if not entry then
+        ns.Print("could not identify that character.")
+        return
+    end
+    if added then Style.PlaySound("write") end
+    GameTooltip:Hide()
+    YourDiary.page.holdAt = visit.startedAt
+    ns.UI.RefreshJourneyPage(false)
+    ns.UI.RedrawJourneyPage()
+end
+
+-- A word that is a link, straight on the page, in Friz: centred at cx, its
+-- middle at y, with the house link's hairline under it (Style.Link's look on
+-- the page's own pieces, as the hit boxes take the mouse here). Darker under
+-- the mouse. Returns its width.
+local function LinkWord(run, words, size, cx, y, onEnter, onClick)
+    local fs = Next(run, "sigLink", function() return Style.Text(run.board, FONT.pencilSmall) end)
+    Font(fs, Style.FRIZ, size, Style.GRAPHITE)
+    fs:SetText(words)
+    fs:SetSize(0, 0)
+    fs:SetJustifyH("CENTER")
+    fs:ClearAllPoints()
+    fs:SetPoint("CENTER", run.board, "TOPLEFT", cx, -y)
+    local w = Measure(run, words, Style.FRIZ, size)
+    local G, I = Style.GRAPHITE, Style.INK_STRONG
+    local line = Stroke(run, cx - w / 2, y + size / 2 + 1, cx + w / 2, y + size / 2 + 1, 1, G, Style.HAIRLINE)
+    local hit = Hit(run, { x = cx - w / 2 - 2, y = y - size / 2 - 2, w = w + 4, h = size + 5 }, function(self)
+        fs:SetTextColor(I[1], I[2], I[3], 1)
+        line:SetColorTexture(I[1], I[2], I[3], Style.HAIRLINE_HOT)
+        if onEnter then onEnter(self) end
+    end, onClick)
+    hit:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+        fs:SetTextColor(G[1], G[2], G[3], 1)
+        line:SetColorTexture(G[1], G[2], G[3], Style.HAIRLINE)
+    end)
+    return hit
+end
+
+-- Everyone on the run along the foot, in the order they joined
+-- (RunPage.Signatures). Those in the diary signed: each in their own ink,
+-- on a line, opening their page. Those not: in pencil, as the diary writes a
+-- stranger, with a "+ Add" under; added, they sign in the same place. A
+-- member whose name was never saved is only counted, after the names, in the
+-- words the page has always had for them. A party too big for the foot turns
+-- over: "and n others" shows who, and a click the next of them.
+local function Signatures(run, visit, deaths)
     local S, L = RUN.sig, LOOK
-    local me = visit.me or ns.ownGUID
-    local signed, strangers, seen = {}, 0, {}
-    for _, m in ipairs(visit.members or {}) do
-        if m.guid and m.guid ~= me and not seen[m.guid] then
-            seen[m.guid] = true
-            if ns.Diary.IsDiary(m.guid) then signed[#signed + 1] = m else strangers = strangers + 1 end
+    local R = S.roster
+    local people, nameless = ns.DungeonRun.Party(visit, ns.Diary.IsDiary)
+    local total = #people + nameless
+    run.unnamed = nil
+    local input = { open = deaths == 0, addW = Measure(run, Text.RUN.add, Style.FRIZ, L.words.add),
+        moreW = Measure(run, Text.RunOthers(total), Style.FRIZ, L.words.others), people = {} }
+    for i, p in ipairs(people) do
+        p.name = p.first or NameOf(visit, p.guid)
+        local seed = Surface.Seed(p.guid)
+        p.seed, p.size = seed, S.size + Style.Noise(seed) * S.grow
+        input.people[i] = { big = Measure(run, p.name, Style.NEUTON_ITALIC, p.size),
+            small = Measure(run, p.name, Style.NEUTON_ITALIC, R.size) }
+    end
+    local unnamed = nameless > 0 and Text.RunStrangers(nameless) or nil
+    if unnamed then
+        local w = Measure(run, unnamed, Style.NEUTON_ITALIC, L.words.strangers)
+        input.people[#people + 1] = { big = w, small = w }
+    end
+
+    local laid = ns.RunPage.Signatures(input)
+    if run.partyOf ~= visit.id then run.partyOf, run.partyPage = visit.id, 1 end
+    if run.partyPage > #laid.pages then run.partyPage = 1 end
+    local here = laid.pages[run.partyPage]
+    run.party, run.partyPeople = laid, people
+
+    for k, at in ipairs(here) do
+        local p = people[at.i]
+        if p then
+            local size = laid.roster and R.size or p.size
+            local deg = (Style.Noise(p.seed + 1) - 0.5) * 2 * S.turn * (laid.roster and R.turn or 1)
+            local plane, turn = Plane(run, "sig" .. k, at.x + at.w / 2, at.y - size * 0.32, deg)
+            local fs = Next(run, "sig", function() return Style.Text(run.board, FONT.noteWritten) end)
+            Font(fs, Style.NEUTON_ITALIC, size, p.kept and L.sig[(at.i - 1) % #L.sig + 1] or Style.GRAPHITE)
+            fs:SetText(p.name)
+            PlaceText(plane, turn, fs, 0, 0, "CENTER")
+            if p.kept then Stroke(run, at.x, at.y + 5, at.x + at.w + 4, at.y + 3, 0.7, Style.INK, 0.5) end
+            local guid = p.guid
+            Hit(run, { guid = guid, x = at.x, y = at.y - size, w = at.w, h = size + 6 }, function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(ns.Characters.FullName(guid) or p.name)
+                GameTooltip:Show()
+            end, p.kept and function()
+                Style.PlaySound("pageTurn")
+                YourDiary.ToPerson(guid)
+            end or nil)
+            if not p.kept then
+                local below = laid.roster and R.add or S.add
+                LinkWord(run, Text.RUN.add, L.words.add, at.x + at.w / 2, at.y + below, nil, function()
+                    AddMember(visit, guid)
+                end).add = guid
+            end
+        else
+            local fs = Next(run, "sig", function() return Style.Text(run.board, FONT.noteWritten) end)
+            Font(fs, Style.NEUTON_ITALIC, L.words.strangers, Style.GRAPHITE)
+            fs:SetText(unnamed)
+            fs:SetSize(0, 0)
+            fs:ClearAllPoints()
+            fs:SetJustifyH("LEFT")
+            if fs.SetRotation then fs:SetRotation(0) end
+            fs:SetPoint("LEFT", run.board, "TOPLEFT", at.x, -(at.y + 2 - L.words.strangers * 0.32))
+            run.unnamed = unnamed
         end
     end
-    local x = S.x
-    local out = {}
-    for i, m in ipairs(signed) do
-        local seed = Surface.Seed(m.guid)
-        local size = S.size + Style.Noise(seed) * S.grow
-        local deg = (Style.Noise(seed + 1) - 0.5) * 2 * S.turn
-        local name = m.first or NameOf(visit, m.guid)
-        local w = Measure(run, name, Style.NEUTON_ITALIC, size)
-        if x + w > S.stop then
-            strangers = strangers + (#signed - i + 1)
-            break
+
+    if here.more then
+        local shown, names = {}, {}
+        for _, at in ipairs(here) do shown[at.i] = true end
+        local others = total
+        for _, at in ipairs(here) do others = others - (people[at.i] and 1 or nameless) end
+        for i, p in ipairs(people) do
+            if not shown[i] then names[#names + 1] = p.name end
         end
-        local y = S.y + ((i % 2 == 0) and S.drop or 0)
-        local plane, turn = Plane(run, "sig" .. i, x + w / 2, y - size * 0.32, deg)
-        local fs = Next(run, "sig", function() return Style.Text(run.board, FONT.noteWritten) end)
-        Font(fs, Style.NEUTON_ITALIC, size, L.sig[(i - 1) % #L.sig + 1])
-        fs:SetText(name)
-        PlaceText(plane, turn, fs, 0, 0, "CENTER")
-        Stroke(run, x, y + 5, x + w + 4, y + 3, 0.7, Style.INK, 0.5)
-        out[#out + 1] = { guid = m.guid, x = x, y = y - size, w = w, h = size + 6 }
-        x = x + w + S.gap
+        local words = Text.RunOthers(others)
+        local w = Measure(run, words, Style.FRIZ, L.words.others)
+        LinkWord(run, words, L.words.others, here.more.x + w / 2, here.more.y - L.words.others * 0.32, function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(words)
+            if #names > 0 then GameTooltip:AddLine(table.concat(names, ", "), 1, 1, 1, true) end
+            GameTooltip:Show()
+        end, function()
+            Style.PlaySound("pageTurn")
+            run.partyPage = run.partyPage % #laid.pages + 1
+            ns.UI.RedrawJourneyPage()
+        end).others = true
     end
-    if strangers > 0 then
-        local fs = Next(run, "sig", function() return Style.Text(run.board, FONT.noteWritten) end)
-        Font(fs, Style.NEUTON_ITALIC, L.words.strangers, Style.GRAPHITE)
-        fs:SetText(Text.RunStrangers(strangers))
-        fs:SetSize(0, 0)
-        fs:ClearAllPoints()
-        fs:SetJustifyH("LEFT")
-        if fs.SetRotation then fs:SetRotation(0) end
-        fs:SetPoint("LEFT", run.board, "TOPLEFT", x, -(S.y + 2 - L.words.strangers * 0.32))
-    end
-    return out
 end
 
 -- The item tooltip on a keepsake: the game's own, from its link.
@@ -805,18 +896,8 @@ function YourDiary.DrawRun(e, visit)
         end)
     end
 
-    -- The signatures: a name opens their page.
-    for _, sig in ipairs(Signatures(run, visit)) do
-        local guid = sig.guid
-        Hit(run, sig, function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(ns.Characters.FullName and ns.Characters.FullName(guid) or NameOf(visit, guid))
-            GameTooltip:Show()
-        end, function()
-            Style.PlaySound("pageTurn")
-            YourDiary.ToPerson(guid)
-        end)
-    end
+    -- Everyone on the run: a signature opens its page, "+ Add" keeps a name.
+    Signatures(run, visit, deaths)
 
     Finish(run)
     run.keepsakes = keep

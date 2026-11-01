@@ -56,6 +56,17 @@ Duels.SERIES_GAP = SERIES_GAP
 local COUNT = { won = "won", lost = "lost", fled = "fled", they_fled = "theyFled" }
 Duels.COUNT = COUNT
 
+-- The latest outcome, as far as it can be believed: a card the player changed
+-- says its result by its counts alone (they took "Last duel" off the form, 2 Nov),
+-- so a saved `last` its counts no longer bear out is no result. Capture's own
+-- always agrees. The detected value stays underneath, for Undo.
+function Duels.Latest(c)
+    local last = c.last
+    if not (c.customOf and COUNT[last]) then return last end
+    if (c[COUNT[last]] or 0) > 0 then return last end
+    return nil
+end
+
 -- A series' balance, "won" or "lost": the user's wins (theirs fled)
 -- against their losses (the user fled), a tie going by its latest. The
 -- words lead with it; nothing drawn shows it (the user, 15 Oct: one icon,
@@ -64,7 +75,8 @@ function Duels.Balance(c)
     local up = (c.won or 0) + (c.theyFled or 0)
     local down = (c.lost or 0) + (c.fled or 0)
     if up ~= down then return up > down and "won" or "lost" end
-    return (c.last == "won" or c.last == "they_fled") and "won" or "lost"
+    local last = Duels.Latest(c)
+    return (last == "won" or last == "they_fled") and "won" or "lost"
 end
 
 --------------------------------------------------------------------------
@@ -217,9 +229,7 @@ ns.JourneyRecap.RegisterMoment("duel", { order = 80, list = LIST, field = "duel"
         fields = {
             { key = "name", type = "person", guid = "guid", most = 40, label = "Opponent",
                 hint = "who it was, or leave this empty" },
-            { key = "last", type = "choice", values = { "won", "lost" }, label = "Last duel",
-                names = { won = "Won", lost = "Lost" } },
-            { key = "won", type = "number", min = 0, max = 99, label = "Duels won", hint = "blank for one duel" },
+            { key = "won", type = "number", min = 0, max = 99, label = "Duels won" },
             { key = "lost", type = "number", min = 0, max = 99, label = "Duels lost" },
             { key = "theyFled", type = "number", min = 0, max = 99, label = "They fled" },
             { key = "fled", type = "number", min = 0, max = 99, label = "You fled" },

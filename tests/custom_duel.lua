@@ -78,10 +78,10 @@ do
     Eq(Read()[1], rec, "nothing custom is read as it is, no copy")
     Eq(Duels.Note(rec, true), "lost a duel to Bram", "named from the diary, the record holding no name")
 
-    Custom.Edit("duel", rec, { last = "won" })
+    Custom.Edit("duel", rec, { won = 1, lost = "" })
     local read = Read()[1]
     Eq(read.customOf, rec, "the copy knows its record")
-    Eq(Duels.Note(read, true), "beat Bram in a duel", "the note says what was ticked")
+    Eq(Duels.Note(read, true), "beat Bram in a duel", "the note says what the counts say")
     Eq(Duels.Phrase({ read }), "a duel won", "the caption's words too")
     local _, lines = Duels.Tip(read, now)
     Eq(lines[1], "You won", "and the tooltip")
@@ -112,15 +112,15 @@ do
 end
 
 --------------------------------------------------------------------------
-Section("a detected flight, on a form with two boxes")
+Section("a detected flight, changed by its counts")
 
 do
     local flight = Series({ theyFled = 1, last = "they_fled" })
     j.duels = { flight }
     Custom.Edit("duel", flight, { name = "Old Tom" })
     Eq(Duels.Note(Read()[1], true), "Old Tom fled the duel", "a change elsewhere leaves the flight told")
-    Custom.Edit("duel", Read()[1], { last = "lost" })
-    Eq(Duels.Note(Read()[1], true), "lost a duel to Old Tom", "a box ticked over it says so")
+    Custom.Edit("duel", Read()[1], { lost = 1, theyFled = "" })
+    Eq(Duels.Note(Read()[1], true), "lost a duel to Old Tom", "new counts say so, its old result no longer believed")
     Custom.Reset(flight)
     Eq(Duels.Note(flight, false), "they fled the duel", "and Undo gives it back")
 end
@@ -131,14 +131,14 @@ Section("capture carries on underneath")
 do
     local series = Series({ lost = 1, last = "lost", ended = now - 60 })
     j.duels = { series }
-    Custom.Edit("duel", series, { name = "Old Tom", last = "won" })
+    Custom.Edit("duel", series, { name = "Old Tom", won = 1, lost = "" })
 
     local _, added = Duels.Added(BRAM, "lost", now - 30, now - 10, PLACE)
     Eq(added, series, "a rematch with the one really there finds the edited record")
     Eq(#j.duels, 1, "...and makes no new one")
     Eq(series.lost, 2, "its count goes on under the changes")
     Eq(series.ended, now - 10, "its end too")
-    Eq(series.custom.last, "won", "the player's word is left alone")
+    Eq(series.custom.won, 1, "the player's word is left alone")
     Eq(series.custom.name, "Old Tom", "and the name they wrote")
     Eq(Read()[1].name, "Old Tom", "the page reads their word over it")
     Custom.Reset(series)
@@ -168,14 +168,14 @@ Section("an inserted card, which capture never finds")
 do
     j.duels, j.custom = {}, nil
     local rows = ns.db.interactions[BRAM] and #ns.db.interactions[BRAM] or 0
-    local card = Custom.Insert("duel", { name = "Bram", guid = BRAM, last = "won", won = "", lost = "", theyFled = "",
+    local card = Custom.Insert("duel", { name = "Bram", guid = BRAM, won = 1, lost = "", theyFled = "",
         fled = "" }, WHERE)
     Check(card, "inserted")
     Eq(card.guid, BRAM, "linked")
     Eq(card.ended, nil, "no end, which only capture knows")
     local read = Read()[1]
     Check(read.inserted and read.customOf == card, "read as inserted")
-    Eq(Duels.Note(read, true), "beat Bram in a duel", "one duel, no counts asked")
+    Eq(Duels.Note(read, true), "beat Bram in a duel", "one duel, by its count")
     Eq(Duels.Phrase({ read }), "a duel won", "its caption")
     Eq(Slip.Choose({ { at = { 1, 1 }, list = { { kind = "duel", duel = read } } } }), nil,
         "not among those the plate's one note is chosen from")
@@ -198,15 +198,15 @@ do
     Eq(card.lost, nil, "nor counted on")
     card.ended = nil
     rows = ns.db.interactions[BRAM] and #ns.db.interactions[BRAM] or 0
-    Custom.Edit("duel", read, { last = "lost" })
-    Eq(card.last, "lost", "an inserted card takes changes outright")
+    Custom.Edit("duel", read, { won = "", lost = 1 })
+    Eq(card.lost, 1, "an inserted card takes changes outright")
     Eq(card.custom, nil, "with no list of changes")
     Eq(#(ns.db.interactions[BRAM] or {}), rows, "an edit writes no People row either")
     Custom.Remove(card)
     Eq(#j.custom, 0, "removed")
 
     -- Left blank: it is not for the diary to say who won.
-    local blank = Custom.Insert("duel", { name = "", last = "" }, WHERE)
+    local blank = Custom.Insert("duel", { name = "" }, WHERE)
     Eq(Duels.Note(blank, true), "a duel", "nothing said, nothing claimed")
     Eq(Duels.Phrase({ blank }), "a duel", "in the caption")
     local title, lines = Duels.Tip(blank, now)
@@ -235,7 +235,7 @@ do
     Eq(series.custom, nil, "shown again, nothing behind")
 
     Custom.Edit("duel", series, { name = "Wren", guid = WREN })
-    local card = Custom.Insert("duel", { name = "Wren", guid = WREN, last = "won" }, WHERE)
+    local card = Custom.Insert("duel", { name = "Wren", guid = WREN, won = 1 }, WHERE)
     local plain = Series({ won = 1, last = "won", t = t0 + 1500 })
     j.duels[2] = plain
     ns.ForgetEverywhere(WREN)
@@ -259,7 +259,7 @@ do
     local list = {}
     for i = 1, 5 do list[i] = Series({ t = t0 + i, won = 1, last = "won" }) end
     j.duels = list
-    list[1].custom = { last = "lost" }
+    list[1].custom = { lost = 1 }
     local cap = J.T.duels
     J.T.duels = 5
     J.Append(j, "duels", Series({ t = t0 + 6, won = 1, last = "won" }), PLACE)
@@ -374,7 +374,7 @@ do
     Eq(page.customDuelsWritten, 0, "and no custom one")
 
     -- One of the player's, alone: on the print, as an automatic one is.
-    Road(nil, { { name = "Wren", guid = WREN, last = "lost" } })
+    Road(nil, { { name = "Wren", guid = WREN, lost = 1 } })
     p = Isle()
     Check(p and p.slot.light, "setup: a card of theirs keeps the plate light")
     Check(p.duelPrint and p.duelPrint.rec.customOf, "the card is on the print")
@@ -393,7 +393,7 @@ do
     view:Hide(true)
 
     -- Both: the player's on the print, the automatic one moved to the margin.
-    Road({ won = 1, last = "won", guid = BRAM, subZone = "Zephras Isle" }, { { name = "Wren", guid = WREN, last = "lost" } })
+    Road({ won = 1, last = "won", guid = BRAM, subZone = "Zephras Isle" }, { { name = "Wren", guid = WREN, lost = 1 } })
     p = Isle()
     Check(p.duelPrint.rec.customOf, "the player's takes the print")
     Eq(p.duel.rec.customOf, nil, "the plate's one is the automatic")
@@ -407,14 +407,14 @@ do
     -- Good luck keeps the print, as it does from an automatic duel.
     local luck = {}
     for k, v in pairs(LUCK) do luck[k] = v end
-    Road(nil, { { name = "Wren", guid = WREN, last = "lost" } }, luck)
+    Road(nil, { { name = "Wren", guid = WREN, lost = 1 } }, luck)
     p = Isle()
     Check(p.print, "setup: good luck on the print")
     Eq(p.duelPrint, nil, "a card does not take it from good luck")
     Eq(#p.customDuels, 1, "the card is still wanted in the margin")
 
     -- Two of theirs: the newest on the print, the other its own note.
-    Road(nil, { { name = "Old Tom", last = "won" }, { name = "Wren", guid = WREN, last = "lost" } })
+    Road(nil, { { name = "Old Tom", won = 1 }, { name = "Wren", guid = WREN, lost = 1 } })
     p = Isle()
     Eq(#p.customDuels, 2, "two cards on the plate")
     Check(p.duelPrint, "one on the print")
@@ -432,7 +432,7 @@ do
         return Open(12)
     end
     FullRoad({ won = 1, last = "won", guid = BRAM, subZone = "Zephras Isle" },
-        { { name = "Wren", guid = WREN, last = "lost" }, { name = "Old Tom", last = "won" } })
+        { { name = "Wren", guid = WREN, lost = 1 }, { name = "Old Tom", won = 1 } })
     local p = Isle()
     Check(p and not p.slot.light, "setup: a full plate")
     Eq(p.duelPrint, nil, "no print to go on")
@@ -483,9 +483,31 @@ do
     Road()
     ns.SetSetting("keepRoute", false)
     Eq(J.Kept(), nil, "setup: capture is off")
-    local card = Custom.Insert("duel", { name = "Old Tom", last = "won" }, { mapID = 2665, x = 0.5, y = 0.5,
+    local card = Custom.Insert("duel", { name = "Old Tom", won = 1 }, { mapID = 2665, x = 0.5, y = 0.5,
         from = t5 + 2100, to = t5 + 3900 })
     Check(card, "a card can still be written")
-    Check(Custom.Edit("duel", card, { last = "lost" }), "and changed")
+    Check(Custom.Edit("duel", card, { lost = 1 }), "and changed")
     ns.SetSetting("keepRoute", true)
+end
+
+--------------------------------------------------------------------------
+Section("the form has no result of its own: the counts say it")
+
+do
+    local fields = {}
+    for _, field in ipairs(Custom.Spec("duel").fields) do fields[field.key] = true end
+    Eq(fields.last, nil, "no Last duel on the form")
+    -- An edit elsewhere leaves a detected duel's result, and a tie reads as one.
+    local one = Series({ lost = 1, last = "lost" })
+    j.duels = { one }
+    Custom.Edit("duel", one, { name = "Old Tom" })
+    Eq(Duels.Note(Read()[1], true), "lost a duel to Old Tom", "its result stays where its count bears it out")
+    Custom.Edit("duel", Read()[1], { lost = "" })
+    Eq(Duels.Note(Read()[1], true), "duelled Old Tom", "no count left, no result claimed")
+    Eq(one.last, "lost", "the detected value stays underneath")
+    Custom.Reset(one)
+    Eq(Duels.Note(one, true), "lost a duel to Bram", "Undo gives it back")
+    local tied = Custom.Insert("duel", { name = "Wren", won = 1, lost = 1 }, WHERE)
+    Eq(Duels.Note(tied, true), "1 each with Wren", "a tie, plainly")
+    Custom.Remove(tied)
 end

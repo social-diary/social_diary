@@ -163,7 +163,7 @@ local NOOPS = {
     "SetShadowOffset", "SetShadowColor", "SetGradient", "SetDesaturated",
     "SetAtlas", "AddMaskTexture", "SetRotation", "SetHitRectInsets",
     "SetFixedFrameStrata", "SetFixedFrameLevel", "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetVertexOffset",
-    "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
+    "SetPassThroughButtons", "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
 }
 
 local ANCHORS = {}
@@ -260,6 +260,14 @@ local function NewWidget(frameType, name, parent, template)
     function w:IsShown() return self.shown end
     -- Whether the mouse is over it: what a test says (`mouseOver`).
     function w:IsMouseOver() return self.mouseOver == true end
+    -- Whether it hears clicks: EnableMouse, then SetMouseClickEnabled.
+    function w:SetMouseClickEnabled(on) self.clicksOn = on end
+    function w:IsMouseClickEnabled()
+        if self.clicksOn ~= nil then return self.clicksOn end
+        local mouse = rec.calls.EnableMouse
+        return mouse ~= nil and mouse[1] == true
+    end
+    function w:GetChildren() return unpack(self.children or {}) end
     function w:IsVisible() return self.shown end
     function w:SetShown(value) if value then self:Show() else self:Hide() end end
 
@@ -462,6 +470,10 @@ local named = {}
 
 _G.CreateFrame = function(frameType, name, parent, template)
     local w = NewWidget(frameType or "Frame", name, parent, template)
+    if type(parent) == "table" then
+        parent.children = parent.children or {}
+        parent.children[#parent.children + 1] = w
+    end
     if name then _G[name], named[#named + 1] = w, name end
     return w
 end

@@ -172,10 +172,9 @@ ns.JourneyRecap.RegisterMoment("killedBy", { order = 15, entry = "killedBy", fie
             return d.name .. (d.spell and (", with " .. d.spell) or "")
         end,
         fields = {
-            { key = "name", type = "text", label = "Creature" },
+            { key = "name", type = "text", label = "Killed by" },
             -- The close call's two, for the same reason (Features/CloseCalls/Kind.lua).
             { key = "rank", type = "choice", values = { "rare", "elite" }, label = "Type",
                 names = { rare = "Rare", elite = "Elite" } },
-            { key = "spell", type = "text", label = "Killed with" },
         },
     } })

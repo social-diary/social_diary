@@ -9,17 +9,22 @@
 -- The book is put aside while the run is out (the user, 17 Oct: the book
 -- showing round the map was irritating): nothing of it shows, its cover,
 -- pages, ribbons, tabs and close button, as it is made see-through (Away)
--- and nothing else about it changes, so it comes back exactly as it was:
+-- and nothing else about it changes but that it hears no click (Deaf), so
+-- it comes back exactly as it was:
 -- the same person, tab and timeline scroll, where it lay and at its size.
 -- It stays open while it is away (so its own "shut" still closes the run,
--- and nothing it shows is torn down), and it takes no click, as the spread
--- covers the screen over it. The spread is the screen's, not the book's
+-- and nothing it shows is torn down). The spread is the screen's, not the book's
 -- (a child of the book would vanish with it), at the book's scale, so the
 -- scene lies where the book lay: the sheet comes down on the book's
 -- middle. Where that would take it off the screen (the book dragged to an
 -- edge, a small screen), the sheet slides just as far as it must; only a
 -- screen too small for the sheet at all shrinks the spread
 -- (DungeonPage.Lie).
+--
+-- A right press beside the sheet goes through to whatever lies under it, the
+-- world first of all, so the camera still turns and things can still be
+-- clicked with the run out (the user, 1 Nov 2026: it put the run away).
+-- PassRight.
 --
 -- Opened by a click on the run's card on the timeline (UI/Journal/
 -- Timeline.lua) through ns.UI.OpenVisit, the one way in (DGN-1; Your
@@ -146,18 +151,48 @@ end
 
 DungeonPage.StandIn = StandIn
 
+-- Stops `frame` and all under it hearing clicks, each that did noted in
+-- `heard`: a see-through frame still takes them, and a right press let
+-- through the spread would land on the book's rows and tabs, and stop short
+-- of the world, wherever the book lies past the sheet.
+local function Deaf(frame, heard)
+    if frame:IsMouseClickEnabled() then
+        frame:SetMouseClickEnabled(false)
+        heard[#heard + 1] = frame
+    end
+    for _, child in ipairs({ frame:GetChildren() }) do Deaf(child, heard) end
+end
+
 -- The book put aside while the run is out (`away`), and back as it was:
--- see-through, and nothing else about it touched. Its own alpha kept, to
--- give back.
+-- see-through and deaf, and nothing else about it touched. Its own alpha and
+-- what heard clicks kept, to give back.
 local function Away(away)
     local book = J.journal
     if away then
-        if spread.bookAlpha == nil then spread.bookAlpha = book:GetAlpha() end
+        if spread.bookAlpha == nil then
+            spread.bookAlpha = book:GetAlpha()
+            spread.bookHeard = {}
+            Deaf(book, spread.bookHeard)
+        end
         book:SetAlpha(0)
     elseif spread.bookAlpha ~= nil then
         book:SetAlpha(spread.bookAlpha)
         spread.bookAlpha = nil
+        for _, frame in ipairs(spread.bookHeard) do frame:SetMouseClickEnabled(true) end
+        spread.bookHeard = nil
     end
+end
+
+-- Right presses through the table beside the sheet. The client blocks this
+-- in combat (Build waits for it to end, if the first run is laid out in a
+-- fight); it holds from then on.
+local function PassRight(host)
+    if InCombatLockdown() then
+        host:RegisterEvent("PLAYER_REGAIN_ENABLED")
+        return
+    end
+    host:UnregisterEvent("PLAYER_REGAIN_ENABLED")
+    host.map:SetPassThroughButtons("RightButton")
 end
 
 --------------------------------------------------------------------------
@@ -413,7 +448,12 @@ local function Build()
     spread = host
 
     host.map = DungeonPage.Sheet(host)
-    host.map.onPutAway = function() DungeonPage.Close() end
+    -- The left button: the right goes through (PassRight), and in the fight
+    -- that holds that up it still must not put the run away.
+    host.map.onPutAway = function(button)
+        if button ~= "RightButton" then DungeonPage.Close() end
+    end
+    PassRight(host)
     host.map.onMeasure = Fit
     -- The wheel stops at the table: the book under it, put aside, keeps
     -- its timeline where it was.
@@ -426,7 +466,8 @@ local function Build()
     -- The screen changed under it: fitted again.
     host:RegisterEvent("UI_SCALE_CHANGED")
     host:RegisterEvent("DISPLAY_SIZE_CHANGED")
-    host:SetScript("OnEvent", function(self)
+    host:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGAIN_ENABLED" then return PassRight(self) end
         if self:IsShown() and J.visit then DungeonPage.Refresh() end
     end)
     -- Shut with the book; opened again, the book opens on the person.

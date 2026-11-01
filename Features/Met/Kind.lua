@@ -53,6 +53,6 @@ ns.JourneyRecap.RegisterMoment("met", { order = 85, entry = "met", field = "met"
         -- and what its narrowest column cuts the tooltip keeps (Strip.lua).
         fields = {
             { key = "who", type = "person", label = "Who", hint = "Someone in your diary, or any name" },
-            { key = "what", type = "text", label = "Together", hint = "What you did, in a line" },
+            { key = "what", type = "text", label = "Description", hint = "What you did, in a line" },
         },
     } })

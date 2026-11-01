@@ -93,13 +93,13 @@ function Text.RunDiedTo(name, killer)
     return ("%s died"):format(name)
 end
 
--- After the signatures: the party not in the diary, "and one you didn't
--- keep"; and what had no room, "and 34 others".
+-- After the names: members a run saved no name for, "and one you didn't
+-- keep"; and who has no room on this turn of the list, "and 34 others".
 function Text.RunStrangers(n)
     return ("and %s you didn't keep"):format(Said(n))
 end
 function Text.RunOthers(n)
-    return ("and %d others"):format(n)
+    return ("and %d other%s"):format(n, n == 1 and "" or "s")
 end
 
 Text.RUN = {
@@ -109,6 +109,7 @@ Text.RUN = {
     someone = "someone",
     open = "Click to open its map.",
     sheet = "Click to open its sheet.",
+    add = "+ Add",
 }
 
 -- The title's tooltip, TLN-12's line: "Razorfen Kraul, 35 min, 4 of 6

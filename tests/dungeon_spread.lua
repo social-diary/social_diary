@@ -366,6 +366,27 @@ Section("the other ways back")
 ns.UI.OpenVisit(RFK.id, G)
 map.scripts.OnMouseDown(map)
 Eq(Out(), nil, "a click beside the sheet did not put it away")
+-- The right button goes through to the world, and never puts it away.
+ns.UI.OpenVisit(RFK.id, G)
+Eq(map.recorded.calls.SetPassThroughButtons[1], "RightButton", "a right press stops at the table")
+map.scripts.OnMouseDown(map, "RightButton")
+Eq(Out(), RFK.id, "a right press beside the sheet put it away")
+map.scripts.OnMouseDown(map, "LeftButton")
+Eq(Out(), nil, "a left click beside the sheet did not put it away")
+-- The book it would land on hears no click while the run is out, and hears
+-- them again after.
+local function Hearing(frame, found)
+    found = found or {}
+    if frame:IsMouseClickEnabled() then found[#found + 1] = frame end
+    for _, child in ipairs({ frame:GetChildren() }) do Hearing(child, found) end
+    return found
+end
+local heard = #Hearing(panel)
+Check(heard > 0, "nothing on the book hears clicks to begin with")
+ns.UI.OpenVisit(RFK.id, G)
+Eq(#Hearing(panel), 0, "the see-through book still takes clicks")
+Page.Close()
+Eq(#Hearing(panel), heard, "the book did not get its clicks back")
 -- A click on the sheet itself does not.
 ns.UI.OpenVisit(RFK.id, G)
 Check(map.sheet.recorded.calls.EnableMouse[1], "the sheet lets clicks through to the table")

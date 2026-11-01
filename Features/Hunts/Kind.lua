@@ -483,7 +483,7 @@ local function CustomSpec(label, heading, at, defaults)
 end
 
 ns.JourneyRecap.RegisterMoment("luck", { order = 30, entry = "hunts", field = "hunt", rank = 3,
-    custom = CustomSpec("Bad Luck", "A slow hunt", 1, { need = 5, kills = 30 }),
+    custom = CustomSpec("Bad Luck", "Unlucky Quest Drops", 1, { need = 5, kills = 30 }),
     gather = function(j, a, b, e)
         local usual = Hunts.UsualLuck(j) or false
         for _, hunt in ipairs(Hunts.List(j)) do
@@ -507,5 +507,5 @@ ns.JourneyRecap.RegisterMoment("luck", { order = 30, entry = "hunts", field = "h
         end
     end })
 ns.JourneyRecap.RegisterMoment("fortune", { order = 40, entry = "fortunes", field = "hunt", rank = 3, light = true,
-    custom = CustomSpec("Good Luck", "A lucky hunt", 2, { need = 1, kills = 2, expected = 20 }),
+    custom = CustomSpec("Good Luck", "Lucky Quest Drops", 2, { need = 1, kills = 2, expected = 20 }),
     gather = function() end })

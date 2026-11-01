@@ -333,3 +333,193 @@ run.waiting = nil
 before = run.plan
 mock.fire("GET_ITEM_INFO_RECEIVED", 6685, true)
 Check(run.plan == before, "not drawn again when nothing waited")
+
+--------------------------------------------------------------------------
+Section("the map at full strength")
+
+-- The scrap, and the same floor on the table: as it was drawn, nothing
+-- greying or thinning it (the user, 1 Nov 2026).
+local scrap = run.used["strip:scrap"] and run.used["strip:scrap"][1]
+Check(scrap and #scrap.run.tiles > 0, "the run's page shows its scrap")
+for _, t in ipairs(scrap.run.tiles) do
+    local c = t.recorded.calls.SetVertexColor
+    Check(c[1] == 1 and c[2] == 1 and c[3] == 1 and c[4] == 1, "a scrap's tile is tinted or thinned")
+    Eq(t.recorded.calls.SetDesaturation, nil, "a scrap's tile is greyed")
+    Eq(t.recorded.calls.SetAlpha, nil, "a scrap's tile has an alpha of its own")
+end
+ns.UI.OpenVisit(RFK.id, "journey")
+local table_ = ns.UI.DungeonPage.Spread().map
+Check(table_.printer.tiles.used > 0, "the table's sheet prints the floor")
+for i = 1, table_.printer.tiles.used do
+    local t = table_.printer.tiles[i]
+    local c = t.recorded.calls.SetVertexColor
+    -- Only the fold's light: the same in all three inks.
+    Check(c[1] == c[2] and c[2] == c[3], "a table's tile is tinted")
+    local grey = t.recorded.calls.SetDesaturation
+    Check(grey == nil or grey[1] == 0, "a table's tile is greyed")
+end
+ns.UI.DungeonPage.Close()
+
+--------------------------------------------------------------------------
+Section("everyone on the run")
+
+local function Named(n, width)
+    local people = {}
+    for i = 1, n do people[i] = { big = width or 90, small = (width or 90) * 0.7 } end
+    return people
+end
+
+-- A party stays one row of signatures, as the page always had it.
+local laid = RunPage.Signatures({ people = Named(4, 80), addW = 30, moreW = 80 })
+Eq(laid.roster, false, "four names sign along the foot")
+Eq(#laid.pages, 1, "on one page")
+Eq(laid.pages[1][2].y, RUN.sig.y + RUN.sig.drop, "every other one a little lower")
+
+-- A raid: everyone exactly once, nobody off their row or past the rest,
+-- whatever the fallen note leaves, however long the names.
+for _, open in ipairs({ false, true }) do
+    for _, width in ipairs({ 40, 90, 150 }) do
+        for n = 5, 39 do
+            laid = RunPage.Signatures({ people = Named(n, width), addW = 30, moreW = 80, open = open })
+            local seen, R = {}, RUN.sig.roster
+            if laid.roster then
+                for _, page in ipairs(laid.pages) do
+                    local right = {}
+                    for _, at in ipairs(page) do
+                        Check(not seen[at.i], "a name written twice")
+                        seen[at.i] = true
+                        local row = R.rows[at.row]
+                        Eq(at.y, row.y, "a name off its row")
+                        Check(at.x >= (right[at.row] or RUN.sig.x), "two names meet on a row")
+                        right[at.row] = at.x + at.w
+                        local stop = (at.row == 1 and open) and RUN.sig.stop or row.stop
+                        Check(at.x + at.w <= stop, ("a name past the row's end (%d names, %d wide)"):format(n, width))
+                    end
+                    if #laid.pages > 1 then
+                        Check(page.more, "a page with others says so")
+                        Check(page.more.x >= (right[#R.rows] or 0), "the count lies on a name")
+                        Check(page.more.x + 80 <= R.rows[#R.rows].stop, "the count runs past the row")
+                    else
+                        Eq(page.more, nil, "nobody else to count")
+                    end
+                end
+                for i = 1, n do Check(seen[i], "a name left out") end
+            end
+        end
+    end
+end
+-- Its rows clear what they lie under, and the page's foot.
+local R = RUN.sig.roster
+Check(R.rows[1].stop <= RUN.fallen.x - 4, "the first row runs under the fallen note")
+Check(R.rows[1].y - R.size >= 459, "the first row runs under the scrap")
+Check(R.rows[2].y - R.size >= R.rows[1].y + R.add + 6, "the rows' words meet")
+Check(R.rows[2].y + R.add + 7 <= 534, "the last + Add runs off the page")
+Check(RUN.sig.y + RUN.sig.drop + RUN.sig.add + 7 <= 534, "a signature's + Add runs off the page")
+
+-- Who it holds: the order they joined, the diary's marked, a member with
+-- no name anywhere only counted, the user and a repeat left out.
+local LOST, ASH = "Player-1-0000B004", "Player-1-0000B005"
+local old = { id = 901, me = ME, members = { { guid = ME, first = "You" }, { guid = ZURI, first = "Zuri" },
+    { guid = LOST }, { guid = BROM, first = "Brom" }, { guid = ZURI, first = "Zuri" } } }
+local party, nameless = Run.Party(old, Diary)
+Eq(#party, 2, "the rest of the party")
+Eq(party[1].first .. party[2].first, "ZuriBrom", "in the order they joined")
+Eq(party[1].kept, false, "Zuri is not in the diary")
+Eq(party[2].kept, true, "Brom is")
+Eq(nameless, 1, "a member the run saved no name for is counted, no name made up")
+Eq(Text.RunOthers(1), "and 1 other", "one other")
+Eq(Text.RunOthers(34), "and 34 others", "many others")
+
+-- Keep: a record pruned since is written back from the run, dated as it was.
+local dated = { id = 902, me = ME, name = "Razorfen Kraul", instanceID = 47, startedAt = 1000, endedAt = 4000,
+    members = { { guid = ME, first = "You" }, { guid = ASH, first = "Ashlyn", surname = "Vale", class = "MAGE", level = 24 } } }
+Eq(ns.Characters.Get(ASH), nil, "setup: no record of Ashlyn")
+local entry, added = Run.Keep(dated, ASH)
+Check(entry and added, "added off the run's own record")
+Eq(ns.Characters.FullName(ASH), "Ashlyn Vale", "with the name the run saved")
+Eq(ns.Characters.Get(ASH).class, "MAGE", "and the class")
+Eq(entry.addedContext.source, "run", "added from a run")
+Eq(entry.addedContext.zone, "Razorfen Kraul", "met there")
+ns.Characters.Forget(ASH)
+
+-- On the page: pencil and "+ Add" for who is not in the diary; a click adds
+-- them, the same page drawn again, nobody moved, their "+ Add" gone.
+local function FindAdd(guid)
+    local h = run.used.hit
+    for i = 1, h.n do
+        if h[i].add == guid then return h[i] end
+    end
+end
+local function SigBox(guid)
+    local h = run.used.hit
+    for i = 1, h.n do
+        if h[i].box and h[i].box.guid == guid then return h[i].box end
+    end
+end
+local Wren = { guid = "Player-1-0000B010", first = "Wrenna", surname = "Oak", class = "DRUID", level = 22 }
+RFK.members[#RFK.members + 1] = Wren
+RFK.members[#RFK.members + 1] = { guid = LOST }
+ns.UI.RedrawJourneyPage()
+local add = FindAdd(Wren.guid)
+Check(add, "a member not in the diary has a + Add")
+local linkWords = {}
+for i = 1, run.used.sigLink.n do linkWords[run.used.sigLink[i]:GetText()] = true end
+Check(linkWords["+ Add"], "in the user's words")
+Check(add.box.y > SigBox(Wren.guid).y, "below their name")
+Check(add.box.y >= SigBox(Wren.guid).y + SigBox(Wren.guid).h - 1, "under, not over, the name")
+local kept = 0
+for _, m in ipairs(RFK.members) do
+    if m.guid ~= RFK.me and ns.Diary.IsDiary(m.guid) then
+        kept = kept + 1
+        Eq(FindAdd(m.guid), nil, "someone in the diary has no + Add")
+    end
+end
+Eq(run.unnamed, "and one you didn't keep", "a nameless member counted in the old words")
+Eq(FindAdd(LOST), nil, "and has no + Add: there is no name to write")
+
+local place = SigBox(Wren.guid).x
+local mode, open_, piece = page.mode, page.open, page.piece
+add.scripts.OnClick(add)
+Check(ns.Diary.IsDiary(Wren.guid), "+ Add puts them in the diary")
+Eq(FindAdd(Wren.guid), nil, "and it no longer shows")
+Eq(page.mode .. ":" .. tostring(page.runVisit), mode .. ":" .. RFK.id, "the same run's page")
+Eq(page.open, open_, "on the same entry")
+Eq(page.piece, piece, "and sitting")
+Eq(SigBox(Wren.guid).x, place, "nobody moved")
+Check(SigBox(Wren.guid), "their name still there, a signature now")
+
+-- A raid turned over: each turn its own names, "and n others" true on each,
+-- round to the first again.
+local raidBase = #RFK.members
+for i = 1, 30 do
+    RFK.members[#RFK.members + 1] = { guid = ("Player-1-0000C%03d"):format(i), first = "Raider" .. i }
+end
+ns.UI.RedrawJourneyPage()
+Eq(run.party.roster, true, "a raid goes on the roster")
+Check(#run.party.pages > 1, "and turns over")
+local function Others()
+    local h = run.used.hit
+    for i = 1, h.n do
+        if h[i].others then return h[i] end
+    end
+end
+local shown = {}
+for turn = 1, #run.party.pages do
+    Eq(run.partyPage, turn, "turn " .. turn)
+    local h = run.used.hit
+    for i = 1, h.n do
+        if h[i].box and h[i].box.guid then shown[h[i].box.guid] = true end
+    end
+    local o = Others()
+    Check(o, "this turn says who else")
+    o.scripts.OnEnter(o)
+    Eq(GameTooltip.lines ~= nil, true, "and names them")
+    o.scripts.OnLeave(o)
+    o.scripts.OnClick(o)
+end
+Eq(run.partyPage, 1, "round to the first")
+for _, m in ipairs(RFK.members) do
+    if m.guid ~= RFK.me and m.first then Check(shown[m.guid], "someone on no turn") end
+end
+for i = #RFK.members, raidBase + 1, -1 do RFK.members[i] = nil end
+RFK.members[#RFK.members] = nil -- the nameless one

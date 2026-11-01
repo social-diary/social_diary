@@ -209,7 +209,7 @@ function Witnesses.Written(rec, mark)
     local deed = DEEDS[rec.deed] or DEEDS[DEED_PLAIN]
     return { kind = deed.kind, type = deed.type, watched = deed.watched, guid = rec.guid, name = rec.name,
         t = rec.t, level = rec.level, others = 0, pct = rec.pct,
-        creature = rec.creature and { name = rec.creature, rank = rec.rank } or nil, written = rec, mark = mark }
+        creature = rec.creature and { name = rec.creature, rank = rec.rank, bare = rec.bare == "yes" } or nil, written = rec, mark = mark }
 end
 
 -- Rank 3 as a death and a close call have it, the moments a witness belongs to,
@@ -229,15 +229,15 @@ ns.JourneyRecap.RegisterMoment("witnessed", { order = 25, entry = "witnessed", f
         defaults = { deed = DEED_PLAIN },
         fields = {
             { key = "name", type = "person", guid = "guid", label = "Who", hint = "Anyone, in your diary or not" },
-            -- Short because a box and its word have 70 px on the form
+            -- Short because a box and its word have 86 px on the form
             -- (CardSheet's SHEET.toggle); "saw you die" would run into the next.
-            { key = "deed", type = "choice", values = { "saw", "tried", "saved" }, label = "What they did",
+            { key = "deed", type = "choice", values = { "saw", "tried", "saved" }, label = "Their role",
                 names = { saw = "Saw it", tried = "Tried", saved = "Saved" } },
             { key = "creature", type = "text", label = "Creature" },
-            -- Only for how the card names it: a rare goes bare, "from Hogger",
-            -- not "from a Hogger" (Text.KillerName). Elite changes no word on
-            -- this card, so it is not offered.
-            { key = "rank", type = "choice", values = { "rare" }, label = "Type", names = { rare = "Rare" } },
+            -- Only for how the card names it: ticked, "from Hogger" and not "from a
+            -- Hogger" (Text.KillerName). The user's in place of a rank, 2 Nov.
+            { key = "bare", type = "choice", values = { "yes" }, label = "Article",
+                names = { yes = "Disable (\"A Hogger\")" } },
             { key = "pct", type = "number", min = 0, max = 100, label = "Health left",
                 hint = "%, if they saved you" },
         },

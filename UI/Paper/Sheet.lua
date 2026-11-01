@@ -27,7 +27,7 @@
 --
 -- A sheet covers what it lies on and takes the clicks there, so nothing
 -- under it answers. With `view.onPutAway` set (the map), a click beside it
--- puts it away; without (a note), it stays until its own buttons close it.
+-- puts it away (it is told which button); without (a note), it stays until its own buttons close it.
 --
 -- Glued in (`glued`, JRN-21): a plate in the diary (UI/Journey/Plate.lua).
 -- It did not fall and will not be put away: it is glued where it is
@@ -201,7 +201,7 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     -- 9 Oct: it swallowed the margin notes' hover).
     view:EnableMouse(not opts.glued)
     if not opts.glued then
-        view:SetScript("OnMouseDown", function() if view.onPutAway then view.onPutAway() end end)
+        view:SetScript("OnMouseDown", function(_, button) if view.onPutAway then view.onPutAway(button) end end)
     end
 
     -- The square the sheet turns in: its middle is the turning point, and

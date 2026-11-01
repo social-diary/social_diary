@@ -189,7 +189,7 @@ do
 
     local rescue = CardOf("Old Friend")
     Eq(rescue:Deed(), "saved you", "the deed on the card")
-    Eq(rescue:Foe(), "from Old Tom", "the creature")
+    Eq(rescue:Foe(), "from an Old Tom", "the creature, with no way now to say it is one of a kind")
     Eq(rescue.plan.row and rescue.plan.row.kind, "chart", "the chart")
     Eq(rescue.guid, nil, "a typed name has no link")
     Eq(CardOf("Brannoc").guid, FRIEND, "a picked one links to their page")
@@ -369,4 +369,19 @@ do
     Open()
     Eq(page.customWitnessesWritten, 1, "on the page")
     Custom.Remove(rec)
+end
+
+--------------------------------------------------------------------------
+Section("the article's box")
+
+do
+    local spec, W = ns.Custom.Spec("witnessed"), ns.Witnesses
+    local bare
+    for _, field in ipairs(spec.fields) do
+        if field.key == "bare" then bare = field end
+        Check(field.key ~= "rank", "no rank on the form")
+    end
+    Check(bare and #bare.values == 1, "one box")
+    Eq(W.Foe(W.Written({ deed = "saved", creature = "Hogger" })), "from a Hogger", "unticked, an article")
+    Eq(W.Foe(W.Written({ deed = "saved", creature = "Hogger", bare = "yes" })), "from Hogger", "ticked, none")
 end

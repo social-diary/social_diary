@@ -79,7 +79,7 @@ do
     Eq(spec.creature, "name", "a known name brings its creature")
     local keys = {}
     for i, field in ipairs(spec.fields) do keys[i] = field.key end
-    Eq(table.concat(keys, " "), "name rank spell", "what the card shows, and nothing else")
+    Eq(table.concat(keys, " "), "name rank", "what the card shows, and nothing else")
     Eq(spec.describe({ name = "Old Tom", spell = "Bite" }), "Old Tom, with Bite", "a menu's line")
     Eq(spec.describe({}), "A death", "one with no creature")
     local kit = ns.UI.JourneyPlate.MARKS.killedBy
@@ -117,7 +117,7 @@ do
     j.deaths, STOP.act = nil, nil
     local before = 0
     for _, seg in ipairs(j.segments) do before = before + ((seg.act and seg.act.deaths) or 0) end
-    made = Custom.Insert("killedBy", { name = "Old Tom", rank = "rare", spell = "Bite" }, WHERE)
+    made = Custom.Insert("killedBy", { name = "Old Tom", rank = "rare" }, WHERE)
     Eq(j.custom[1], made, "on the custom list")
     Eq(j.deaths, nil, "not on the deaths'")
     local after = 0
@@ -152,11 +152,10 @@ do
     local title, lines = ns.Deaths.KillerTip(card.killer, now)
     Eq(title, "Old Tom", "the tooltip's title")
     Eq(lines[1], "Rare", "its type")
-    Check(lines[2]:find("with Bite", 1, true) ~= nil, "what it killed you with")
 
     local tip, told = ns.UI.JourneyPlate.MARKS.killedBy.tip(plate.killedMarks[1].list[1])
     Eq(tip, "Died here", "its cross is told as the route's is")
-    Eq(told[1], "Old Tom, with Bite", "and what did it")
+    Eq(told[1], "Old Tom", "and what did it")
 
     -- A name the records know brings its picture, and renames nothing.
     j.deaths = { { t = t0 - 100, mapID = 1412, x = 0.1, y = 0.1, npcID = 3255, name = "Sunscale Lashtail", display = 1234 } }
@@ -239,7 +238,7 @@ do
     Eq(page.killersWritten, 1, "one card for two deaths")
     Eq(plate.killer.count, 2, "killed you twice")
 
-    Check(Custom.Edit("killedBy", rec, { name = "Old Tom", rank = "elite", spell = "Rend" }), "the edit")
+    Check(Custom.Edit("killedBy", rec, { name = "Old Tom", rank = "elite" }), "the edit")
     Eq(rec.name, "Sunscale Lashtail", "the detected name stays")
     Eq(ns.CreatureNames.Find(j, "Old Tom"), nil, "the typed name is on no creature")
     Eq(ns.CreatureNames.Find(j, "Sunscale Lashtail"), 3255, "and the creature keeps its own")
@@ -248,7 +247,7 @@ do
     Eq(page.killersWritten, 1, "beside the plate's one")
     Eq(plate.killer.count, 1, "which no longer counts it")
     Eq(plate.customKillers[1].name, "Old Tom", "its creature")
-    Eq(plate.customKillers[1].spell, "Rend", "its spell")
+    Eq(plate.customKillers[1].spell, rec.spell, "its detected spell stays")
     Eq(plate.customKillers[1].display, nil, "a name no record knows has no picture")
     Eq(plate.customKillers[1].probable, nil, "and no doubt: the player has said")
     Eq(plate.customKillers[1].death.customOf, rec, "its record, for the form")

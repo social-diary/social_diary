@@ -596,6 +596,50 @@ function DungeonRun.Keepsakes(visit, isDiary)
     return out
 end
 
+-- Everyone else on the run, in the order they joined, so nobody moves when
+-- one of them is added: { { guid, first, kept } }. The name is the one the
+-- run saved, else the character's; a member with neither (an old run's, whose
+-- record has since been pruned) has no name to write and is only counted, the
+-- second return. Someone in the diary always stays on the list.
+function DungeonRun.Party(visit, isDiary)
+    local me = visit.me or ns.ownGUID
+    local people, nameless, seen = {}, 0, {}
+    for _, m in ipairs(visit.members or {}) do
+        if m.guid and m.guid ~= me and not seen[m.guid] then
+            seen[m.guid] = true
+            local first = m.first
+            if not first or first == "" then first = ns.Characters.Name(m.guid) end
+            if first == "" then first = nil end
+            local kept = isDiary(m.guid)
+            if first or kept then
+                people[#people + 1] = { guid = m.guid, first = first, kept = kept }
+            else
+                nameless = nameless + 1
+            end
+        end
+    end
+    return people, nameless
+end
+
+-- Puts a member of the run in the diary (Diary.Add, the one way in, with no
+-- sheet to fill: as an add from Recently nearby), met in the run. A stranger's
+-- record is pruned with time while the run keeps their name, and the client
+-- may no longer know them: the record is written back from what the run saved.
+-- Returns what Diary.Add does.
+function DungeonRun.Keep(visit, guid)
+    if not ns.Characters.Get(guid) then
+        for _, m in ipairs(visit.members or {}) do
+            if m.guid == guid and m.first and m.first ~= "" then
+                ns.Characters.Observe(guid, { first = m.first, surname = m.surname, class = m.class,
+                    level = m.level, time = visit.endedAt or visit.startedAt })
+                break
+            end
+        end
+    end
+    return ns.Diary.Add(guid, { source = "run", where = { zone = visit.name, instanceID = visit.instanceID } })
+end
+
+
 -- Who died in the run, each once, in the order they first died: { guid,
 -- first (their name in the party), me, times, deaths = { death } } (each
 -- death the visit's own, with its killer); and how many deaths in all.

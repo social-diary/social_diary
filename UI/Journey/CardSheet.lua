@@ -168,7 +168,8 @@ local function NewRow(field)
             for value, box in pairs(row.toggles) do box:SetChecked(row.value == value) end
         end
         for i, value in ipairs(field.values) do
-            local box = Style.Checkbox(S, SHEET.toggle, field.names[value], function() return row.value == value end,
+            -- A lone box says more than a word, and has the line to say it on.
+            local box = Style.Checkbox(S, #field.values == 1 and SHEET.line or SHEET.toggle, field.names[value], function() return row.value == value end,
                 function(on)
                     row.value = on and value or nil
                     Tick()
@@ -254,8 +255,10 @@ local function RowsOf(kind, spec)
             if rows[i].box then boxes[#boxes + 1] = rows[i].box end
         end
         -- Tab walks the lines, as on the entry form.
+        -- Enter saves the card, on any line of any kind's form.
         for i, box in ipairs(boxes) do
             box:SetScript("OnTabPressed", function() boxes[i % #boxes + 1]:SetFocus() end)
+            box:SetScript("OnEnterPressed", function() view.save:GetScript("OnClick")(view.save) end)
         end
     end
     return rows
@@ -489,7 +492,8 @@ local function Lay(spec)
         if row.toggles then
             for _, box in pairs(row.toggles) do
                 K.PlaceButton(box, x + box.at % across * SHEET.toggle,
-                    y + math.floor(box.at / across) * SHEET.wrap - box.height / 2, SHEET.toggle, box.height)
+                    y + math.floor(box.at / across) * SHEET.wrap - box.height / 2,
+                    #row.field.values == 1 and SHEET.line or SHEET.toggle, box.height)
             end
         else
             local w = row.field.type == "number" and SHEET.short or SHEET.line

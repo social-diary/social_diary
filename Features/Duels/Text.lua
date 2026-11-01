@@ -27,16 +27,14 @@ end
 
 -- A series' counts in the words' order: the outcome it leads with
 -- (Duels.Balance), then how many it was won and lost by, flights counted
--- with their side. One duel at most goes by its latest (`last`), which capture
--- always agrees with: a player who ticks "Won" on a detected loss has changed
--- `last` over a count of one lost, and on a card they wrote there may be no
--- count at all, and the note, the caption and the tooltip must all say what they
--- ticked.
+-- with their side. One duel at most goes by its latest (Duels.Latest), and a card
+-- with no count at all says no result.
 function Duels.Score(rec)
     local up = (rec.won or 0) + (rec.theyFled or 0)
     local down = (rec.lost or 0) + (rec.fled or 0)
-    if up + down <= 1 and Duels.COUNT[rec.last] then
-        local won = rec.last == "won" or rec.last == "they_fled"
+    local last = Duels.Latest(rec)
+    if up + down <= 1 and Duels.COUNT[last] then
+        local won = last == "won" or last == "they_fled"
         return won and "won" or "lost", won and 1 or 0, won and 0 or 1
     end
     return Duels.Balance(rec), up, down
@@ -46,7 +44,8 @@ end
 -- off its counts where that wasn't kept. Nil where nothing says, as on a card
 -- the player left blank: it is not for the diary to call that a loss.
 local function Single(rec)
-    if Duels.COUNT[rec.last] then return rec.last end
+    local latest = Duels.Latest(rec)
+    if Duels.COUNT[latest] then return latest end
     if (rec.theyFled or 0) > 0 then return "they_fled" end
     if (rec.fled or 0) > 0 then return "fled" end
     if (rec.won or 0) > 0 then return "won" end

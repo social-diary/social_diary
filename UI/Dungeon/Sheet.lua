@@ -62,9 +62,10 @@ local SIZE = { w = 1212, h = 686, tall = 0.4 }
 -- ridge and a valley by turns, and a wrinkle near the middle of each
 -- panel (`wrinkle`, as a share of the panel, a little off).
 local GRIDS = { panel = 337 / 290, sizes = { { 3, 2 }, { 2, 2 }, { 2, 3 } }, wrinkle = { 0.51, 0.47, 0.53 } }
--- The printed art: greyed part way and warmed toward the paper, as the
--- plates' (UI/Journey/Plate.lua's PLATE: `plain` where nothing greys).
-local PRINT = { tint = { 0.98, 0.92, 0.80 }, desaturate = 0.35, plain = { 0.94, 0.86, 0.71 } }
+-- The printed art, at full strength (1 Nov 2026, the user: greyed 0.35 and
+-- warmed toward the paper as the plates are, the map read as faded). Each
+-- cut still takes its fold's light (the printer's `light`).
+local PRINT = { tint = { 1, 1, 1 }, desaturate = 0, plain = { 1, 1, 1 } }
 -- The band of ink round the printed map, at the paper's edge: `width` px
 -- in, at `alpha` (the heat map's FRAME), so the paper shows through it.
 local FRAME = { width = 2.5, alpha = 0.55 }

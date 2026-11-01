@@ -1053,3 +1053,22 @@ do
     Eq(kept.custom, nil, "saved untouched: nothing written")
     j.firsts.uncommon = nil
 end
+
+--------------------------------------------------------------------------
+Section("Enter saves the card")
+
+do
+    OpenFirst()
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    local view = CardSheet.View()
+    local before = #(j.custom or {})
+    PickKind("met")
+    local line = Row("who").box
+    line:SetText("Old Friend")
+    line:GetScript("OnEnterPressed")(line)
+    Eq(#j.custom, before + 1, "the card is written")
+    Eq(j.custom[#j.custom].who or j.custom[1].who, "Old Friend", "with what was typed")
+    Check(not view:IsShown(), "and the form closes")
+    Custom.Remove(j.custom[1])
+end

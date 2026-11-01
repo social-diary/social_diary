@@ -265,7 +265,7 @@ do
         "with one, as before")
     Check(Hunts.Words({ kills = 30, need = 5 }):find("drops", 1, true), "no item: drops, " .. Hunts.Words({ kills = 30, need = 5 }))
     Eq(Custom.Spec("luck").describe({ item = "Spoon", kills = 30 }), "Spoon, 30 killed", "a menu's line")
-    Eq(Custom.Spec("fortune").describe({}), "A lucky hunt, 0 killed", "with nothing to name")
+    Eq(Custom.Spec("fortune").describe({}), "Lucky Quest Drops, 0 killed", "with nothing to name")
 end
 
 --------------------------------------------------------------------------
@@ -278,8 +278,8 @@ do
     Eq(bad.group, "lore", "Quests and Lore")
     Eq(good.group, "lore", "Quests and Lore")
     Check(bad.at < good.at, "bad luck first")
-    Eq(bad.heading, "A slow hunt", "the form's heading, the caption's word")
-    Eq(good.heading, "A lucky hunt", "the form's heading, the caption's word")
+    Eq(bad.heading, "Unlucky Quest Drops", "the form's heading")
+    Eq(good.heading, "Lucky Quest Drops", "the form's heading")
     local keys = {}
     for _, field in ipairs(good.fields) do keys[#keys + 1] = field.key end
     Eq(table.concat(keys, " "), "item need name kills expected", "all the cards show")
@@ -417,7 +417,7 @@ do
         Check(cell.kit.ink.used > 0, title .. "'s mark, from its own draw")
     end
     found.fortune.strip.link.scripts.OnClick(found.fortune.strip.link)
-    Eq(view.title:GetText(), "A lucky hunt", "the form's heading")
+    Eq(view.title:GetText(), "Lucky Quest Drops", "the form's heading")
     view.cancel.scripts.OnClick(view.cancel)
 end
 
