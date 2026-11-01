@@ -104,6 +104,29 @@ function CreatureNames.Note(npcID, name, now)
     Mend(j, npcID)
 end
 
+-- The creature a name typed by the player means (Core/Custom.lua), by the
+-- records this character keeps of it, whatever the case: its npcID, and a
+-- display where one was read, so a card can draw it. The newest record with a
+-- display first. Nil where no record knows it.
+function CreatureNames.Find(j, name)
+    if not (j and type(name) == "string") then return nil end
+    name = name:lower()
+    local id
+    for list, spec in pairs(Journey.LISTS) do
+        if spec.named or spec.readNames then
+            local records = j[list] or {}
+            for i = #records, 1, -1 do
+                local rec = records[i]
+                if rec.npcID and type(rec.name) == "string" and rec.name:lower() == name then
+                    if rec.display then return rec.npcID, rec.display end
+                    id = id or rec.npcID
+                end
+            end
+        end
+    end
+    return id
+end
+
 -- The names past NAMES.days dropped, once what they put right is mended.
 function CreatureNames.Prune(j, now)
     Mend(j)

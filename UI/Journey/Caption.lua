@@ -82,6 +82,11 @@ local function Plated(ctx, slot, over)
     plate:Draw(SheetOf(p.mapID), e, Plate.Window(p.mapID, p.cx, p.cy, aw, ah), { moments = MomentsOf(e),
         cap = Plate.Share(slot), fights = page.fights, witnesses = page.witnesses, now = page.now })
     plate.share, plate.plan = Plate.Share(slot), p
+    -- A close-up looks at nothing closer. The first plate is the one a full
+    -- page was just drawn on, shown all along, so its view would stay (only
+    -- its hiding clears it): the wheel would still work here, and the cursor
+    -- would read through the full page's view (plate:MapAtCursor).
+    plate:Look(nil)
     plate:SetClick(function()
         Style.PlaySound("pageTurn")
         YourDiary.OpenFull(p.mapID)

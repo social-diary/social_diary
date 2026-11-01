@@ -857,7 +857,9 @@ function WitnessCard.Choose(crosses, marks, index, onPage)
     end
     for _, mark in ipairs(marks or {}) do
         for _, m in ipairs(mark.list or {}) do
-            if m.call then
+            -- Not one the player changed or wrote: nobody replaces their card,
+            -- and an inserted one's time says nothing about who was there.
+            if m.call and not m.call.customOf then
                 Consider(Witnesses.At(index, m.call.t, CLOSE_WITNESS), { call = m.call, mark = mark.at })
             end
         end

@@ -110,7 +110,10 @@ end
 local function DrawFull(e)
     local page = YourDiary.page
     local mapID = page.fullMap
-    local _, sheet = DrawFullPlate(e)
+    -- At the view it was looked at, where a card was just changed from here
+    -- (page.fullView, CardSheet.lua's Redraw); fitted otherwise.
+    local _, sheet = DrawFullPlate(e, page.fullView)
+    page.fullView = nil
     page.layout = "full"
 
     local z

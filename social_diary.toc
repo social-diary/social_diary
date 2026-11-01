@@ -53,6 +53,7 @@ Core/Candidates.lua
 Core/Journey.lua
 Core/Sittings.lua
 Core/CreatureNames.lua
+Core/Custom.lua
 Core/JourneyRecap.lua
 Core/PersonPlate.lua
 Core/Events.lua
@@ -123,6 +124,7 @@ UI/Journey/Full.lua
 UI/Journey/Empty.lua
 UI/Journey/Run.lua
 UI/Journey/Page.lua
+UI/Journey/CardSheet.lua
 # The person's page: its paper strips (the timeline's day labels and note
 # slips among them), the timeline, the People page, then the page's own
 # pieces in the order they take from each other as they load (the plate,

@@ -155,7 +155,8 @@ local function BuildMemory(pane, c)
     -- here, with a prologue at today's level.
     page.wipeRoute = Style.Link(pane, FONT.body, function()
         ns.UI.Dialog.Confirm("Delete this character's road?\n\nEvery stop, road, flight and level"
-            .. " Your Diary kept for them goes. Diary entries, notes and sessions are kept.", function()
+            .. " Your Diary kept for them goes, with every card you changed or wrote on its maps."
+            .. " Diary entries, notes and sessions are kept.\n\nThis cannot be undone.", function()
             ns.Journey.Delete(ns.ownGUID)
             if ns.JourneyCapture.On() then ns.JourneyCapture.SetEnabled(true) end
             ns.Print("this character's road deleted.")

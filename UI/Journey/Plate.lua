@@ -714,20 +714,26 @@ local function New(parent, slot)
             -- A press on a mark is a press on the plate: a click opens or
             -- goes back, a drag pans.
             button:SetScript("OnMouseDown", function(_, which) plate:Press(which) end)
-            button:SetScript("OnMouseUp", function(_, which) plate:Release(which) end)
+            -- The right button is the plate's too (plate:Right), and says which
+            -- mark it fell on: `spot`, which a registered mark's square carries
+            -- and every other square, a pool's or a pin's, has nil.
+            button:SetScript("OnMouseUp", function(self, which)
+                plate:Release(which)
+                if which == "RightButton" then plate:Right(self.spot) end
+            end)
             -- Over a mark the plate stays leaned in (ZOOM).
             button:HookScript("OnEnter", function() plate:Lean() end)
             button:HookScript("OnLeave", function() plate:Lean() end)
             self[self.used] = button
         end
-        button.tip = tip
+        button.tip, button.spot = tip, nil
         PlaceButton(button, x - size / 2, y - size / 2, size, size)
         button:Show()
         return button
     end
     function hoverPool:Finish()
         for i = self.used + 1, #self do
-            self[i].tip = nil
+            self[i].tip, self[i].spot = nil, nil
             self[i]:Hide()
         end
     end
@@ -758,7 +764,10 @@ local function New(parent, slot)
         local button = CreateFrame("Button", nil, over)
         button:EnableMouse(true)
         button:SetScript("OnMouseDown", function(_, which) plate:Press(which) end)
-        button:SetScript("OnMouseUp", function(_, which) plate:Release(which) end)
+        button:SetScript("OnMouseUp", function(_, which)
+            plate:Release(which)
+            if which == "RightButton" then plate:Right() end
+        end)
         button:Hide()
         return button
     end
@@ -1959,7 +1968,8 @@ local function New(parent, slot)
                 if spec.halo then Halo(x, y, spec.halo, true) end
                 local arg = spec.arg and spec.arg(c.list) or nil
                 spec.draw(kit, x, y, arg)
-                hoverPool:Next(x, y, spec.tip and Tell(c.list, spec.tip) or nil, hover)
+                hoverPool:Next(x, y, spec.tip and Tell(c.list, spec.tip) or nil, hover).spot =
+                    { kind = spec.kind, list = c.list }
                 local px, py = OnPage(x, y)
                 marks[#marks + 1] = { x = x, y = y, list = c.list, at = { px, py }, arg = arg }
                 if spec.join then
@@ -2085,7 +2095,12 @@ local function New(parent, slot)
     -- `lean` (the close-ups), it leans in under the mouse (ZOOM).
     function plate:SetClick(fn, lean)
         self.onClick, self.leans = fn, fn ~= nil and lean ~= false
-        S:SetScript("OnMouseUp", fn and function() fn(plate) end or nil)
+        -- The left button's alone: the right is plate:Right's, and on the
+        -- card's own margin, outside the picture, it does nothing.
+        S:SetScript("OnMouseUp", fn and function(_, which)
+            if which and which ~= "LeftButton" then return end
+            fn(plate)
+        end or nil)
         clip:EnableMouse(fn ~= nil)
         self:Lean()
     end
@@ -2302,7 +2317,45 @@ local function New(parent, slot)
         end
     end
     clip:SetScript("OnMouseDown", function(_, which) plate:Press(which) end)
-    clip:SetScript("OnMouseUp", function(_, which) plate:Release(which) end)
+    clip:SetScript("OnMouseUp", function(_, which)
+        plate:Release(which)
+        if which == "RightButton" then plate:Right() end
+    end)
+
+    -- A right click on the picture: plate.onRight(plate, spot), `spot` the
+    -- registered mark it fell on ({ kind, list }, the moments merged there),
+    -- nil for anywhere else. Press and Release never hear this button, so the
+    -- left's click and drag are as they were; while the left is held in a
+    -- drag it is ignored, as the picture is on its way somewhere.
+    function plate:Right(spot)
+        if look and look.pressed then return end
+        if self.onRight then self.onRight(self, spot) end
+    end
+
+    -- The point of the map under the cursor (0..1), the reverse of
+    -- plate:OnPage: nil off the picture, on the card's margin, or past the
+    -- map's edge. CursorLocal takes off the card's turn and the window's
+    -- scale. On a full page the view shown is the truth, not the one drawn
+    -- (a wheel or a drag moves the picture before it is drawn again), so it
+    -- reads as the wheel's does. On a close-up the picture is where it was
+    -- drawn, but leaned in (ZOOM) under this very mouse, scaled about the
+    -- card's middle.
+    function plate:MapAtCursor()
+        local s, window = self.slot, self.window
+        if not (s and window and self.box) then return nil end
+        local qx, qy = plate.CursorLocal()
+        if math.abs(qx) > s.w / 2 - s.pad or math.abs(qy) > s.h / 2 - s.pad then return nil end
+        local x, y
+        if look then
+            x, y = look.cx + qx / (look.f * look.LW), look.cy + qy / (look.f * look.LH)
+        else
+            local scale = self.scale or 1
+            x = window[1] + (s.w / 2 + qx / scale - self.box[1]) / self.fullW
+            y = window[2] + (s.h / 2 + qy / scale - self.box[2]) / self.fullH
+        end
+        if x < 0 or x > 1 or y < 0 or y > 1 then return nil end
+        return x, y
+    end
 
     -- Looking closer at a full page drawn at `o` = { f, cx, cy, fit, c0 =
     -- { cx, cy }, LW, LH, onSettle }; nil for none (a close-up).

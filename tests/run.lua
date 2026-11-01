@@ -32,6 +32,8 @@ local FILES = {
     "journey_ui",
     "killer_card",
     "combat_ui",
+    "custom_cards",
+    "custom_cards_ui",
     "hunt_card",
     "lucky_card",
     "ink_trail",

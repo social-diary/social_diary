@@ -82,6 +82,19 @@ local DrawRun, HideRun, RunsOf = YourDiary.DrawRun, YourDiary.HideRun, YourDiary
 local PlatesOf = YourDiary.PlatesOf
 local BuildEmpty, FillEmpty = YourDiary.BuildEmpty, YourDiary.FillEmpty
 
+-- The piece of entry `e` holding time `t`: the index of the one it falls in,
+-- else of the last begun by then (a sliver left out, Recap.Pieces, is no
+-- piece), else the first. Nil where `e` is drawn whole.
+local function PieceAt(e, t)
+    local pieces = PiecesOf(e)
+    if e.spliced or #pieces == 0 then return nil end
+    local at = 1
+    for k, p in ipairs(pieces) do
+        if p.from <= t then at = k end
+    end
+    return at
+end
+
 -- Set below, and on the module for the files before this one.
 local OpenLevel, OpenPiece, OpenFull, OpenRun
 
@@ -404,7 +417,16 @@ function ns.UI.RefreshJourneyPage(opening)
         page.fights = ns.Journey.FightIndex()
         page.witnesses = ns.Journey.WitnessIndex()
         page.sheets, page.moments = {}, {}
+        -- A card just changed (CardSheet.lua) asks to stay on this page: the
+        -- new recap's entries are new tables, which a kept piece does not
+        -- recognise (OpenPieceOf: it would fall back to the newest), and a
+        -- piece's index may have moved, so it is found again by its time.
+        if page.holdAt and not opening and recap.entries[page.open] then
+            local e = recap.entries[page.open]
+            page.piece, page.pieceOf = PieceAt(e, page.holdAt), e
+        end
     end
+    page.holdAt = nil
     local count = #recap.entries
     if opening or not page.open or page.open > count then
         -- Fallen open on the newest entry's newest piece.
@@ -416,6 +438,7 @@ function ns.UI.RefreshJourneyPage(opening)
         Rebuild(not opening)
         DrawRight()
     end
+    page.fullView = nil
     if opening and page.rubrics[page.open] then page.entries:SetOffset(page.rubrics[page.open] - 1) end
 end
 

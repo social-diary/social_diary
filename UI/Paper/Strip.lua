@@ -249,7 +249,7 @@ local Seed, Width, Turned = Surface.Seed, Surface.Width, Surface.Turned
 --            :Paper() → its stock as laid ({ r, g, b })
 --            :WhatLines() → what happened's lines as shown (font strings)
 --            :Lay, :Bend, :Out, :Screen (at the foot), :Nearest, :SetNote,
---            :Hover, :What, :Quote
+--            :Hover, :What, :Quote, :SetRight (a right click on it)
 -- Something drawn in the strip's look that is not a strip (good luck's S
 -- on a print, Features/Hunts/LuckyCard.lua) reads ns.UI.PAPER_LOOK (at the
 -- foot of this file).
@@ -311,6 +311,11 @@ function ns.UI.PaperStrip(parent, card)
         function(_, on) strip:Hover(on) end)
     strip.link:SetScript("OnClick", function()
         if strip.guid and strip.onClick then strip.onClick(strip.guid) end
+    end)
+    -- OnClick only hears the left button (the client's default for a button),
+    -- so the right has this script, and the left's click is as it was.
+    strip.link:SetScript("OnMouseUp", function(_, which)
+        if which == "RightButton" and strip.onRight then strip.onRight() end
     end)
 
     -- What happened, a line at a time; and a measure for wrapping it.
@@ -551,11 +556,19 @@ function ns.UI.PaperStrip(parent, card)
         self.name:SetText(note.name or "")
         local S = (note.guid or note.strong) and Style.INK_STRONG or Style.INK
         self.name:SetTextColor(S[1], S[2], S[3])
-        self.link:EnableMouse(note.guid ~= nil or note.tip ~= nil)
+        self.link:EnableMouse(note.guid ~= nil or note.tip ~= nil or self.onRight ~= nil)
         self.rival:SetShown(note.rival == true)
         -- Its quote in full again, or in as many lines as the page allows
         -- it (`quoteLines`), for the margin it is laid in next.
         self.quoteMost = math.min(note.quoteLines or STRIP.quote.lines, STRIP.quote.lines)
+    end
+
+    -- What a right click on it does, nil for nothing. Apart from SetNote: it
+    -- is the page's to say (the margin's `custom`), not the card's, and a strip
+    -- of a shared pool is told again each time it is written.
+    function strip:SetRight(fn)
+        self.onRight = fn
+        self.link:EnableMouse(self.guid ~= nil or self.tip ~= nil or fn ~= nil)
     end
 
     -- What happened, as written (for the tests).

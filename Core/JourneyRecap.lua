@@ -101,6 +101,10 @@ Recap.DOOR_ONLY = DOOR_ONLY
 --           `say` its phrase, first under their name
 --           (UI/Journey/Text/Margin.lua's MarginWhat)
 --
+--   custom  what the player may set on a card of this kind, edited or
+--           inserted (Core/Custom.lua's header). Without it the kind cannot
+--           be custom
+--
 -- An entry with any feature's records is kept, as one with people or time
 -- on the road is (Recap.Build's weeks).
 
@@ -119,9 +123,17 @@ function Recap.RegisterMoment(kind, spec)
     return spec
 end
 
--- A moment's rank: its kind's, or the one its kind says it ranks as.
+-- Above everything, people included (1): a card the player just wrote or
+-- changed has to be on the page, and a plate with a better moment would
+-- otherwise push it off (PLATES.max).
+local CUSTOM_RANK = 0.5
+
+-- A moment's rank: its kind's, or the one its kind says it ranks as; a card
+-- custom in any way (Core/Custom.lua), above them all.
 local function Rank(m)
     local spec = MOMENT[m.kind]
+    local rec = spec and spec.field and m[spec.field]
+    if rec and rec.customOf then return CUSTOM_RANK end
     return RANK[spec and spec.rankAs and spec.rankAs(m) or m.kind] or 9
 end
 Recap.Rank = Rank
@@ -207,7 +219,7 @@ end
 -- fights and notes.
 local function Gather(j, a, b, ctx)
     local e = { from = a, to = b, places = {}, stops = {}, dungeons = {}, flights = {},
-        people = {}, fights = {}, notes = {}, deaths = {}, roads = {}, seconds = 0 }
+        people = {}, fights = {}, notes = {}, deaths = {}, roads = {}, hidden = {}, seconds = 0 }
     for _, spec in ipairs(MOMENTS) do e[spec.entry] = {} end
     local byMap = {}
 
@@ -299,7 +311,25 @@ local function Gather(j, a, b, ctx)
         elseif spec.list then
             local into = e[spec.entry]
             for _, rec in ipairs(Journey.List(j, spec.list)) do
-                if rec.t >= a and rec.t < b then into[#into + 1] = rec end
+                if rec.t >= a and rec.t < b then
+                    -- As the player left it (Core/Custom.lua). One hidden is
+                    -- off the page, and listed so it can be brought back.
+                    local read = ns.Custom.Read(rec)
+                    if read then
+                        into[#into + 1] = read
+                    else
+                        e.hidden[#e.hidden + 1] = { kind = spec.kind, rec = rec }
+                    end
+                end
+            end
+        end
+        -- The cards of this kind the player inserted, in time among the rest.
+        if spec.custom then
+            local inserted = ns.Custom.Inserted(j, spec.kind, a, b)
+            if inserted[1] then
+                local into = e[spec.entry]
+                for _, rec in ipairs(inserted) do into[#into + 1] = rec end
+                table.sort(into, ByTime)
             end
         end
     end

@@ -1239,7 +1239,25 @@ function Journey.Append(j, name, rec, where)
     j[name] = list
     list[#list + 1] = rec
     local cap = T[name]
-    while cap and #list > cap do table.remove(list, 1) end
+    -- The oldest goes, past any the player has changed, which do not count
+    -- against the cap either: nothing removes their writing on its own, or
+    -- crowds out what comes next (Core/Custom.lua, as Core/Notes.lua says of
+    -- theirs).
+    if cap and #list > cap then
+        local plain = 0
+        for _, kept in ipairs(list) do
+            if not kept.custom then plain = plain + 1 end
+        end
+        local i = 1
+        while plain > cap do
+            if list[i].custom then
+                i = i + 1
+            else
+                table.remove(list, i)
+                plain = plain - 1
+            end
+        end
+    end
     Touch()
     return rec
 end

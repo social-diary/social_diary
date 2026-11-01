@@ -119,5 +119,27 @@ end
 
 -- JRN-25: a fight left with almost no health, where it ended. It ranks
 -- with a death (3): the same fight, nearly lost, is worth a plate as much
--- as one lost. Full: its card goes in the margin.
-ns.JourneyRecap.RegisterMoment("close", { order = 20, list = LIST, field = "call", rank = 3 })
+-- as one lost. Full: its card goes in the margin. The player may change or
+-- insert one (Core/Custom.lua), by everything its card shows: its creature,
+-- its level (-1 the skull) and rank, how many it was against and the health
+-- left, which need not be under LEFT: that is theirs to say.
+ns.JourneyRecap.RegisterMoment("close", { order = 20, list = LIST, field = "call", rank = 3,
+    custom = {
+        creature = "name",
+        label = "a close call",
+        -- A line of a menu, where a spot merges several or one is hidden: the
+        -- health tells apart two fights with one creature.
+        describe = function(call)
+            return ("%s, %d%% health"):format(call.name or "A close call", call.pct or 0)
+        end,
+        defaults = { pct = 5 },
+        fields = {
+            { key = "name", type = "text", label = "Creature" },
+            { key = "foeLevel", type = "number", min = -1, max = 99, label = "Level", hint = "-1 for a skull" },
+            { key = "rank", type = "choice", values = { "elite", "rare", "rareelite", "worldboss" }, label = "Rank",
+                empty = "Common", names = { elite = "Elite", rare = "Rare", rareelite = "Rare elite",
+                    worldboss = "Boss" } },
+            { key = "foes", type = "number", min = 1, max = 99, label = "How many" },
+            { key = "pct", type = "number", min = 0, max = 100, label = "Health left", hint = "%" },
+        },
+    } })

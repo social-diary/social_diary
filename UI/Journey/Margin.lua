@@ -83,6 +83,9 @@ end
 --            ToPerson(guid) (a name that opens their page).
 --   mark     function(it, note) → { x, y } on the page: where its leader
 --            goes.
+--   custom   optional function(it) → kind, record: the moment's kind and the
+--            record this card shows, when the player may change it
+--            (Core/Custom.lua): a right click on the card opens the editor.
 --   wants    optional function(it) → the width it would like in a row of
 --            fewer notes than boxes (Shared): a hunt's card its wide
 --            arrangement.
@@ -254,6 +257,13 @@ local function MarginNote(plate, e, it, named)
             parts[n + 1], parts[n + 2] = plate.mapID or 0, level
             return table.concat(parts, ":")
         end })
+    -- Told every time, cards of one pool being of several kinds (a killer's
+    -- has no editor, a close call's on the same strip has).
+    if rawget(note, "SetRight") then
+        local kind, rec
+        if spec.custom then kind, rec = spec.custom(it) end
+        note:SetRight(kind and function() YourDiary.CardSheet.Edit(kind, rec) end or nil)
+    end
     return note
 end
 

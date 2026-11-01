@@ -25,6 +25,9 @@ local function PlateAt(i)
     if not plate then
         plate = Plate(page.right, LAYOUT[1][1])
         plate.onZoom = function(p, scale) Follow(p, scale) end
+        -- A right click on a plate of this page, a close-up's or a full
+        -- page's alike: UI/Journey/CardSheet.lua, which loads later.
+        plate.onRight = function(p, spot) YourDiary.CardSheet.Right(p, spot) end
         page.plates[i] = plate
     end
     return plate

@@ -88,14 +88,38 @@ local HAND = Style.NEUTON_ITALIC
 -- nil: only a close call with a creature named has one. The highest rank
 -- (the killer card's RANK), then the least health left, then the latest.
 -- { npcID, name, rank, display, call (its record), mark (where its cross
--- is on the page) }.
+-- is on the page) }. A close call the player changed or wrote is not among
+-- them: it has a card of its own (Card.Customs).
+local function Foe(call, mark)
+    local display = ns.Plain(call.display)
+    return { npcID = call.npcID, name = call.name, rank = call.rank, call = call, mark = mark,
+        display = type(display) == "number" and display > 0 and display or nil }
+end
+
+-- The close calls on a plate the player changed or wrote (Core/Custom.lua),
+-- each with its creature named, a card each and the newest first, so that
+-- where the margin runs out the oldest are the ones left to their marks.
+function Card.Customs(marks)
+    local list = {}
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            local call = m.call
+            if call and call.customOf and type(call.name) == "string" and call.name ~= "" then
+                list[#list + 1] = Foe(call, mark.at)
+            end
+        end
+    end
+    table.sort(list, function(a, b) return (a.call.t or 0) > (b.call.t or 0) end)
+    return list
+end
+
 function Card.Choose(marks)
     local RANK = ns.Deaths.Card.RANK
     local best
     for _, mark in ipairs(marks or {}) do
         for _, m in ipairs(mark.list or {}) do
             local call = m.call
-            if call and type(call.name) == "string" and call.name ~= "" then
+            if call and not call.customOf and type(call.name) == "string" and call.name ~= "" then
                 local better = not best
                 if best then
                     local ra, rb = RANK[call.rank] or 0, RANK[best.call.rank] or 0
@@ -112,10 +136,7 @@ function Card.Choose(marks)
         end
     end
     if not best then return nil end
-    local call = best.call
-    local display = ns.Plain(call.display)
-    return { npcID = call.npcID, name = call.name, rank = call.rank, call = call, mark = best.mark,
-        display = type(display) == "number" and display > 0 and display or nil }
+    return Foe(best.call, best.mark)
 end
 
 --------------------------------------------------------------------------
@@ -392,6 +413,7 @@ ns.UI.JourneyPlate.RegisterPass("foe", {
     order = 20,
     draw = function(plate)
         plate.foe = Card.Choose(plate.closeMarks)
+        plate.customFoes = Card.Customs(plate.closeMarks)
     end,
 })
 
@@ -411,8 +433,36 @@ ns.UI.JourneyMargin.Register("foe", {
         card:SetFoe(it.foe, c.Seed("foe", it.foe.npcID or it.foe.name), c.now)
     end,
     mark = function(it) return it.foe.mark end,
+    custom = function(it) return "close", it.foe.call end,
     assume = function(said, plate)
         if plate.foe then said.close = true end
+    end,
+    say = function(said, shown)
+        if shown[1] then said.close = true end
+    end,
+})
+
+-- The close calls the player changed or wrote, each its own card, past the
+-- plate's one (Card.Choose) and never replaced by a witness's: first of all
+-- in the margin, before the people (10), so they are the last left off
+-- (.claude/features/custom-cards.md). The same card, the same pool.
+ns.UI.JourneyMargin.Register("foeCustom", {
+    order = 5, pool = "killerPool", count = "customFoesWritten",
+    new = function(parent) return ns.Deaths.Card.New(parent) end,
+    items = function(plate)
+        local items = {}
+        for _, f in ipairs(plate.customFoes or {}) do
+            items[#items + 1] = { foe = f, top = f.mark[2], x = f.mark[1] }
+        end
+        return items
+    end,
+    write = function(card, it, c)
+        card:SetFoe(it.foe, c.Seed("foe", it.foe.call.t or it.foe.name), c.now)
+    end,
+    mark = function(it) return it.foe.mark end,
+    custom = function(it) return "close", it.foe.call end,
+    assume = function(said, plate)
+        if plate.customFoes and plate.customFoes[1] then said.close = true end
     end,
     say = function(said, shown)
         if shown[1] then said.close = true end
