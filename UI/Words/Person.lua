@@ -50,25 +50,32 @@ PersonText.Day = Day
 -- The first strip: its heading, the same in short where that differs (or
 -- nil), and its subtitle (or nil, and the strip is one line). Never met
 -- (added from Recently nearby, or only whispered), it says when they were
--- added: a strip saying "First met" with no meeting would be wrong.
+-- added, and under that the day they were last seen, or nothing if never:
+-- a strip saying "First met" with no meeting would be wrong.
 function PersonText.FirstMet(s, now)
     now = now or ns.Now()
     local met = (s.timesMet or 0) > 0
+    local seen = s.record and s.record.seen
+    local sub
+    if met then
+        sub = s.levelThen and ("at level " .. s.levelThen) or nil
+    elseif seen then
+        sub = "last seen " .. Day(seen.time, now, true)
+    end
     local t = met and s.firstMet or s.entry.addedAt
-    if not t then return met and "First met" or "Added to the diary", nil, met and nil or "not met yet" end
+    if not t then return met and "First met" or "Added to the diary", nil, sub end
     local lead = met and "First met " or "Added "
     local long, short = lead .. Day(t, now), lead .. Day(t, now, true)
     if short == long then short = nil end
-    if not met then return long, short, "not met yet" end
-    return long, short, s.levelThen and ("at level " .. s.levelThen) or nil
+    return long, short, sub
 end
 
 -- The tally strip: its heading ("Met once", "Met twice", "Met 5 times",
 -- Format.Times), how many strokes its gates draw (the count, at most
 -- GATES gates), and its subtitle: the time together, "under a minute
 -- together", or nil where there was none (a trade kept before they were in
--- the diary; there is no honest word for it). Nil for no meeting: the
--- first strip already says "not met yet".
+-- the diary; there is no honest word for it). Nil for no meeting: there is
+-- no tally to keep.
 function PersonText.Tally(s)
     local n = s.timesMet or 0
     if n <= 0 then return nil end

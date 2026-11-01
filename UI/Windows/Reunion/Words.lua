@@ -94,12 +94,14 @@ local function FightStories(fights)
 end
 
 -- What there is to say about the last meeting, the way the profile says it
--- (UI/Journal/Profile.lua), without the place when `place` is false.
+-- (UI/Journal/Profile.lua), without the place when `place` is false. Never
+-- met: nearby, only that they have been seen so far (no time:
+-- Characters.Seen has just moved it to now); in a group, that this is the
+-- first time.
 local function Story(snap, place)
     if snap.timesMet == 0 then
         if snap.reason == "nearby" then
-            local first = snap.name:match("^(%S+)") or snap.name
-            return ("No interaction data yet."):format(first)
+            return "You've only seen them in passing so far."
         end
         return "Your first time together since you wrote them in."
     end

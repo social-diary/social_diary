@@ -399,8 +399,39 @@ Check(Tip(facts):find("Last seen today at"), "profile facts' tooltip: " .. Tip(f
 ns.UI.SelectPerson(B)
 Check(Tip(CL.first):find("Not seen nearby yet$"), "facts for somebody never seen: " .. Tip(CL.first))
 Check(CL.first.name:GetText():find("^Added "), "the first strip for somebody never met: " .. CL.first.name:GetText())
-Eq(CL.first:What(), "not met yet", "the first strip's subtitle for somebody never met")
+Eq(CL.first:What(), "", "a subtitle for somebody never met or seen")
 Check(not CL.tally:IsShown(), "a tally for somebody never met")
+do
+    local T, base = ns.UI.PersonText, { timesMet = 0, entry = { addedAt = at } }
+    local function Sub(seen, now)
+        base.record = { seen = seen and { time = seen } }
+        return select(3, T.FirstMet(base, now or at))
+    end
+    Eq(Sub(at), "last seen today", "never met, seen today")
+    Eq(Sub(at - DAY), "last seen yesterday", "never met, seen yesterday")
+    local old = at - 10 * DAY
+    Eq(Sub(old), "last seen " .. tonumber(date("%d", old)) .. date(" %b", old)
+        .. (date("%Y", old) ~= date("%Y", at) and date(" %Y", old) or ""), "never met, seen days ago")
+    Eq(Sub(nil), nil, "never met or seen: one line")
+    Check(not (Sub(at) or ""):find("met"), "'met' on the strip of somebody never met")
+end
+
+-- Their tooltip: the last sighting before this one, or no line at all.
+local function NeverMetLine()
+    return table.concat(mock.UnitTooltip(B), "\n")
+end
+Check(not NeverMetLine():find("Last seen") and not NeverMetLine():find("[Nn]ot met"),
+    "a line for somebody never met or sighted: " .. NeverMetLine())
+local SeenBefore = ns.Sightings.SeenBefore
+ns.Sightings.SeenBefore = function() return 2, at end
+Check(NeverMetLine():find("Last seen today at", 1, true), "no last seen for somebody never met: " .. NeverMetLine())
+ns.Sightings.SeenBefore = SeenBefore
+
+wipe(ns.db.meta.greeted)
+ns.UI.Reunion(B, "nearby")
+Eq(Story(toast), "You've only seen them in passing so far.", "never-met nearby toast")
+mock.RunTimers()
+wipe(ns.db.meta.greeted)
 Check(CL.note:Written():find("No note yet"), "an empty note")
 
 J.sortButton:Click()

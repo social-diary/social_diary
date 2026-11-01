@@ -13,6 +13,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Fixes
 
 - Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
+- _People_ you've only seen just now actually show when you last saw them
 
 ## [2.0.0]
 

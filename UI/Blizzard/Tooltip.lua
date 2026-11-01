@@ -86,7 +86,12 @@ local function OnUnitTooltip(tooltip, data)
         tooltip:AddLine(("Met %s  ·  last %s"):format(Format.Count(s.timesMet, "time", "times"),
             Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
     else
-        tooltip:AddLine("Not met since you added them", 0.6, 0.6, 0.6)
+        -- Before this encounter, as SeenLine: hovering them has just moved
+        -- `seen` to now.
+        local count, last = ns.Sightings.SeenBefore(guid)
+        if count then
+            tooltip:AddLine("Last seen " .. Format.At(last), 0.6, 0.6, 0.6)
+        end
     end
 end
 
