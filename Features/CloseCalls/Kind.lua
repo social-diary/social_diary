@@ -121,12 +121,14 @@ end
 -- with a death (3): the same fight, nearly lost, is worth a plate as much
 -- as one lost. Full: its card goes in the margin. The player may change or
 -- insert one (Core/Custom.lua), by everything its card shows: its creature,
--- its level (-1 the skull) and rank, how many it was against and the health
+-- its level (-1 the skull) and type, how many it was against and the health
 -- left, which need not be under LEFT: that is theirs to say.
 ns.JourneyRecap.RegisterMoment("close", { order = 20, list = LIST, field = "call", rank = 3,
     custom = {
         creature = "name",
-        label = "a close call",
+        label = "Close Call",
+        heading = "A close call",
+        group = "combat",
         -- A line of a menu, where a spot merges several or one is hidden: the
         -- health tells apart two fights with one creature.
         describe = function(call)
@@ -136,9 +138,12 @@ ns.JourneyRecap.RegisterMoment("close", { order = 20, list = LIST, field = "call
         fields = {
             { key = "name", type = "text", label = "Creature" },
             { key = "foeLevel", type = "number", min = -1, max = 99, label = "Level", hint = "-1 for a skull" },
-            { key = "rank", type = "choice", values = { "elite", "rare", "rareelite", "worldboss" }, label = "Rank",
-                empty = "Common", names = { elite = "Elite", rare = "Rare", rareelite = "Rare elite",
-                    worldboss = "Boss" } },
+            -- Saved as `rank`, what a detected record calls it. Neither ticked is
+            -- a common creature. Only these two can be chosen (the user, 1 Nov:
+            -- no boss here, and no rare elite); a detected record's other ranks
+            -- stay as detected until the player ticks one (Core/Custom.lua).
+            { key = "rank", type = "choice", values = { "rare", "elite" }, label = "Type",
+                names = { rare = "Rare", elite = "Elite" } },
             { key = "foes", type = "number", min = 1, max = 99, label = "How many" },
             { key = "pct", type = "number", min = 0, max = 100, label = "Health left", hint = "%" },
         },

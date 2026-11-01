@@ -36,13 +36,20 @@
 --   creature optional, the key of the field naming a creature: a name this
 --            character's records know brings that creature's npcID and display
 --            (CreatureNames.Find), for the card's picture
---   label    the editor's: what one is called in a running sentence, "a close
---            call" (the menu's "Add a close call here", the form's heading)
+--   label    what the picker titles it, in title case: "Close Call"
+--   heading  optional: the form's heading, "A close call"; `label` where nil
+--   group    its type in the picker, by key: combat, lore (Quests and Lore),
+--            social, other. Any other is treated as other. The words are the
+--            picker's (UI/Journey/CardSheet.lua), so a kind cannot make a type
+--   at       optional: its place within its type, lowest first (0 where nil);
+--            by kind after that. Its map mark (Plate.RegisterMark) is drawn on its
+--            card, asked without an `arg`
 --   describe optional function(rec) → a menu's line for one card, where a spot
 --            merges several or one is hidden; `label` where nil
 -- and each field, for its row on the form (UI/Journey/CardSheet.lua): label;
 -- hint (optional: beside a number, under a text while it is empty); for a
--- choice names (value → words) and empty (the words for no value).
+-- choice names (value → words). A choice is shown as a box per value, at most
+-- one ticked, none ticked being no value.
 
 local addonName, ns = ...
 

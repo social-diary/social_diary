@@ -2015,6 +2015,8 @@ local function New(parent, slot)
         for _, spec in ipairs(PASS_ORDER) do spec.draw(plate, c) end
     end
 
+    local DrawRing
+
     -- Where it is glued: one of the page's slots.
     function plate:SetSlot(s)
         self.slot = s
@@ -2079,8 +2081,58 @@ local function New(parent, slot)
         local textures = 0
         for _, pool in ipairs(TEXTURES) do textures = textures + pool.used end
         self.counts.textures = textures
+        DrawRing()
         -- How long it took to draw (/sd journey reports it).
         if started then self.buildMs = debugprofilestop() - started end
+    end
+
+    -- The dashed ring in pencil at a spot of the map, while a card is being
+    -- written for it (UI/Journey/CardSheet.lua): plate:SetRing({ mapID, x, y,
+    -- look }), nil to take it off. On the picture, so the card's turn, a lean
+    -- and a pan take it along; drawn again with the plate, so a zoom finds it its
+    -- new place. Its own pool, outside ALL, as it is drawn after the rest and
+    -- also between drawings, as it is set and taken off. Each dash is the pen's
+    -- (Resample, Mitres, Stroke: the leaders' pencil, `look`'s colour, nib and
+    -- alpha), its arc and radius a little uneven, seeded by the spot so it does
+    -- not shift when drawn again.
+    local ringPool = Pool("OVERLAY", 2, nil, content)
+    plate.ringPool = ringPool
+    function DrawRing()
+        ringPool:Begin()
+        local r = plate.ringAt
+        plate.ringPoint = nil
+        if r and r.mapID == plate.mapID and plate.At then
+            local cx, cy = plate.At(r.x, r.y, true)
+            local Pen, look = ns.UI.Pen, r.look
+            local rand = Pen.Random(1 + (r.x * 7919 + r.y * 104729) * 1000)
+            plate.ringPoint = { cx, cy }
+            for d = 1, look.dashes do
+                local arc = 2 * math.pi / look.dashes
+                local a0 = (d - 1 + (rand() - 0.5) * look.uneven) * arc
+                local a1 = a0 + arc * look.share
+                local radius = look.r + (rand() - 0.5) * look.wander
+                local pts = {}
+                for i = 0, look.bends do
+                    local a = a0 + (a1 - a0) * i / look.bends
+                    pts[#pts + 1] = cx + radius * math.cos(a)
+                    pts[#pts + 1] = cy + radius * math.sin(a)
+                end
+                local line = Pen.Resample(pts, look.step)
+                if #line >= 2 then
+                    local prims, n = {}, #line
+                    Pen.Stroke(prims, 0, line, Pen.Mitres(line), function(i)
+                        local a, b = line[math.max(i - 1, 1)], line[math.min(i + 1, n)]
+                        return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y, look.nib)
+                    end, function() return 0 end, function() return look.alpha end, look.colour, nil, look.bends * 2)
+                    for _, prim in ipairs(prims) do DrawPrim(prim, ringPool:Next()) end
+                end
+            end
+        end
+        ringPool:Finish()
+    end
+    function plate:SetRing(r)
+        self.ringAt = r
+        DrawRing()
     end
 
     -- Where a point of the map (0..1) lies on the page, through the card's
@@ -2393,6 +2445,58 @@ local function New(parent, slot)
     plate:SetSlot(slot)
     plate:Hide()
     return plate
+end
+
+-- A registered mark's kit (RegisterMark's `kit`) for somewhere that is not a
+-- plate: the kind's card in the picker (UI/Journey/CardSheet.lua), so the
+-- picker shows the mark as the map draws it, from its own `draw`, not a copy of
+-- its shape. Textures on `frame`, from three pools (kit:Begin, kit:Finish round
+-- each drawing); no light (nothing is lit on the slip but the slip). `place` is
+-- Place's (region, x, y of its middle, w, h, turn), `quad` Quad's, the caller's
+-- plane; `paper` the colour under it (kit.P). A mark's `arg` comes of moments,
+-- and there are none here: its draw is asked with none, so a kind in the picker
+-- must draw without one.
+function Plate.MarkKit(frame, place, quad, paper)
+    local function Layer(sublevel)
+        return ns.UI.Pool.New(function() return frame:CreateTexture(nil, "ARTWORK", nil, sublevel) end)
+    end
+    local kit = { ink = Layer(3), inner = Layer(4), halo = Layer(2), P = paper, Quad = quad,
+        INK = Style.INK, INK_STRONG = Style.INK_STRONG, Clamp = ns.UI.Pen.Clamp }
+    function kit.Light() return 1 end
+    function kit.Fill(texture, r, g, b, a)
+        texture:SetColorTexture(r, g, b, a)
+        texture:SetVertexColor(1, 1, 1, 1)
+    end
+    function kit.Place(region, x, y, w, h, turn) place(region, x + w / 2, y + h / 2, w, h, turn) end
+    function kit.Dot(pool, x, y, size, colour, alpha)
+        local texture = pool:Next()
+        texture:SetVertexColor(1, 1, 1, 1)
+        Style.Disc(texture, colour[1], colour[2], colour[3], alpha)
+        place(texture, x, y, size, size)
+        return texture
+    end
+    function kit.Box(pool, x, y, w, h, colour, alpha, turn)
+        local texture = pool:Next()
+        kit.Fill(texture, colour[1], colour[2], colour[3], alpha)
+        place(texture, x, y, w, h, turn)
+        return texture
+    end
+    function kit.Stroke(pool, x1, y1, x2, y2, width, colour, alpha)
+        local dx, dy = x2 - x1, y2 - y1
+        local length = math.sqrt(dx * dx + dy * dy)
+        if length < 0.01 then return nil end
+        local texture = pool:Next()
+        kit.Fill(texture, colour[1], colour[2], colour[3], alpha)
+        place(texture, (x1 + x2) / 2, (y1 + y2) / 2, length + 0.6, width, math.atan2(-dy, dx))
+        return texture
+    end
+    function kit:Begin()
+        self.ink:Begin(); self.inner:Begin(); self.halo:Begin()
+    end
+    function kit:Finish()
+        self.ink:Finish(); self.inner:Finish(); self.halo:Finish()
+    end
+    return kit
 end
 
 -- A plate's share of the trail's caps, by its area (SHARE).

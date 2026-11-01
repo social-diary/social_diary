@@ -95,6 +95,27 @@ local function Row(key)
         if row.field.key == key then return row end
     end
 end
+-- The cards the picker shows, row by row; a click on the kind's.
+local function Cells()
+    local list = {}
+    for _, row in ipairs(CardSheet.View().list.rows) do
+        if row.item then
+            for _, cell in ipairs(row.cells) do
+                if cell.kind then list[#list + 1] = cell end
+            end
+        end
+    end
+    return list
+end
+local function PickKind(kind)
+    for _, cell in ipairs(Cells()) do
+        if cell.kind == kind then
+            cell.strip.link.scripts.OnClick(cell.strip.link)
+            return true
+        end
+    end
+    error("no card for " .. kind)
+end
 local function Card()
     for i = 1, page.killerPool.used do
         local c = page.killerPool[i]
@@ -209,7 +230,10 @@ do
     Eq(view.title:GetText(), "A close call", "the heading comes from the spec")
     Eq(Row("name"):Get(), "Plainstrider", "the name")
     Eq(Row("pct"):Get(), "6", "the health")
-    Eq(Row("rank"):Get(), "", "no rank")
+    Eq(Row("rank"):Get(), "", "no type")
+    Eq(Row("rank").label:GetText(), "TYPE", "the field is called Type")
+    Check(Row("rank").toggles.rare:IsShown() and Row("rank").toggles.elite:IsShown(), "both toggles in sight")
+    Eq(Row("rank").link, nil, "no link and menu")
     Check(view.hide:IsShown(), "a detected card can be left out")
     Check(not view.reset:IsShown(), "nothing to undo yet")
     Check(not view.remove:IsShown(), "a detected card cannot be deleted")
@@ -261,6 +285,71 @@ do
     Eq(page.mode, "plates", "still the plates")
     local card = Card()
     Check(card and card.foe.name == "Old Tom", "the card reads the edit at once")
+end
+
+--------------------------------------------------------------------------
+Section("Type: two toggles, at most one on")
+
+do
+    local rec = j.closeCalls[1]
+    Custom.Reset(rec)
+    ns.UI.RefreshJourneyPage(false)
+    OpenFirst()
+    RightOn(MarkOf(Plate()))
+    local view = CardSheet.View()
+    local row = Row("rank")
+    local rare, elite = row.toggles.rare, row.toggles.elite
+    Check(not rare:GetChecked() and not elite:GetChecked(), "neither on: a common creature")
+    rare.scripts.OnClick(rare)
+    Check(rare:GetChecked() and not elite:GetChecked(), "rare on")
+    Eq(row:Get(), "rare", "reads rare")
+    elite.scripts.OnClick(elite)
+    Check(elite:GetChecked() and not rare:GetChecked(), "turning one on turns the other off")
+    Eq(row:Get(), "elite", "reads elite")
+    elite.scripts.OnClick(elite)
+    Check(not rare:GetChecked() and not elite:GetChecked(), "the lit one clicked turns off")
+    Eq(row:Get(), "", "reads nothing")
+    rare.scripts.OnClick(rare)
+    Press(view.save)
+    Eq(rec.custom.rank, "rare", "saved as rank")
+    Custom.Reset(rec)
+    ns.UI.RefreshJourneyPage(false)
+    OpenFirst()
+
+    -- A rank the form cannot choose, as detected: neither lit, untouched by a
+    -- save, replaced by a toggle, and given back by Undo.
+    for _, detected in ipairs({ "worldboss", "rareelite" }) do
+        rec.rank = detected
+        J.Touch()
+        ns.UI.RefreshJourneyPage(false)
+        OpenFirst()
+        RightOn(MarkOf(Plate()))
+        row = Row("rank")
+        rare, elite = row.toggles.rare, row.toggles.elite
+        Check(not rare:GetChecked() and not elite:GetChecked(), detected .. ": neither lit")
+        Row("pct"):Set("3")
+        Press(view.save)
+        Eq(rec.rank, detected, detected .. ": as detected")
+        Eq(rec.custom.rank, nil, detected .. ": no change saved over it")
+        Eq(Card().foe.call.rank, detected, detected .. ": the card keeps it")
+
+        RightOn(MarkOf(Plate()))
+        rare.scripts.OnClick(rare)
+        Press(view.save)
+        Eq(rec.custom.rank, "rare", detected .. ": a toggle replaces it")
+        Eq(rec.rank, detected, detected .. ": underneath, kept")
+        Eq(Card().foe.call.rank, "rare", detected .. ": the card reads the toggle")
+
+        RightOn(MarkOf(Plate()))
+        Press(view.reset)
+        Eq(rec.custom, nil, detected .. ": undone")
+        Eq(Card().foe.call.rank, detected, detected .. ": restored")
+    end
+    rec.rank = nil
+    -- As the next section expects it: edited.
+    Custom.Edit("close", rec, { name = "Old Tom", pct = 2 })
+    ns.UI.RefreshJourneyPage(false)
+    OpenFirst()
 end
 
 --------------------------------------------------------------------------
@@ -341,7 +430,8 @@ do
     local w = plate.window
     local mx, my = w[1] * 0.2 + w[3] * 0.8, w[2] * 0.2 + w[4] * 0.8
     RightMap(plate, mx, my)
-    Check(mock.MenuClick("Add a close call here"), "offered, the words from the spec")
+    Check(mock.MenuClick("Add custom event..."), "offered")
+    PickKind("close")
     local view = CardSheet.View()
     Check(view:IsShown(), "the form")
     Eq(view.rec, nil, "a new card")
@@ -378,6 +468,213 @@ do
     Eq(#j.custom, 0, "deleted")
     Check(not view:IsShown(), "closed")
     Eq(page.piece, 1, "the sitting stayed")
+end
+
+--------------------------------------------------------------------------
+Section("the picker: its cards, the way back, the ring, and on the book")
+
+do
+    local view
+    -- Laid wholly on the pages, however wide: from what it was told.
+    local function OnBook(what)
+        local S = view.sheet
+        local BOOK = ns.UI.Journal.BOOK
+        -- (The mock keeps a frame's height only on its record.)
+        local W, H = S:GetWidth(), S.recorded.height
+        Check(H and H > 0, what .. " has a height")
+        local left, top = BOOK.BOOK_W / 2 + view.dx - W / 2, BOOK.BOOK_H / 2 - view.dy - H / 2
+        Check(left >= 0 and left + W <= BOOK.BOOK_W, what .. " runs off the book across: " .. left .. " + " .. W)
+        Check(top >= 0 and top + H <= BOOK.BOOK_H, what .. " runs off the book down: " .. top .. " + " .. H)
+    end
+    -- The cover's the same each side, so the view's middle is the pages'.
+    Eq(ns.UI.Journal.BOOK.BOOK_W, 808, "the pages' width this reads against")
+
+    OpenFirst()
+    local plate = Plate()
+    local w = plate.window
+    local mx, my = w[1] * 0.3 + w[3] * 0.7, w[2] * 0.3 + w[4] * 0.7
+    RightMap(plate, mx, my)
+    Eq(#mock.contextMenu.children, 1, "the menu has the one entry")
+    Eq(mock.contextMenu.children[1].text, "Add custom event...", "in the user's words")
+    Eq(plate.ringPoint, nil, "no ring before it is asked for")
+    Check(mock.MenuClick("Add custom event..."), "offered")
+    view = CardSheet.View()
+    Check(view:IsShown() and view.heading:IsShown(), "the picker opens")
+    Eq(view.heading:GetText(), "What happened here?", "its title")
+    Check(not view.title:IsShown() and not view.save:IsShown(), "no form under it")
+    OnBook("the picker with one kind")
+
+    local cells = Cells()
+    Eq(#cells, 1, "today, one card")
+    Eq(cells[1].kind, "close", "the close call's")
+    Eq(cells[1].eyebrow:GetText(), "COMBAT", "its type")
+    Eq(cells[1].title:GetText(), "Close Call", "its name")
+    Check(cells[1].kit.ink.used > 0 and cells[1].kit.inner.used > 0, "its map mark, from its own draw")
+
+    -- The ring: the leaders' pencil, at the spot, on the picture.
+    local ring = plate.ringPool
+    Check(ring.used > 0, "the ring is drawn")
+    Check(ring.used >= 9, "dashes of the pen's pieces: " .. ring.used)
+    Eq(ring[1].anchorTo, plate.pivot, "on the picture, so it pans")
+    local rx, ry = plate.At(mx, my, true)
+    Check(math.abs(plate.ringPoint[1] - rx) < 1e-6 and math.abs(plate.ringPoint[2] - ry) < 1e-6, "at the spot")
+    Eq(plate.ringAt.look.colour, ns.UI.YourDiary.LEADER.colour, "the leaders' graphite")
+
+    -- The form, on the book, and the way back drops what was typed.
+    PickKind("close")
+    Check(not view.heading:IsShown() and view.title:IsShown(), "the form takes its place")
+    Eq(view.title:GetText(), "A close call", "its own heading")
+    Check(view.another:IsShown(), "the way back")
+    Eq(view.another:GetText(), "Choose another", "in the user's words")
+    OnBook("the new card's form")
+    Check(ring.used > 0, "the ring stays on the form")
+    Row("name"):Set("Old Tom")
+    Row("foes"):Set("4")
+    Row("rank").toggles.rare.scripts.OnClick(Row("rank").toggles.rare)
+    Press(view.another)
+    Check(view:IsShown() and view.heading:IsShown(), "back at the picker")
+    Check(ring.used > 0, "the ring stays")
+    PickKind("close")
+    Eq(Row("name"):Get(), "", "what was typed went")
+    Eq(Row("foes"):Get(), "", "all of it")
+    Eq(Row("rank"):Get(), "", "the toggle too")
+    Eq(Row("pct"):Get(), "5", "the kind's default stands")
+    local calls = j.custom and #j.custom or 0
+
+    -- Cancel, from the form and from the picker: nothing, and no ring.
+    Press(view.cancel)
+    Check(not view:IsShown(), "cancel closes")
+    Eq(ring.used, 0, "the ring goes")
+    Eq(plate.ringAt, nil, "for good")
+    Eq(j.custom and #j.custom or 0, calls, "nothing saved")
+    RightMap(plate, mx, my)
+    mock.MenuClick("Add custom event...")
+    Press(view.cancel)
+    Eq(ring.used, 0, "the ring goes with the picker")
+
+    -- Leaving the page: the same.
+    RightMap(plate, mx, my)
+    mock.MenuClick("Add custom event...")
+    PickKind("close")
+    Row("name"):Set("Old Tom")
+    page.right:Hide()
+    page.right:Show()
+    Check(not view:IsShown(), "gone with the page")
+    Eq(ring.used, 0, "and the ring")
+    Eq(j.custom and #j.custom or 0, calls, "nothing saved")
+
+    -- Saved: the ring goes, the card stays.
+    OpenFirst()
+    plate = Plate()
+    RightMap(plate, mx, my)
+    mock.MenuClick("Add custom event...")
+    PickKind("close")
+    Row("name"):Set("Old Tom")
+    Press(view.save)
+    Eq(plate.ringPool.used, 0, "saved, the ring goes")
+    Eq(#j.custom, calls + 1, "written")
+    Custom.Remove(j.custom[#j.custom])
+    ns.UI.RefreshJourneyPage(false)
+    OpenFirst()
+
+    -- An edit has no way back and no ring.
+    RightOn(MarkOf(Plate()))
+    Check(not view.another:IsShown(), "editing is not adding")
+    Eq(Plate().ringPool.used, 0, "and has no ring")
+    OnBook("the edit's form")
+    Press(view.cancel)
+
+    -- On the full page: through a zoom and a pan, at the same spot of the map.
+    YourDiary.OpenFull(MAP)
+    plate = Plate()
+    RightMap(plate, 0.40, 0.55)
+    local sx, sy = plate:MapAtCursor()
+    mock.MenuClick("Add custom event...")
+    Check(plate.ringPool.used > 0, "the ring on the full page")
+    Check(plate.ringPool[1].anchorTo == plate.pivot, "on its picture")
+    plate.look.onSettle(plate.look.f * 1.2, 0.45, 0.5)
+    plate = Plate()
+    Check(plate.ringPool.used > 0, "it survives the zoom's drawing")
+    local nx, ny = plate.At(sx, sy, true)
+    Check(math.abs(plate.ringPoint[1] - nx) < 1e-6 and math.abs(plate.ringPoint[2] - ny) < 1e-6,
+        "at the same spot, drawn at the new view")
+    Press(view.cancel)
+    Eq(plate.ringPool.used, 0, "gone from the full page")
+    OpenFirst()
+end
+
+--------------------------------------------------------------------------
+Section("the picker with more kinds than it holds")
+
+do
+    local Plates = ns.UI.JourneyPlate
+    local added = {}
+    local drew = 0
+    -- A throwaway kind for each place: type, then `at`, then its name, and one
+    -- whose group nobody knows, which counts as Other.
+    local function Kind(kind, group, at)
+        ns.JourneyRecap.MOMENTS[kind] = { kind = kind, custom = { label = "Kind " .. kind, group = group, at = at, fields = {} } }
+        Plates.MARKS[kind] = { draw = function(kit, x, y)
+            drew = drew + 1
+            kit.Dot(kit.halo, x, y, 8, kit.P, 1)
+            kit.Stroke(kit.ink, x - 3, y, x + 3, y, 1, kit.INK_STRONG, 1)
+        end }
+        added[#added + 1] = kind
+    end
+    Kind("zz_other", "other", 1)
+    Kind("zz_nobody", "nonsense", 0)
+    Kind("zz_social", "social")
+    Kind("zz_lore2", "lore", 2)
+    Kind("zz_lore1", "lore", 1)
+    Kind("zz_combat", "combat", -1)
+    for i = 1, 8 do Kind("zy_fill" .. i, "other", 5) end
+
+    local order = {}
+    for _, k in ipairs(CardSheet.Kinds()) do order[#order + 1] = k.kind end
+    local want = { "zz_combat", "close", "zz_lore1", "zz_lore2", "zz_social", "zz_nobody", "zz_other" }
+    for i, kind in ipairs(want) do Eq(order[i], kind, "the order at " .. i) end
+    Eq(#order, 15, "every kind, and only those with a spec")
+
+    OpenFirst()
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    local view = CardSheet.View()
+    local list = view.list
+    Eq(list.numRows, 5, "the rows it holds")
+    Check(#list.data > list.numRows, "more rows than it holds: " .. #list.data)
+    Check(list.bar:IsShown(), "so its bar shows")
+    local firstBefore = Cells()[1].kind
+    Eq(firstBefore, "zz_combat", "from the top")
+    Eq(Cells()[3].eyebrow:GetText(), "QUESTS AND LORE", "a type's words")
+    list.Wheel(list, -1)
+    Check(list.offset > 0, "the wheel scrolls it")
+    Check(Cells()[1].kind ~= firstBefore, "to other cards")
+    list:SetOffset(#list.data)
+    local cells = Cells()
+    Eq(cells[#cells].kind, order[#order], "to the last")
+    Check(drew > 0, "each by its own mark")
+    -- Laid wholly on the book, at its widest and tallest.
+    local S, BOOK = view.sheet, ns.UI.Journal.BOOK
+    local left = BOOK.BOOK_W / 2 + view.dx - S:GetWidth() / 2
+    Check(left >= 0 and left + S:GetWidth() <= BOOK.BOOK_W, "the two-column picker runs off the book")
+    Check(S.recorded.height > 400 and S.recorded.height <= BOOK.BOOK_H,
+        "the tall picker runs off the book: " .. S.recorded.height)
+    -- A row's card opens its kind's form; here a kind with no fields still does.
+    local chosen = cells[#cells].kind
+    PickKind(chosen)
+    Eq(view.title:GetText(), "Kind " .. chosen, "the label stands in for a heading")
+    Press(view.cancel)
+
+    for _, kind in ipairs(added) do
+        ns.JourneyRecap.MOMENTS[kind] = nil
+        Plates.MARKS[kind] = nil
+    end
+    Eq(#CardSheet.Kinds(), 1, "the throwaway kinds are gone")
+    OpenFirst()
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    Eq(#Cells(), 1, "and the sheet is back to one")
+    Press(view.cancel)
 end
 
 --------------------------------------------------------------------------
@@ -432,7 +729,8 @@ do
     local f, cx, cy = plate.look.f, plate.look.cx, plate.look.cy
     -- Nearest the second sitting's stop.
     RightMap(plate, 0.70, 0.30)
-    Check(mock.MenuClick("Add a close call here"), "offered on the full page")
+    Check(mock.MenuClick("Add custom event..."), "offered on the full page")
+    PickKind("close")
     Row("name"):Set("Old Tom")
     Press(CardSheet.View().save)
     local rec = j.custom[1]
@@ -473,7 +771,8 @@ do
     OpenFirst()
     local plate = Plate()
     RightMap(plate, 0.40, 0.60)
-    Check(mock.MenuClick("Add a close call here"), "still offered")
+    Check(mock.MenuClick("Add custom event..."), "still offered")
+    PickKind("close")
     Row("name"):Set("Old Tom")
     Press(CardSheet.View().save)
     Eq(#j.custom, 1, "written")
@@ -510,5 +809,5 @@ do
     local code = Memory:read("*a")
     Memory:close()
     Check(code:find("every card you changed or wrote", 1, true), "the words")
-    Check(ns.Custom.Spec("close").label == "a close call", "the spec names itself")
+    Check(ns.Custom.Spec("close").label == "Close Call", "the spec names itself")
 end

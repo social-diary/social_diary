@@ -81,6 +81,10 @@ do
     Eq(Calls()[1].name, "cffff0000Old Tomr", "no escape sequence, one line")
     Custom.Edit("close", rec, { rank = "nonsense", junk = 1 })
     Eq(Calls()[1].rank, nil, "a choice not on the list is cleared")
+    Custom.Edit("close", rec, { rank = "worldboss" })
+    Eq(Calls()[1].rank, nil, "a boss cannot be chosen")
+    Custom.Edit("close", rec, { rank = "rareelite" })
+    Eq(Calls()[1].rank, nil, "nor a rare elite")
     Eq(rec.custom.junk, nil, "a field the kind does not list is left out")
 
     Check(Custom.Reset(Calls()[1]), "the reset")

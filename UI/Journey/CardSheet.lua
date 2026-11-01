@@ -4,17 +4,23 @@
 --
 -- A right click on a mark or a card of a kind that may be custom opens the
 -- form for its record (a spot merging several asks which, by a menu). Anywhere
--- else on the picture a menu offers a card of each such kind at that spot, and
--- the cards hidden on this page, which have no mark left to click. A mark of
--- any other kind counts as anywhere else: the map under it is still the map.
+-- else on the picture a menu offers "Add custom event..." at that spot, and the
+-- cards hidden on this page, which have no mark left to click. A mark of any
+-- other kind counts as anywhere else: the map under it is still the map.
+--
+-- Adding goes by the picker, a sheet of one card per kind that may be custom,
+-- each its type, its name and its map mark (.claude/features/custom-cards.md,
+-- "Adding a card"), and on to the form on the same sheet. "Choose another" goes
+-- back and what was typed goes with it. A dashed ring in pencil lies on the plate
+-- at the spot while either is open (plate:SetRing).
 --
 -- Everything is read off the kinds' registered `custom` specs, so this names no
 -- feature, and a later kind needs no change here. The time is never asked:
 -- Custom.Insert finds it within the page's own (plate.entry: the open piece on
 -- a close-up, the level on a full page).
 --
--- The form is a slip laid on the book's left page, so the plate it is about
--- stays in sight. It lies straight, as an edit box cannot turn (the note
+-- The form is a slip laid from the book's left edge (Lay), so the plate it is
+-- about stays in sight, nearly all of it. It lies straight, as an edit box cannot turn (the note
 -- sheet's reason, UI/Paper/NoteSheet.lua), and like that sheet the book under
 -- it takes no clicks until it is saved or cancelled, so the page cannot turn
 -- from under it. Nothing here is protected, so it all works in combat; and it
@@ -34,10 +40,11 @@ local BOOK = ns.UI.Journal.BOOK
 -- margins. margin: its writing's. title: the heading's middle. first: the first
 -- row's middle. row: from row to row. label: the labels' column. line, short:
 -- the width of a text's line and of a number's (a number's hint goes beside it,
--- `gap` on). links: from the last row to the quiet links' middle, foot: from
+-- `gap` on). toggle: a choice's box and its word, one after another along the
+-- line. links: from the last row to the quiet links' middle, foot: from
 -- there, or from the last row where it has none, to Save's. bottom: under Save.
 -- Its height comes of its rows: a later kind may have more.
-local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 92, line = 176, short = 48, gap = 8,
+local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 92, line = 176, short = 48, gap = 8, toggle = 70,
     links = 34, foot = 28, bottom = 26, linkGap = 18 }
 -- Not folded: a slip, not a sheet carried in the book. Its corners curl a
 -- little and it is hardly crumpled, as the note sheet's (NoteSheet.lua's CREASE,
@@ -45,9 +52,34 @@ local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 
 local CREASE = { columns = { 0, 0.07, 0.93, 1 }, rows = { 0, 0.07, 0.93, 1 }, folds = { columns = {}, rows = {} },
     crumple = 0.5, drift = 0.4, edge = 0.6, wander = 0, shift = 3, lean = 2, curl = { lift = 5, pull = 3 } }
 
--- The words of the form and the menus, all furniture (the copywriter's §1).
+-- The picker. edge: how far in from the book's left edge the sheet (form too) is
+-- laid, x from the pages, so neither lies on the cover; both are wider than the
+-- left page (286), and run over the gutter. margin, title: its writing's, and
+-- the heading's middle. top: where the list starts. card: a kind's slip, w being
+-- the 176 of the margin's L cards; turn its most, degrees; pad its writing's
+-- left, eyebrow and name their middles from its top, mark its mark's middle from
+-- its right. row: a row of cards and the air under it. gap: between two cards.
+-- most: the rows shown before it scrolls, what the book's 568 px of height holds
+-- with the heading and foot. foot: from the list to Cancel's middle; bottom:
+-- under it. The list's bar is SCROLLBAR_WIDTH + 2 on its right, always kept.
+local PICKER = { edge = 8, margin = 26, title = 30, top = 54, row = 78, gap = 22, most = 5, foot = 8, bottom = 24,
+    card = { w = 176, h = 62, turn = 0.8, pad = 10, eyebrow = 17, name = 39, mark = 20 } }
+-- The types, in their order. The kinds say which by its key; the words are here
+-- alone, so a kind cannot make a fifth. One not among them is Other.
+local GROUPS = { { key = "combat", words = "Combat" }, { key = "lore", words = "Quests and Lore" },
+    { key = "social", words = "Social" }, { key = "other", words = "Other" } }
+-- The pencil ring (plate:SetRing): the leaders' pencil in colour, alpha and nib,
+-- a little lighter in hand. r: its radius, a few px past a mark's, so a card
+-- written beside one does not hide it. dashes, share: how many, and how much of
+-- its share of the round each draws. uneven, wander: how far a dash starts off
+-- its place (in shares of its arc) and off the radius (px). bends, step: the
+-- points of each dash, and the pen's step along them; width in px.
+local RING = { r = 10, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 }
+
+-- The words of the form and the menus, all furniture (the copywriter's §1). Add,
+-- pick and another are the user's own, word for word.
 local WORDS = {
-    insert = "Add %s here", which = "Which one?", hidden = "Left out of this page", save = "Save", cancel = "Cancel",
+    add = "Add custom event...", pick = "What happened here?", another = "Choose another", which = "Which one?", hidden = "Left out of this page", save = "Save", cancel = "Cancel",
     hide = "Leave it out", reset = "Undo my changes", remove = "Delete this card",
     confirm = "Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone.",
 }
@@ -93,10 +125,23 @@ end
 -- The form
 --------------------------------------------------------------------------
 
-local function Close(quiet)
+local function LetGo()
     for _, row in ipairs(view.rows or {}) do
         if row.box then row.box:ClearFocus() end
     end
+end
+
+-- The ring off whichever plate has it. Called as the view hides, however it
+-- came to (Build), so nothing can leave one behind.
+local function RingOff()
+    if view.ringOn then
+        view.ringOn:SetRing(nil)
+        view.ringOn = nil
+    end
+end
+
+local function Close(quiet)
+    LetGo()
     view:Hide(quiet)
 end
 
@@ -107,21 +152,27 @@ local function NewRow(field)
     local row = { field = field, label = Style.Text(S, FONT.heading) }
     row.label:SetText(field.label:upper())
     if field.type == "choice" then
-        local choices = { { label = field.empty } }
-        for _, value in ipairs(field.values) do
-            choices[#choices + 1] = { label = field.names[value], key = value }
+        -- A box per value, always in sight, and at most one ticked: ticking one
+        -- unticks the rest, unticking leaves no value. `value` may be one no box
+        -- offers (a detected record's, which the form cannot choose): no box is
+        -- ticked for it, and it stays what Get says, so a save that never touched
+        -- these writes nothing over it (Fields).
+        row.toggles = {}
+        local function Tick()
+            for value, box in pairs(row.toggles) do box:SetChecked(row.value == value) end
         end
-        local function Name(value)
-            return value and field.names[value] or field.empty
+        for i, value in ipairs(field.values) do
+            local box = Style.Checkbox(S, SHEET.toggle, field.names[value], function() return row.value == value end,
+                function(on)
+                    row.value = on and value or nil
+                    Tick()
+                end)
+            box.at = i - 1
+            row.toggles[value] = box
         end
-        row.link = K.Link(FONT.body, function(self)
-            Style.ChoiceMenu(self, field.label, choices, function() return row.value end, function(value)
-                row:Set(value or "")
-            end)
-        end)
         function row:Set(value)
             self.value = value ~= "" and value or nil
-            self.link:SetText(Name(self.value))
+            Tick()
         end
         function row:Get() return self.value or "" end
     else
@@ -158,7 +209,8 @@ end
 
 local function ShowRow(row, on)
     row.label:SetShown(on)
-    for _, part in pairs({ row.box, row.hint, row.link }) do part:SetShown(on) end
+    for _, part in pairs({ row.box, row.hint }) do part:SetShown(on) end
+    for _, box in pairs(row.toggles or {}) do box:SetShown(on) end
 end
 
 -- What is to be written: all of an inserted card, of one that exists what
@@ -176,11 +228,100 @@ local function Fields()
     return fields, any
 end
 
+-- The kinds that may be added, by their types' order, then their `at` within a
+-- type, then by name, so the order does not hang on `pairs`.
+local function Kinds()
+    local order, list = {}, {}
+    for i, group in ipairs(GROUPS) do order[group.key] = i end
+    for kind, moment in pairs(ns.JourneyRecap.MOMENTS) do
+        local spec = moment.custom
+        if spec and spec.label then
+            local at = order[spec.group] or order.other
+            list[#list + 1] = { kind = kind, spec = spec, type = at, words = GROUPS[at].words, at = spec.at or 0 }
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.type ~= b.type then return a.type < b.type end
+        if a.at ~= b.at then return a.at < b.at end
+        return a.kind < b.kind
+    end)
+    return list
+end
+CardSheet.Kinds = Kinds
+
+local Open
+
+-- A card of the picker, on a blank paper strip written on by its caller
+-- (`size`, as the run page's are), through the strip's own plane so the words
+-- and the mark turn with it. `guid` is what makes a strip open something: under
+-- the mouse its tape lifts and a click calls onClick(guid). Here it is the kind.
+local function NewCell(row)
+    local strip = ns.UI.PaperStrip(row)
+    local cell = { strip = strip, eyebrow = Style.Text(strip, FONT.heading), title = Style.Text(strip, FONT.noteWritten) }
+    cell.eyebrow:SetJustifyH("LEFT")
+    cell.title:SetJustifyH("LEFT")
+    cell.kit = ns.UI.JourneyPlate.MarkKit(strip, function(region, x, y, w, h, turn) strip:Lay(region, x, y, w, h, turn) end,
+        function(region, ...) return strip:Bend(region, ...) end, strip:Paper())
+    return cell
+end
+
+local function FillCell(cell, x, k)
+    local C = PICKER.card
+    local strip = cell.strip
+    strip:SetNote({ size = { C.w, C.h }, guid = k.kind, turn = C.turn, seed = "picker:" .. k.kind,
+        onClick = function(kind) Open(kind, nil, view.where) end })
+    strip:Layout(x, 0, C.w)
+    cell.kind = k.kind
+    cell.eyebrow:SetText(k.words:upper())
+    cell.title:SetText(k.spec.label)
+    local w = C.w - 2 * C.pad - 2 * C.mark
+    local left = -C.w / 2 + C.pad + w / 2
+    -- A turned string is clipped to its box: room for the rise of its turn (the
+    -- run page's StripText has the same).
+    local rise = w * math.abs(math.sin(strip.turn or 0)) + 4
+    strip:Lay(cell.eyebrow, left, C.eyebrow - C.h / 2, w, 14 + rise)
+    strip:Lay(cell.title, left, C.name - C.h / 2, w, 20 + rise)
+    cell.eyebrow:Show()
+    cell.title:Show()
+    cell.kit.P = strip:Paper()
+    cell.kit:Begin()
+    local mark = ns.UI.JourneyPlate.MARKS[k.kind]
+    if mark then mark.draw(cell.kit, C.w / 2 - C.mark, 0) end
+    cell.kit:Finish()
+end
+
+local function BuildList()
+    local C, W = PICKER.card, 2 * PICKER.card.w + PICKER.gap + ns.UI.SCROLLBAR_WIDTH + 2
+    return ns.UI.Journal.List(view.sheet, PICKER.row, PICKER.most, function()
+        local row = CreateFrame("Frame", nil, view.sheet)
+        row.cells = { NewCell(row), NewCell(row) }
+        return row
+    end, function(row, item)
+        for i, cell in ipairs(row.cells) do
+            local k = item[i]
+            if k then
+                FillCell(cell, (i - 1) * (C.w + PICKER.gap), k)
+            else
+                cell.kind = nil
+                cell.strip:Hide()
+            end
+        end
+    end, W)
+end
+
 local function Build()
     local book = ns.UI.JournalFrame()
     view, K = ns.UI.LooseSheet(book, SHEET.w, 300, { crease = CREASE, straight = true })
     view.rowsOf = {}
     view.title = Style.Text(view.sheet, FONT.page)
+    view.heading = Style.Text(view.sheet, FONT.noteWritten)
+    view.heading:SetText(WORDS.pick)
+    view.list = BuildList()
+    view.another = K.Link(FONT.body, function()
+        LetGo()
+        CardSheet.Pick()
+    end)
+    view.another:SetText(WORDS.another)
 
     view.save = K.Link(FONT.strong, function()
         local t
@@ -227,11 +368,36 @@ local function Build()
     YourDiary.page.right:HookScript("OnHide", function()
         if view:IsShown() then view:Hide(true) end
     end)
+    view:HookScript("OnHide", RingOff)
     view:Hide()
 end
 
--- Lays the slip for what `view` holds: its height from its rows, on the left
--- page's middle, each row and only the links that apply.
+-- The sheet's size, and laid: its left edge PICKER.edge in from the pages',
+-- upright in the middle of their height. `dx` is from the view's middle, which
+-- is the book frame's and so the pages' (Style.Book, inset by COVER each side).
+local function Place(W, H)
+    K.Reshape(W, H)
+    K.Fall("custom-card", nil, { PICKER.edge + W / 2 - BOOK.BOOK_W / 2, 0 })
+    view:Show()
+    K.Lay()
+end
+
+-- The form's pieces and the picker's, one set shown.
+local function ShowForm(on)
+    view.heading:SetShown(not on)
+    view.list:SetShown(not on)
+    view.title:SetShown(on)
+    view.save:SetShown(on)
+    if not on then
+        view.another:Hide()
+        view.hide:Hide()
+        view.reset:Hide()
+        view.remove:Hide()
+    end
+end
+
+-- Lays the slip for what `view` holds: its height from its rows, each row and
+-- only the links that apply.
 local function Lay(spec)
     local M, W = SHEET.margin, SHEET.w
     local rows = view.rows
@@ -245,18 +411,17 @@ local function Lay(spec)
     local footAt = (quiet and linksAt or last + SHEET.links - 6) + SHEET.foot
     local H = footAt + SHEET.bottom
 
-    K.Reshape(W, H)
-    K.Fall("custom-card", nil, { BOOK.LEFT_X + BOOK.LEFT_W / 2 - BOOK.BOOK_W / 2, 0 })
-    view:Show()
-    K.Lay()
+    Place(W, H)
 
     K.PlaceText(view.title, M, SHEET.title)
     for i, row in ipairs(rows) do
         local y = SHEET.first + (i - 1) * SHEET.row
         local x = M + SHEET.label
         K.PlaceText(row.label, M, y)
-        if row.link then
-            row.link:PlaceAt(x, y)
+        if row.toggles then
+            for _, box in pairs(row.toggles) do
+                K.PlaceButton(box, x + box.at * SHEET.toggle, y - box.height / 2, SHEET.toggle, box.height)
+            end
         else
             local w = row.field.type == "number" and SHEET.short or SHEET.line
             K.PlaceButton(row.box, x, y - 10, w, 20)
@@ -267,6 +432,8 @@ local function Lay(spec)
     view.hide:SetShown(detected)
     view.reset:SetShown(changed)
     view.remove:SetShown(inserted)
+    view.another:SetShown(view.where ~= nil)
+    if view.where then view.another:PlaceAt(M, footAt) end
     if detected then
         view.hide:PlaceAt(M, linksAt)
         if changed then view.reset:PlaceAt(M + K.Width(view.hide.label) + SHEET.linkGap, linksAt) end
@@ -277,18 +444,25 @@ local function Lay(spec)
     view.cancel:PlaceAt(W - M - K.Width(view.save.label) - SHEET.linkGap, footAt, "RIGHT")
 end
 
--- The form for `rec` of `kind`, or a new one to go `where`.
-local function Open(kind, rec, where)
-    local spec = ns.Custom.Spec(kind)
-    if not spec then return end
-    if not view then Build() end
+-- Each kind's rows off but `kind`'s.
+local function RowsOff(kind)
     for key, rows in pairs(view.rowsOf) do
         if key ~= kind then
             for _, row in ipairs(rows) do ShowRow(row, false) end
         end
     end
+end
+
+-- The form for `rec` of `kind`, or a new one to go `where`. A new one always
+-- starts from the kind's defaults: nothing typed outlives its form.
+function Open(kind, rec, where)
+    local spec = ns.Custom.Spec(kind)
+    if not spec then return end
+    if not view then Build() end
+    RowsOff(kind)
+    ShowForm(true)
     view.kind, view.rec, view.where, view.rows = kind, rec, where, RowsOf(kind, spec)
-    view.title:SetText(Capital(spec.label))
+    view.title:SetText(spec.heading or Capital(spec.label))
     local values = rec and ns.Custom.Values(rec) or spec.defaults or {}
     for _, row in ipairs(view.rows) do
         ShowRow(row, true)
@@ -306,21 +480,49 @@ local function Open(kind, rec, where)
 end
 
 CardSheet.Edit = function(kind, rec) Open(kind, rec) end
+
+-- The picker, for the spot already held (view.where): from the menu, or back
+-- from the form.
+function CardSheet.Pick()
+    local P, kinds = PICKER, Kinds()
+    RowsOff(nil)
+    ShowForm(false)
+    view.kind, view.rec, view.rows = nil, nil, nil
+    local cols = #kinds > 1 and 2 or 1
+    local items = {}
+    for i, k in ipairs(kinds) do
+        local at = math.ceil(i / cols)
+        items[at] = items[at] or {}
+        items[at][#items[at] + 1] = k
+    end
+    local rows = math.min(#items, P.most)
+    local listW = cols * P.card.w + (cols - 1) * P.gap + ns.UI.SCROLLBAR_WIDTH + 2
+    local W, H = 2 * P.margin + listW, P.top + rows * P.row + P.foot + 2 * P.bottom
+    Place(W, H)
+    K.PlaceText(view.heading, P.margin, P.title)
+    view.list:SetNumRows(rows)
+    view.list:SetWidth(listW)
+    K.PlaceButton(view.list, P.margin, P.top, listW, rows * P.row)
+    view.list:SetData(items)
+    view.cancel:PlaceAt(W - P.margin, H - P.bottom, "RIGHT")
+end
+
+-- The picker for a new card at `where` on `plate`, and the ring there.
+local function StartAdding(plate, where)
+    if not view then Build() end
+    view.where = where
+    local L = YourDiary.LEADER
+    RingOff()
+    plate:SetRing({ mapID = where.mapID, x = where.x, y = where.y, look = setmetatable({ colour = L.colour, alpha = L.alpha,
+        nib = L.pen.nib }, { __index = RING }) })
+    view.ringOn = plate
+    CardSheet.Pick()
+end
 function CardSheet.View() return view end
 
 --------------------------------------------------------------------------
 -- The right click
 --------------------------------------------------------------------------
-
--- The kinds that may be inserted, in their moments' order.
-local function Kinds()
-    local list = {}
-    for kind, moment in pairs(ns.JourneyRecap.MOMENTS) do
-        if moment.custom and moment.custom.label then list[#list + 1] = { kind = kind, moment = moment } end
-    end
-    table.sort(list, function(a, b) return (a.moment.order or 0) < (b.moment.order or 0) end)
-    return list
-end
 
 -- The menu of the map itself: a new card at the spot under the cursor, on a
 -- zone's map only (Recap's `Own` would put any other spot back on the route),
@@ -331,18 +533,16 @@ local function PlaceMenu(plate)
     local x, y = plate:MapAtCursor()
     local where = x and e and e.from and e.to and e.to > e.from and ns.ZoneOf(mapID) == mapID
         and { mapID = mapID, x = x, y = y, from = e.from, to = e.to } or nil
-    local kinds = where and Kinds() or {}
+    local adds = where and Kinds()[1] ~= nil
     local hidden = {}
     for _, h in ipairs(e and e.hidden or {}) do
         if ns.Custom.Spec(h.kind) then hidden[#hidden + 1] = h end
     end
-    if not (kinds[1] or hidden[1]) then return end
+    if not (adds or hidden[1]) then return end
     MenuUtil.CreateContextMenu(plate.over, function(_, root)
-        for _, k in ipairs(kinds) do
-            root:CreateButton(WORDS.insert:format(k.moment.custom.label), function() Open(k.kind, nil, where) end)
-        end
+        if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
         if hidden[1] then
-            if kinds[1] then root:CreateDivider() end
+            if adds then root:CreateDivider() end
             root:CreateTitle(WORDS.hidden)
             for _, h in ipairs(hidden) do
                 root:CreateButton(Described(ns.Custom.Spec(h.kind), h.rec), function()
