@@ -13,6 +13,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Fixes
 
 - Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
+- Close calls now name the creatures actually fighting you more reliably
 
 ## [2.0.0]
 

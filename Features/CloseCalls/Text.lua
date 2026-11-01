@@ -14,8 +14,8 @@ local Text = ns.UI.JourneyText
 local Capital, Health, NUMBER, When = Text.Capital, Text.Health, Text.NUMBER, Text.When
 
 -- A close call's creature in a sentence: "a Plainstrider", "Hogger", "a
--- Plainstrider and two others" (it was one of `foes` targeted); nil when
--- no creature was.
+-- Plainstrider and two others" (it was one of `foes` on the user); nil
+-- when no creature was seen to be.
 local function Foes(call)
     local name = Text.KillerName(call)
     if not name then return nil end

@@ -72,9 +72,9 @@ local Journey = ns.Journey
 -- the health that would be left from full, a whole percent, 1 to
 -- LEFT's; `took` the damage as a percent of the maximum, more than
 -- 100 when healing the meter does not list carried the user through; `seconds` how long the fight was; the
--- creature is the one fought most (the most of its kind targeted), `foes`
--- how many creatures were targeted in all. No creature is a fight whose
--- foe was never targeted. `display` read as a killer's is, by its NPC id
+-- creature is the one fought most (the most of its kind that had the user
+-- targeted), `foes` how many creatures had them targeted in all. No
+-- creature is a fight where none was seen to. `display` read as a killer's is, by its NPC id
 -- (the deaths' capture looks it up). The newest 300 are kept a character.
 -- Its creatures' names are as read off their units (Capture.lua), so the
 -- list is registered `readNames` (Core/CreatureNames.lua's Of asks it).

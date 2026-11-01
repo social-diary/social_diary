@@ -77,6 +77,7 @@ local function Fight(targets, left, opts)
     mock.fire("PLAYER_REGEN_DISABLED")
     for _, def in ipairs(targets) do
         mock.SetUnit("target", def)
+        mock.SetUnit("targettarget", not def.idle and SELF or nil)
         mock.fire("PLAYER_TARGET_CHANGED")
     end
     mock.now = mock.now + 40
@@ -95,6 +96,7 @@ local function Fight(targets, left, opts)
     if opts.duel then ns.Fire("SD_DUEL_FINISHED", STRANGER.guid, opts.duel) end
     mock.inCombat = false
     mock.SetUnit("target", nil)
+    mock.SetUnit("targettarget", nil)
     mock.fire("PLAYER_REGEN_ENABLED")
     mock.RunTimers()
     return id
@@ -149,6 +151,43 @@ table.remove(j.closeCalls)
 Fight({}, 4)
 Eq(ns.CloseCalls.List(j)[4].npcID, nil, "a creature made up")
 Eq(ns.CloseCalls.List(j)[4].name, nil, "a name made up")
+
+-- A creature tabbed to in the fight is no foe, unless it turns on the user.
+Fight({ Mob(STRIDER1, "Plainstrider"), Mob(WOLF, "Prairie Wolf", { idle = true }) }, 4)
+Eq(ns.CloseCalls.List(j)[5].npcID, 2955, "a bystander was named")
+Eq(ns.CloseCalls.List(j)[5].foes, nil, "a bystander was counted")
+Fight({ Mob(WOLF, "Prairie Wolf", { idle = true }) }, 4)
+Eq(ns.CloseCalls.List(j)[6].npcID, nil, "a bystander alone was named")
+table.remove(j.closeCalls)
+table.remove(j.closeCalls)
+
+-- One that turns on the user later, and adds never clicked, off their plates.
+mock.inCombat = true
+mock.SetUnit("target", Mob(WOLF, "Prairie Wolf"))
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.SetUnit("targettarget", SELF)
+mock.fire("UNIT_TARGET", "target")
+mock.SetUnit("nameplate1", Mob(STRIDER1, "Plainstrider"))
+mock.SetUnit("nameplate1target", SELF)
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+mock.SetUnit("nameplate2", Mob(STRIDER2, "Plainstrider"))
+mock.SetUnit("nameplate2target", SELF)
+mock.fire("UNIT_TARGET", "nameplate2")
+mock.SetUnit("nameplate3", Mob(STRIDER3, "Plainstrider"))
+mock.fire("UNIT_TARGET", "nameplate3")
+nextSession = nextSession + 1
+meter.sessions[nextSession] = { taken = 96, heals = {} }
+mock.now = mock.now + 40
+mock.inCombat = false
+for _, unit in ipairs({ "target", "targettarget", "nameplate1", "nameplate1target", "nameplate2", "nameplate2target",
+    "nameplate3" }) do
+    mock.SetUnit(unit, nil)
+end
+mock.fire("PLAYER_REGEN_ENABLED")
+mock.RunTimers()
+Eq(ns.CloseCalls.List(j)[5].foes, 3, "the wolf that turned and the two on their plates")
+Eq(ns.CloseCalls.List(j)[5].npcID, 2955, "the kind most of them were")
+table.remove(j.closeCalls)
 
 -- Dead is no close call, though the fight ended.
 mock.dead = true

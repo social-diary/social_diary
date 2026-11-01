@@ -7,9 +7,11 @@
 -- client's damage meter, read once combat is over, when its numbers are
 -- plain, against the maximum health. Healing received is no meter type;
 -- it is each healer's spells by the unit healed, as PrephDamageMeter's
--- "Targets healed" reads them. What was fought comes off the target while
--- it lasts: every creature the user targets that can attack them, counted
--- by kind.
+-- "Targets healed" reads them. What was fought comes off the units while
+-- they last: every creature that can attack the user and has them
+-- targeted, off the user's target or a nameplate, counted by kind. Being
+-- the user's target does not make a foe: a creature tabbed to is not
+-- fighting them (as Features/Witnesses/Capture.lua's Mine).
 --
 -- Every fight judged is told as SD_FIGHT_SURVIVED (Core/Events.lua's
 -- header), close or not, before a close call is kept: the witnesses keep
@@ -61,6 +63,7 @@ local fight
 
 local function Foe(unit)
     if not fight or not ns.Plain(UnitExists(unit)) or not ns.Plain(UnitCanAttack("player", unit)) then return end
+    if ns.Plain(UnitGUID(unit .. "target")) ~= ns.ownGUID then return end
     local guid = ns.Plain(UnitGUID(unit))
     local npcID = ns.NpcID(guid)
     if not npcID or fight.seen[guid] then return end
@@ -82,7 +85,7 @@ local function Foe(unit)
     if RANKS[rank] then kind.rank = rank end
 end
 
--- The kind fought most: the most targeted, ties to the lower id.
+-- The kind fought most: the most of them on the user, ties to the lower id.
 local function Main(kinds)
     local best, npcID
     for id, kind in pairs(kinds) do
@@ -259,10 +262,21 @@ ns.On("PLAYER_REGEN_DISABLED", function()
     if not Journey.Kept() then return end
     fight = { started = ns.Now(), seen = {}, foes = 0, kinds = {} }
     Foe("target")
+    for _, unit in ipairs(ns.Units.Plates) do Foe(unit) end
 end)
 
 ns.On("PLAYER_TARGET_CHANGED", function()
     Foe("target")
+end)
+
+-- A creature turning on the user: it may not have them targeted yet as
+-- the fight starts.
+ns.On("UNIT_TARGET", function(_, unit)
+    if type(unit) == "string" and (unit == "target" or unit:match("^nameplate%d+$")) then Foe(unit) end
+end)
+
+ns.On("NAME_PLATE_UNIT_ADDED", function(_, unit)
+    Foe(unit)
 end)
 
 -- A duel's fight (SD_DUEL_FINISHED, Core/Events.lua's header): one still
