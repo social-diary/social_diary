@@ -273,13 +273,31 @@ local function BossName(visit, id, name)
     return boss and boss.name
 end
 
+-- Seconds: the client can tell a pull's end again, and its start again
+-- just after it (as Details! guards against, core/parser.lua's
+-- ENCOUNTER_START and ENCOUNTER_END).
+local REPEAT = { start = 10, stop = 15 }
+
+-- The visit's last pull, if it ended under `within` seconds ago and is the
+-- boss told of: by its id or name, or both secret.
+local function JustEnded(visit, id, name, secret, now, within)
+    local last = visit.pulls[#visit.pulls]
+    if not (last and last.stop) or now - last.stop >= within then return nil end
+    if (id and last.id == id) or (name and last.name == name) or (secret and last.secret and not id and not name) then
+        return last
+    end
+    return nil
+end
+
 -- A boss was pulled. `id` and `name` are nil when the client kept them
 -- secret, and `secret` says so.
 function Instances.Pull(id, name, secret, now)
     local inside, visit = Instances.Inside()
     if not inside then return nil end
     if #visit.pulls >= MAX_PULLS then return nil end
-    local pull = { id = id, name = BossName(visit, id, name), start = now or ns.Now(), secret = secret or nil }
+    now = now or ns.Now()
+    if JustEnded(visit, id, BossName(visit, id, name), secret, now, REPEAT.start) then return nil end
+    local pull = { id = id, name = BossName(visit, id, name), start = now, secret = secret or nil }
     visit.pulls[#visit.pulls + 1] = pull
     visit.pull = #visit.pulls
     ns.Touch()
@@ -330,6 +348,10 @@ function Instances.PullEnd(id, name, killed, secret, now)
     local pull = visit.pull and visit.pulls[visit.pull]
     if pull and pull.stop then pull = nil end
     if not pull then
+        -- The same end told again: a wipe is not counted twice. A kill after
+        -- a wipe is news.
+        local told = JustEnded(visit, id, name, secret, now, REPEAT.stop)
+        if told and (told.killed or not killed) then return told end
         for i = #visit.pulls, 1, -1 do
             local p = visit.pulls[i]
             if (id and p.id == id) or (name and p.name == name) then

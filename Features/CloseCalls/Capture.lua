@@ -44,8 +44,12 @@ local Journey = ns.Journey
 local RANKS = { elite = true, rare = true, rareelite = true, worldboss = true }
 
 -- Seconds: how long after combat the damage meter is read, and read again
--- while it does not read yet (`tries` times in all).
-local WAIT = { meter = 1, tries = 5 }
+-- while it does not read yet (`tries` times in all, Meter.Wait's, none of
+-- them while it is busy), and how long it may stay busy (`deadline`).
+local WAIT = { meter = 1, tries = 5, deadline = 5 * 60 }
+
+-- The session a fight went unread in: what it holds next is two fights.
+local unread
 
 local function Level()
     local level = ns.Plain(UnitLevel("player"))
@@ -94,40 +98,13 @@ local function Main(kinds)
     return npcID, best
 end
 
-local function Table(value)
-    value = ns.Plain(value)
-    return type(value) == "table" and value or nil
-end
+local Meter = ns.Meter
+local Table = Meter.Table
 
--- The damage meter's latest session of meter type `kind` ("DamageTaken",
--- "HealingDone"), and its id; nil while it does not read.
-local function Session(kind)
-    local meter, types = C_DamageMeter, Enum and Enum.DamageMeterType
-    local which = types and types[kind]
-    if not (meter and which) then return nil end
-    local id, ok, session
-    if meter.GetAvailableCombatSessions and meter.GetCombatSessionFromID then
-        local okL, sessions = pcall(meter.GetAvailableCombatSessions)
-        for _, entry in ipairs(okL and Table(sessions) or {}) do
-            local sid = ns.Plain(Table(entry) and entry.sessionID)
-            if type(sid) == "number" and (not id or sid > id) then id = sid end
-        end
-        if id then ok, session = pcall(meter.GetCombatSessionFromID, id, which) end
-    end
-    if not id and meter.GetCombatSessionFromType and Enum.DamageMeterSessionType then
-        id = "current"
-        ok, session = pcall(meter.GetCombatSessionFromType, Enum.DamageMeterSessionType.Current, which)
-    end
-    session = ok and Table(session)
-    local sources = session and Table(session.combatSources)
-    if not sources then return nil end
-    return sources, id, which
-end
-
--- The damage the user took in the latest session, and its id; nil while
--- it does not read. No row for the user is none taken.
-local function Taken()
-    local sources, id = Session("DamageTaken")
+-- The damage the user took in session `session`, and its id; nil while it
+-- does not read. No row for the user is none taken.
+local function Taken(session)
+    local sources, id = Meter.Session("DamageTaken", session)
     if not sources then return nil end
     for _, src in ipairs(sources) do
         src = Table(src)
@@ -167,26 +144,18 @@ local function Amount(spell, d, alone)
     return type(second) == "number" and second or first
 end
 
--- The healing the user received in the latest session, from every healer
+-- The healing the user received in session `session`, from every healer
 -- the meter lists (the user, their group): each healer's spells, broken
 -- down by the unit healed. Nil while any of it does not read.
-local function Received()
-    local meter = C_DamageMeter
-    local sources, id, which = Session("HealingDone")
-    if not (sources and meter.GetCombatSessionSourceFromID) then return nil end
+local function Received(session)
+    local sources, id, which = Meter.Session("HealingDone", session)
+    if not sources then return nil end
     local total = 0
     for _, src in ipairs(sources) do
         src = Table(src)
         if not src then return nil end
         local guid, creature = ns.Plain(src.sourceGUID), ns.Plain(src.sourceCreatureID)
-        local ok, data
-        if id == "current" then
-            ok, data = pcall(meter.GetCombatSessionSourceFromType, Enum.DamageMeterSessionType.Current, which,
-                guid, creature)
-        else
-            ok, data = pcall(meter.GetCombatSessionSourceFromID, id, which, guid, creature)
-        end
-        local spells = ok and Table(data) and Table(data.combatSpells)
+        local spells = Meter.Spells(id, which, guid, creature)
         if not spells then return nil end
         for _, spell in ipairs(spells) do
             spell = Table(spell)
@@ -218,28 +187,36 @@ local function Since(j, kind, amount, id)
     return amount
 end
 
-local function Judge(f, now, tries)
-    tries = (tries or 0) + 1
+-- Whether the fight is dealt with: false while the meter does not read.
+local function Judge(f, now)
     local j = Journey.Kept()
-    if not j or ns.Plain(UnitIsDeadOrGhost("player")) == true then return end
+    if not j then return true end
     local max = ns.Plain(UnitHealthMax("player"))
-    local taken, id = Taken()
-    local healed, hid = Received()
+    local taken, id = Taken(f.session)
+    local healed, hid = Received(f.session)
     if type(max) ~= "number" or not taken or not healed then
-        ns.Debug("close call: the damage meter does not read yet%s", tries < WAIT.tries and ", trying again" or ", given up")
-        if tries < WAIT.tries then ns.After(WAIT.meter, function() Judge(f, now, tries) end) end
-        return
+        ns.Debug("close call: the damage meter does not read yet")
+        return false
     end
     -- The healing that kept the user up, theirs and their group's, is
     -- taken off: what is left is how far the fight brought them down.
     taken = Since(j, "taken", taken, id)
     healed = Since(j, "received", healed, hid)
-    -- A duel ends at 1 hp by the rules, alive: no close call, and no fight
-    -- survived. The meter is still read first, so the next fight in the
-    -- same session counts only its own damage.
-    if f.duel then
-        ns.Debug("close call: a duel's fight, left")
-        return
+    -- A fight went unread in this session: this reading holds both, so it
+    -- only sets where the next one counts from.
+    local mixed = unread == id
+    unread = nil
+    if mixed then
+        ns.Debug("close call: an unread fight in the same session, left")
+        return true
+    end
+    -- A fight the user died in is no close call, and a duel ends at 1 hp by
+    -- the rules, alive: no close call, and no fight survived. The meter is
+    -- still read first, so the next fight in the same session counts only
+    -- its own damage.
+    if f.died or f.duel then
+        ns.Debug("close call: %s, left", f.died and "the user died" or "a duel's fight")
+        return true
     end
     ns.Debug("close call: %d damage taken, %d healing received", taken, healed)
     taken = math.max(0, taken - healed)
@@ -256,6 +233,7 @@ local function Judge(f, now, tries)
     -- Its creature's display, looked up as a killer's is (Deaths'
     -- capture), for its card's picture.
     if call and call.npcID and ns.Deaths then ns.Deaths.LookUp(call) end
+    return true
 end
 
 ns.On("PLAYER_REGEN_DISABLED", function()
@@ -293,7 +271,24 @@ ns.On("PLAYER_REGEN_ENABLED", function()
     if f and ns.Duelling() then f.duel = true end
     if f and Journey.Kept() then
         local now = ns.Now()
-        -- The meter takes the last blows in a moment after.
-        ns.After(WAIT.meter, function() Judge(f, now) end)
+        f.session = Meter.Pin()
+        -- The meter takes the last blows in a moment after, and the death
+        -- is told by then. Dead now is dead in this fight; dead later, with
+        -- the meter still busy, is the next one's.
+        ns.After(WAIT.meter, function()
+            f.died = ns.Plain(UnitIsDeadOrGhost("player")) == true
+            Meter.Wait(function() return Judge(f, now) end, { every = WAIT.meter, tries = WAIT.tries,
+                deadline = WAIT.deadline, gaveUp = function()
+                    ns.Debug("close call: the damage meter never read, given up")
+                    unread = f.session or Meter.Pin()
+                end })
+        end)
     end
+end)
+
+-- The meter started over, and its ids may too: nothing to count from.
+ns.On("DAMAGE_METER_RESET", function()
+    unread = nil
+    local j = Journey.Kept()
+    if j then j.meter = nil end
 end)

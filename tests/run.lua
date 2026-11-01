@@ -27,6 +27,7 @@ local FILES = {
     "skills",
     "skills_ui",
     "combat",
+    "meter",
     "questie",
     "journal_ui",
     "journey_ui",

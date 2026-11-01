@@ -14,6 +14,16 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
 - Close calls now name the creatures actually fighting you more reliably
+- Killers, close calls and wipes are recorded more accurately in long and group fights
+
+
+TODO:
+
+Dev/MeterProbe.lua logs after every fight, in the world and in dungeons. It stores real names in your local save only.
+Fight a mob alone in the open world.
+Fight a mob while a stranger also hits it.
+Do a group dungeon, including dying while the group keeps fighting.
+/reload, then share the meterProbe section of SocialDiaryCharDB, which is in your character’s SavedVariables folder. Check /sd meterprobe first; it shows how many of the 400 lines are used. /sd meterprobe clear empties it.
 
 ## [2.0.0]
 

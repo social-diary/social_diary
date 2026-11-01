@@ -11,9 +11,10 @@
 --   after combat   The client's own death recap (C_DeathRecap). Readable once
 --                  combat is over (probe, 8 Oct): the killing blow's source
 --                  GUID and name, the spell, and everyone who hit in the last
---                  moments. The user's own death is the latest recap; a group
---                  member's needs the recap ID the damage meter lists for
---                  them, if it lists them at all (untested).
+--                  moments. A death's recap is the one the damage meter lists
+--                  for the victim (Meter.RecapID), if it lists them at all
+--                  (untested for a group member); the user's otherwise the
+--                  latest recap.
 --
 -- A recap is only used when its killing blow landed on the victim within a
 -- few seconds of the recorded death, so a stale or unrelated one never is.
@@ -224,54 +225,26 @@ function Deaths.FromRecap(events, victim, at)
     return killer
 end
 
--- The recap ID the damage meter keeps for a victim's latest death, if it
--- lists them. Only read outside combat, where its fields are plain.
-local function MeterRecapID(guid)
-    local meter = C_DamageMeter
-    local types = Enum and Enum.DamageMeterType
-    if not (meter and meter.GetAvailableCombatSessions and types and types.Deaths) then return nil end
-
-    local ok, sessions = pcall(meter.GetAvailableCombatSessions)
-    sessions = ok and ns.Plain(sessions)
-    if type(sessions) ~= "table" then return nil end
-
-    -- Any level of this can come back secret, so each is checked on the way.
-    local function Table(value)
-        value = ns.Plain(value)
-        return type(value) == "table" and value or nil
+local function Recap(recap, id, item)
+    if id and recap.HasRecapEvents then
+        local ok, has = pcall(recap.HasRecapEvents, id)
+        if not ok or ns.Plain(has) == false then return nil end
     end
-
-    local best
-    for i = 1, #sessions do
-        local entry = Table(sessions[i])
-        local okS, session = pcall(meter.GetCombatSessionFromID, entry and ns.Plain(entry.sessionID), types.Deaths)
-        session = okS and Table(session)
-        for _, src in ipairs(session and Table(session.combatSources) or {}) do
-            src = Table(src)
-            local recapID = src and ns.Plain(src.deathRecapID)
-            if src and ns.Plain(src.sourceGUID) == guid and type(recapID) == "number"
-                and (not best or recapID > best) then
-                best = recapID
-            end
-        end
-    end
-    return best
+    local ok, events = pcall(recap.GetRecapEvents, id)
+    if not ok then return nil end
+    return Deaths.FromRecap(events, item.guid, item.time)
 end
 
 local function RecapFor(item)
     local recap = C_DeathRecap
     if not (recap and recap.GetRecapEvents) then return nil end
 
-    -- The user's own death is the latest recap; anyone else's has to be found.
-    local id
-    if item.guid ~= ns.ownGUID then
-        id = MeterRecapID(item.guid)
-        if not id then return nil end
-    end
-
-    local ok, events = pcall(recap.GetRecapEvents, id)
-    if not ok then return nil end
-    return Deaths.FromRecap(events, item.guid, item.time)
+    -- Anyone's death is the recap the meter lists for them; the user's, if
+    -- it does not list this one, is the latest recap as well.
+    local id = ns.Meter.RecapID(item.guid)
+    local killer = id and Recap(recap, id, item)
+    if killer or item.guid ~= ns.ownGUID then return killer or nil end
+    return Recap(recap, nil, item)
 end
 
 --------------------------------------------------------------------------
@@ -385,12 +358,27 @@ end
 local pending = {}
 local waiting = false
 
--- One pass over the deaths still waiting. Nothing is read in combat: the
--- recap and the meter are secret until it ends.
-local function Try()
-    if InCombatLockdown() then return end
+-- A death given up on: what it has is what it keeps.
+local function GiveUp(i)
+    local item = pending[i]
+    ns.Debug("death of %s: no death recap, keeping %s", item.guid,
+        item.guess and "the guess" or "no killer")
+    Deaths.LookUp(item.slain)
+    table.remove(pending, i)
+end
 
+-- One pass over the deaths still waiting. Nothing is read while the meter
+-- is busy (Meter.Busy): the recap and the meter stay secret through the
+-- fight, also the group's after the user has died, and no try is spent.
+local function Try()
     local now = ns.Now()
+    if ns.Meter.Busy() then
+        for i = #pending, 1, -1 do
+            if now - pending[i].time > DEADLINE then GiveUp(i) end
+        end
+        return
+    end
+
     for i = #pending, 1, -1 do
         local item = pending[i]
         local killer = RecapFor(item)
@@ -416,10 +404,7 @@ local function Try()
             ns.Debug("death of %s: killed by %s (death recap)", item.guid, tostring(killer.name or killer.environment))
             table.remove(pending, i)
         elseif item.tries >= MAX_TRIES or now - item.time > DEADLINE then
-            ns.Debug("death of %s: no death recap, keeping %s", item.guid,
-                item.guess and "the guess" or "no killer")
-            Deaths.LookUp(item.slain)
-            table.remove(pending, i)
+            GiveUp(i)
         end
     end
 end
