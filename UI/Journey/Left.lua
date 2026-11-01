@@ -10,7 +10,8 @@
 -- opens its level at its newest sitting, a sitting's line that sitting, a
 -- run's line or a recorded run's row in the ledger its page, and a zone's
 -- row its map (YourDiary.OpenLevel, OpenPiece, OpenRun, OpenFull:
--- Page.lua's).
+-- Page.lua's). The run being played lays out its map instead, either row
+-- (LiveRun), to trace the way through as it goes.
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -284,6 +285,16 @@ function Marked(row, item)
     row.lip:SetShown(on and ns.Setting("flatSheets") ~= true)
 end
 
+-- The run going on now that `item` is the row of, where it has a map to
+-- trace on (UI/Dungeon/Way.lua), or nil.
+local function LiveRun(item)
+    local visit = item.run or (item.zone and item.zone.dungeon and item.zone.dungeon.visit)
+    local current = visit and ns.Instances.Current()
+    if not (current and current.id == visit.id) then return nil end
+    local floors = ns.Dungeons.Floors(visit.instanceID, ns.UI.DungeonPage.Wing(visit))
+    return floors and #floors > 0 and visit or nil
+end
+
 local function BuildEntryRow(list)
     local row = CreateFrame("Button", nil, list)
     local w = LEFT_W - SCROLLBAR_WIDTH - 2 - ENTRY.indent
@@ -370,7 +381,11 @@ local function BuildEntryRow(list)
     row:SetScript("OnClick", function(self)
         local item = self.item
         if not item then return end
-        if item.title then
+        local live = LiveRun(item)
+        if live then
+            Style.PlaySound("pageTurn")
+            ns.UI.OpenVisit(live.id, "journey")
+        elseif item.title then
             Style.PlaySound("pageTurn")
             YourDiary.OpenLevel(item.entry)
         elseif item.sitting then
@@ -400,7 +415,7 @@ local function BuildEntryRow(list)
             return
         end
         if item and item.zone then
-            self.hot = on and item.mapID ~= nil
+            self.hot = on and (item.mapID ~= nil or LiveRun(item) ~= nil)
             Marked(self, item)
             return
         end
@@ -439,7 +454,7 @@ local function UpdateEntryRow(row, item)
     for _, piece in ipairs(row.door) do piece:SetShown(isRun or (isZone and item.zone.dungeon ~= nil)) end
     row.underline:SetShown(false)
     row.lip:SetShown(false)
-    if not (isSub or (isZone and item.mapID)) then row.hot = nil end
+    if not (isSub or (isZone and (item.mapID or LiveRun(item)))) then row.hot = nil end
     for _, face in ipairs(row.faces) do face:Hide() end
     -- A ledger's name lines up with the prose; a sitting's and a run's
     -- hang further in under the rubric (SITTINGS).

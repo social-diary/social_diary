@@ -119,9 +119,11 @@ local function SecondsInside(visit, now)
     return n
 end
 
--- Whether a run is worth keeping (INS-10).
+-- Whether a run is worth keeping (INS-10): a way drawn on it is, whatever
+-- else came of it (traced as it was played: UI/Journey/Left.lua's LiveRun).
 local function Kept(visit, now)
     if #(visit.bossesKilled or {}) > 0 then return true end
+    if type(visit.route) == "table" and #visit.route > 0 then return true end
     for _, m in ipairs(visit.members or {}) do
         if m.guid ~= visit.me then return true end
     end

@@ -26,7 +26,9 @@
 -- A run has a page where it earned one (a boss killed: Recap.RunWorthy),
 -- as part of the sitting it began in: its line under that sitting on the
 -- left page opens it, and so does its row in the level's ledger
--- (UI/Journey/Page.lua's OpenRun). A level is never opened on a run.
+-- (UI/Journey/Page.lua's OpenRun). A level is never opened on a run. While
+-- the run is being played both lay out its map instead (UI/Journey/Left.lua's
+-- LiveRun); no map to lay out, they open the page.
 --
 -- Pasted things are paper strips (ns.UI.PaperStrip, blank, `size`) turned
 -- as the plan says, written on through the strip (strip:Lay), so they turn,

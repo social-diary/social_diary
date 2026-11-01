@@ -1195,7 +1195,7 @@ Eq(page.open, 1, "the full page left the open level that was there")
 Eq(page.foot.name:GetText(), "MULGORE", "the full page's line has no zone")
 Check(page.foot.meta:GetText():find("levels 10 to 11") and page.foot.meta:GetText():find("with Bram")
     and page.foot.meta:GetText():find("a fight"), "the full page's line: " .. page.foot.meta:GetText())
-Check(page.foot.hint:IsShown() and page.foot.hint:GetText():find("click the map to go back"),
+Check(page.foot.hint:IsShown() and page.foot.hint:GetText():find("click to go back"),
     "the full page does not say how to go back")
 Eq(plate.counts.stops, 1, "level 10's stop was not inked")
 Eq(plate.counts.roads, 1, "the road was not drawn")
@@ -2429,5 +2429,82 @@ do
     visit.bossesKilled, visit.inferred = kills, inferred
     ns.Journey.Touch()
     ns.UI.RefreshJourneyPage(false)
+
+    -- The run being played: its rows lay out its map, to trace on.
+    local J, DP = ns.UI.Journal, ns.UI.DungeonPage
+    local ended, me, opened = visit.endedAt, visit.me, ns.db.meta.openVisit
+    local function Playing(worthy)
+        visit.endedAt, visit.me = nil, ns.ownGUID
+        visit.bossesKilled, visit.inferred = worthy and kills or {}, worthy and inferred or nil
+        ns.db.meta.openVisit = visit.id
+        ns.Journey.Touch()
+        ns.UI.RefreshJourneyPage(false)
+        YD.OpenLevel(#page.recap.entries)
+        for _, item in ipairs(page.items) do
+            if item.zone and item.zone.dungeon and item.zone.dungeon.visit
+                and item.zone.dungeon.visit.id == visit.id then return item end
+        end
+    end
+    local function Laid(what)
+        Eq(J.visit and J.visit.id, visit.id, what .. " does not lay out the run's map")
+        Eq(J.visit and J.visit.from, "journey", what .. ": its way back is not to the diary")
+        Check(DP.Spread():IsShown(), what .. ": no spread")
+        DP.Close(true)
+    end
+    ledger = Playing(false)
+    Check(ledger ~= nil, "a run still going is not linked to its row in the ledger")
+    if ledger then
+        Shows(ledger):Click()
+        Laid("the ledger row of a run going on, no boss killed")
+        -- Summoned in: no door on the map, the row still leads to it.
+        local mapID = ledger.mapID
+        ledger.mapID = nil
+        row = Shows(ledger)
+        row.scripts.OnEnter(row)
+        Check(row.hot, "a run going on with no map spot does not answer the mouse")
+        row.scripts.OnLeave(row)
+        row:Click()
+        Laid("the ledger row of a run going on, no map spot")
+        ledger.mapID = mapID
+    end
+    ledger = Playing(true)
+    if ledger then
+        Shows(ledger):Click()
+        Laid("the ledger row of a run going on, a boss killed")
+    end
+    local runLine
+    for _, item in ipairs(page.items) do
+        if item.run and item.run.id == visit.id then runLine = item end
+    end
+    Check(runLine ~= nil, "a run going on with a boss killed has no line")
+    if runLine then
+        Shows(runLine):Click()
+        Laid("the line of a run going on")
+    end
+    -- A dungeon with no map to trace on: as before.
+    local Floors = ns.Dungeons.Floors
+    ns.Dungeons.Floors = function() return nil end
+    if runLine then
+        Shows(runLine):Click()
+        Eq(J.visit, nil, "a run going on with no map laid out a bare sheet")
+        Eq(page.mode .. ":" .. tostring(page.runVisit), "run:" .. visit.id,
+            "a run going on with no map does not open its page")
+    end
+    ns.Dungeons.Floors = Floors
+    -- Over: its page again.
+    ns.db.meta.openVisit = opened
+    visit.endedAt, visit.me = ended, me
+    visit.bossesKilled, visit.inferred = kills, inferred
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+    YD.OpenLevel(#page.recap.entries)
+    for _, item in ipairs(page.items) do
+        if item.run and item.run.id == visit.id then
+            Shows(item):Click()
+            Eq(J.visit, nil, "a finished run's line laid out its map")
+            Eq(page.mode, "run", "a finished run's line does not open its page")
+            break
+        end
+    end
 end
 ns.UI.CloseJournal()

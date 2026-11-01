@@ -199,11 +199,12 @@ function Recap.MainActivity(seg)
     return nil
 end
 
--- The INS-1 visit a dungeon segment was, if one was recorded (JRN-8).
+-- The INS-1 visit a dungeon segment was, if one was recorded (JRN-8). A
+-- visit with no end yet is still going.
 local function VisitFor(seg, visits)
     for _, visit in ipairs(visits or {}) do
         if visit.instanceID == seg.instanceID
-            and Overlap(visit.startedAt or 0, visit.endedAt or visit.startedAt or 0, seg.from - 60, seg.to + 60) > 0 then
+            and Overlap(visit.startedAt or 0, visit.endedAt or math.huge, seg.from - 60, seg.to + 60) > 0 then
             return visit
         end
     end

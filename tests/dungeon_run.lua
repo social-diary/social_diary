@@ -204,6 +204,24 @@ mock.now = mock.now + 31 * MIN
 Instances.Expire()
 Eq(ns.db.instances[walk.id], nil, "a two-minute walk-in alone was kept")
 
+-- A way traced on it keeps it; a way cleared does not.
+In("The Hall of Thanes", 3065)
+local traced = Instances.Current()
+traced.route = { { f = 1, x = 0.5, y = 0.5 } }
+mock.now = mock.now + 2 * MIN
+Out()
+mock.now = mock.now + 31 * MIN
+Instances.Expire()
+Check(ns.db.instances[traced.id] ~= nil, "a short run alone with a way traced on it was thrown away")
+In("The Hall of Thanes", 3065)
+local cleared = Instances.Current()
+cleared.route = {}
+mock.now = mock.now + 2 * MIN
+Out()
+mock.now = mock.now + 31 * MIN
+Instances.Expire()
+Eq(ns.db.instances[cleared.id], nil, "a short run alone with its way cleared was kept")
+
 --------------------------------------------------------------------------
 Section("another dungeon, a reset, or the same one later: a new run (INS-8)")
 
