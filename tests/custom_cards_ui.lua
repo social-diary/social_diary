@@ -604,6 +604,157 @@ do
 end
 
 --------------------------------------------------------------------------
+Section("the picker's cards: where they really lie, and that they go")
+
+do
+    -- The mock computes no layout, so this does, from the anchors it records,
+    -- as the client would: an anchor with no frame named is to the frame's
+    -- parent (1 Nov, in the client: the rows were made on the sheet, so their bare
+    -- anchors meant its corner, and only the anchors said so). A box is left,
+    -- right, top, bottom, from the sheet's middle, y up. Its height is on its
+    -- record: the mock's GetHeight is always 0.
+    local function Size(frame)
+        local r = frame.recorded
+        return r.width or frame.width, r.height
+    end
+    local function Read(anchor, frame)
+        local a = anchor.args
+        if type(a[1]) == "table" then return a[1], a[2], a[3] or 0, a[4] or 0 end
+        if type(a[1]) == "string" then return frame.parent, a[1], a[2] or 0, a[3] or 0 end
+        return frame.parent, anchor.point, a[1] or 0, a[2] or 0
+    end
+    local Box
+    local function At(frame, point, sheet)
+        local l, r, t, b = Box(frame, sheet)
+        local x = point:find("LEFT") and l or point:find("RIGHT") and r or (l + r) / 2
+        local y = point:find("TOP") and t or point:find("BOTTOM") and b or (t + b) / 2
+        return x, y
+    end
+    function Box(frame, sheet)
+        if frame == sheet then
+            local w, h = Size(frame)
+            return -w / 2, w / 2, h / 2, -h / 2
+        end
+        local points = {}
+        for _, anchor in ipairs(frame.recorded.points) do points[anchor.point] = anchor end
+        local w, h = Size(frame)
+        if points.CENTER then
+            local rel, rp, x, y = Read(points.CENTER, frame)
+            local cx, cy = At(rel, rp, sheet)
+            cx, cy = cx + x, cy + y
+            return cx - w / 2, cx + w / 2, cy + h / 2, cy - h / 2
+        end
+        local rel, rp, x, y = Read(points.TOPLEFT, frame)
+        local l, t = At(rel, rp, sheet)
+        l, t = l + x, t + y
+        if points.RIGHT then
+            local rr, rrp, rx = Read(points.RIGHT, frame)
+            w = At(rr, rrp, sheet) + rx - l
+        end
+        return l, l + w, t, t - h
+    end
+    -- Shown all the way up: only what was told to hide counts as hidden, as the
+    -- client's regions start shown.
+    local function Showing(frame)
+        while frame do
+            if frame.recorded and frame.recorded.toldShown == false then return false end
+            frame = frame.parent
+        end
+        return true
+    end
+    local function ShownCards(view)
+        local list = {}
+        for _, row in ipairs(view.list.rows) do
+            for _, cell in ipairs(row.cells) do
+                if cell.kind and Showing(cell.strip) and Showing(row) then list[#list + 1] = cell end
+            end
+        end
+        return list
+    end
+
+    OpenFirst()
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    local view = CardSheet.View()
+    local S = view.sheet
+    local list = view.list
+
+    for i, row in ipairs(list.rows) do Eq(row.parent, list, "row " .. i .. " is the list's") end
+
+    local function Lying()
+        Check(Showing(view.heading), "the title is showing")
+        local _, _, _, titleFoot = Box(view.heading, S)
+        local sl, sr, st, sb = Box(S, S)
+        local ll, lr, lt, lb = Box(list, S)
+        Check(lt <= titleFoot, "the list's area lies over the title: " .. lt .. " over " .. titleFoot)
+        Check(ll >= sl and lr <= sr and lb >= sb, "the list runs off the sheet")
+        local _, _, cancelTop = Box(view.cancel.label, S)
+        Check(lb >= cancelTop, "the list runs over Cancel: " .. lb .. " under " .. cancelTop)
+        local cards = ShownCards(view)
+        Check(cards[1] ~= nil, "a card is showing")
+        for _, cell in ipairs(cards) do
+            local l, r, t, b = Box(cell.strip, S)
+            Check(l >= sl and r <= sr, "the card runs off the sheet across: " .. l .. ".." .. r)
+            Check(t <= titleFoot, "the card lies over the title: " .. t .. " over " .. titleFoot)
+            Check(b >= cancelTop, "the card lies over Cancel: " .. b .. " under " .. cancelTop)
+            Check(r - l < sr - sl, "the card is narrower than its sheet")
+        end
+    end
+    Lying()
+    Eq(#ShownCards(view), 1, "today, one card")
+
+    local function Gone(what)
+        Eq(#ShownCards(view), 0, what .. ": a card is still showing")
+        for i, row in ipairs(list.rows) do
+            Check(not Showing(row), what .. ": row " .. i .. " is still showing")
+        end
+    end
+
+    PickKind("close")
+    Check(Showing(view.title), "the form's heading shows")
+    Gone("on the form")
+    Check(not Showing(view.heading), "the picker's title goes")
+
+    Press(view.another)
+    Check(not Showing(view.title), "back: the form's heading goes")
+    Check(not Showing(view.save), "back: Save goes")
+    Lying()
+    Eq(#ShownCards(view), 1, "back: one card, not two")
+
+    Press(view.cancel)
+    Gone("cancelled from the picker")
+
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    Lying()
+    Eq(#ShownCards(view), 1, "reopened: one card")
+    PickKind("close")
+    Press(view.cancel)
+    Gone("cancelled from the form")
+
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    PickKind("close")
+    Row("name"):Set("Old Tom")
+    Press(view.save)
+    Gone("saved")
+    Custom.Remove(j.custom[#j.custom])
+    ns.UI.RefreshJourneyPage(false)
+    OpenFirst()
+
+    -- An edit never shows them either, right after a picker.
+    RightOn(MarkOf(Plate()))
+    Gone("on an edit's form")
+    Press(view.cancel)
+
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    Lying()
+    Eq(#ShownCards(view), 1, "reopened after all that: one card")
+    Press(view.cancel)
+end
+
+--------------------------------------------------------------------------
 Section("the picker with more kinds than it holds")
 
 do

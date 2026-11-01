@@ -103,8 +103,34 @@ Check(way.drawn.markers > 0, "the floor's stairs and doors do not show")
 Check(not slip.buttons.undo.enabled and not slip.buttons.reset.enabled, "undo or reset before any change")
 Check(slip.buttons.done.enabled and slip.buttons.clear.enabled, "Done or Clear cannot be pressed")
 Eq(RFK.route, nil, "taking the pen up wrote a way")
-Check(slip.statusText:find("usual way"), "the slip does not say where it starts from: " .. tostring(slip.statusText))
+Eq(slip.statusText, DP.WAY.WORDS.none, "the slip does not say nothing is selected")
 Check(table.concat(slip.hintLines, " "):find("Ctrl%-click a line"), "the hint does not say how to insert")
+
+-- The slip reads heading, hint, words to press, each row clear of the next
+-- and all of it on the paper, whatever the status says.
+local function SlipFits(said)
+    local S, L = DP.WAY.SLIP, slip.laid
+    Check(L.head + slip.headH / 2 + S.gap <= L.hint - slip.lineH / 2 + 0.01, said .. ": the hint runs into the heading")
+    local lastHint = L.hint + (#slip.hintLines - 1) * slip.lineH
+    Check(lastHint + slip.lineH / 2 + S.foot <= L.row - S.row / 2 + 0.01, said .. ": the words run into the hint")
+    Check(L.row + S.row / 2 <= slip.h / 2 - S.pad + 0.01, said .. ": the words run off the foot of the slip")
+    for _, b in ipairs(slip.buttons) do
+        Check(b.lx + b.w / 2 <= slip.w / 2 - S.pad + S.words.box[1] + 0.01, said .. ": off the slip's end: " .. b.key)
+    end
+    local room = slip.w - 2 * S.pad - ns.UI.Surface.Width(slip.heading) - S.slack - 14
+    Check(ns.UI.Surface.Width(slip.status) <= room + 0.01, said .. ": the status runs off the slip")
+end
+SlipFits("at the start")
+Eq(slip.buttons.cut.label:GetText(), "Set early End point", "the early end's label")
+-- The longest thing the status can say is cut short, not run off the paper.
+local keepSaid = slip.statusText
+slip.statusText = DP.WAY.WORDS.joinedLeft:format(("Old Serra'kis, "):rep(12) .. "Mordresh Fire Eye")
+slip:Paint()
+SlipFits("a long list left out")
+Check(slip.status:GetText():find("…$"), "a status too long is not cut short")
+slip.statusText = keepSaid
+slip:Paint()
+Eq(slip.status:GetText(), keepSaid, "the status is not whole again")
 
 --------------------------------------------------------------------------
 Section("a click on the paper adds a point, the sheet stays put")
@@ -206,10 +232,10 @@ Section("cut, and Done joins it")
 
 way.pen:Select(3)
 Press("cut")
-Eq(way.pen:Gap(), 4, "Cut Path Here")
+Eq(way.pen:Gap(), 4, "Set early End point")
 Check(way.drawn.cut, "the cut is not marked")
 Check(not slip.buttons.cut.enabled, "a second cut can be pressed")
-Check(slip.statusText:find("cut after point 3"), "the slip does not say the path is cut")
+Check(slip.statusText:find("ends at point 3"), "the slip does not say where the path ends")
 local count = #RFK.route
 Press("done")
 Check(not way.drawing and not way.catcher:IsShown(), "Done did not put the pen down")

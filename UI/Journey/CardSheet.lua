@@ -292,8 +292,11 @@ end
 
 local function BuildList()
     local C, W = PICKER.card, 2 * PICKER.card.w + PICKER.gap + ns.UI.SCROLLBAR_WIDTH + 2
-    return ns.UI.Journal.List(view.sheet, PICKER.row, PICKER.most, function()
-        local row = CreateFrame("Frame", nil, view.sheet)
+    -- A row on the list, not the sheet (1 Nov, in the client: on the sheet its
+    -- bare "TOPLEFT" anchors, the list's, landed on the sheet's corner over the
+    -- title, and hiding the list left the cards lying over the form).
+    return ns.UI.Journal.List(view.sheet, PICKER.row, PICKER.most, function(list)
+        local row = CreateFrame("Frame", nil, list)
         row.cells = { NewCell(row), NewCell(row) }
         return row
     end, function(row, item)

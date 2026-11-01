@@ -12,9 +12,9 @@
 -- the screen). At rest a short pencil lies on it, sticking out past its
 -- left end, and beside it "Adjust Path": the whole slip is the button.
 -- Taken up, the pencil leaves the slip, and the slip is the drawing's:
--- a heading and what is selected, a row of plain words to press (Done
--- boxed in ink, the rest underlined on hover, Clear and Reset set apart in
--- red-brown after a rule), and two lines in pencil saying how to draw.
+-- a heading and what is selected, the lines in pencil saying how to draw,
+-- and at its foot a row of plain words to press (Done boxed in ink, the rest
+-- underlined on hover, Clear and Reset set apart in red-brown after a rule).
 --
 -- The pen on the map (PEN): while the pencil is up, the layout of the sheet
 -- is frozen (its kept part, scale and size: a point added near the edge
@@ -49,12 +49,14 @@ local Surface = ns.UI.Surface
 -- `edge` px inside the screen. Its stock and cut edge as the bookmark's
 -- (UI/Dungeon/Spread.lua's BOOKMARK); `pad` px of paper round what is on
 -- it. At rest `rest.h` tall, the pencil's room `rest.pencil` px at its
--- left. Taken up, its rows: the heading `head` px, the words to press
--- `row` px, each hint line `line` px, `gap` px between the rows; at least
--- `least` px wide, the hint wrapped to its width. It lies HEIGHT.way over
--- the paper, picked up HEIGHT.lifted more under the mouse at rest.
+-- left. Taken up, its rows: the heading at least `head` px, each hint line
+-- at least `line` px (both as tall as their font asks), `gap` px between
+-- them, `foot` px more before the words to press, `row` px; at least `least`
+-- px wide, the hint wrapped to its width. A line's box `slack` px wider than
+-- its words. It lies HEIGHT.way over the paper, picked up HEIGHT.lifted more
+-- under the mouse at rest.
 local SLIP = { turn = -1.2, onto = 12, inset = 40, step = 36, edge = 12, ink = 0.45, pad = 12,
-    rest = { h = 30, pencil = 46 }, head = 16, row = 22, line = 14, gap = 5, least = 560,
+    rest = { h = 30, pencil = 46 }, head = 16, row = 22, line = 14, gap = 5, foot = 9, least = 560, slack = 4,
     words = { gap = 9, rule = 14, box = { 7, 3 } } }
 -- The pencil at rest: `len` px from the point to the eraser, `w` wide,
 -- turned `turn` degrees on the slip, its point `out` px past the slip's
@@ -89,10 +91,9 @@ local WORDS = {
     heading = "DRAWING YOUR PATH",
     hint = "Click the map to add a point. Click a boss to add a stop. Click stairs or a door to add a step. "
         .. "Ctrl-click a line to insert a point. Drag a point to move it. Right-click a point to delete it.",
-    start = "Starting from the usual way through. Nothing is saved until you change something.",
     none = "No point selected. New points go at the end.",
-    selected = "Point %d of %d selected. New points go after it.",
-    cut = "The path is cut after point %d. Click a grey point to join it back up.",
+    selected = "Point %d of %d selected.",
+    cut = "The path ends at point %d. Click a grey point to join it back up.",
     joined = "Joined the path back up.",
     joinedLeft = "Joined the path back up. Left out: %s.",
     full = "The path is full (at most %d points).",
@@ -105,8 +106,9 @@ local WORDS = {
         { key = "previous", label = "Previous Point", tip = "Select the point before the selected one." },
         { key = "next", label = "Next Point", tip = "Select the point after the selected one." },
         { key = "delete", label = "Delete Point", tip = "Delete the selected point." },
-        { key = "cut", label = "Cut Path Here", tip = "Cut the path after the selected point. The rest turns grey. "
-            .. "Draw on from here, then click a grey point to join the path back up." },
+        { key = "cut", label = "Set early End point", tip = "End the path at the selected point. The rest turns grey. "
+            .. "Draw on from here, then click a grey point to join it back up. If you don't, Done joins the first "
+            .. "grey point." },
         { key = "clear", label = "Clear", apart = true, tip = "Remove every point, to draw the path from the start." },
         { key = "reset", label = "Reset", apart = true, tip = "Remove the path you drew for this run and show the "
             .. "usual way through again." },
@@ -135,6 +137,7 @@ local function Word(slip, spec)
     local b = CreateFrame("Button", nil, slip)
     b.key, b.spec = spec.key, spec
     b.label = Style.Text(b, spec.key == "done" and FONT.strong or FONT.body)
+    b.label:SetWordWrap(false)
     b.label:SetText(spec.label)
     b.line = b:CreateTexture(nil, "ARTWORK")
     b.box = {}
@@ -197,10 +200,13 @@ local function Tools(view)
         return t
     end)
     slip.title = Style.Text(slip, FONT.strong)
+    slip.title:SetWordWrap(false)
     slip.title:SetText(WORDS.adjust)
     slip.heading = Style.Text(slip, FONT.heading)
+    slip.heading:SetWordWrap(false)
     slip.heading:SetText(WORDS.heading)
     slip.status = Style.Text(slip, FONT.pencilSmall)
+    slip.status:SetWordWrap(false)
     slip.hints = {}
     slip.buttons = {}
     for _, spec in ipairs(WORDS.buttons) do
@@ -495,11 +501,39 @@ local function Pencil(slip, lx, ly)
     Piece(f0 + PENCIL.ferrule, L, W - 0.4, PENCIL.eraserInk, 1, 0, 0, 2)
 end
 
+-- How tall a box must be for a line `w` px wide and `h` px tall to turn with
+-- the slip: the client clips a turned string to its box (as the bookmark's
+-- words, UI/Dungeon/Spread.lua).
+local function Tall(slip, w, h)
+    return h + w * math.abs(math.sin(slip.turn or 0)) + 4
+end
+
+-- A line of words on the slip from lx, its middle at ly, `h` px tall: its
+-- width with the slack, for what comes after it.
+local function PlaceLine(slip, t, lx, ly, h)
+    local w = (Surface.Width(t) or 0) + SLIP.slack
+    slip.plane.Place(t, lx + w / 2, ly, w, Tall(slip, w, h))
+    return w
+end
+
+-- Sets `text` on t, cut at a word and ended with an ellipsis if it would run
+-- past `room` px (a long list of what was left out, Status).
+local function Fit(t, text, room)
+    t:SetText(text)
+    if (Surface.Width(t) or 0) <= room then return end
+    local words = {}
+    for word in text:gmatch("%S+") do words[#words + 1] = word end
+    for n = #words - 1, 1, -1 do
+        t:SetText(table.concat(words, " ", 1, n) .. "…")
+        if (Surface.Width(t) or 0) <= room then return end
+    end
+end
+
 -- A word on the slip, its middle at lx, ly: the button over it.
 local function PlaceWord(slip, b, lx, ly, w)
     local plane = slip.plane
     local h = 14
-    plane.Place(b.label, lx, ly, w + 2, h + 2)
+    plane.Place(b.label, lx, ly, w + 2, Tall(slip, w + 2, h))
     local X, Y = plane.Screen(lx, ly)
     b:ClearAllPoints()
     b:SetPoint("CENTER", slip, "CENTER", X, Y)
@@ -539,7 +573,7 @@ local function Paint(slip)
         local c = slip.lifted and Style.INK_STRONG or Style.INK
         slip.title:SetTextColor(c[1], c[2], c[3])
         local tw = slip.titleW
-        slip.plane.Place(slip.title, -W / 2 + SLIP.pad + SLIP.rest.pencil + tw / 2, 0.5, tw + 2, 16)
+        PlaceLine(slip, slip.title, -W / 2 + SLIP.pad + SLIP.rest.pencil, 0.5, SLIP.head)
         slip.title:Show()
         if slip.lifted then
             Rect(slip, "ARTWORK", 4, -W / 2 + SLIP.pad + SLIP.rest.pencil + tw / 2, 9, tw, 1, Style.INK_STRONG,
@@ -555,18 +589,37 @@ local function Paint(slip)
 
     slip.title:Hide()
     local left, top = -W / 2 + SLIP.pad, -H / 2 + SLIP.pad
-    -- The heading and what is selected.
-    local hy = top + SLIP.head / 2
-    local hw = (Surface.Width(slip.heading) or 0) + 2
-    slip.plane.Place(slip.heading, left + hw / 2, hy, hw, SLIP.head)
+    -- The heading and what is selected, on its one line: where it starts
+    -- does not move with what it says, and it stops short of the slip's edge.
+    local headH, lineH = slip.headH, slip.lineH
+    local hy = top + headH / 2
+    local hw = PlaceLine(slip, slip.heading, left, hy, headH)
     slip.heading:Show()
-    slip.status:SetText(slip.statusText or "")
-    local sw = (Surface.Width(slip.status) or 0) + 2
-    slip.plane.Place(slip.status, left + hw + 14 + sw / 2, hy, sw, SLIP.head)
+    local sx = left + hw + 14
+    Fit(slip.status, slip.statusText or "", W / 2 - SLIP.pad - sx)
+    PlaceLine(slip, slip.status, sx, hy, headH)
     slip.status:Show()
 
-    -- The words to press.
-    local ry = top + SLIP.head + SLIP.gap + SLIP.row / 2
+    -- How to draw, in pencil.
+    local y = top + headH + SLIP.gap + lineH / 2
+    slip.laid = { head = hy, hint = y }
+    for k, line in ipairs(slip.hintLines or {}) do
+        local t = slip.hints[k]
+        if not t then
+            t = Style.Text(slip, FONT.pencilSmall)
+            t:SetWordWrap(false)
+            slip.hints[k] = t
+        end
+        t:SetText(line)
+        PlaceLine(slip, t, left, y, lineH)
+        t:Show()
+        y = y + lineH
+    end
+    for k = #(slip.hintLines or {}) + 1, #slip.hints do slip.hints[k]:Hide() end
+
+    -- The words to press, at the foot.
+    local ry = y - lineH / 2 + SLIP.foot + SLIP.row / 2
+    slip.laid.row = ry
     local x = left + SLIP.words.box[1]
     local G = SLIP.words.gap
     for k, b in ipairs(slip.buttons) do
@@ -604,22 +657,6 @@ local function Paint(slip)
             x = x + w
         end
     end
-
-    -- How to draw, in pencil.
-    local y = top + SLIP.head + SLIP.gap + SLIP.row + SLIP.gap + SLIP.line / 2
-    for k, line in ipairs(slip.hintLines or {}) do
-        local t = slip.hints[k]
-        if not t then
-            t = Style.Text(slip, FONT.pencilSmall)
-            slip.hints[k] = t
-        end
-        t:SetText(line)
-        local lw = (Surface.Width(t) or 0) + 2
-        slip.plane.Place(t, left + lw / 2, y, lw, SLIP.line)
-        t:Show()
-        y = y + SLIP.line
-    end
-    for k = #(slip.hintLines or {}) + 1, #slip.hints do slip.hints[k]:Hide() end
     slip.textures:Finish()
 end
 
@@ -655,7 +692,10 @@ local function Measure(slip, drawing)
     end
     if line ~= "" then lines[#lines + 1] = line end
     slip.hintLines = lines
-    local h = 2 * SLIP.pad + SLIP.head + SLIP.gap + SLIP.row + SLIP.gap + #lines * SLIP.line
+    -- The rows as tall as their font asks (measure still holds a line).
+    slip.headH = math.max(SLIP.head, math.ceil(slip.heading:GetStringHeight() or 0))
+    slip.lineH = math.max(SLIP.line, math.ceil(measure:GetStringHeight() or 0))
+    local h = 2 * SLIP.pad + slip.headH + SLIP.gap + #lines * slip.lineH + SLIP.foot + SLIP.row
     return w, h
 end
 
@@ -760,8 +800,6 @@ local function Status(view, said)
         slip.statusText = WORDS.cut:format(gap - 1)
     elseif at then
         slip.statusText = WORDS.selected:format(at, n)
-    elseif not pen:Own() then
-        slip.statusText = WORDS.start
     else
         slip.statusText = WORDS.none
     end
