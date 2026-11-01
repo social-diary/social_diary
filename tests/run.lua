@@ -63,7 +63,7 @@ local FILES = {
     "dungeon_spread",
     "dungeon_light",
     "dungeon_way",
-    "dungeon_way_ui",
+    "dungeon_way_ui", "dungeon_mouse",
     "dungeon_tutorial",
     "run_page",
     "events",

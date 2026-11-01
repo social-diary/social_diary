@@ -24,7 +24,7 @@
 -- A right press beside the sheet goes through to whatever lies under it, the
 -- world first of all, so the camera still turns and things can still be
 -- clicked with the run out (the user, 1 Nov 2026: it put the run away).
--- PassRight.
+-- Settle.
 --
 -- Opened by a click on the run's card on the timeline (UI/Journal/
 -- Timeline.lua) through ns.UI.OpenVisit, the one way in (DGN-1; Your
@@ -163,36 +163,47 @@ local function Deaf(frame, heard)
     for _, child in ipairs({ frame:GetChildren() }) do Deaf(child, heard) end
 end
 
+-- A call into what the client protects, which must never stop the run coming
+-- out: it only costs the right press going through.
+local function Try(what, fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then ns.Debug("spread: %s: %s", what, tostring(err)) end
+    return ok
+end
+
+-- The mouse as things stand: right presses through the table beside the
+-- sheet, and the book deaf while it is away and hearing again after. The
+-- client protects all of it, so nothing is asked of it in a fight: this runs
+-- again as the fight ends. A run opened in one takes right presses on the
+-- table until then; a book back in one hears again after it.
+local function Settle()
+    if InCombatLockdown() then return end
+    if not spread.passes then
+        spread.passes = Try("pass through", spread.map.SetPassThroughButtons, spread.map, "RightButton")
+    end
+    local away, heard = spread.bookAlpha ~= nil, spread.bookHeard
+    if away and not heard then
+        spread.bookHeard = {}
+        Try("deaf", Deaf, J.journal, spread.bookHeard)
+    elseif heard and not away then
+        spread.bookHeard = nil
+        for _, frame in ipairs(heard) do Try("hear", frame.SetMouseClickEnabled, frame, true) end
+    end
+end
+
 -- The book put aside while the run is out (`away`), and back as it was:
--- see-through and deaf, and nothing else about it touched. Its own alpha and
--- what heard clicks kept, to give back.
+-- see-through and deaf (Settle), and nothing else about it touched. Its own
+-- alpha kept, to give back.
 local function Away(away)
     local book = J.journal
     if away then
-        if spread.bookAlpha == nil then
-            spread.bookAlpha = book:GetAlpha()
-            spread.bookHeard = {}
-            Deaf(book, spread.bookHeard)
-        end
+        if spread.bookAlpha == nil then spread.bookAlpha = book:GetAlpha() end
         book:SetAlpha(0)
     elseif spread.bookAlpha ~= nil then
         book:SetAlpha(spread.bookAlpha)
         spread.bookAlpha = nil
-        for _, frame in ipairs(spread.bookHeard) do frame:SetMouseClickEnabled(true) end
-        spread.bookHeard = nil
     end
-end
-
--- Right presses through the table beside the sheet. The client blocks this
--- in combat (Build waits for it to end, if the first run is laid out in a
--- fight); it holds from then on.
-local function PassRight(host)
-    if InCombatLockdown() then
-        host:RegisterEvent("PLAYER_REGAIN_ENABLED")
-        return
-    end
-    host:UnregisterEvent("PLAYER_REGAIN_ENABLED")
-    host.map:SetPassThroughButtons("RightButton")
+    Settle()
 end
 
 --------------------------------------------------------------------------
@@ -448,12 +459,11 @@ local function Build()
     spread = host
 
     host.map = DungeonPage.Sheet(host)
-    -- The left button: the right goes through (PassRight), and in the fight
+    -- The left button: the right goes through (Settle), and in the fight
     -- that holds that up it still must not put the run away.
     host.map.onPutAway = function(button)
         if button ~= "RightButton" then DungeonPage.Close() end
     end
-    PassRight(host)
     host.map.onMeasure = Fit
     -- The wheel stops at the table: the book under it, put aside, keeps
     -- its timeline where it was.
@@ -466,12 +476,14 @@ local function Build()
     -- The screen changed under it: fitted again.
     host:RegisterEvent("UI_SCALE_CHANGED")
     host:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    host:RegisterEvent("PLAYER_REGEN_ENABLED")
     host:SetScript("OnEvent", function(self, event)
-        if event == "PLAYER_REGAIN_ENABLED" then return PassRight(self) end
+        if event == "PLAYER_REGEN_ENABLED" then return Settle() end
         if self:IsShown() and J.visit then DungeonPage.Refresh() end
     end)
     -- Shut with the book; opened again, the book opens on the person.
     book:HookScript("OnHide", function() DungeonPage.Close(true) end)
+    Settle()
     return host
 end
 
