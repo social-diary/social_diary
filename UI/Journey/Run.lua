@@ -73,6 +73,12 @@ local RUN = ns.RunPage.RUN
 --             `width` px, gates of five `apart` px apart; a cross `cross`
 --             px; no tally past `most`
 --   sig       the signatures' inks, taken in turn
+--   level     how far over the board each kind of paper lies, its frame level
+--             (2 Nov 2026, the user: the boss strip lay under the scrap it is
+--             pasted over; strips at one level have no order in the client):
+--             what is pasted over (`boss`, `slip`) above what it is pasted on
+--             (`scrap`, `card`), by 2, as a strip's link lies 1 over the strip
+--             (UI/Paper/Strip.lua). All well under the hit boxes (Hit: 20)
 local LOOK = {
     paper = { keepsake = { 0.98, 0.95, 0.87 }, scrap = { 0.93, 0.89, 0.78 }, slip = { 0.95, 0.91, 0.79 } },
     mount = { pad = 5, edge = 0.30, crop = 0.07 },
@@ -85,6 +91,7 @@ local LOOK = {
     full = { under = 4, width = 1.4, sag = 1.5 },
     tally = { h = 12, gap = 3.6, width = 1.3, apart = 8, cross = 9, most = 25 },
     sig = { Style.INK_STRONG, Style.INK, { 0.17, 0.21, 0.31 }, { 0.29, 0.16, 0.08 } },
+    level = { scrap = 1, card = 1, boss = 3, slip = 3 },
 }
 YourDiary.RUN_LOOK = LOOK
 
@@ -273,13 +280,17 @@ local function Underline(run, x0, x1, y, sag, width, colour, pieces)
 end
 
 -- A blank strip of `kind`, made once per place it is handed out to; its
--- own pieces in `strip.run` (made by `make(strip)` once).
-local function Strip(run, kind, make)
-    return Next(run, "strip:" .. kind, function()
+-- own pieces in `strip.run` (made by `make(strip)` once). It lies `level`
+-- over the board (LOOK.level), set at every handing out and before it is
+-- laid, where its link takes its level from it.
+local function Strip(run, kind, level, make)
+    local handed = Next(run, "strip:" .. kind, function()
         local strip = ns.UI.PaperStrip(run.board)
         strip.run = make and make(strip) or {}
         return strip
     end)
+    handed:SetFrameLevel(run.board:GetFrameLevel() + level)
+    return handed
 end
 
 -- Lays strip `s` blank, b.w by b.h at b.x, b.y, turned b.turn, on `paper`.
@@ -820,26 +831,26 @@ function YourDiary.DrawRun(e, visit)
 
     -- The scrap, the boss strip pasted over its top edge.
     if plan.scrap then
-        local s = Strip(run, "scrap")
+        local s = Strip(run, "scrap", L.level.scrap)
         Scrap(run, s, plan.scrap, visit, "run:" .. visit.id .. ":scrap")
         Hit(run, plan.scrap, TitleTip, Open):SetScript("OnLeave", TitleOff)
     end
     if plan.boss then
-        local s = Strip(run, "boss")
+        local s = Strip(run, "boss", L.level.boss)
         LayStrip(s, plan.boss, "run:" .. visit.id .. ":boss", L.paper.slip, { tapeAt = { x = 8, y = 4, slant = -40, w = 22, h = 10 } })
         StripWords(s, plan.boss, bossWords, L.words.bosses, full)
     end
 
     -- The keepsakes, in rank order into their places.
     for i, it in ipairs(keep.shown) do
-        local s = Strip(run, "keepsake" .. i)
+        local s = Strip(run, "keepsake" .. i, L.level.card)
         local b = plan.cards[i]
         Keepsake(run, s, b, it, wrapped[i], Text.RunWhose(it, NameOf(visit, it.guid)), "run:" .. visit.id .. ":k" .. i)
         local hit = Hit(run, b, ItemTip)
         hit.item = it
     end
     if plan.slip then
-        local s = Strip(run, "slip")
+        local s = Strip(run, "slip", L.level.slip)
         LayStrip(s, plan.slip, "run:" .. visit.id .. ":more", L.paper.slip, { tack = true })
         local p = s.run
         p.words = p.words or Style.Text(s, FONT.noteWritten, "OVERLAY")

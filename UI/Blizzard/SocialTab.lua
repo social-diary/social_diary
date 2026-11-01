@@ -10,8 +10,10 @@ local addonName, ns = ...
 
 local GAP = 3
 
--- Book glyphs in the style of the window's gold tab icons, then the item icon.
-local ICON_ATLASES = { "Campaign-QuestLog-LoreBook", "loreobject-32x32" }
+-- The minimap button's logo, its art registered in UI/Blizzard/Minimap.lua. It
+-- fills its file edge to edge and is a solid, pale disc, so it is drawn smaller
+-- than the window's gold glyphs to weigh the same.
+local ICON_SIZE = 28
 
 local tab
 
@@ -70,18 +72,8 @@ local function Build(window)
 
     tab.icon = tab:CreateTexture(nil, "ARTWORK")
     tab.icon:SetPoint("CENTER", -4, 0)
-    local atlas
-    for _, name in ipairs(ICON_ATLASES) do
-        if HasAtlas(name) then atlas = name break end
-    end
-    if atlas then
-        tab.icon:SetSize(33, 33)
-        tab.icon:SetAtlas(atlas)
-    else
-        tab.icon:SetSize(28, 28)
-        ns.Style.SetTexture(tab.icon, "book", 0.6, 0.45, 0.2, 1)
-        tab.icon:SetTexCoord(unpack(ns.Style.ICON_CROP))
-    end
+    tab.icon:SetSize(ICON_SIZE, ICON_SIZE)
+    tab.icon:SetTexture(ns.Style.Art("minimapLogo"))
     -- Like the window's inactive tabs: muted until pointed at.
     tab.icon:SetAlpha(0.75)
 

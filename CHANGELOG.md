@@ -21,6 +21,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
   - now skips empty levels if the Addon is loaded in on an existing character with no Data for previous levels
   - Clicking the dungeon you're in opens its _Dungeon View_ so you can trace your way as you go, and a way you've drawn is kept even on a short solo run
   - A dungeon run's page lists everyone on the run, with _+ Add_ under those not in your diary, and its map is no longer greyed out
+  - On a dungeon run's page, the strip naming the bosses lies over the map scrap again, and the _and n more_ is correctly placed over its card
 
 
 ## [2.0.0]

@@ -1026,6 +1026,19 @@ do
     line:SetText("bran")
     line:GetScript("OnTextChanged")(line, true)
     Check(rows[1].found:IsShown(), "the search offers someone")
+    -- Hung from the line by its top, whatever its height, so one name is as close
+    -- to the line as four.
+    do
+        local top = rows[1].found.recorded.points[1]
+        Eq(top.point, "TOPLEFT", "hung by its top")
+        Eq(top.args[1], line, "from the line")
+        Eq(top.args[2], "BOTTOMLEFT", "under it")
+        Eq(#rows[1].found.recorded.points, 2, "and as wide as it, and no other anchor")
+    end
+    line:GetScript("OnTabPressed")(line)
+    Check(not rows[1].found:IsShown(), "Tab leaves the offer behind")
+    line:SetFocus()
+    line:GetScript("OnTextChanged")(line, true)
     Eq(rows[1].rows[1].person.guid, guid, "the entry it found")
     rows[1].rows[1]:GetScript("OnClick")(rows[1].rows[1])
     Eq(rows[1].guid, guid, "picked")

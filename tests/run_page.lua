@@ -361,6 +361,39 @@ end
 ns.UI.DungeonPage.Close()
 
 --------------------------------------------------------------------------
+Section("what is pasted over lies over")
+
+-- The boss strip over the scrap's top edge, the slip over its card, each with
+-- its link under the paper above it, and all under the hit boxes. Strips at
+-- one level have no order in the client (2 Nov 2026, the user).
+local function Levels()
+    local plan = run.plan
+    Check(plan.scrap and plan.boss and plan.slip, "setup: the page has a scrap, a boss strip and a slip")
+    local under, over = run.used["strip:scrap"][1], run.used["strip:boss"][1]
+    local kind = "strip:keepsake" .. #plan.cards
+    local card, pinned = run.used[kind][1], run.used["strip:slip"][1]
+    Check(over:GetFrameLevel() > under:GetFrameLevel(), "the boss strip lies under the scrap")
+    Check(over:GetFrameLevel() > under.link:GetFrameLevel(), "the scrap's link lies over the boss strip")
+    Check(pinned:GetFrameLevel() > card:GetFrameLevel(), "the slip lies under its card")
+    Check(pinned:GetFrameLevel() > card.link:GetFrameLevel(), "the card's link lies over the slip")
+    local hit = run.used.hit
+    Check(hit.n > 0, "setup: the page has hit boxes")
+    for i = 1, hit.n do
+        for _, strip in ipairs({ under, over, card, pinned }) do
+            Check(strip:GetFrameLevel() < hit[i]:GetFrameLevel(), "a strip lies over a hit box")
+            Check(strip.link:GetFrameLevel() < hit[i]:GetFrameLevel(), "a strip's link lies over a hit box")
+        end
+    end
+    return under, over, card, pinned
+end
+ns.UI.RedrawJourneyPage()
+local under, over, card, pinned = Levels()
+-- Handed out again, each is put back where it lies, whatever it was left at.
+for _, strip in ipairs({ under, over, card, pinned }) do strip:SetFrameLevel(1) end
+ns.UI.RedrawJourneyPage()
+Levels()
+
+--------------------------------------------------------------------------
 Section("everyone on the run")
 
 local function Named(n, width)

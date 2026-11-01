@@ -77,10 +77,14 @@ local GROUPS = { { key = "combat", words = "Combat" }, { key = "lore", words = "
 -- points of each dash, and the pen's step along them; width in px.
 local RING = { r = 10, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 }
 
--- A person's line offers who the search finds under it, over the rows below, on
--- a patch of the slip's own paper. most: how many. row: their height. level: over
--- the form's rows.
-local PERSON = { most = 4, row = 18, level = 20, paper = { 0.93, 0.88, 0.74 } }
+-- A person's line offers who the search finds, hanging from its underline as a part
+-- of it, over the rows below, on a patch of paper ruled like the line. most: how
+-- many. row: their height. level: over the form's rows. out: how far the paper runs
+-- past the line each side, so the names start where what is typed does. foot: under
+-- the last name. hot: the ink under the mouse, faint so the name stays readable.
+-- (2 Nov, in the client: laid by its middle at its full height, one
+-- name floated a row and a half under the line.)
+local PERSON = { most = 4, row = 18, level = 20, out = 4, foot = 2, hot = 0.12, paper = { 0.93, 0.88, 0.74 } }
 
 -- The words of the form and the menus, all furniture (the copywriter's §1). Add,
 -- pick and another are the user's own, word for word.
@@ -187,9 +191,21 @@ local function NewRow(field)
         row.box:SetMaxLetters(field.most or 60)
         local found = CreateFrame("Frame", nil, S)
         found:SetFrameLevel(S:GetFrameLevel() + PERSON.level)
+        found:SetPoint("TOPLEFT", row.box, "BOTTOMLEFT", -PERSON.out, -1)
+        found:SetPoint("TOPRIGHT", row.box, "BOTTOMRIGHT", PERSON.out, -1)
         local paper = found:CreateTexture(nil, "BACKGROUND")
         paper:SetAllPoints()
         paper:SetColorTexture(PERSON.paper[1], PERSON.paper[2], PERSON.paper[3], 1)
+        -- Ruled down its sides and foot, in the line's own ink, so it reads as the
+        -- line opened out and not as a slip lying near it.
+        for _, edge in ipairs({ { "TOPLEFT", "BOTTOMLEFT", 1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 },
+            { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 } }) do
+            local rule = found:CreateTexture(nil, "BORDER")
+            rule:SetPoint(edge[1])
+            rule:SetPoint(edge[2])
+            if edge[3] then rule:SetWidth(edge[3]) else rule:SetHeight(edge[4]) end
+            rule:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], Style.HAIRLINE_HOT)
+        end
         found:Hide()
         row.found, row.rows = found, {}
         local function Offer()
@@ -199,10 +215,13 @@ local function NewRow(field)
                 if not line then
                     line = CreateFrame("Button", nil, found)
                     line:SetHeight(PERSON.row)
-                    line:SetPoint("TOPLEFT", 4, -(i - 1) * PERSON.row)
-                    line:SetPoint("TOPRIGHT", -4, -(i - 1) * PERSON.row)
+                    line:SetPoint("TOPLEFT", PERSON.out, -(i - 1) * PERSON.row)
+                    line:SetPoint("TOPRIGHT", -PERSON.out, -(i - 1) * PERSON.row)
                     line.text = Style.Text(line, FONT.note)
                     line.text:SetPoint("LEFT")
+                    local hot = line:CreateTexture(nil, "HIGHLIGHT")
+                    hot:SetAllPoints()
+                    hot:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], PERSON.hot)
                     line:SetScript("OnClick", function(self)
                         row:Set(self.person.name, self.person.guid)
                         found:Hide()
@@ -214,7 +233,7 @@ local function NewRow(field)
                 line:Show()
             end
             for i = #people + 1, #row.rows do row.rows[i]:Hide() end
-            found:SetHeight(#people * PERSON.row)
+            found:SetHeight(#people * PERSON.row + PERSON.foot)
             found:SetShown(#people > 0)
         end
         -- Typing is not picking: whatever was linked lets go at the first key.
@@ -257,7 +276,12 @@ local function RowsOf(kind, spec)
         -- Tab walks the lines, as on the entry form.
         -- Enter saves the card, on any line of any kind's form.
         for i, box in ipairs(boxes) do
-            box:SetScript("OnTabPressed", function() boxes[i % #boxes + 1]:SetFocus() end)
+            box:SetScript("OnTabPressed", function()
+                for _, row in ipairs(rows) do
+                    if row.found then row.found:Hide() end
+                end
+                boxes[i % #boxes + 1]:SetFocus()
+            end)
             box:SetScript("OnEnterPressed", function() view.save:GetScript("OnClick")(view.save) end)
         end
     end
@@ -498,7 +522,6 @@ local function Lay(spec)
         else
             local w = row.field.type == "number" and SHEET.short or SHEET.line
             K.PlaceButton(row.box, x, y - 10, w, 20)
-            if row.found then K.PlaceButton(row.found, x, y + 10, w, PERSON.most * PERSON.row) end
             if row.hint then K.PlaceText(row.hint, x + w + SHEET.gap, y) end
         end
     end
