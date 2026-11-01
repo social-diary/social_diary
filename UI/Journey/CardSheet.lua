@@ -41,10 +41,11 @@ local BOOK = ns.UI.Journal.BOOK
 -- row's middle. row: from row to row. label: the labels' column. line, short:
 -- the width of a text's line and of a number's (a number's hint goes beside it,
 -- `gap` on). toggle: a choice's box and its word, one after another along the
--- line. links: from the last row to the quiet links' middle, foot: from
+-- line, as many as fit its width (`wrap` on from there, a first found's five
+-- firsts running to three lines). links: from the last row to the quiet links' middle, foot: from
 -- there, or from the last row where it has none, to Save's. bottom: under Save.
 -- Its height comes of its rows: a later kind may have more.
-local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 92, line = 176, short = 48, gap = 8, toggle = 70,
+local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 92, line = 176, short = 48, gap = 8, toggle = 86, wrap = 22,
     links = 34, foot = 28, bottom = 26, linkGap = 18 }
 -- Not folded: a slip, not a sheet carried in the book. Its corners curl a
 -- little and it is hardly crumpled, as the note sheet's (NoteSheet.lua's CREASE,
@@ -75,6 +76,11 @@ local GROUPS = { { key = "combat", words = "Combat" }, { key = "lore", words = "
 -- its place (in shares of its arc) and off the radius (px). bends, step: the
 -- points of each dash, and the pen's step along them; width in px.
 local RING = { r = 10, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 }
+
+-- A person's line offers who the search finds under it, over the rows below, on
+-- a patch of the slip's own paper. most: how many. row: their height. level: over
+-- the form's rows.
+local PERSON = { most = 4, row = 18, level = 20, paper = { 0.93, 0.88, 0.74 } }
 
 -- The words of the form and the menus, all furniture (the copywriter's §1). Add,
 -- pick and another are the user's own, word for word.
@@ -175,6 +181,54 @@ local function NewRow(field)
             Tick()
         end
         function row:Get() return self.value or "" end
+    elseif field.type == "person" then
+        row.box = Style.WritingLine(S, SHEET.line, FONT.note, field.hint)
+        row.box:SetMaxLetters(field.most or 60)
+        local found = CreateFrame("Frame", nil, S)
+        found:SetFrameLevel(S:GetFrameLevel() + PERSON.level)
+        local paper = found:CreateTexture(nil, "BACKGROUND")
+        paper:SetAllPoints()
+        paper:SetColorTexture(PERSON.paper[1], PERSON.paper[2], PERSON.paper[3], 1)
+        found:Hide()
+        row.found, row.rows = found, {}
+        local function Offer()
+            local people = row.box:HasFocus() and ns.Custom.FindPeople(row.box:GetText(), PERSON.most) or {}
+            for i, person in ipairs(people) do
+                local line = row.rows[i]
+                if not line then
+                    line = CreateFrame("Button", nil, found)
+                    line:SetHeight(PERSON.row)
+                    line:SetPoint("TOPLEFT", 4, -(i - 1) * PERSON.row)
+                    line:SetPoint("TOPRIGHT", -4, -(i - 1) * PERSON.row)
+                    line.text = Style.Text(line, FONT.note)
+                    line.text:SetPoint("LEFT")
+                    line:SetScript("OnClick", function(self)
+                        row:Set(self.person.name, self.person.guid)
+                        found:Hide()
+                    end)
+                    row.rows[i] = line
+                end
+                line.person = person
+                line.text:SetText(person.name)
+                line:Show()
+            end
+            for i = #people + 1, #row.rows do row.rows[i]:Hide() end
+            found:SetHeight(#people * PERSON.row)
+            found:SetShown(#people > 0)
+        end
+        -- Typing is not picking: whatever was linked lets go at the first key.
+        row.box:HookScript("OnTextChanged", function(_, typed)
+            if typed then
+                row.guid = nil
+                Offer()
+            end
+        end)
+        function row:Set(value, guid)
+            self.guid = guid
+            self.box:SetValue(value)
+            self.found:Hide()
+        end
+        function row:Get() return self.box:GetText() or "" end
     else
         local number = field.type == "number"
         row.box = Style.WritingLine(S, number and SHEET.short or SHEET.line, number and FONT.strong or FONT.note,
@@ -210,6 +264,7 @@ end
 local function ShowRow(row, on)
     row.label:SetShown(on)
     for _, part in pairs({ row.box, row.hint }) do part:SetShown(on) end
+    if row.found and not on then row.found:Hide() end
     for _, box in pairs(row.toggles or {}) do box:SetShown(on) end
 end
 
@@ -220,8 +275,10 @@ local function Fields()
     local fields, any = {}, false
     for _, row in ipairs(view.rows) do
         local value = row:Get()
-        if view.where or value ~= row.was then
+        local guidKey = row.field.type == "person" and ns.Custom.GuidKey(row.field)
+        if view.where or value ~= row.was or (guidKey and row.guid ~= row.guidWas) then
             fields[row.field.key] = value
+            if guidKey then fields[guidKey] = row.guid end
             any = true
         end
     end
@@ -409,7 +466,15 @@ local function Lay(spec)
     local saved = rec and (rec.customOf or rec)
     local changed = detected and saved.custom ~= nil
     local quiet = detected or inserted
-    local last = SHEET.first + (#rows - 1) * SHEET.row
+    -- A row's middle: the rows before it, one taller for each line its toggles
+    -- wrap to.
+    local across = math.max(1, math.floor(SHEET.line / SHEET.toggle))
+    local ys, last = {}, SHEET.first
+    for i, row in ipairs(rows) do
+        ys[i] = last
+        local lines = row.field.values and math.ceil(#row.field.values / across) or 1
+        last = last + (lines - 1) * SHEET.wrap + (i < #rows and SHEET.row or 0)
+    end
     local linksAt = last + SHEET.links
     local footAt = (quiet and linksAt or last + SHEET.links - 6) + SHEET.foot
     local H = footAt + SHEET.bottom
@@ -418,16 +483,18 @@ local function Lay(spec)
 
     K.PlaceText(view.title, M, SHEET.title)
     for i, row in ipairs(rows) do
-        local y = SHEET.first + (i - 1) * SHEET.row
+        local y = ys[i]
         local x = M + SHEET.label
         K.PlaceText(row.label, M, y)
         if row.toggles then
             for _, box in pairs(row.toggles) do
-                K.PlaceButton(box, x + box.at * SHEET.toggle, y - box.height / 2, SHEET.toggle, box.height)
+                K.PlaceButton(box, x + box.at % across * SHEET.toggle,
+                    y + math.floor(box.at / across) * SHEET.wrap - box.height / 2, SHEET.toggle, box.height)
             end
         else
             local w = row.field.type == "number" and SHEET.short or SHEET.line
             K.PlaceButton(row.box, x, y - 10, w, 20)
+            if row.found then K.PlaceButton(row.found, x, y + 10, w, PERSON.most * PERSON.row) end
             if row.hint then K.PlaceText(row.hint, x + w + SHEET.gap, y) end
         end
     end
@@ -467,11 +534,18 @@ function Open(kind, rec, where)
     view.kind, view.rec, view.where, view.rows = kind, rec, where, RowsOf(kind, spec)
     view.title:SetText(spec.heading or Capital(spec.label))
     local values = rec and ns.Custom.Values(rec) or spec.defaults or {}
+    -- What a detected card shows but keeps elsewhere (Core/Custom.lua's `values`).
+    if rec and spec.values then spec.values(values, rec.customOf or rec) end
     for _, row in ipairs(view.rows) do
         ShowRow(row, true)
         local value = values[row.field.key]
         row.was = value ~= nil and tostring(value) or ""
-        row:Set(row.was)
+        if row.field.type == "person" then
+            row.guidWas = values[ns.Custom.GuidKey(row.field)]
+            row:Set(row.was, row.guidWas)
+        else
+            row:Set(row.was)
+        end
     end
     Lay(spec)
     -- A new card is to be written on at once; a card opened may be only to

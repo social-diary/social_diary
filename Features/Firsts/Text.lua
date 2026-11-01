@@ -27,6 +27,13 @@ local function ItemName(link)
 end
 Firsts.ItemName = ItemName
 
+-- What a first's item is called: as the player typed it (Core/Custom.lua), else
+-- out of its link.
+local function Name(rec)
+    return rec and (rec.name or ItemName(rec.link)) or nil
+end
+Firsts.Name = Name
+
 -- A first found card's heading (Card.lua), in the diary's hand:
 -- "Your first green item!", "Your first bag!". `what` is one kind or a
 -- list of them, for one item that was the first of several ("Your first
@@ -96,7 +103,7 @@ function Firsts.Sentence(kind, rec)
     else
         text = "Found " .. yours .. in_
     end
-    local name = ItemName(rec.link)
+    local name = Name(rec)
     return text .. (name and (": " .. name) or "") .. "."
 end
 
@@ -122,7 +129,7 @@ function Firsts.Tip(m, now, bare)
         local giver = Giver(rec)
         how = giver and ("from " .. Who(giver)) or "a gift"
     end
-    local parts = { not bare and ItemName(rec.link) or nil, how or "found",
+    local parts = { not bare and Name(rec) or nil, how or "found",
         (rec.level and ("at level " .. rec.level) or nil), Day(rec.t, now) }
     local list = {}
     for i = 1, 4 do
@@ -186,7 +193,7 @@ do
         lead = { at = 20, say = function(finds, c)
             local m = finds[1]
             local name = #finds == 1 and not c.of.death and not m.gift and not Shown(m, c)
-                and ItemName((m.find or m).link)
+                and Name(m.find or m)
             local words = {}
             for _, f in ipairs(finds) do words[#words + 1] = (Found(f, c)) end
             local text = Capital(List(words)) .. (name and (": " .. name) or "")

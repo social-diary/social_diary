@@ -13,7 +13,12 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Fixes
 
 - Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
-- _People_ you've only seen just now actually show when you last saw them
+- _People_:
+  - People you've only seen just now actually show when you last saw them (was "last met")
+  - Back-to-back Dungeons now result in proper concatenated namings ("ran Sunken Temple and Upper Blackrock Spire)
+- _Your Diary_: 
+  - now skips empty levels if the Addon is loaded in on an existing character with no Data for previous levels
+
 
 ## [2.0.0]
 

@@ -23,6 +23,12 @@
 -- label text. we dont do that"). It opens nothing; under the mouse it
 -- tells its series as the flag does.
 --
+-- A series the player changed or wrote (Core/Custom.lua, rec.customOf) is out of
+-- that choice: each is a note of its own (`duelCustom`, order 8.5), never filler,
+-- and it takes the print ahead of the plate's one, so a card just written shows
+-- where its plate has no margin at all (FL's print). What it pushes off the print
+-- goes on to the margin, then the words, as it would for good luck.
+--
 -- It is filler (the user, 15 Oct), so it never grows smaller: the named
 -- words, then the nameless (Duels.Note's `named` false) where a long name
 -- will not fit, then it is left off and the caption's words say it
@@ -87,6 +93,8 @@ function Slip.Choose(marks)
             local rec = m.duel
             if rec then
                 recs[#recs + 1] = rec
+            end
+            if rec and not rec.customOf then
                 local n = Total(rec)
                 if not best or n > most or (n == most and (rec.t or 0) >= (best.t or 0)) then
                     best, most, at = rec, n, mark
@@ -97,6 +105,39 @@ function Slip.Choose(marks)
     if not best then return nil end
     table.sort(recs, function(a, b) return (a.t or 0) < (b.t or 0) end)
     return { rec = best, recs = recs, mark = at.at, x = at.x, y = at.y }
+end
+
+-- The series on a plate the player changed or wrote, as Choose gives one, each
+-- for a note of its own, the newest first: where the margin runs out, the oldest
+-- are the ones left to their flags.
+function Slip.Customs(marks)
+    local list = {}
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            local rec = m.duel
+            if rec and rec.customOf then
+                list[#list + 1] = { rec = rec, recs = { rec }, mark = mark.at, x = mark.x, y = mark.y }
+            end
+        end
+    end
+    table.sort(list, function(a, b) return (a.rec.t or 0) > (b.rec.t or 0) end)
+    return list
+end
+
+-- Whether `rec` is the one the print's slip tells.
+local function OnPrint(plate, rec)
+    return plate.duelPrint ~= nil and plate.duelPrint.rec == rec
+end
+
+-- The notes the player's own series want in the margin: all but the print's.
+local function CustomNotes(plate)
+    local items = {}
+    for _, chosen in ipairs(plate.customDuels or {}) do
+        if not OnPrint(plate, chosen.rec) then
+            items[#items + 1] = { duel = chosen, top = chosen.mark[2], x = chosen.mark[1] }
+        end
+    end
+    return items
 end
 
 -- The tooltip of the chosen series, the flag's (Duels.Tip), as a list.
@@ -286,23 +327,51 @@ end
 -- does (the user, 15 Oct). Its leader goes to its series' flag.
 ns.UI.JourneyMargin.Register("duel", {
     order = 85, pool = "duelPool", count = "duelsWritten", filler = true, flag = "duelTold",
-    counted = function(shown, plate) return (shown[1] or plate.duelPrint) and 1 or 0 end,
+    counted = function(shown, plate)
+        return (shown[1] or (plate.duel and OnPrint(plate, plate.duel.rec))) and 1 or 0
+    end,
     new = function(parent) return Slip.New(parent) end,
     item = function(plate)
         local d = plate.duel
-        if not d or plate.duelPrint then return nil end
+        if not d or OnPrint(plate, d.rec) then return nil end
         return { duel = d, top = d.mark[2], x = d.mark[1] }
     end,
     write = function(slip, it, c)
         slip:SetDuel(it.duel, c.Seed("duel", it.duel.rec.t or 0), c.now)
     end,
     mark = function(it) return it.duel.mark end,
+    custom = function(it) return "duel", it.duel.rec end,
     say = function(said, shown, plate)
-        if plate.duel and not plate.duelPrint and not shown[1] then said.duel = true end
+        if plate.duel and not OnPrint(plate, plate.duel.rec) and not shown[1] then said.duel = true end
     end,
     after = function(plate, c)
         local s = plate.duelPrint
         if s and s.far then c.Leader(s, s.mark) end
+    end,
+})
+
+-- The series the player changed or wrote, a note each, past the plate's one
+-- (Slip.Choose), at the order the custom cards were given
+-- (.claude/features/custom-cards.md): well ahead of the filler the automatic note
+-- is, as a card someone just wrote reads as a bug if it is first to go. The same
+-- slip, the same pool. Where one still finds no room the caption's words say a
+-- duel; this is no filler, so those words are kept even at the foot, as a close
+-- call's are.
+ns.UI.JourneyMargin.Register("duelCustom", {
+    order = 8.5, pool = "duelPool", count = "customDuelsWritten",
+    counted = function(shown, plate)
+        local printed = plate.duelPrint and plate.duelPrint.rec.customOf and 1 or 0
+        return #shown + printed
+    end,
+    new = function(parent) return Slip.New(parent) end,
+    items = CustomNotes,
+    write = function(slip, it, c)
+        slip:SetDuel(it.duel, c.Seed("duel", it.duel.rec.t or 0), c.now)
+    end,
+    mark = function(it) return it.duel.mark end,
+    custom = function(it) return "duel", it.duel.rec end,
+    say = function(said, shown, plate)
+        if #shown < #CustomNotes(plate) then said.duel = true end
     end,
 })
 
@@ -336,6 +405,15 @@ ns.UI.JourneyPlate.RegisterPass("duelPrint", {
         for part, at in pairs(PRINT_LAYERS) do pools[part] = kit.Pool(at[1], at[2]) end
         for part, at in pairs(PRINT_TEXTS) do texts[part] = kit.TextPool(Style.FONT.noteWritten, at[1], at[2]) end
         plate.duelHit = kit.Button()
+        -- A right click on the slip is one on its flag: the form for its series.
+        -- The kit's button knows no mark, and would offer the map's menu.
+        plate.duelHit:SetScript("OnMouseUp", function(_, which)
+            plate:Release(which)
+            if which == "RightButton" then
+                local s = plate.duelPrint
+                plate:Right(s and { kind = "duel", list = { { kind = "duel", duel = s.rec } } } or nil)
+            end
+        end)
         Style.Tooltip(plate.duelHit, function()
             local s = plate.duelPrint
             return s and kit.Tip(Duels.Tip(s.rec, s.now))
@@ -350,7 +428,10 @@ ns.UI.JourneyPlate.RegisterPass("duelPrint", {
         if not k then return end
         plate.duelPrint = nil
         plate.duelHit:Hide()
-        local chosen, slot = plate.duel, plate.slot
+        -- The player's newest ahead of the plate's one: a plate may have no
+        -- margin to give it.
+        plate.customDuels = Slip.Customs(plate.duelMarks)
+        local chosen, slot = plate.customDuels[1] or plate.duel, plate.slot
         if not (chosen and slot and slot.light) or plate.print then return end
         local entry, OnPage = c.entry, c.OnPage
         local seed = table.concat({ "duel", chosen.rec.t or 0, plate.mapID or 0,

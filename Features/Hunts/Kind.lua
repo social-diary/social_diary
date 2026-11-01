@@ -294,10 +294,24 @@ function Hunts.Done(j, questID, index, rec, where)
         shared = shared, kills = kills, npcID = npcID, name = byKind[npcID].name, byKind = kinds > 1 and byKind or nil,
         expected = Rated(byKind, kills, hunt.need + (shared or 0), rates) }
     -- On the list as Journey.Append keeps one (the newest T.hunts), with
-    -- the record's fields in their own order.
+    -- the record's fields in their own order. As there, the oldest goes past
+    -- any the player has changed, which do not count against the cap either:
+    -- nothing removes their writing on its own (Core/Custom.lua).
     j.hunts = j.hunts or {}
     j.hunts[#j.hunts + 1] = done
-    while #j.hunts > Journey.T[LIST] do table.remove(j.hunts, 1) end
+    local plain = 0
+    for _, kept in ipairs(j.hunts) do
+        if not kept.custom then plain = plain + 1 end
+    end
+    local i = 1
+    while plain > Journey.T[LIST] do
+        if j.hunts[i].custom then
+            i = i + 1
+        else
+            table.remove(j.hunts, i)
+            plain = plain - 1
+        end
+    end
     Journey.Touch()
     return done
 end
@@ -355,8 +369,14 @@ end
 -- kinds are the ones it kept: one, or its `byKind`. A rate kept that
 -- cannot be believed (Hunts.Believable) is read again the same way, and
 -- dropped where no source can be. Whether it has a rate.
+--
+-- Only ever a detected record's own values: a copy the player's words are on
+-- (Hunts.Read, an inserted card's too) says what they said. Its typed item
+-- is no quest's, and its expected is theirs, or theirs to have left empty, so
+-- no rate is looked up for it, and nothing is written over what it shows.
 function Hunts.Rated(hunt)
     if not hunt then return false end
+    if hunt.customOf then return hunt.expected ~= nil end
     local items = Hunts.Items(hunt)
     if hunt.expected and Hunts.Believable(hunt.kills or 0, items, hunt.expected) then return true end
     local Q = ns.QuestieBridge
@@ -395,19 +415,97 @@ end
 -- full (its card goes in the margin); good luck light
 -- (the user's choice, 13 Oct: words only, or S on a light plate's print,
 -- LuckyCard.lua).
+--
+-- The player may change or insert one of either (Core/Custom.lua). Luck is
+-- worked out when read, so a card whose kills were typed could turn from bad
+-- luck to good, or to neither, and be gone from the page under the player's
+-- hand: the kind is judged on the record's detected values, always, and the
+-- changes are laid on afterwards, so an edited card stays in the list it was
+-- in, whatever they typed. (What the judgement itself leans on can still move
+-- a record, as it always could: a rate read later, or the character's usual
+-- as hunts are added. The edit is what never does.) An inserted card says its
+-- kind by being of it, and Gather puts it straight into that kind's entry.
+
+-- A card as the page reads it, with the numbers its words and cards count on:
+-- these fields can be left empty on the form, and "0 drops" is no one's hunt.
+-- A kill is the fewest that could have given what the player says it gave.
+local function Whole(hunt)
+    hunt.need = hunt.need or 1
+    hunt.kills = hunt.kills or hunt.need
+    return hunt
+end
+
+-- A detected record as the player left it: Custom.Read, nil when hidden, and
+-- then what the detected record says about something they have since retyped
+-- taken off the copy, or it would speak over them. A typed item is not the
+-- quest's: its itemID and questID would give it the old item's icon (without
+-- them the card looks the name up in the client's cache, and falls back on
+-- its sack, HuntCard.Icon). Typed kills or a typed creature: `byKind` would
+-- list the detected kinds on the card, in place of what they typed; and the
+-- creature's npcID is not this name's. A typed number of items: the group's
+-- copies (`shared`) are not the player's to know about, and would change the
+-- kills an item from the one they can read off the card.
+function Hunts.Read(hunt)
+    local read = ns.Custom.Read(hunt)
+    if not read or read == hunt then return read end
+    local changes = hunt.custom
+    if changes.item ~= nil then read.itemID, read.questID = nil, nil end
+    if changes.name ~= nil then read.npcID = nil end
+    if changes.name ~= nil or changes.kills ~= nil then read.byKind = nil end
+    if changes.need ~= nil then read.shared = nil end
+    return Whole(read)
+end
+
+-- What the two kinds let the player say, all that their cards show, and the
+-- same for both: one form for one record, told apart by its kind's heading
+-- and what it starts with. No `creature`: these cards draw no creature, so a
+-- typed name has no picture to bring. `describe` tells apart two hunts for one
+-- item at a spot by their kills, as the close call's does by its health.
+-- `defaults`: a hunt that reads as its kind, so a card with only its item
+-- typed is still bad luck or good; kept short of anything anyone would take
+-- for an entry, being only numbers. Good luck's `expected` is what its card
+-- strikes through; emptied, the card strikes "expected more" (ExpectedLabel).
+local function CustomSpec(label, heading, at, defaults)
+    return {
+        label = label, heading = heading, group = "lore", at = at, defaults = defaults,
+        wrap = Whole,
+        describe = function(hunt)
+            return ("%s, %d killed"):format(hunt.item or heading, hunt.kills or 0)
+        end,
+        fields = {
+            { key = "item", type = "text", label = "Item" },
+            { key = "need", type = "number", min = 1, max = 99, label = "How many" },
+            { key = "name", type = "text", label = "Creature" },
+            { key = "kills", type = "number", min = 1, max = 999, label = "Kills" },
+            { key = "expected", type = "number", min = 1, max = 999, label = "Expected", hint = "kills" },
+        },
+    }
+end
+
 ns.JourneyRecap.RegisterMoment("luck", { order = 30, entry = "hunts", field = "hunt", rank = 3,
+    custom = CustomSpec("Bad Luck", "A slow hunt", 1, { need = 5, kills = 30 }),
     gather = function(j, a, b, e)
         local usual = Hunts.UsualLuck(j) or false
         for _, hunt in ipairs(Hunts.List(j)) do
             if hunt.t >= a and hunt.t < b then
                 Hunts.Rated(hunt)
+                local kind, into
                 if Hunts.BadLuck(j, hunt, usual) then
-                    e.hunts[#e.hunts + 1] = hunt
+                    kind, into = "luck", e.hunts
                 elseif Hunts.GoodLuck(hunt) then
-                    e.fortunes[#e.fortunes + 1] = hunt
+                    kind, into = "fortune", e.fortunes
+                end
+                if kind then
+                    local read = Hunts.Read(hunt)
+                    if read then
+                        into[#into + 1] = read
+                    else
+                        e.hidden[#e.hidden + 1] = { kind = kind, rec = hunt }
+                    end
                 end
             end
         end
     end })
 ns.JourneyRecap.RegisterMoment("fortune", { order = 40, entry = "fortunes", field = "hunt", rank = 3, light = true,
+    custom = CustomSpec("Good Luck", "A lucky hunt", 2, { need = 1, kills = 2, expected = 20 }),
     gather = function() end })

@@ -15,9 +15,11 @@ local Text = ns.UI.JourneyText
 local Capital, Glue, Health, NUMBER, Short, When, Who =
     Text.Capital, Text.Glue, Text.Health, Text.NUMBER, Text.Short, Text.When, Text.Who
 
--- Their first name, "Someone" where the buffer no longer has it.
+-- Their first name, "Someone" where the buffer no longer has it. A witness the
+-- player wrote in (Kind.lua's Written) goes by the name as written, which is all
+-- a typed name has, and all that is left of a picked one once they are forgotten.
 function Witnesses.Name(w)
-    return Short(w and w.guid) or "Someone"
+    return w and w.name or Short(w and w.guid) or "Someone"
 end
 
 -- How many more were there, after the name on the card's one line:
@@ -76,8 +78,19 @@ function Witnesses.Caption(w)
 end
 
 -- The card's tooltip: their full name, who they are, what they did (the
--- watching to a tenth of a second), whether they were alone, when.
+-- watching to a tenth of a second), whether they were alone, when. One the player
+-- wrote in says what its card says and no more: nothing here measured how long
+-- anyone watched or who joined which fight, and the tooltip must not claim it. Its
+-- mark's tooltip is this too, where the card may have found no room, so the deed
+-- and the creature are spelt out.
 function Witnesses.Tip(w, now)
+    if w.written then
+        local foe = Witnesses.Foe(w)
+        local lines = { Capital(Witnesses.Deed(w)) .. (foe and (" " .. foe) or "") }
+        if ns.Witnesses.Card.Evidence(w) then lines[#lines + 1] = "You came out of it with " .. Health(w) end
+        lines[#lines + 1] = When(w.t, w.level, now)
+        return Who(w.guid) or Witnesses.Name(w), lines
+    end
     local record = ns.Characters.Get and ns.Characters.Get(w.guid) or nil
     local lines = {}
     if record then
@@ -121,5 +134,19 @@ Text.RegisterCaption("witness", {
     coda = { at = 10, say = function(c)
         local w = c.said.witness
         return w and Witnesses.Caption(w) or nil
+    end },
+})
+
+-- Witnesses the player wrote in (Kind.lua's Written) whose cards found no room:
+-- each a sentence of its own, as a detected one's, after it (coda 20). Written
+-- ones are told separately from `said.witness` because a plate may hold one real
+-- witness and any number of written ones. With its card shown nothing is said.
+Text.RegisterCaption("witnessed", {
+    coda = { at = 20, say = function(c)
+        local left = c.said.witnessed
+        if not (left and left[1]) then return nil end
+        local sentences = {}
+        for i, w in ipairs(left) do sentences[i] = Witnesses.Caption(w) end
+        return table.concat(sentences, " ")
     end },
 })

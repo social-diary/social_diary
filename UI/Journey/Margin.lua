@@ -83,6 +83,8 @@ end
 --            ToPerson(guid) (a name that opens their page).
 --   mark     function(it, note) → { x, y } on the page: where its leader
 --            goes.
+--   personLike  true: a person's strip by another kind, which keeps a shared row's
+--            width as theirs does
 --   custom   optional function(it) → kind, record: the moment's kind and the
 --            record this card shows, when the player may change it
 --            (Core/Custom.lua): a right click on the card opens the editor.
@@ -236,6 +238,9 @@ local function MarginNote(plate, e, it, named)
     local level = e.level or e.week or 0
     if it.kind == "person" then
         local strip = page.notePool:Next()
+        -- A card's right click stays on a strip of the pool it shares (Margin.Register's
+        -- `custom`, told below): a person's has no editor.
+        strip:SetRight(nil)
         local g, guid = it.g, NoteGuid(it.g)
         -- Their latest note quoted under the name; where it was cut, here
         -- or on the strip, the tooltip has the rest.
@@ -385,7 +390,7 @@ local function LayNotes(plate, e, items, boxes, named, replay)
             end
         end
         -- In a shared row (Shared) a person's strip keeps the row's width.
-        local function Wide() return (boxes.shared and it.kind == "person") and math.min(box.w, boxes.base) or box.w end
+        local function Wide() return (boxes.shared and (it.kind == "person" or (MARGIN[it.kind] and MARGIN[it.kind].personLike))) and math.min(box.w, boxes.base) or box.w end
         local w, h = note:Layout(box.x, y, Wide(), Room())
         while Over(h) and boxes[k + 1] do
             k = k + 1

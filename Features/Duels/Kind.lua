@@ -189,7 +189,42 @@ end
 -- Light: its note is one line in the hand (under a light plate's caption,
 -- or across its print's foot), so a plate of duels and places alone is a
 -- print, not a full slot.
-ns.JourneyRecap.RegisterMoment("duel", { order = 80, list = LIST, field = "duel", rank = 6.5, light = true })
+--
+-- The player may change or insert one (Core/Custom.lua; .claude/features/
+-- custom-cards.md): everything its note and tooltip tell, under the names a
+-- detected record already uses, so the words read a custom card without being
+-- told, and so the form opens on the record's own tallies. The exception is
+-- `name`, which a detected record never has, as the route keeps no names: the
+-- words take it before the `guid` (Duels.Who), and with nothing typed the
+-- record's opponent stays. The form cannot show that opponent yet, as it reads
+-- only the record's own fields, which is why the line's hint says it may be left
+-- empty. `last` offers two boxes because a row holds no more on the form's
+-- width; a detected flight's `last` stays as it was until one is ticked, and a
+-- flight is written by its count, which is also what the tooltip tells. None of
+-- this reaches the record underneath, so capture carries on counting there, and
+-- it writes nothing to anyone's People rows: the card is the player's word about
+-- their road, not a duel the client saw. No defaults, so a card nobody filled in
+-- says only that there was a duel, rather than claiming a win.
+ns.JourneyRecap.RegisterMoment("duel", { order = 80, list = LIST, field = "duel", rank = 6.5, light = true,
+    custom = {
+        label = "Duel",
+        heading = "A duel",
+        -- A detected duel keeps its opponent by GUID alone: their name, for the form.
+        values = function(values, rec) values.name = values.name or Duels.Who(rec) end,
+        group = "social",
+        -- Text.lua's, read when asked: this file loads before it.
+        describe = function(rec) return Duels.Describe(rec) end,
+        fields = {
+            { key = "name", type = "person", guid = "guid", most = 40, label = "Opponent",
+                hint = "who it was, or leave this empty" },
+            { key = "last", type = "choice", values = { "won", "lost" }, label = "Last duel",
+                names = { won = "Won", lost = "Lost" } },
+            { key = "won", type = "number", min = 0, max = 99, label = "Duels won", hint = "blank for one duel" },
+            { key = "lost", type = "number", min = 0, max = 99, label = "Duels lost" },
+            { key = "theyFled", type = "number", min = 0, max = 99, label = "They fled" },
+            { key = "fled", type = "number", min = 0, max = 99, label = "You fled" },
+        },
+    } })
 
 --------------------------------------------------------------------------
 -- Writing a duel
@@ -218,6 +253,11 @@ local function SeriesRow(guid, since)
     return nil
 end
 
+-- Only ever the route's own list and the `guid` capture wrote there. A card the
+-- player inserted (j.custom) or an opponent they typed over one (rec.custom) is
+-- their word, not a duel the client saw, so a rematch never counts on to either:
+-- what they renamed goes on counting for the one who was really there, under
+-- their changes, so that Undo gives back the true series.
 local function SeriesRecord(j, guid, since)
     local list = j[LIST]
     for i = #(list or {}), 1, -1 do

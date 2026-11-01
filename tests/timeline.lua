@@ -370,7 +370,7 @@ for _, child in ipairs(wc.all) do
 end
 Eq(inWC, 20, "the level-up during the dungeon is not the dungeon's")
 _, text, sub = ns.UI.DescribeItem(long, G)
-Eq(text, "Hunted Humar the Pridelord together in The Barrens over 3 h 5 min; ran Wailing Caverns together",
+Eq(text, "Hunted Humar the Pridelord together in The Barrens over 3 h 5 min; ran Wailing Caverns",
     "long session: past an hour, the run follows the story")
 Check(not sub:find("dungeon"), "the session counts the run its headline names: " .. sub)
 -- Three deaths, two of them with lines: only the third is counted.
@@ -751,8 +751,32 @@ local item
 _, _, item = Said({ Session(532, t0 + 1000, 30 * 60, { quests = { 1 }, levelStart = 15, levelEnd = 16 }) })
 item.all[#item.all + 1] = { kind = "visit", time = t0 + 1200, all = {}, visit = { name = "Wailing Caverns" } }
 _, text, sub = ns.UI.DescribeItem(item, PAL)
-Eq(text, "Ran Wailing Caverns together over 30 min", "a run is the story")
+Eq(text, "Together for 30 min; ran Wailing Caverns", "a run is the story, and the time is the session's")
 Check(not sub:find("dungeon") and sub:find("Trade reached lv 16", 1, true), "the run's details line: " .. sub)
+
+-- Every run is told, in the order they happened; the time stays the session's.
+local function Runs(seconds, ...)
+    local _, _, session = Said({ Session(533, t0 + 1000, seconds, { quests = { 1 } }) })
+    for i, visit in ipairs({ ... }) do
+        session.all[#session.all + 1] = { kind = "visit", time = t0 + 2000 - i * 100, all = {}, visit = visit }
+    end
+    local _, said, details = ns.UI.DescribeItem(session, PAL)
+    return said, details
+end
+local WC, SFK, MC = { name = "Wailing Caverns" }, { name = "Shadowfang Keep" },
+    { name = "Molten Core", instanceType = "raid" }
+local ONY = { name = "Onyxia's Lair", instanceType = "raid" }
+text, sub = Runs(42 * 60, SFK, WC)
+Eq(text, "Together for 42 min; ran Wailing Caverns and Shadowfang Keep", "two runs")
+Check(not sub:find("dungeon"), "two runs counted again: " .. sub)
+Eq((Runs(10 * 60, SFK, WC)), "Ran Wailing Caverns and Shadowfang Keep together", "two runs, too short to time")
+Eq((Runs(42 * 60, WC, WC)), "Together for 42 min; ran Wailing Caverns twice", "the same run twice")
+Eq((Runs(42 * 60, WC, MC)), "Together for 42 min; raided Molten Core and ran Wailing Caverns", "a raid and a dungeon")
+Eq((Runs(42 * 60, MC, ONY)), "Together for 42 min; raided Onyxia's Lair and Molten Core", "two raids")
+Eq((Runs(42 * 60, WC, SFK, WC)), "Together for 42 min; ran 3 dungeons", "three dungeons")
+Eq((Runs(42 * 60, MC, ONY, MC)), "Together for 42 min; raided 3 times", "three raids")
+Eq((Runs(42 * 60, WC, SFK, MC)), "Together for 42 min; ran 2 dungeons and 1 raid", "a mix of three")
+Eq((Runs(100 * 60, WC)):match("; .*$"), "; ran Wailing Caverns", "after an hour, the run follows")
 ns.db.journey = {}
 
 -- The details line: a message or two is not counted; one quest goes by

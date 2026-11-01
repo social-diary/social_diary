@@ -117,10 +117,18 @@ local function SlipFits(said)
     for _, b in ipairs(slip.buttons) do
         Check(b.lx + b.w / 2 <= slip.w / 2 - S.pad + S.words.box[1] + 0.01, said .. ": off the slip's end: " .. b.key)
     end
-    local room = slip.w - 2 * S.pad - ns.UI.Surface.Width(slip.heading) - S.slack - 14
+    local room = slip.w - 2 * S.pad - ns.UI.Surface.Width(slip.heading) - S.slack - S.beside
     Check(ns.UI.Surface.Width(slip.status) <= room + 0.01, said .. ": the status runs off the slip")
 end
 SlipFits("at the start")
+-- Taken up, it lies square, so a line lands where its slot says however long
+-- it is: every box as tall as every other, none grown by its width.
+Eq(slip.turn, 0, "the drawing's slip is turned")
+Check(#slip.hintLines > 1, "the hint is not long enough to test its lines")
+for _, t in ipairs(slip.hints) do
+    if t:IsShown() then Eq(t.recorded.height, slip.lineH + 4, "a hint line's box grows with its width") end
+end
+Check(DP.WAY.SLIP.gap < DP.WAY.SLIP.foot, "the words to press are not set further off than the hint")
 Eq(slip.buttons.cut.label:GetText(), "Set early End point", "the early end's label")
 -- The longest thing the status can say is cut short, not run off the paper.
 local keepSaid = slip.statusText

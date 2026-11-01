@@ -152,7 +152,8 @@ function LuckyCard.Choose(marks)
     for _, mark in ipairs(marks or {}) do
         for _, m in ipairs(mark.list or {}) do
             local hunt = m.hunt
-            if hunt then
+            -- One the player changed or wrote has a card of its own (Customs).
+            if hunt and not hunt.customOf then
                 local ratio = LuckyCard.Ratio(hunt)
                 if not best or ratio < bestRatio or (ratio == bestRatio and (hunt.t or 0) > (best.t or 0)) then
                     best, bestMark, bestRatio = hunt, mark, ratio
@@ -162,6 +163,25 @@ function LuckyCard.Choose(marks)
     end
     if not best then return nil end
     return { hunt = best, mark = bestMark.at, x = bestMark.x, y = bestMark.y }
+end
+
+-- The good luck on a plate the player changed or wrote (Core/Custom.lua), each
+-- with its item named, in the shape Choose gives, the newest first: where the
+-- margin runs out the oldest are left to their marks, and a light plate's print
+-- tells the first. One with no item has nothing to head a card with: the mark
+-- and the words tell it.
+function LuckyCard.Customs(marks)
+    local list = {}
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            local hunt = m.hunt
+            if hunt and hunt.customOf and type(hunt.item) == "string" and hunt.item ~= "" then
+                list[#list + 1] = { hunt = hunt, mark = mark.at, x = mark.x, y = mark.y }
+            end
+        end
+    end
+    table.sort(list, function(a, b) return (a.hunt.t or 0) > (b.hunt.t or 0) end)
+    return list
 end
 
 --------------------------------------------------------------------------
@@ -779,7 +799,8 @@ local function PlannedLuck(p)
         if m.kind == "fortune" and m.hunt then list[#list + 1] = m end
     end
     if #list == 0 then return nil end
-    return LuckyCard.Choose({ { list = list } })
+    local marks = { { list = list } }
+    return LuckyCard.Customs(marks)[1] or LuckyCard.Choose(marks)
 end
 
 -- Whether a light plate (`p`, its plan) can have its luck told on the
@@ -1029,6 +1050,7 @@ do
             card:SetHunt(it.lucky, c.Seed("lucky", hunt.questID or hunt.item or ""), c.now)
         end,
         mark = function(it) return it.lucky.mark end,
+        custom = function(it) return "fortune", it.lucky.hunt end,
         assume = function(said, plate, slot)
             said.fortune = Printed(plate) or (plate.lucky and not slot.light and { hunt = plate.lucky.hunt })
         end,
@@ -1038,6 +1060,50 @@ do
         fits = function(plan, slot) return LuckyCard.PrintFits(plan, slot) end,
         after = function(plate, c)
             if plate.print and plate.print.far then c.Leader(plate.print, plate.print.mark) end
+        end,
+    })
+
+    -- The good luck the player changed or wrote, each its own card, past the
+    -- plate's one (LuckyCard.Choose): 8 in the margin, among the custom cards
+    -- and before the people's (10) (.claude/features/custom-cards.md). The same
+    -- card, the same pool. The one on a light plate's print is told there, its
+    -- card (`lucky` counts it, and `said.fortune` says so), and any other a
+    -- light plate has, or that one where S would not fit, comes here, under the
+    -- caption, as a campfire's slip does: the player's card is not to go missing
+    -- for want of a print, where a detected one's words would do.
+    local function Carded(plate)
+        local list = {}
+        for _, l in ipairs(LuckyCard.Customs(plate.fortuneMarks)) do
+            if not (plate.print and plate.print.hunt == l.hunt) then list[#list + 1] = l end
+        end
+        return list
+    end
+    ns.UI.JourneyMargin.Register("luckyCustom", {
+        order = 8, pool = "luckyPool", count = "customLuckyWritten",
+        new = function(parent) return LuckyCard.New(parent) end,
+        wants = function(it) return LuckyCard.Preferred(it.lucky) end,
+        items = function(plate)
+            local items = {}
+            for _, l in ipairs(Carded(plate)) do
+                items[#items + 1] = { lucky = l, top = l.mark[2], x = l.mark[1] }
+            end
+            return items
+        end,
+        write = function(card, it, c)
+            local hunt = it.lucky.hunt
+            card:SetHunt(it.lucky, c.Seed("lucky", hunt.t or hunt.item), c.now)
+        end,
+        mark = function(it) return it.lucky.mark end,
+        custom = function(it) return "fortune", it.lucky.hunt end,
+        assume = function(said, plate)
+            local set = {}
+            for _, l in ipairs(Carded(plate)) do set[l.hunt] = true end
+            said.fortunes = set
+        end,
+        say = function(said, shown)
+            local set = {}
+            for _, it in ipairs(shown) do set[it.lucky.hunt] = true end
+            said.fortunes = set
         end,
     })
 end
@@ -1092,6 +1158,18 @@ ns.UI.JourneyPlate.RegisterPass("print", {
             if plate.print then Hunts.HuntCard.ShowTip(self, plate.print) end
         end)
         plate.printItem:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        -- S is the hunt's card, so a right click opens its form as a card's does,
+        -- not the menu for the empty map under it. (The left stays a press on
+        -- the plate, as the kit's buttons have it.)
+        local function Up(_, which)
+            plate:Release(which)
+            if which == "RightButton" then
+                local s = plate.print
+                plate:Right(s and { kind = "fortune", list = { { hunt = s.hunt } } } or nil)
+            end
+        end
+        plate.printHit:SetScript("OnMouseUp", Up)
+        plate.printItem:SetScript("OnMouseUp", Up)
         kits[plate] = { over = kit.over, PlaceButton = kit.PlaceButton,
             print = { Place = kit.Place, Quad = kit.Quad,
                 Texture = function(part) return pools[part]:Next() end,
@@ -1103,7 +1181,9 @@ ns.UI.JourneyPlate.RegisterPass("print", {
         plate.print = nil
         plate.printHit:Hide()
         plate.printItem:Hide()
-        local chosen, slot = plate.lucky, plate.slot
+        -- The player's, where there is one: S is its card, and a detected
+        -- one on the same print goes to the words as any other lucky hunt.
+        local chosen, slot = LuckyCard.Customs(plate.fortuneMarks)[1] or plate.lucky, plate.slot
         if not (chosen and slot and slot.light) then return end
         local entry, now, OnPage, PlaceButton = c.entry, c.now, c.OnPage, k.PlaceButton
         local hunt = chosen.hunt

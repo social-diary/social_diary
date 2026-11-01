@@ -79,21 +79,39 @@ end
 -- close call (60), and a fight lost to strangers already says how it went,
 -- so with that lead the deaths are not added to the tail (40: after the
 -- firsts found, before a close call).
+--
+-- A death the player inserted (Kind.lua's `killedBy`) counts with them, so
+-- beside the route's one it is "Two deaths", as two detected would be, and not
+-- "A death, and a death". The route's words count both and the inserted kind's
+-- only speak where the route's have not: no death of the route's here (a lead at
+-- 55, a tail at 45), or the route's left silent after a fight lost to strangers,
+-- which says how that fight went and nothing of the one the player wrote.
 do
     local function Count(n)
         if n == 1 then return "a death" end
         return (NUMBER[n] or tostring(n)) .. " deaths"
     end
-    local function Died(deaths, c)
+    local function Died(n, c)
         local killer = c.said.death
-        return Count(#deaths) .. (killer and (", to " .. killer) or "")
+        return Count(n) .. (killer and (", to " .. killer) or "")
+    end
+    local function Inserted(c)
+        return c.lists.killedBy and #c.lists.killedBy or 0
     end
     Text.RegisterCaption("death", {
         moment = "death",
-        lead = { at = 50, say = function(deaths, c) return Capital(Died(deaths, c)) end },
+        lead = { at = 50, say = function(deaths, c) return Capital(Died(#deaths + Inserted(c), c)) end },
         tail = { at = 40, say = function(deaths, c)
             if c.lead == "fights" then return nil end
-            return Died(deaths, c)
+            return Died(#deaths + Inserted(c), c)
+        end },
+    })
+    Text.RegisterCaption("killedBy", {
+        moment = "killedBy",
+        lead = { at = 55, say = function(list, c) return Capital(Died(#list, c)) end },
+        tail = { at = 45, say = function(list, c)
+            if #(c.lists.death or {}) > 0 and c.lead ~= "fights" then return nil end
+            return Died(#list, c)
         end },
     })
 end

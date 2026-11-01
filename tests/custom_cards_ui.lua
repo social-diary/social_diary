@@ -505,7 +505,8 @@ do
     OnBook("the picker with one kind")
 
     local cells = Cells()
-    Eq(#cells, 1, "today, one card")
+    Eq(#cells, #CardSheet.Kinds(), "a card a kind")
+    Eq(#CardSheet.Kinds(), 9, "every margin card")
     Eq(cells[1].kind, "close", "the close call's")
     Eq(cells[1].eyebrow:GetText(), "COMBAT", "its type")
     Eq(cells[1].title:GetText(), "Close Call", "its name")
@@ -701,7 +702,8 @@ do
         end
     end
     Lying()
-    Eq(#ShownCards(view), 1, "today, one card")
+    local ALL = #CardSheet.Kinds()
+    Eq(#ShownCards(view), ALL, "a card a kind")
 
     local function Gone(what)
         Eq(#ShownCards(view), 0, what .. ": a card is still showing")
@@ -719,7 +721,7 @@ do
     Check(not Showing(view.title), "back: the form's heading goes")
     Check(not Showing(view.save), "back: Save goes")
     Lying()
-    Eq(#ShownCards(view), 1, "back: one card, not two")
+    Eq(#ShownCards(view), ALL, "back: the same cards, none twice")
 
     Press(view.cancel)
     Gone("cancelled from the picker")
@@ -727,7 +729,7 @@ do
     RightMap(Plate(), 0.40, 0.60)
     mock.MenuClick("Add custom event...")
     Lying()
-    Eq(#ShownCards(view), 1, "reopened: one card")
+    Eq(#ShownCards(view), ALL, "reopened: the same cards")
     PickKind("close")
     Press(view.cancel)
     Gone("cancelled from the form")
@@ -750,7 +752,7 @@ do
     RightMap(Plate(), 0.40, 0.60)
     mock.MenuClick("Add custom event...")
     Lying()
-    Eq(#ShownCards(view), 1, "reopened after all that: one card")
+    Eq(#ShownCards(view), ALL, "reopened after all that: the same cards")
     Press(view.cancel)
 end
 
@@ -781,10 +783,14 @@ do
     for i = 1, 8 do Kind("zy_fill" .. i, "other", 5) end
 
     local order = {}
-    for _, k in ipairs(CardSheet.Kinds()) do order[#order + 1] = k.kind end
+    local mine = {}
+    for _, k in ipairs(CardSheet.Kinds()) do
+        order[#order + 1] = k.kind
+        if k.kind == "close" or k.kind:find("^zz_") then mine[#mine + 1] = k.kind end
+    end
     local want = { "zz_combat", "close", "zz_lore1", "zz_lore2", "zz_social", "zz_nobody", "zz_other" }
-    for i, kind in ipairs(want) do Eq(order[i], kind, "the order at " .. i) end
-    Eq(#order, 15, "every kind, and only those with a spec")
+    for i, kind in ipairs(want) do Eq(mine[i], kind, "the order at " .. i) end
+    Eq(#order, 23, "every kind, and only those with a spec")
 
     OpenFirst()
     RightMap(Plate(), 0.40, 0.60)
@@ -796,7 +802,13 @@ do
     Check(list.bar:IsShown(), "so its bar shows")
     local firstBefore = Cells()[1].kind
     Eq(firstBefore, "zz_combat", "from the top")
-    Eq(Cells()[3].eyebrow:GetText(), "QUESTS AND LORE", "a type's words")
+    do
+        local lore = false
+        for _, cell in ipairs(Cells()) do
+            lore = lore or (cell.kind == "luck" and cell.eyebrow:GetText() == "QUESTS AND LORE")
+        end
+        Check(lore, "a type's words")
+    end
     list.Wheel(list, -1)
     Check(list.offset > 0, "the wheel scrolls it")
     Check(Cells()[1].kind ~= firstBefore, "to other cards")
@@ -820,11 +832,11 @@ do
         ns.JourneyRecap.MOMENTS[kind] = nil
         Plates.MARKS[kind] = nil
     end
-    Eq(#CardSheet.Kinds(), 1, "the throwaway kinds are gone")
+    Eq(#CardSheet.Kinds(), 9, "the throwaway kinds are gone")
     OpenFirst()
     RightMap(Plate(), 0.40, 0.60)
     mock.MenuClick("Add custom event...")
-    Eq(#Cells(), 1, "and the sheet is back to one")
+    Eq(#Cells(), 9, "and the sheet is back to every kind")
     Press(view.cancel)
 end
 
@@ -961,4 +973,83 @@ do
     Memory:close()
     Check(code:find("every card you changed or wrote", 1, true), "the words")
     Check(ns.Custom.Spec("close").label == "Close Call", "the spec names itself")
+end
+
+--------------------------------------------------------------------------
+Section("the form: a person's line, toggles that wrap, what a detected card shows")
+
+do
+    local Plates = ns.UI.JourneyPlate
+    local guid = "Player-1-0AAAAAAA"
+    ns.db.characters[guid] = { guid = guid, names = { { first = "Brannoc", surname = "" } } }
+    ns.db.diary[guid] = { tags = {}, addedAt = now, relationship = "", note = "" }
+    ns.Touch()
+    ns.JourneyRecap.MOMENTS.zz_form = { kind = "zz_form", custom = { label = "Form", group = "other",
+        fields = {
+            { key = "who", type = "person", label = "Who" },
+            { key = "pick", type = "choice", label = "Pick", values = { "a", "b", "c", "d", "e" },
+                names = { a = "A", b = "B", c = "C", d = "D", e = "E" } },
+            { key = "after", type = "text", label = "After" },
+        } } }
+    Plates.MARKS.zz_form = { draw = function() end }
+    OpenFirst()
+    local plate = Plate()
+    RightMap(plate, 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    local view = CardSheet.View()
+    CardSheet.Edit("zz_form", { kind = "zz_form", t = now, who = "Written" })
+    local rows = view.rows
+
+    -- The boxes stay inside the sheet's width, on lines of their own, and the row
+    -- after them clears the last line.
+    local function X(frame)
+        local anchor = frame.recorded.points[1]
+        return anchor.args[3], anchor.args[4]
+    end
+    local across, down = {}, {}
+    for value, box in pairs(rows[2].toggles) do
+        local x, y = X(box)
+        across[value], down[value] = x, y
+        Check(x + box:GetWidth() / 2 <= view.sheet:GetWidth() / 2, "a toggle runs off the sheet: " .. value)
+    end
+    Check(math.abs(down.a - down.b) < 1, "two to a line: " .. down.a .. " and " .. down.b)
+    Check(down.c < down.a - 10 and down.e < down.c - 10, "the rest wrap")
+    Check(math.abs(across.a - across.c) < 1, "each line starts under the first")
+    local _, afterY = X(rows[3].box)
+    Check(afterY <= down.e - 20, "the row after them clears them: " .. afterY .. " after " .. down.e)
+
+    -- A typed name is not picked; a line shows who the search finds, and picking one
+    -- links them. Typing over it lets the link go.
+    local line = rows[1].box
+    Eq(line:GetText(), "Written", "the name as written shows")
+    line:SetFocus()
+    line:SetText("bran")
+    line:GetScript("OnTextChanged")(line, true)
+    Check(rows[1].found:IsShown(), "the search offers someone")
+    Eq(rows[1].rows[1].person.guid, guid, "the entry it found")
+    rows[1].rows[1]:GetScript("OnClick")(rows[1].rows[1])
+    Eq(rows[1].guid, guid, "picked")
+    Eq(line:GetText(), rows[1].rows[1].person.name, "their name on the line")
+    Check(not rows[1].found:IsShown(), "and the offer goes")
+    line:SetText("Brannoc two")
+    line:GetScript("OnTextChanged")(line, true)
+    Eq(rows[1].guid, nil, "typing over it lets go")
+    view.cancel:GetScript("OnClick")(view.cancel)
+
+    ns.JourneyRecap.MOMENTS.zz_form, Plates.MARKS.zz_form = nil, nil
+
+    -- A detected card's form shows what it keeps elsewhere, and writes none of it.
+    local kept = { t = now - 60, link = "|cff1eff00|Hitem:1:|h[Thistle Sash]|h|r" }
+    j.firsts = j.firsts or {}
+    j.firsts.uncommon = kept
+    CardSheet.Edit("find", kept)
+    local name
+    for _, row in ipairs(view.rows) do
+        if row.field.key == "name" then name = row:Get() end
+        if row.field.key == "what" then Eq(row:Get(), "uncommon", "which first, from its key") end
+    end
+    Eq(name, "Thistle Sash", "the item, from its link")
+    view.save:GetScript("OnClick")(view.save)
+    Eq(kept.custom, nil, "saved untouched: nothing written")
+    j.firsts.uncommon = nil
 end

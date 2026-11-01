@@ -254,7 +254,8 @@ end
 -- highest rank (RANK), then the most deaths, then the latest. { npcID,
 -- name, rank, count, last (time), spell (the latest), display (the latest
 -- kept), probable (none confirmed by the death recap), cross (where the
--- latest was) }.
+-- latest was), death (the latest's record: what a right click on the card
+-- edits, the others staying as they were) }.
 function KillerCard.Choose(crosses)
     local by, list = {}, {}
     for _, cross in ipairs(crosses or {}) do
@@ -271,7 +272,7 @@ function KillerCard.Choose(crosses)
                 if (RANK[d.rank] or 0) > (RANK[k.rank] or 0) then k.rank = d.rank end
                 k.probable = k.probable and d.probable == true
                 if not k.last or d.t >= k.last then
-                    k.last, k.cross, k.name = d.t, cross, d.name
+                    k.last, k.cross, k.name, k.death = d.t, cross, d.name, d
                     k.spell = d.spell or k.spell
                 end
                 local display = ns.Plain(d.display)
@@ -290,6 +291,34 @@ function KillerCard.Choose(crosses)
     local k = list[1]
     if k then k.shown = nil end
     return k
+end
+
+-- A death the player changed or wrote as a card of its own (Core/Custom.lua),
+-- in Choose's shape: past the plate's one, one death to a card, and no hedging:
+-- `probable` was the diary's doubt about what the player has now said.
+local function OwnCard(d, mark)
+    local display = ns.Plain(d.display)
+    return { npcID = d.npcID, name = d.name, rank = d.rank, count = 1, last = d.t, spell = d.spell, death = d,
+        mark = mark, display = type(display) == "number" and display > 0 and display or nil }
+end
+
+-- The plate's custom cards, the newest first, so that where the margin runs out
+-- the oldest are the ones left to their marks: `edited`, the deaths the killer's
+-- pass took off the crosses ({ d, mark }), and the inserted, on `marks` (their
+-- own, plate.killedMarks). Only with a creature named, as a detected one: an
+-- inserted death with none is its cross and no card.
+function KillerCard.Customs(edited, marks)
+    local list = {}
+    for _, e in ipairs(edited or {}) do
+        if Creature(e.d) then list[#list + 1] = OwnCard(e.d, e.mark) end
+    end
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            if m.killedBy and Creature(m.killedBy) then list[#list + 1] = OwnCard(m.killedBy, mark.at) end
+        end
+    end
+    table.sort(list, function(a, b) return (a.last or 0) > (b.last or 0) end)
+    return list
 end
 
 --------------------------------------------------------------------------
@@ -658,18 +687,42 @@ KillerCard.KILLER, KillerCard.RANK = KILLER, RANK
 -- with where its card's leader ends on the page (plate.killer.mark).
 -- First of the passes: the others' (the close call's, the witness's) come
 -- after it.
+--
+-- The list is read as the player left it (Deaths.Read): a hidden death matches
+-- no cross, whose count is still the route's, so it stays a cross with no name.
+-- A death they changed tells its cross's tooltip what they said, and then comes
+-- off cross.deaths, into a card of its own (KillerCard.Customs): what is left
+-- there is what Choose picks the plate's one card from and what the witnesses'
+-- pass reads, so neither merges it with others or takes its place.
 ns.UI.JourneyPlate.RegisterPass("killer", {
     order = 10,
     draw = function(plate, c)
         local j = ns.Journey.For(ns.ownGUID)
         local At = c.At
-        KillerCard.Match(c.crosses, ns.Deaths.List(j), c.mapID, function(d) return At(d.x, d.y) end, c.entry,
+        local deaths = {}
+        for _, rec in ipairs(ns.Deaths.List(j)) do
+            local d = ns.Deaths.Read(rec)
+            if d then deaths[#deaths + 1] = d end
+        end
+        KillerCard.Match(c.crosses, deaths, c.mapID, function(d) return At(d.x, d.y) end, c.entry,
             function(t) return ns.Journey.CountedOn(j, t) end)
+        local edited = {}
         for _, cross in ipairs(c.crosses) do
             if #cross.deaths > 0 then
-                c.HoverCross(cross, function() return c.Tip(ns.Deaths.DeathCross(cross.count, cross.deaths)) end)
+                local told, kept = cross.deaths, {}
+                c.HoverCross(cross, function() return c.Tip(ns.Deaths.DeathCross(cross.count, told)) end)
+                for _, d in ipairs(told) do
+                    if d.customOf then
+                        local px, py = c.OnPage(cross.x, cross.y)
+                        edited[#edited + 1] = { d = d, mark = { px, py } }
+                    else
+                        kept[#kept + 1] = d
+                    end
+                end
+                cross.deaths = kept
             end
         end
+        plate.customKillers = KillerCard.Customs(edited, plate.killedMarks)
         local k = KillerCard.Choose(c.crosses)
         if k then
             local px, py = c.OnPage(k.cross.x, k.cross.y)
@@ -695,7 +748,55 @@ ns.UI.JourneyMargin.Register("killer", {
         card:SetKiller(it.killer, c.Seed("killer", it.killer.npcID or it.killer.name), c.now)
     end,
     mark = function(it) return it.killer.mark end,
+    custom = function(it) return "killedBy", it.killer.death end,
     say = function(said, shown, plate)
         if plate.killer and not shown[1] then said.death = ns.UI.JourneyText.KillerName(plate.killer) end
     end,
+})
+
+-- The deaths the player changed or wrote, each its own killer's card, past the
+-- plate's one (Choose) and never replaced by a witness's: laid before the people
+-- (10) and the other custom cards after it, so they are nearly the last left off
+-- (.claude/features/custom-cards.md's table of orders). The same card, the same
+-- pool. Left off, the first left off is named in the words, as a killer's is; the
+-- plate's own killer, asked later, overrules it where its card is left off too.
+ns.UI.JourneyMargin.Register("killerCustom", {
+    order = 4, pool = "killerPool", count = "customKillersWritten",
+    new = function(parent) return KillerCard.New(parent) end,
+    items = function(plate)
+        local items = {}
+        for _, k in ipairs(plate.customKillers or {}) do
+            items[#items + 1] = { killer = k, top = k.mark[2], x = k.mark[1] }
+        end
+        return items
+    end,
+    write = function(card, it, c)
+        card:SetKiller(it.killer, c.Seed("killer", it.killer.last or it.killer.name), c.now)
+    end,
+    mark = function(it) return it.killer.mark end,
+    custom = function(it) return "killedBy", it.killer.death end,
+    say = function(said, shown, plate)
+        local on = {}
+        for _, it in ipairs(shown) do on[it.killer] = true end
+        for _, k in ipairs(plate.customKillers or {}) do
+            if not on[k] then
+                said.death = ns.UI.JourneyText.KillerName(k)
+                return
+            end
+        end
+    end,
+})
+
+-- An inserted death's mark: the cross the route's deaths get, from the core's own
+-- shape so that the two cannot drift apart, on the moment of its own (Kind.lua), so
+-- nothing of the route is touched to draw it. Here and not in a Mark.lua of its
+-- own, since it has no drawing of its own to keep there. After the close call's (30)
+-- and before the luck's (40). On its own dot of paper, as the route's cross is, so
+-- no halo; hovered as the route's is, and told by the same tooltip.
+ns.UI.JourneyPlate.RegisterMark("killedBy", {
+    order = 32, cap = 20, count = "insertedDeaths",
+    radius = 5, halo = false, hover = 14,
+    tip = function(m) return ns.Deaths.DeathCross(1, { m.killedBy }) end,
+    keep = "killedMarks",
+    draw = function(kit, x, y) ns.UI.JourneyPlate.SHAPE.death(kit, x, y) end,
 })

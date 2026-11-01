@@ -58,6 +58,10 @@
 -- Laid flat ("Flat paper only") the slip lies square and so does its blood;
 -- the underlines, the chart and the blood are ink and stay.
 --
+-- A witness the player wrote in (Kind.lua's Written) is this same card, given
+-- the same shape of witness with no row behind it; it has a mark of its own and
+-- a margin kind of its own at this file's foot.
+--
 -- The card is ns.Witnesses.Card. The rescue's chart is the close call's
 -- (its card's VITALS, Features/CloseCalls/Card.lua, read at call time as
 -- ns.CloseCalls.Card.VITALS, so this folder loads after Close calls'). At the
@@ -940,3 +944,94 @@ do
         end,
     })
 end
+
+--------------------------------------------------------------------------
+-- A witness the player wrote in (.claude/features/custom-cards.md)
+--------------------------------------------------------------------------
+
+-- Every written witness on a plate's marks, as the card reads one, the newest
+-- first so that where the margin runs out the oldest are left to their marks.
+function WitnessCard.Customs(marks)
+    local list = {}
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            if m.witnessed then list[#list + 1] = Witnesses.Written(m.witnessed, mark.at) end
+        end
+    end
+    -- By name within a second: cards written at one stop can share its time, and
+    -- the drawing has to come out the same each time.
+    table.sort(list, function(a, b)
+        if (a.t or 0) ~= (b.t or 0) then return (a.t or 0) > (b.t or 0) end
+        return (a.name or "") < (b.name or "")
+    end)
+    return list
+end
+
+-- Its mark: what a real witness's leader comes to, so the card looks the same on
+-- the page. A rescue goes to the close call's outlined cross, and a death watched
+-- or fought to the death's solid one. They are only drawn alike: this mark counts
+-- in plate.counts.witnesses, never as a death or a close call, and the witness
+-- pass (Choose) reads plate.crosses and plate.closeMarks, so it cannot take this
+-- for a real death. Solid where a spot holds both, as a death is the darker fact,
+-- and with no `arg` (the picker), as "saw" is what a new card starts as. Order 34
+-- after the close call's 30, whose size it shares and so its room.
+ns.UI.JourneyPlate.RegisterMark("witnessed", {
+    order = 34, cap = 20, count = "witnesses",
+    radius = ns.CloseCalls.MARK.stem.h / 2 + 1, halo = false, hover = ns.CloseCalls.MARK.dot,
+    tip = function(m, now) return Witnesses.Tip(Witnesses.Written(m.witnessed), now) end,
+    keep = "witnessedMarks",
+    -- Chosen with the marks rather than in a pass: nothing here depends on what
+    -- another pass leaves, and nothing else clears it.
+    chosen = "customWitnesses", choose = WitnessCard.Customs,
+    arg = function(list)
+        for _, m in ipairs(list) do
+            if m.witnessed.deed ~= "saved" then return nil end
+        end
+        return "saved"
+    end,
+    draw = function(kit, x, y, arg)
+        if arg == "saved" then
+            ns.UI.JourneyPlate.MARKS.close.draw(kit, x, y)
+        else
+            ns.UI.JourneyPlate.SHAPE.death(kit, x, y)
+        end
+    end,
+})
+
+-- Each written witness its own card, in the detected ones' pool, past the plate's
+-- one (Choose) and taking nobody's place: it clears no killer's or close call's
+-- card, as a real witness's does, since the player said nothing about those.
+-- Order 3, among the custom cards laid first. Left off, it is told in the
+-- caption's words (`said.witnessed`, Text.lua), beside its mark. A card that gives
+-- up its creature's line tells the words nothing, unlike a real witness's: its
+-- creature need be no killer's or close call's the words would otherwise name, and
+-- the tooltip still has it.
+ns.UI.JourneyMargin.Register("witnessCustom", {
+    order = 3, pool = "witnessPool", count = "customWitnessesWritten",
+    new = function(parent) return WitnessCard.New(parent) end,
+    wants = function(it) return WitnessCard.Preferred(it.witness) end,
+    items = function(plate)
+        local items = {}
+        for _, w in ipairs(plate.customWitnesses or {}) do
+            items[#items + 1] = { witness = w, top = w.mark[2], x = w.mark[1] }
+        end
+        return items
+    end,
+    write = function(card, it, c)
+        local w = it.witness
+        -- A typed name has no page: no guid, no link and no "click" on its tooltip.
+        local guid = w.guid and ns.db.characters[w.guid] ~= nil and w.guid or nil
+        card:SetWitness(w, c.Seed("witnessed", w.t or 0, w.name or ""), c.now, guid, c.ToPerson)
+    end,
+    mark = function(it) return it.witness.mark end,
+    custom = function(it) return "witnessed", it.witness.written end,
+    say = function(said, shown, plate)
+        local seen = {}
+        for _, it in ipairs(shown) do seen[it.witness] = true end
+        local left = {}
+        for _, w in ipairs(plate.customWitnesses or {}) do
+            if not seen[w] then left[#left + 1] = w end
+        end
+        said.witnessed = left[1] and left or nil
+    end,
+})

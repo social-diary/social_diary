@@ -293,19 +293,46 @@ local function In(where)
     return " in " .. where.names[1] .. " and around"
 end
 
+-- Every run in a session, in the order they happened: "ran Deadmines",
+-- "ran Deadmines twice", "ran Stratholme and raided Molten Core"; from
+-- three, a count (each has its own row below).
+local function RunWords(runs)
+    local dungeons, raids = 0, 0
+    for _, run in ipairs(runs) do
+        if run.raid then raids = raids + 1 else dungeons = dungeons + 1 end
+    end
+    if #runs >= 3 then
+        if raids == 0 then return "ran " .. Count(dungeons, "dungeon", "dungeons") end
+        if dungeons == 0 then return "raided " .. Times(raids) end
+        return "ran " .. Count(dungeons, "dungeon", "dungeons") .. " and " .. Count(raids, "raid", "raids")
+    end
+    local first, second = runs[1], runs[2]
+    local verb = first.raid and "raided " or "ran "
+    if not second then return verb .. first.name end
+    if first.raid ~= second.raid then
+        return verb .. first.name .. " and " .. (second.raid and "raided " or "ran ") .. second.name
+    end
+    if first.name == second.name then return verb .. first.name .. " twice" end
+    return verb .. first.name .. " and " .. second.name
+end
+
 -- The strong stories: a run, then a level. Each gives the headline's
--- variants on its own and the words it takes after a semicolon.
+-- variants on its own and the words it takes after a semicolon. A run's
+-- `words` keep the session's time off it: the time is the whole session's,
+-- not any one dungeon's ("Together for 42 min; ran Sunken Temple").
 local function RunStory(episode)
+    local runs = {}
     for _, child in ipairs(episode.all) do
         if child.kind == "visit" and child.visit then
-            local name = child.visit.name or "a dungeon"
-            local raid = child.visit.instanceType == "raid"
-            local verb = raid and "Raided " or "Ran "
-            return { said = "dungeon", placed = true, over = true,
-                lead = { verb .. name .. " together" },
-                tail = (raid and "raided " or "ran ") .. name .. " together" }
+            runs[#runs + 1] = { name = child.visit.name or "a dungeon", time = child.time or 0,
+                raid = child.visit.instanceType == "raid" }
         end
     end
+    if #runs == 0 then return nil end
+    table.sort(runs, function(a, b) return a.time < b.time end)
+    local words = RunWords(runs)
+    return { said = "dungeon", placed = true, words = words,
+        lead = { words:gsub("^%l", string.upper) .. " together" }, tail = words }
 end
 
 local LevelWords
@@ -420,7 +447,11 @@ local function SessionHeadline(episode, guid)
     -- A run and the place stories have said where; the rest say it here.
     if not story.placed then text = text .. In(where) end
     if episode.seconds >= SHORT then
-        text = text .. (story.over and " over " or " for ") .. Format.Duration(episode.seconds)
+        if story.words then
+            text = "Together for " .. Format.Duration(episode.seconds) .. "; " .. story.words
+        else
+            text = text .. (story.over and " over " or " for ") .. Format.Duration(episode.seconds)
+        end
     end
     if strong then
         text = text .. "; " .. strong.tail
@@ -538,16 +569,13 @@ local function Facts(episode, guid, said)
     end
 
     -- TLN-4: a session counts its visits; each one tells its own story.
+    -- The headline names or counts them all, so then they are not said again.
     local dungeons, raids = 0, 0
     for i = 1, #episode.all do
         local child = episode.all[i]
-        if child.kind == "visit" then
+        if child.kind == "visit" and not said.dungeon then
             if child.visit.instanceType == "raid" then raids = raids + 1 else dungeons = dungeons + 1 end
         end
-    end
-    -- The headline names one run; any more are counted.
-    if said.dungeon then
-        if raids > 0 then raids = raids - 1 else dungeons = dungeons - 1 end
     end
     if dungeons > 0 then Add(Count(dungeons, "dungeon", "dungeons")) end
     if raids > 0 then Add(Count(raids, "raid", "raids")) end

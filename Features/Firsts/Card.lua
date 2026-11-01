@@ -40,6 +40,12 @@
 -- no strip beside the plate says so under the box ("a gift", "from
 -- Koko": Firsts.GiftLine).
 --
+-- A first the player changed or wrote (Core/Custom.lua) is the same card, with a
+-- card of its own whatever it shares a link with, and comes before the people
+-- (`findCustom`, at the foot of this file). A typed name has no link, so it takes
+-- the card's fallbacks: no icon, the box's name alone, in the ink of the first it
+-- says it is (Quality's `whats`), plain for a bag or shoulders.
+--
 -- Laid flat ("Flat paper only") the box lies square with the slip, with
 -- no heavier edge and no shadow under the icon; a wash keeps its colour
 -- (it is pigment, not light), its tide line even on all four sides. Where
@@ -154,24 +160,48 @@ end
 -- `keep`), one an item:
 -- { link, whats, moments, rec, mark (its pouch on the page), top }, in
 -- the order of their pouches down the plate, so the leaders do not cross.
+-- Not the player's own: those are Customs'.
 function FindCard.Items(plate)
     local items, byLink = {}, {}
     for _, pouch in ipairs(plate.findMarks or {}) do
         for _, m in ipairs(pouch.list or {}) do
             local rec = m.find or m
-            local key = rec.link or m
-            local item = byLink[key]
-            if not item then
-                item = { link = rec.link, whats = {}, moments = {}, rec = rec, mark = pouch.at,
-                    top = pouch.at and pouch.at[2] or 0 }
-                byLink[key] = item
-                items[#items + 1] = item
+            if not rec.customOf then
+                local key = rec.link or m
+                local item = byLink[key]
+                if not item then
+                    item = { link = rec.link, whats = {}, moments = {}, rec = rec, mark = pouch.at,
+                        top = pouch.at and pouch.at[2] or 0 }
+                    byLink[key] = item
+                    items[#items + 1] = item
+                end
+                item.whats[#item.whats + 1] = m.what
+                item.moments[#item.moments + 1] = m
             end
-            item.whats[#item.whats + 1] = m.what
-            item.moments[#item.moments + 1] = m
         end
     end
     table.sort(items, function(a, b) return a.top < b.top end)
+    return items
+end
+
+-- The firsts on `plate` the player changed or wrote, as Items' items: a card
+-- each, never joined to another that shares its link, as joining would leave one
+-- right click for two cards. The newest first, so where the margin runs out the
+-- oldest are the ones left to their pouches. One with no item named has no card
+-- and keeps its pouch, as a close call with no creature keeps its cross: a box
+-- with nothing in it would say less than the mark's tooltip does.
+function FindCard.Customs(plate)
+    local items = {}
+    for _, pouch in ipairs(plate.findMarks or {}) do
+        for _, m in ipairs(pouch.list or {}) do
+            local rec = m.find
+            if rec and rec.customOf and ns.Firsts.Name(rec) then
+                items[#items + 1] = { link = rec.link, whats = { m.what }, moments = { m }, rec = rec, mark = pouch.at,
+                    top = pouch.at and pouch.at[2] or 0 }
+            end
+        end
+    end
+    table.sort(items, function(a, b) return (a.rec.t or 0) > (b.rec.t or 0) end)
     return items
 end
 
@@ -262,7 +292,7 @@ function FindCard.New(parent)
         self.found, self.now, self.gift, self.seedKey = item, now, gift, seed
         self.quality = FindCard.Quality(item.link, item.whats)
         self.iconFile = FindCard.Icon(item.link)
-        self.itemName = ns.Firsts.ItemName(item.link) or "?"
+        self.itemName = ns.Firsts.ItemName(item.link) or ns.Firsts.Name(item.rec) or "?"
         self:SetNote({ name = ns.Firsts.Heading(item.whats), what = gift, strong = true, seed = seed,
             turn = FIND.turn, tip = function() return FindCard.Tip(item, now) end })
     end
@@ -575,7 +605,7 @@ function FindCard.ShowTip(owner, item, now)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local shown = type(GameTooltip.SetHyperlink) == "function" and item.link
         and pcall(GameTooltip.SetHyperlink, GameTooltip, item.link)
-    if not shown then GameTooltip:SetText(Firsts.ItemName(item.link) or "?") end
+    if not shown then GameTooltip:SetText(Firsts.ItemName(item.link) or Firsts.Name(item.rec) or "?") end
     local C = TIP.colour
     for _, m in ipairs(item.moments) do
         local title, line = Firsts.Tip(m, now, true)
@@ -611,6 +641,7 @@ ns.UI.JourneyMargin.Register("find", {
             ns.Firsts.GiftLine(it.item.rec, c.named))
     end,
     mark = function(it) return it.item.mark end,
+    custom = function(it) return "find", it.item.rec end,
     assume = function(said, plate, slot, plan)
         local all = {}
         for _, m in ipairs(plan.moments or {}) do
@@ -618,10 +649,42 @@ ns.UI.JourneyMargin.Register("find", {
         end
         said.find = all
     end,
+    -- Added to what findCustom's said, which is asked first (order 6): both tell
+    -- the one word.
+    say = function(said, shown)
+        local finds = said.find or {}
+        for _, it in ipairs(shown) do
+            for _, m in ipairs(it.item.moments) do finds[m.find or m] = true end
+        end
+        said.find = finds
+    end,
+})
+
+-- The firsts the player changed or wrote, each its own card past whatever joins
+-- the rest by their link: laid before the people (10), so they are the last left
+-- off (.claude/features/custom-cards.md). The same card, the same pool. The words
+-- before laying are `find`'s: its `assume` takes every first on the plate as
+-- shown, these among them.
+ns.UI.JourneyMargin.Register("findCustom", {
+    order = 6, pool = "findPool", count = "customFindsWritten",
+    new = function(parent) return FindCard.New(parent) end,
+    items = function(plate)
+        local list = {}
+        for _, item in ipairs(FindCard.Customs(plate)) do
+            list[#list + 1] = { item = item, top = item.top, x = item.mark and item.mark[1] or 0 }
+        end
+        return list
+    end,
+    write = function(card, it, c)
+        local rec = it.item.rec
+        card:SetFind(it.item, c.Seed("find", rec.t or 0, ns.Firsts.Name(rec)), c.now, ns.Firsts.GiftLine(rec, c.named))
+    end,
+    mark = function(it) return it.item.mark end,
+    custom = function(it) return "find", it.item.rec end,
     say = function(said, shown)
         local finds = {}
         for _, it in ipairs(shown) do
-            for _, m in ipairs(it.item.moments) do finds[m.find or m] = true end
+            for _, m in ipairs(it.item.moments) do finds[m.find] = true end
         end
         said.find = finds
     end,

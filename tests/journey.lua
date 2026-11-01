@@ -651,8 +651,9 @@ j.levels[13] = { at = t0 + 9000, mapID = MULGORE, x = 0.4, y = 0.4 }
 local recap = R.Build(j, { now = t0 + 10000, level = 13, maxLevel = 60 })
 Eq(recap.prologue and recap.prologue.level, 10, "begun at level 10: the prologue")
 Eq(R.Build(Fresh(1, MULGORE, t0), { now = t0 + 10, level = 1 }).prologue, nil, "a prologue at level 1")
-Eq(#recap.entries, 4, "not one entry per level from 10 to 13")
-local e10, e11, e12, e13 = recap.entries[1], recap.entries[2], recap.entries[3], recap.entries[4]
+-- Level 12 went unseen, with nothing kept of it: no entry.
+Eq(#recap.entries, 3, "not one entry per level kept from 10 to 13")
+local e10, e11, e13 = recap.entries[1], recap.entries[2], recap.entries[3]
 Eq(e10.level, 10, "the first entry's level")
 Eq(#e10.places, 2, "level 10's two zones")
 Eq(e10.places[1].mapID, MULGORE, "the first zone visited first")
@@ -664,7 +665,6 @@ Eq(e11.reached.subZone, "The Crossroads", "where level 11 was reached")
 -- Each level ends where the next one known was reached (12 went unseen).
 Eq(e10.out and e10.out.level, 11, "level 10 does not end where 11 was reached")
 Eq(e11.out and e11.out.level, 13, "level 11 does not end where 13 was reached")
-Eq(e12.out, nil, "an unseen level has an end")
 Eq(e13.out, nil, "the level being played has an end")
 local ends = {}
 for _, m in ipairs(R.Moments(j, e10, {})) do
@@ -674,8 +674,7 @@ Eq(#ends, 1, "level 10's end is not among its moments")
 Check(ends[1].out and ends[1].level == 11 and ends[1].mapID == BARRENS, "level 10's end is not level 11 in the Barrens")
 Eq(#e11.dungeons, 1, "the dungeon in level 11")
 Eq(e11.places[2].name, "Wailing Caverns", "the dungeon among the places, in order")
-Eq(e12.known, false, "a level the route never saw begin")
-Eq(e12.seconds, 0, "an unseen level has time")
+Eq(e13.level, 13, "the unseen level has an entry")
 Eq(e13.current, true, "the level being played is not marked")
 Eq(Text.Title(e10), "LEVEL 10", "an entry's title")
 local lines = Text.Lines(e10, t0 + 10000)
@@ -758,7 +757,6 @@ do
     Eq(Text.Note(noted), nil, "a note without one")
 end
 Check(Text.Lines(e11, t0 + 10000)[1]:find("^Reached on .* in The Crossroads, The Barrens"), "level 11's opening")
-Check(Text.Lines(e12, t0 + 10000)[1]:find("not keeping your road"), "an unseen level's line")
 for _, line in ipairs(lines) do
     Check(not line:find("%d+/%d+") and not line:find("%%"), "a counter in the recap: " .. line)
 end
@@ -776,6 +774,53 @@ local r1 = R.For(SELF.guid)
 Check(R.For(SELF.guid) == r1, "the recap was rebuilt with nothing changed")
 J.Touch()
 Check(R.For(SELF.guid) ~= r1, "the recap was not rebuilt after the route moved")
+
+--------------------------------------------------------------------------
+Section("levels the route holds nothing of are not drawn")
+
+do
+    local d0 = 20000000
+    local function Road(from, to, level)
+        return { kind = "road", from = from, to = to, mapID = BARRENS, levelFrom = level, levelTo = level,
+            pts = { 0.2, 0.2, 0.3, 0.3 } }
+    end
+    local function Levels(r)
+        local out = {}
+        for _, e in ipairs(r.entries) do out[#out + 1] = e.level end
+        return table.concat(out, " ")
+    end
+
+    -- Begun at level 1 and left at once; picked up again at 20.
+    local late = Fresh(1, BARRENS, d0)
+    late.segments[1] = Road(d0 + 5000, d0 + 5600, 20)
+    local r = R.Build(late, { now = d0 + 6000, level = 20, maxLevel = 60 })
+    Eq(Levels(r), "20", "the levels before the first kept are drawn")
+    Check(r.entries[1].known and r.entries[1].first and r.entries[1].current, "level 20 does not open the road")
+    Eq(r.entries[1].seconds, 600, "level 20 does not hold its road")
+    Eq(r.prologue and r.prologue.level, 20, "the prologue does not name the first entry")
+    Check(Text.Lines(r.entries[1], d0 + 6000)[1]:find("^Your road begins here"), "level 20's opening")
+
+    -- Level 7 played, then 8 to 13 away, then 14 played.
+    local gap = Fresh(7, BARRENS, d0)
+    gap.segments[1] = Road(d0, d0 + 600, 7)
+    gap.segments[2] = Road(d0 + 5000, d0 + 5600, 14)
+    r = R.Build(gap, { now = d0 + 6000, level = 14, maxLevel = 60 })
+    Eq(Levels(r), "7 14", "the levels of a gap are drawn")
+    Eq(r.entries[1].seconds, 600, "level 7 holds level 14's road")
+    Eq(r.entries[2].seconds, 600, "level 14 does not hold its road")
+
+    -- Back at a level with nothing walked yet: only it, and nothing made up.
+    local back = Fresh(1, BARRENS, d0)
+    r = R.Build(back, { now = d0 + 10, level = 20, maxLevel = 60 })
+    Eq(Levels(r), "20", "the level being played is not the one entry")
+    Eq(r.entries[1].known, false, "a level with nothing walked has a start")
+    Eq(Text.Lines(r.entries[1], d0 + 10)[1], "Nothing on the road at this level.", "a level just come back to")
+
+    -- A level filled in later appears.
+    late.levels[12] = { at = d0 + 100, mapID = BARRENS, x = 0.5, y = 0.5 }
+    Eq(Levels(R.Build(late, { now = d0 + 6000, level = 20, maxLevel = 60 })), "12 20",
+        "a level kept later does not appear")
+end
 
 --------------------------------------------------------------------------
 Section("the prologue (JRN-13)")
@@ -797,6 +842,8 @@ mock.maxLevel = 12
 local base = os.time({ year = 2026, month = 10, day = 7, hour = 12 })
 j = Fresh(11, MULGORE, base)
 j.levels[12] = { at = base + h, mapID = MULGORE, x = 0.5, y = 0.5, subZone = "Bloodhoof Village" }
+j.segments[1] = { kind = "stop", from = base, to = base + h / 2, mapID = MULGORE, x = 0.5, y = 0.5,
+    r = 30, seconds = h / 2, levelFrom = 11, levelTo = 11 }
 local function Day(d, map)
     local from = base + d * DAY
     j.segments[#j.segments + 1] = { kind = "stop", from = from, to = from + h, mapID = map, x = 0.5, y = 0.5,

@@ -41,6 +41,16 @@ function Campfire.Tip(fire, now)
     return Capital(Campfire.WORDS), lines
 end
 
+-- A line of a menu, where a spot merges several fires or one is hidden (the
+-- form's `describe`, Kind.lua): a fire sat by twice is the one place twice, so
+-- only the time tells its sittings apart. "Lushwater Oasis, yesterday, 21:40",
+-- or "A campfire, yesterday, 21:40" with no place to name.
+function Campfire.Describe(fire)
+    local sub = fire.subZone
+    local place = type(sub) == "string" and sub ~= "" and sub or "A campfire"
+    return place .. ", " .. ns.UI.Format.At(fire.t or 0, ns.Now())
+end
+
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
 -- campfire") found no room in the margin, so the words say it, last of
 -- everything and as short as the rest of the list (", and a campfire"),

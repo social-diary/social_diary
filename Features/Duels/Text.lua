@@ -14,29 +14,44 @@ local Duels = ns.Duels
 local Text = ns.UI.JourneyText
 local Capital, MapName, NUMBER, When = Text.Capital, Text.MapName, Text.NUMBER, Text.When
 
--- The opponent of a series on the route (Kind.lua's records), read from
--- the diary by `guid` (the route keeps no names), or nil: not read, let
--- go of, or forgotten.
+-- The opponent of a series on the route (Kind.lua's records): the name the
+-- player wrote on the card, which only a custom one has (Core/Custom.lua), or
+-- else read from the diary by `guid` (the route keeps no names), or nil: not
+-- read, let go of, or forgotten. The written name stays once they are
+-- forgotten: it is the player's own words.
 function Duels.Who(rec)
-    return rec and rec.guid and ns.Characters.Name(rec.guid) or nil
+    if not rec then return nil end
+    if rec.name then return rec.name end
+    return rec.guid and ns.Characters.Name(rec.guid) or nil
 end
 
 -- A series' counts in the words' order: the outcome it leads with
 -- (Duels.Balance), then how many it was won and lost by, flights counted
--- with their side.
+-- with their side. One duel at most goes by its latest (`last`), which capture
+-- always agrees with: a player who ticks "Won" on a detected loss has changed
+-- `last` over a count of one lost, and on a card they wrote there may be no
+-- count at all, and the note, the caption and the tooltip must all say what they
+-- ticked.
 function Duels.Score(rec)
     local up = (rec.won or 0) + (rec.theyFled or 0)
     local down = (rec.lost or 0) + (rec.fled or 0)
+    if up + down <= 1 and Duels.COUNT[rec.last] then
+        local won = rec.last == "won" or rec.last == "they_fled"
+        return won and "won" or "lost", won and 1 or 0, won and 0 or 1
+    end
     return Duels.Balance(rec), up, down
 end
 
 -- A single duel's outcome (one of Duels.COUNT's keys): its latest, or read
--- off its counts where that wasn't kept.
+-- off its counts where that wasn't kept. Nil where nothing says, as on a card
+-- the player left blank: it is not for the diary to call that a loss.
 local function Single(rec)
     if Duels.COUNT[rec.last] then return rec.last end
     if (rec.theyFled or 0) > 0 then return "they_fled" end
     if (rec.fled or 0) > 0 then return "fled" end
-    return Duels.Balance(rec)
+    if (rec.won or 0) > 0 then return "won" end
+    if (rec.lost or 0) > 0 then return "lost" end
+    return nil
 end
 
 -- The margin note for the plate's biggest series `rec`: one line, lower
@@ -51,6 +66,7 @@ end
 -- counted with their side: "beat Bram 3 to 1", "lost to Bram 3 to 2",
 -- "beat Bram twice", "lost to Bram 3 times", "2 each with Bram"; nameless
 -- "won 3 duels to 1", "lost 3 duels to 2", "won 2 duels", "2 duels each".
+-- A card the player left without a result: "duelled Bram", nameless "a duel".
 -- Figures, as a score is written and as the margin's ledger counts
 -- ("killed you twice"): measured in the hand at 14 px (Neuton Italic,
 -- 15 Oct), "three to one" in words put "won three duels to two" a pixel
@@ -62,6 +78,7 @@ function Duels.Note(rec, named)
     local who = named ~= false and Duels.Who(rec) or nil
     if up + down <= 1 then
         local last = Single(rec)
+        if not last then return who and ("duelled " .. who) or "a duel" end
         if last == "won" then return who and ("beat " .. who .. " in a duel") or "won a duel" end
         if last == "they_fled" then return (who or "they") .. " fled the duel" end
         if last == "fled" then return who and ("fled a duel with " .. who) or "fled a duel" end
@@ -80,6 +97,12 @@ function Duels.Note(rec, named)
     return who and ("lost to " .. who .. " " .. score) or ("lost " .. lead .. " duels to " .. rest)
 end
 
+-- A line of a menu, where a spot merges several or one is hidden
+-- (Core/Custom.lua's `describe`): the note's words, which tell two apart.
+function Duels.Describe(rec)
+    return Capital(Duels.Note(rec, true))
+end
+
 -- The flag's and the note's tooltip: a title, and lines under it (where,
 -- when, as the campfire's: Campfire.Tip). The title names the opponent,
 -- "Duelled Bram", or counts the duels where the diary no longer knows
@@ -96,6 +119,7 @@ function Duels.Tip(rec, now)
     local total = up + down
     local lines = {}
     if total <= 1 then
+        -- Nothing under the title where a card says no result.
         lines[1] = ONE[Single(rec)]
     else
         local lead, rest = up, down
@@ -140,7 +164,8 @@ function Duels.Phrase(recs)
         up, down = up + u, down + d
     end
     local n = up + down
-    if n <= 1 then return "a duel " .. Duels.Balance(recs[#recs] or {}) end
+    if n == 0 then return "a duel" end
+    if n == 1 then return up == 1 and "a duel won" or "a duel lost" end
     local count = NUMBER[n] or tostring(n)
     if down == 0 then return count .. " duels won" end
     if up == 0 then return count .. " duels lost" end

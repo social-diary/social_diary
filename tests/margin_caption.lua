@@ -27,7 +27,7 @@ local function Orders()
     for _, spec in ipairs(Margin.ORDER) do list[#list + 1] = spec.kind .. " " .. spec.order end
     return table.concat(list, ", ")
 end
-Eq(Orders(), "foeCustom 5, find 20, witness 30, killer 40, foe 50, lucky 60, hunt 70, duel 85, campfire 90",
+Eq(Orders(), "met 2, witnessCustom 3, killerCustom 4, foeCustom 5, findCustom 6, huntCustom 7, luckyCustom 8, duelCustom 8.5, campfireCustom 9, find 20, witness 30, killer 40, foe 50, lucky 60, hunt 70, duel 85, campfire 90",
     "the margin's kinds")
 Eq(Margin.PEOPLE.close, 10, "the people who did something with you")
 Eq(Margin.PEOPLE.seen, 80, "the people only seen")
@@ -190,7 +190,7 @@ Margin.Register("scrap", {
 Check(page.scrapPool ~= nil, "a kind registered after the page was built has no pool")
 local order = {}
 for _, spec in ipairs(Margin.ORDER) do order[#order + 1] = spec.kind end
-Eq(table.concat(order, ","), "foeCustom,find,witness,killer,scrap,foe,lucky,hunt,duel,campfire", "the kind in its order")
+Eq(table.concat(order, ","), "met,witnessCustom,killerCustom,foeCustom,findCustom,huntCustom,luckyCustom,duelCustom,campfireCustom,find,witness,killer,scrap,foe,lucky,hunt,duel,campfire", "the kind in its order")
 
 -- On every page, wherever a scrap shows: after the people who did
 -- something with you and the cards ordered before it, before the rest;

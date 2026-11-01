@@ -113,3 +113,69 @@ end
 function Deaths.List(j)
     return ns.Journey.List(j, LIST)
 end
+
+--------------------------------------------------------------------------
+-- What the player says happened (Core/Custom.lua)
+--------------------------------------------------------------------------
+
+-- A detected death as the page reads it: as the player left it, nil when
+-- hidden. Its name emptied on the form is its detected creature again, picture
+-- and all, where a close call's would be a cross with no card. A close call's
+-- cross is its own mark and still opens the form; a detected death's is the
+-- route's, so its card is the only way back to the form, and a death with no
+-- name has no card. Without this the player could lose the way to their own edit.
+function Deaths.Read(rec)
+    local read = ns.Custom.Read(rec)
+    if read and read ~= rec and not read.name and rec.name then
+        read.name, read.npcID, read.display = rec.name, rec.npcID, rec.display
+    end
+    return read
+end
+
+-- A death the player inserted, or the card of one detected that they changed.
+-- A moment of its own rather than the core's "death" because a death's cross
+-- comes of the route's count (act.deaths, Journey.CountedOn) and the moment of
+-- that kind is its segment: an inserted one on that road would be counted by
+-- what reads the route. So `killedBy` has only the inserted cards in its entry
+-- (Gather adds them to e.killedBy, from j.custom), its own mark in the death's
+-- shape (Card.lua), and writes nothing to the route. Its rank is a death's,
+-- though Rank puts any custom card above everything anyway.
+--
+-- The detected deaths stay on their list and on the route's crosses: the killer
+-- pass (Card.lua) reads the list itself, through Deaths.Read, so Gather's list
+-- branch would only put them on the page twice. That leaves this gather one job,
+-- the one the list branch would have done: to list those hidden, which have no
+-- card left to open them by, so the map's menu can bring them back.
+--
+-- The fields are all the card shows: the creature (with its picture, where this
+-- character's records know the name), its type (which its name's article and
+-- the tooltip go by) and what it killed you with (the tooltip). No level: the
+-- killer's card has no tag, unlike the close call's. No count: "killed you
+-- twice" is the plate's merging of detected deaths, and an inserted card is
+-- one death.
+ns.JourneyRecap.RegisterMoment("killedBy", { order = 15, entry = "killedBy", field = "killedBy", rank = 3,
+    gather = function(j, a, b, e)
+        for _, rec in ipairs(Deaths.List(j)) do
+            if rec.t >= a and rec.t < b and rec.custom and rec.custom.hidden then
+                e.hidden[#e.hidden + 1] = { kind = "killedBy", rec = rec }
+            end
+        end
+    end,
+    custom = {
+        creature = "name",
+        label = "Death",
+        heading = "A death",
+        group = "combat",
+        -- A line of a menu, as the cross's tooltip says it.
+        describe = function(d)
+            if not d.name then return "A death" end
+            return d.name .. (d.spell and (", with " .. d.spell) or "")
+        end,
+        fields = {
+            { key = "name", type = "text", label = "Creature" },
+            -- The close call's two, for the same reason (Features/CloseCalls/Kind.lua).
+            { key = "rank", type = "choice", values = { "rare", "elite" }, label = "Type",
+                names = { rare = "Rare", elite = "Elite" } },
+            { key = "spell", type = "text", label = "Killed with" },
+        },
+    } })

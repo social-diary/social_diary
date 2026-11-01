@@ -328,8 +328,9 @@ local function Gather(j, a, b, ctx)
             local inserted = ns.Custom.Inserted(j, spec.kind, a, b)
             if inserted[1] then
                 local into = e[spec.entry]
-                for _, rec in ipairs(inserted) do into[#into + 1] = rec end
-                table.sort(into, ByTime)
+                local wrap, timeOf = spec.custom.wrap, spec.custom.timeOf
+                for _, rec in ipairs(inserted) do into[#into + 1] = wrap and wrap(rec) or rec end
+                table.sort(into, timeOf and function(x, y) return timeOf(x) < timeOf(y) end or ByTime)
             end
         end
     end
@@ -358,6 +359,15 @@ end
 -- The recap
 --------------------------------------------------------------------------
 
+-- Whether an entry has anything to tell.
+local function Anything(e)
+    if e.seconds > 0 or #e.people > 0 or #e.fights > 0 or #e.notes > 0 or #e.flights > 0 then return true end
+    for _, spec in ipairs(MOMENTS) do
+        if #e[spec.entry] > 0 then return true end
+    end
+    return false
+end
+
 -- `ctx`: now, level (the character's now), maxLevel, sessions (theirs),
 -- notes (theirs), visits (theirs).
 function Recap.Build(j, ctx)
@@ -378,10 +388,20 @@ function Recap.Build(j, ctx)
     for n, rec in pairs(j.levels or {}) do
         if n > first then starts[n] = rec.at end
     end
+    -- A level whose reaching was missed (played without the addon, capture
+    -- off) begins with the first road walked at it.
+    for _, seg in ipairs(Journey.All(j)) do
+        local n = seg.levelFrom
+        if n and n > first and not (j.levels and j.levels[n]) and (not starts[n] or seg.from < starts[n]) then
+            starts[n] = seg.from
+        end
+    end
 
     -- D8: one entry per level below the cap, from where the route began.
-    -- A level whose start the route never saw (capture was off) gets an
-    -- entry with no time; the one before keeps it.
+    -- Nothing is drawn for a level the route holds nothing of (the user,
+    -- 1 Nov): no entry for one it never saw begin but the one being played,
+    -- none for a start with nothing in it when the road goes on past it.
+    -- All worked out from what is kept, so a level filled in later appears.
     -- Each ends where the next level came: `out`, that level reached (not
     -- for a level whose road was not kept).
     for n = first, math.min(top, maxLevel - 1) do
@@ -393,13 +413,23 @@ function Recap.Build(j, ctx)
             end
         end
         local from = starts[n]
-        local e = Gather(j, from or to, to, ctx)
-        e.kind, e.level, e.known, e.current = "level", n, from ~= nil, n == top
-        e.reached = n > first and Reached(j, n) or nil
-        e.out = from and out and Reached(j, out) or nil
-        if e.out then e.out.level = out end
-        e.first = n == first
-        recap.entries[#recap.entries + 1] = e
+        if from or n == top then
+            local e = Gather(j, from or to, to, ctx)
+            if n == top or n > first or Anything(e) then
+                e.kind, e.level, e.known, e.current = "level", n, from ~= nil, n == top
+                e.reached = n > first and Reached(j, n) or nil
+                e.out = from and out and Reached(j, out) or nil
+                if e.out then e.out.level = out end
+                e.first = #recap.entries == 0
+                recap.entries[#recap.entries + 1] = e
+            end
+        end
+    end
+    -- JRN-13 again, where the start went: the diary begins at its first entry.
+    local opening = recap.entries[1]
+    if opening and opening.level ~= first and opening.level > 1 then
+        local place = opening.places[1]
+        recap.prologue = { level = opening.level, mapID = place and place.mapID or j.startMapID, at = opening.from }
     end
 
     -- D9: past the cap, a week at a time (Monday to Monday, local), from
@@ -424,9 +454,7 @@ function Recap.Build(j, ctx)
             local a = math.max(week, capAt)
             local e = Gather(j, a, math.min(nextWeek, now + 1), ctx)
             e.kind, e.week = "week", week
-            local any = e.seconds > 0 or #e.people > 0 or #e.fights > 0 or #e.notes > 0 or #e.flights > 0
-            for _, spec in ipairs(MOMENTS) do any = any or #e[spec.entry] > 0 end
-            if any then
+            if Anything(e) then
                 if a == capAt and first < maxLevel then e.reached, e.level = Reached(j, maxLevel), maxLevel end
                 recap.entries[#recap.entries + 1] = e
             end

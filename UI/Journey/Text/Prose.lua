@@ -49,9 +49,7 @@ local function Opening(e, now)
         end
         return nil
     end
-    if not e.known then
-        return "This level went by while the diary was not keeping your road."
-    end
+    if not e.known then return nil end
     if e.first then
         local place = e.places[1] and (e.places[1].name or MapName(e.places[1].mapID))
         return ("Your road begins here, on %s%s."):format(Day(e.from, now), place and (", in " .. place) or "")

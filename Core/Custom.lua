@@ -30,8 +30,21 @@
 --
 --   fields   the list of what the player may set, which the editor is built
 --            from too: { key, type = "text" (most: bytes, default TEXT_MOST)
---            | "number" (min, max) | "choice" (values, a list) }. A field
---            left empty or out of its type is cleared
+--            | "number" (min, max) | "choice" (values, a list) | "person" }. A
+--            field left empty or out of its type is cleared. A person is one
+--            text line over the People search: `key` keeps the name as written,
+--            and `guid` (the key to keep it under, default key .. "Guid") the
+--            diary entry it was picked from, nil for a name only typed. Typing
+--            over a picked name lets the entry go. Forgetting someone takes the
+--            GUID and leaves the name (Forget, below)
+--   values   optional function(values, rec): for the form, what a detected card
+--            shows but does not keep under its field's key (an opponent's name
+--            from their GUID, an item's from its link). `rec` is the saved record.
+--            Only shown: a field left as it was is not written
+--   wrap     optional function(rec) → what the kind's e[entry] holds, where its
+--            entries are not its records (the firsts': { kind, rec })
+--   timeOf   optional function(entry) → its time, with `wrap`, where an entry
+--            has no `t` of its own
 --   defaults optional: the fields an inserted card starts with
 --   creature optional, the key of the field naming a creature: a name this
 --            character's records know brings that creature's npcID and display
@@ -133,6 +146,24 @@ end
 
 -- A typed line as a card can wear it: on one line, without the client's
 -- escape sequences (a stray colour code would run on over the card), short.
+-- Where a person's field keeps the diary entry it was picked from.
+function Custom.GuidKey(field)
+    return field.guid or (field.key .. "Guid")
+end
+
+-- The people the search offers for what is typed so far (`most` of them): { name,
+-- guid }, by the People list's order. A search on tags and notes too, so the
+-- caller shows the name, which may not hold what was typed.
+function Custom.FindPeople(text, most)
+    local found = {}
+    if type(text) ~= "string" or not text:find("%S") then return found end
+    for _, s in ipairs(ns.People.Query({ search = text })) do
+        found[#found + 1] = { name = s.name, guid = s.guid }
+        if #found >= most then break end
+    end
+    return found
+end
+
 local function CleanText(text, most)
     if type(text) ~= "string" then return nil end
     text = text:gsub("|", ""):gsub("[%c]+", " ")
@@ -140,7 +171,7 @@ local function CleanText(text, most)
 end
 
 local function CleanField(field, value)
-    if field.type == "text" then
+    if field.type == "text" or field.type == "person" then
         return CleanText(value, field.most)
     elseif field.type == "number" then
         value = tonumber(value)
@@ -167,6 +198,12 @@ local function Cleaned(spec, fields)
             local clean = CleanField(field, value)
             if clean == nil then clean = false end
             out[field.key] = clean
+            -- Only a diary entry can be linked to, and no name, no link.
+            if field.type == "person" then
+                local key = Custom.GuidKey(field)
+                local guid = clean and ns.SafeGUID(fields[key])
+                out[key] = guid and ns.Diary.IsDiary(guid) and guid or false
+            end
         end
     end
     return out
@@ -337,3 +374,34 @@ function Custom.Remove(rec)
     Journey.Touch()
     return true
 end
+
+--------------------------------------------------------------------------
+-- Forgetting (PRV-3)
+--------------------------------------------------------------------------
+
+-- Someone forgotten leaves every card that was linked to them, nil being
+-- everyone. The card and the name as written stay: the player wrote them, and
+-- they are no longer anyone in the diary.
+local function ForgetOn(j, guid)
+    local function Clear(t, spec)
+        for _, field in ipairs(spec.fields) do
+            if field.type == "person" then
+                local key = Custom.GuidKey(field)
+                if t[key] and (guid == nil or t[key] == guid) then t[key] = nil end
+            end
+        end
+    end
+    for _, rec in ipairs(j.custom or {}) do
+        local spec = SpecOf(rec.kind)
+        if spec then Clear(rec, spec) end
+    end
+    for _, moment in pairs(ns.JourneyRecap.MOMENTS) do
+        if moment.custom and moment.list then
+            for _, rec in ipairs(j[moment.list] or {}) do
+                if rec.custom then Clear(rec.custom, moment.custom) end
+            end
+        end
+    end
+end
+
+Journey.RegisterList("custom", { forget = ForgetOn })

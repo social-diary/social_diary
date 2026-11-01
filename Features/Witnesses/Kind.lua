@@ -169,3 +169,76 @@ function Witnesses.At(index, t, types)
     end)
     return found
 end
+
+--------------------------------------------------------------------------
+-- A witness the player writes in (.claude/features/custom-cards.md)
+--------------------------------------------------------------------------
+--
+-- Detected witnesses are People rows, found by time when a plate is drawn:
+-- they have no record of their own on the route, so there is nothing for an
+-- edit to lie on, and they cannot be changed this round. What the player may
+-- do is write one in, which is a moment of its own, `witnessed`, kept only on
+-- j.custom (Core/Custom.lua). It writes no People row, because a row would
+-- claim the game saw it, would show on that person's page, and would be found
+-- by Witnesses.At for any real death or close call within SLACK seconds. For
+-- the same reason it never goes through At or Card.Choose: a written witness
+-- and a real one can share a plate, each with their own card.
+--
+-- The three deeds the card knows, as what the card reads off a chosen witness
+-- (Card.lua's Choose): the row type and its `witness` flag. "Saw" is a watch
+-- of no seconds, because that is what makes Look say "saw" and spill the
+-- smallest of the blood; the plain "watched" and "mercilessly" are how long
+-- someone really watched, which only the capture can know, so they are not
+-- offered. A card whose box was unticked says the plainest thing, "saw".
+local DEEDS = {
+    saw = { kind = "watched", type = WATCHED, watched = 0 },
+    tried = { kind = "helped", type = HELPED },
+    saved = { kind = "helped", type = SAVED },
+}
+local DEED_PLAIN = "saw"
+
+-- A written witness as a chosen one, so the card, its tooltip and the caption's
+-- sentence read one shape and the card needs no second way through. `rec` the
+-- moment's record (Recap's copy, with customOf), `mark` where its leader goes.
+-- `written` says it came of the player's words: the tooltip must not claim what
+-- only capture measures. `name` is the person's as written (Text.lua's Name
+-- prefers it, as a typed name has no character to ask). Health left is passed on
+-- whatever the deed, as the form keeps the field while the deed changes: only a
+-- rescue charts it (Card.lua's Evidence), so it waits there for a change back.
+function Witnesses.Written(rec, mark)
+    local deed = DEEDS[rec.deed] or DEEDS[DEED_PLAIN]
+    return { kind = deed.kind, type = deed.type, watched = deed.watched, guid = rec.guid, name = rec.name,
+        t = rec.t, level = rec.level, others = 0, pct = rec.pct,
+        creature = rec.creature and { name = rec.creature, rank = rec.rank } or nil, written = rec, mark = mark }
+end
+
+-- Rank 3 as a death and a close call have it, the moments a witness belongs to,
+-- though any card here outranks them all by being the player's (Recap's Rank).
+-- Full, not light: it puts a card in the margin. No list: inserted cards reach
+-- e.witnessed through Gather alone, so `gather` has nothing to do.
+ns.JourneyRecap.RegisterMoment("witnessed", { order = 25, entry = "witnessed", field = "witnessed", rank = 3,
+    gather = function() end,
+    custom = {
+        label = "Witness",
+        heading = "A witness",
+        group = "social",
+        describe = function(rec)
+            local w = Witnesses.Written(rec)
+            return Witnesses.Name(w) .. " " .. Witnesses.Deed(w)
+        end,
+        defaults = { deed = DEED_PLAIN },
+        fields = {
+            { key = "name", type = "person", guid = "guid", label = "Who", hint = "Anyone, in your diary or not" },
+            -- Short because a box and its word have 70 px on the form
+            -- (CardSheet's SHEET.toggle); "saw you die" would run into the next.
+            { key = "deed", type = "choice", values = { "saw", "tried", "saved" }, label = "What they did",
+                names = { saw = "Saw it", tried = "Tried", saved = "Saved" } },
+            { key = "creature", type = "text", label = "Creature" },
+            -- Only for how the card names it: a rare goes bare, "from Hogger",
+            -- not "from a Hogger" (Text.KillerName). Elite changes no word on
+            -- this card, so it is not offered.
+            { key = "rank", type = "choice", values = { "rare" }, label = "Type", names = { rare = "Rare" } },
+            { key = "pct", type = "number", min = 0, max = 100, label = "Health left",
+                hint = "%, if they saved you" },
+        },
+    } })

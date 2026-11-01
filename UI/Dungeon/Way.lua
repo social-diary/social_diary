@@ -11,7 +11,8 @@
 -- the first place where it covers no face, number or way in (and stays on
 -- the screen). At rest a short pencil lies on it, sticking out past its
 -- left end, and beside it "Adjust Path": the whole slip is the button.
--- Taken up, the pencil leaves the slip, and the slip is the drawing's:
+-- Taken up, the pencil leaves the slip, and the slip is the drawing's, lying
+-- square on the screen (lines this long do not land true when turned):
 -- a heading and what is selected, the lines in pencil saying how to draw,
 -- and at its foot a row of plain words to press (Done boxed in ink, the rest
 -- underlined on hover, Clear and Reset set apart in red-brown after a rule).
@@ -49,14 +50,17 @@ local Surface = ns.UI.Surface
 -- `edge` px inside the screen. Its stock and cut edge as the bookmark's
 -- (UI/Dungeon/Spread.lua's BOOKMARK); `pad` px of paper round what is on
 -- it. At rest `rest.h` tall, the pencil's room `rest.pencil` px at its
--- left. Taken up, its rows: the heading at least `head` px, each hint line
--- at least `line` px (both as tall as their font asks), `gap` px between
--- them, `foot` px more before the words to press, `row` px; at least `least`
--- px wide, the hint wrapped to its width. A line's box `slack` px wider than
--- its words. It lies HEIGHT.way over the paper, picked up HEIGHT.lifted more
--- under the mouse at rest.
-local SLIP = { turn = -1.2, onto = 12, inset = 40, step = 36, edge = 12, ink = 0.45, pad = 12,
-    rest = { h = 30, pencil = 46 }, head = 16, row = 22, line = 14, gap = 5, foot = 9, least = 560, slack = 4,
+-- left. Taken up, it turns `penTurn` degrees on the screen and its rows step
+-- wider down it: hint lines `line` px apart, `gap` px from the heading (at
+-- least `head` px tall, with what is selected `beside` px after it) to the
+-- hint, `foot` px from the hint to the words to press, `row` px. Both `head`
+-- and `line` grow if their font asks. At least `least` px wide, the hint
+-- wrapped to its width. A line's box `slack` px wider than its words. It lies
+-- HEIGHT.way over the paper, picked up HEIGHT.lifted more under the mouse at
+-- rest.
+local SLIP = { turn = -1.2, onto = 12, inset = 40, step = 36, edge = 12, ink = 0.45, pad = 14,
+    rest = { h = 30, pencil = 46 }, head = 16, row = 22, line = 14, gap = 8, foot = 14, beside = 14, penTurn = 0,
+    least = 560, slack = 4,
     words = { gap = 9, rule = 14, box = { 7, 3 } } }
 -- The pencil at rest: `len` px from the point to the eraser, `w` wide,
 -- turned `turn` degrees on the slip, its point `out` px past the slip's
@@ -502,8 +506,8 @@ local function Pencil(slip, lx, ly)
 end
 
 -- How tall a box must be for a line `w` px wide and `h` px tall to turn with
--- the slip: the client clips a turned string to its box (as the bookmark's
--- words, UI/Dungeon/Spread.lua).
+-- the slip: the client cuts what the turn takes out of the box (seen in the
+-- client on a strip: UI/Paper/Strip.lua's TURNED). Only the slip at rest turns.
 local function Tall(slip, w, h)
     return h + w * math.abs(math.sin(slip.turn or 0)) + 4
 end
@@ -595,7 +599,7 @@ local function Paint(slip)
     local hy = top + headH / 2
     local hw = PlaceLine(slip, slip.heading, left, hy, headH)
     slip.heading:Show()
-    local sx = left + hw + 14
+    local sx = left + hw + SLIP.beside
     Fit(slip.status, slip.statusText or "", W / 2 - SLIP.pad - sx)
     PlaceLine(slip, slip.status, sx, hy, headH)
     slip.status:Show()
@@ -751,7 +755,8 @@ local function Lay(view, spots)
     slip.box = box
     local flat = ns.Setting("flatSheets") == true
     local angle = view.angle or 0
-    slip.turn = angle + ((flat or not view.turnsText) and 0 or math.rad(SLIP.turn))
+    slip.turn = way.drawing and math.rad(SLIP.penTurn)
+        or angle + ((flat or not view.turnsText) and 0 or math.rad(SLIP.turn))
     local a = slip.turn
     local hw = (w * math.abs(math.cos(a)) + h * math.abs(math.sin(a))) / 2
     local hh = (w * math.abs(math.sin(a)) + h * math.abs(math.cos(a))) / 2

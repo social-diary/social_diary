@@ -141,7 +141,8 @@ function HuntCard.Choose(marks, usual)
     for _, mark in ipairs(marks or {}) do
         for _, m in ipairs(mark.list or {}) do
             local hunt = m.hunt
-            if hunt then
+            -- One the player changed or wrote has a card of its own (Customs).
+            if hunt and not hunt.customOf then
                 local past = HuntCard.Past(hunt, usual)
                 if not best or past > bestPast or (past == bestPast and (hunt.t or 0) > (best.t or 0)) then
                     best, bestMark, bestPast = hunt, mark, past
@@ -151,6 +152,26 @@ function HuntCard.Choose(marks, usual)
     end
     if not best then return nil end
     return { hunt = best, mark = bestMark.at, usual = usual or nil }
+end
+
+-- The slow hunts on a plate the player changed or wrote (Core/Custom.lua),
+-- each with its item named, a card each and the newest first, so that where
+-- the margin runs out the oldest are the ones left to their marks. One with no
+-- item has nothing to head a card with: the mark and the words tell it, as a
+-- close call's cross does with no creature.
+function HuntCard.Customs(marks)
+    local list, usual = {}, nil
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            local hunt = m.hunt
+            if hunt and hunt.customOf and type(hunt.item) == "string" and hunt.item ~= "" then
+                usual = usual or Hunts.UsualLuck(ns.Journey.For(ns.ownGUID)) or false
+                list[#list + 1] = { hunt = hunt, mark = mark.at, usual = usual or nil }
+            end
+        end
+    end
+    table.sort(list, function(a, b) return (a.hunt.t or 0) > (b.hunt.t or 0) end)
+    return list
 end
 
 -- The item's ID: the hunt's own, else its name in the client's cache,
@@ -711,10 +732,47 @@ ns.UI.JourneyMargin.Register("hunt", {
         card:SetHunt(it.hunt, c.Seed("hunt", hunt.questID or hunt.item or ""), c.now)
     end,
     mark = function(it) return it.hunt.mark end,
+    custom = function(it) return "luck", it.hunt.hunt end,
     assume = function(said, plate)
         said.luck = plate.hunt and plate.hunt.hunt
     end,
     say = function(said, shown)
         said.luck = shown[1] and shown[1].hunt.hunt or nil
+    end,
+})
+
+-- The slow hunts the player changed or wrote, each its own card, past the
+-- plate's one (HuntCard.Choose): 7 in the margin, among the custom cards and
+-- before the people's (10), so they are nearly the last left off, where the
+-- detected hunt, the mildest card, is the first (.claude/features/
+-- custom-cards.md). The same card, the same pool. Read off the kept marks when
+-- asked, with no pass of their own: `chosen` is the plate's one, and a list
+-- has nothing to be chosen.
+ns.UI.JourneyMargin.Register("huntCustom", {
+    order = 7, pool = "huntPool", count = "customHuntsWritten",
+    new = function(parent) return HuntCard.New(parent) end,
+    wants = function(it) return HuntCard.Preferred(it.hunt) end,
+    items = function(plate)
+        local items = {}
+        for _, h in ipairs(HuntCard.Customs(plate.huntMarks)) do
+            items[#items + 1] = { hunt = h, top = h.mark[2], x = h.mark[1] }
+        end
+        return items
+    end,
+    write = function(card, it, c)
+        local hunt = it.hunt.hunt
+        card:SetHunt(it.hunt, c.Seed("hunt", hunt.t or hunt.item), c.now)
+    end,
+    mark = function(it) return it.hunt.mark end,
+    custom = function(it) return "luck", it.hunt.hunt end,
+    assume = function(said, plate)
+        local set = {}
+        for _, h in ipairs(HuntCard.Customs(plate.huntMarks)) do set[h.hunt] = true end
+        said.lucks = set
+    end,
+    say = function(said, shown)
+        local set = {}
+        for _, it in ipairs(shown) do set[it.hunt.hunt] = true end
+        said.lucks = set
     end,
 })

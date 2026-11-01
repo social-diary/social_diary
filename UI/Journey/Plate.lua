@@ -2456,6 +2456,22 @@ end
 -- plane; `paper` the colour under it (kit.P). A mark's `arg` comes of moments,
 -- and there are none here: its draw is asked with none, so a kind in the picker
 -- must draw without one.
+-- Two of the core's own marks, for a feature's custom card that has no moment of
+-- the core's behind it (Core/Custom.lua) and must look the same: drawn by a mark's
+-- `draw` through its kit. SHAPES.death and SHAPES.session in New, in the kit's
+-- pools. Plate.SHAPE.death(kit, x, y).
+Plate.SHAPE = {
+    death = function(kit, x, y)
+        kit.Dot(kit.halo, x, y, DEATH.dot, kit.P, 0.85)
+        kit.Box(kit.inner, x, y + 0.5, 1.8, 8, kit.INK_STRONG, 1)
+        kit.Box(kit.inner, x, y - 1.5, 5.5, 1.8, kit.INK_STRONG, 1)
+    end,
+    session = function(kit, x, y)
+        kit.Dot(kit.ink, x, y, MARK.together, kit.INK_STRONG, 0.95)
+        kit.Dot(kit.inner, x, y, MARK.hole, kit.P, 1)
+    end,
+}
+
 function Plate.MarkKit(frame, place, quad, paper)
     local function Layer(sublevel)
         return ns.UI.Pool.New(function() return frame:CreateTexture(nil, "ARTWORK", nil, sublevel) end)

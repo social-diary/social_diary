@@ -34,7 +34,7 @@ function Hunts.Words(hunt)
     local what = hunt.name and hunt.name ~= "" and (kills == 1 and hunt.name or Plural(hunt.name))
         or (kills == 1 and "kill" or "kills")
     if Kinds(hunt) > 1 and hunt.name and hunt.name ~= "" then what = what .. " and others" end
-    return Count(kills, what) .. " for " .. Items(hunt.need or 0, hunt.item or "them")
+    return Count(kills, what) .. " for " .. Items(hunt.need or 0, hunt.item or "drop")
 end
 
 -- How far a hunt was from what the drop rates said (EXT-2, EXT-3): ", 14
@@ -102,8 +102,12 @@ end
 Hunts.KILLED = "killed"
 
 -- Under the stop rule, where the drop rates said it would end:
--- "expected 12" (to the whole kill, as Hunts.ExpectedWords rounds it).
+-- "expected 12" (to the whole kill, as Hunts.ExpectedWords rounds it). Good
+-- luck's card always strikes something through, and a card the player wrote
+-- may give no figure: it says only what they said, "expected more", and makes
+-- no number up.
 function Hunts.ExpectedLabel(hunt)
+    if not hunt.expected then return "expected more" end
     return "expected " .. math.floor((hunt.expected or 0) + 0.5)
 end
 
@@ -167,7 +171,11 @@ end
 -- Claw, where 10 were expected."
 function Hunts.Fortune(hunt)
     if hunt.kills == 1 and hunt.need == 1 and hunt.name and hunt.name ~= "" and Kinds(hunt) <= 1 then
-        local expected = math.floor((hunt.expected or 0) + 0.5)
+        -- One the player wrote may have no figure to set it against.
+        if not hunt.expected then
+            return "The first " .. hunt.name .. " gave up its " .. (hunt.item or "drop") .. "."
+        end
+        local expected = math.floor(hunt.expected + 0.5)
         return "The first " .. hunt.name .. " gave up its " .. (hunt.item or "drop") .. ", where "
             .. Count(expected, "were expected") .. "."
     end
@@ -288,7 +296,8 @@ Text.RegisterLines("hunts", { at = 75, run = "combat", lines = function(e) retur
 -- Meat, 14 more than expected", "two slow hunts". `said.luck` is the hunt
 -- whose card (HuntCard.lua) is beside the plate: its words are on the
 -- card, so they leave the caption, and any other slow hunt is said as
--- before.
+-- before. `said.lucks` is the same for the cards the player changed or wrote,
+-- a set, as there may be several.
 do
     local function Hunted(hunts)
         return #hunts == 1 and Hunts.Line(hunts[1]) or ((NUMBER[#hunts] or tostring(#hunts)) .. " slow hunts")
@@ -296,7 +305,7 @@ do
     Text.RegisterCaption("luck", {
         moment = "luck",
         take = function(m, said)
-            if m.hunt and m.hunt ~= said.luck then return m.hunt end
+            if m.hunt and m.hunt ~= said.luck and not (said.lucks and said.lucks[m.hunt]) then return m.hunt end
             return nil
         end,
         lead = { at = 70, say = function(hunts) return Capital(Hunted(hunts)) end },
@@ -313,7 +322,9 @@ end
 -- the words longer because a card showed. On a light plate's print
 -- (`print`: the card's S, no heading) the words name the item and who
 -- dropped it, the print how it went (Hunts.LuckyCaption). Leading, it says
--- the first of these, and the rest in its place in the tail.
+-- the first of these, and the rest in its place in the tail. `said.fortunes`,
+-- a set, is the cards the player changed or wrote that are in the margin: they
+-- say their own words, so these are not counted among the rest either.
 do
     local function Lucky(fortunes, c)
         local lucky = c.said.fortune
@@ -336,7 +347,10 @@ do
     end
     Text.RegisterCaption("fortune", {
         moment = "fortune",
-        take = function(m) return m.hunt end,
+        take = function(m, said)
+            if said.fortunes and said.fortunes[m.hunt] then return nil end
+            return m.hunt
+        end,
         lead = { at = 80, say = function(fortunes, c)
             local words = Lucky(fortunes, c)
             if #words == 0 then return nil end

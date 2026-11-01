@@ -171,10 +171,79 @@ Journey.RegisterList("firsts", {
 -- person's own moments on their margin note (UI/Journey/People.lua's
 -- Tier, UI/Journey/Text/Margin.lua's MarginWhat). Mark.lua's `join` keeps
 -- it with the giver's marks where the diary knows them.
-ns.JourneyRecap.RegisterMoment("find", { order = 10, entry = "finds", rank = 2,
+--
+-- The player may change or insert one (Core/Custom.lua), by the item's name
+-- and which first it is. `field` is how the core finds the record on a moment,
+-- for the custom rank and the right click. An inserted card lives on j.custom
+-- and never enters j.firsts, so capture still keeps one first a kind, and a
+-- second "first" is the player's to write. Not a gift's giver, this round: a
+-- changed gift stays the gift it was, and an inserted card is no gift.
+--
+-- A detected record does not say which first it is: that is its key in
+-- j.firsts, and only a changed one has a `what`. The list keeps its entries
+-- { kind, rec }, so an inserted card and a changed one are wrapped to match,
+-- and with no box ticked one is simply "find" ("Your first find!"), which every
+-- word and mark of this feature already falls back on.
+
+-- A record read with the player's changes, as an entry. A typed name is another
+-- item as far as anyone can tell, so the copy lets go of the link: otherwise its
+-- tooltip and picture would go on showing the thing the player renamed away from.
+-- The saved record keeps it, so Reset gives back the real item.
+local function Changed(f, read)
+    if read.name and read.name ~= Firsts.ItemName(read.link) then read.link = nil end
+    return { kind = read.what or f.kind, rec = read }
+end
+
+ns.JourneyRecap.RegisterMoment("find", { order = 10, entry = "finds", field = "find", rank = 2,
+    custom = {
+        label = "First Found",
+        heading = "A first found",
+        group = "other",
+        -- A new card has to be a first of something, and most are a green.
+        defaults = { what = "uncommon" },
+        -- A detected first keeps its item in its link and which first it is as its
+        -- key in j.firsts: for the form, nothing written.
+        values = function(values, rec)
+            values.name = Firsts.Name(rec) or values.name
+            local j = Journey.Mine()
+            for kind, kept in pairs(j and j.firsts or {}) do
+                if kept == rec then values.what = kind end
+            end
+        end,
+        wrap = function(rec) return { kind = rec.what or "find", rec = rec } end,
+        timeOf = function(f) return f.rec.t end,
+        -- A line of a menu: the item, and which first where the card says.
+        describe = function(rec)
+            local name = Firsts.Name(rec)
+            local _, yours = Firsts.Words(rec.what)
+            if name then return rec.what and (name .. ", " .. yours) or name end
+            return rec.what and (yours:gsub("^%l", string.upper)) or "A first found"
+        end,
+        fields = {
+            -- Saved as `name`, beside a detected record's `link`. The hint tells
+            -- what an empty line does: the form cannot show a detected item's
+            -- name, which is in its link and not in a field of its own.
+            { key = "name", type = "text", label = "Item" },
+            -- j.firsts' own keys, so a card reads as a detected first does. The
+            -- quality's word is the player's colour here, whatever the card's
+            -- heading calls it.
+            { key = "what", type = "choice", values = { "uncommon", "rare", "epic", "bag", "shoulder" }, label = "First",
+                names = { uncommon = "Green", rare = "Blue", epic = "Purple", bag = "Bag", shoulder = "Shoulders" } },
+        },
+    },
     gather = function(j, a, b, e)
         for _, f in ipairs(Firsts.List(j)) do
-            if f.rec.t >= a and f.rec.t < b then e.finds[#e.finds + 1] = f end
+            if f.rec.t >= a and f.rec.t < b then
+                -- As the player left it. One hidden is off the page, and listed so
+                -- it can be brought back, as the core's list branch does in Gather
+                -- for a kind it reads itself. One unchanged stays the entry it was.
+                local read = ns.Custom.Read(f.rec)
+                if not read then
+                    e.hidden[#e.hidden + 1] = { kind = "find", rec = f.rec }
+                else
+                    e.finds[#e.finds + 1] = read == f.rec and f or Changed(f, read)
+                end
+            end
         end
     end,
     rankAs = function(m) return m.gift and "session" or "find" end,

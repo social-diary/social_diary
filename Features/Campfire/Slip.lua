@@ -9,8 +9,12 @@
 -- 14 px, not a person's 16, so it fits the narrowest column (122 px); the
 -- tag's small tape slanted over its top left corner, clear of the words. No
 -- heading, icon, count or struck words: one slip a plate however many fires
--- (each keeps its own mark), and its tooltip lists every sitting there. It
--- opens nothing.
+-- (each keeps its own mark), and its tooltip lists every sitting there. A
+-- left click opens nothing; a right click opens the form (Core/Custom.lua).
+--
+-- A fire the player changed or wrote is outside that one slip: it has a slip of
+-- its own, the same slip in the same pool, that is not filler (Slip.Customs and
+-- "campfireCustom", below; .claude/features/custom-cards.md).
 --
 -- It is filler ("kind of unimportant, just filler if we don't have
 -- anything better", the user, 14 Oct): last in the margin, so the first
@@ -46,20 +50,43 @@ local Seed = ns.UI.Surface.Seed
 -- plate (`list`, oldest first, for the tooltip), the latest fire's mark on
 -- the page (`mark`, which stands in for the slip's place in the margin's
 -- order before it is laid), and every mark (`marks`, page points, for its
--- leader to go to the nearest). Nil without a fire.
+-- leader to go to the nearest). Nil without a fire. Only the fires as detected:
+-- one the player changed or wrote has its own slip (Slip.Customs), so it is not
+-- told twice, and a mark holding only those is no place for this slip's leader.
 function Slip.Choose(marks)
-    local list, latest, at = {}, nil, nil
+    local list, latest, at, points = {}, nil, nil, {}
     for _, mark in ipairs(marks or {}) do
+        local detected = false
         for _, m in ipairs(mark.list or {}) do
-            list[#list + 1] = m
-            if not latest or (m.t or 0) >= (latest.t or 0) then latest, at = m, mark end
+            if not (m.campfire and m.campfire.customOf) then
+                detected = true
+                list[#list + 1] = m
+                if not latest or (m.t or 0) >= (latest.t or 0) then latest, at = m, mark end
+            end
         end
+        if detected then points[#points + 1] = mark.at end
     end
     if not latest then return nil end
     table.sort(list, function(a, b) return (a.t or 0) < (b.t or 0) end)
-    local points = {}
-    for i, mark in ipairs(marks) do points[i] = mark.at end
     return { list = list, mark = at.at, marks = points, x = at.x, y = at.y }
+end
+
+-- The fires on the plate the player changed or wrote, each as Choose's shape
+-- over itself alone, so the same slip writes it: its tooltip tells that sitting,
+-- its leader goes to that fire's mark. The newest first, so that where the margin
+-- runs out the oldest are the ones left to their marks.
+function Slip.Customs(marks)
+    local list = {}
+    for _, mark in ipairs(marks or {}) do
+        for _, m in ipairs(mark.list or {}) do
+            if m.campfire and m.campfire.customOf then
+                list[#list + 1] = { list = { m }, mark = mark.at, marks = { mark.at }, x = mark.x, y = mark.y,
+                    fire = m.campfire }
+            end
+        end
+    end
+    table.sort(list, function(a, b) return (a.fire.t or 0) > (b.fire.t or 0) end)
+    return list
 end
 
 -- The mark its leader goes to: of the fires on the plate, the one nearest
@@ -140,7 +167,47 @@ ns.UI.JourneyMargin.Register("campfire", {
         slip:SetCampfire(it.campfire, c.Seed("campfire", first and first.t or 0), c.now)
     end,
     mark = function(it, slip) return Slip.Mark(it.campfire, slip) end,
+    -- The slip speaks for several sittings and the form holds one: the newest,
+    -- the one its place in the margin stands for. The others are the marks' to
+    -- open, whose menu tells them apart.
+    custom = function(it)
+        local list = it.campfire.list
+        return "campfire", list[#list].campfire
+    end,
+    -- Where a fire of the player's has its slip on the page, "sat by a campfire"
+    -- is already said there, and the words saying it too would read as a second
+    -- telling (campfireCustom's `say`, asked first, its order being lower).
     say = function(said, shown, plate)
-        if plate.campfire and not shown[1] then said.campfire = true end
+        if plate.campfire and not shown[1] and not said.campfireWritten then said.campfire = true end
+    end,
+})
+
+-- The fires the player changed or wrote: a slip each, past the plate's one and
+-- not filler, so they are not the first to go (custom-cards.md's order, 9: after
+-- the other custom cards, before the people). Having no `filler`, what it left
+-- off is told whatever the words' length, as a killer's card left off is, and
+-- the words say it only where none of its slips found room: "sat by a campfire"
+-- once on the page is enough for two fires, as it is on the detected slip.
+ns.UI.JourneyMargin.Register("campfireCustom", {
+    order = 9, pool = "campfirePool", count = "customCampfiresWritten",
+    new = function(parent) return Slip.New(parent) end,
+    items = function(plate)
+        local items = {}
+        for _, f in ipairs(Slip.Customs(plate.campfireMarks)) do
+            items[#items + 1] = { campfire = f, top = f.mark[2], x = f.mark[1] }
+        end
+        return items
+    end,
+    write = function(slip, it, c)
+        slip:SetCampfire(it.campfire, c.Seed("campfire", it.campfire.fire.t or 0), c.now)
+    end,
+    mark = function(it) return it.campfire.mark end,
+    custom = function(it) return "campfire", it.campfire.fire end,
+    say = function(said, shown, plate)
+        if shown[1] then
+            said.campfireWritten = true
+        elseif Slip.Customs(plate.campfireMarks)[1] then
+            said.campfire = true
+        end
     end,
 })

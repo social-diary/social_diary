@@ -79,7 +79,7 @@ end
 -- which is set in faded ink. Mirrors JourneyText's Opening.
 local function HasOpening(e)
     if e.kind == "week" then return e.reached ~= nil end
-    return not e.known or e.first or e.reached ~= nil
+    return e.known and (e.first or e.reached ~= nil)
 end
 
 -- The names in an entry's prose made links to their pages (JRN-22): the

@@ -319,3 +319,35 @@ do
     Check(plate.customFoes[1] ~= nil and plate.foe == nil, "no detected card beside them")
     Eq(page.killersWritten, 0, "no killer's card")
 end
+
+--------------------------------------------------------------------------
+Section("a kind's person field, its wrapped entries, and forgetting")
+
+do
+    local R, M = ns.JourneyRecap, ns.JourneyRecap.MOMENTS
+    M.scrap = { kind = "scrap", entry = "scraps", gather = function() end, field = "s", order = 999,
+        custom = { label = "Scrap", fields = { { key = "who", type = "person" }, { key = "note", type = "text" } },
+            wrap = function(rec) return { rec = rec } end, timeOf = function(entry) return entry.rec.t end } }
+    local list = R.MOMENTS
+    local guid = "Player-1-0AAAAAAA"
+    ns.db.characters[guid] = { guid = guid, names = { { first = "Brannoc", surname = "" } } }
+    ns.db.diary[guid] = { tags = {}, addedAt = now }
+    local where = { mapID = 1412, x = 0.5, y = 0.5, from = t0, to = now }
+    local typed = Custom.Insert("scrap", { who = "Someone", whoGuid = "Player-1-0BBBBBBB" }, where)
+    Eq(typed.who, "Someone", "a typed name is kept")
+    Eq(typed.whoGuid, nil, "and links to nobody outside the diary")
+    local linked = Custom.Insert("scrap", { who = "Brannoc", whoGuid = guid }, where)
+    Eq(linked.whoGuid, guid, "a picked name links")
+    Custom.Edit("scrap", linked, { who = "Brannoc the Second" })
+    Eq(linked.whoGuid, nil, "typing over a picked name lets the entry go")
+    Custom.Edit("scrap", linked, { who = "Brannoc", whoGuid = guid })
+    Eq(linked.whoGuid, guid, "picked again")
+
+    ns.ForgetEverywhere(guid)
+    Eq(linked.whoGuid, nil, "forgotten: the link goes")
+    Eq(linked.who, "Brannoc", "the name as written stays")
+    Custom.Remove(typed)
+    Custom.Remove(linked)
+    M.scrap = nil
+    Eq(#Custom.FindPeople("", 4), 0, "nothing typed finds nobody")
+end

@@ -111,5 +111,24 @@ end
 -- or the words saying it where there is no room (the user's choice, 14
 -- Oct), a plate of fires and places alone is given a print, not a full
 -- slot.
+--
+-- The player may change or insert one (Core/Custom.lua; .claude/features/
+-- custom-cards.md). The slip's words are the user's own and never change, so
+-- all that a fire shows besides them is where it was, which the tooltip and the
+-- caption's words read from `subZone`: the one line on its form, saved under
+-- the name a detected record uses. Its time and level are the page's, as every
+-- custom card's are, and `zone` is never read off a plate, so it is not asked.
+-- The line's length is kept shorter than a creature's because it goes into the
+-- caption's words ("By a campfire in ..."), whose room is short on a print.
 ns.JourneyRecap.RegisterMoment("campfire", { order = 70, list = "campfires", field = "campfire", rank = 5.5,
-    light = true })
+    light = true,
+    custom = {
+        label = "Campfire",
+        heading = "A campfire",
+        group = "other",
+        -- Text.lua's, read when asked: this file loads before it.
+        describe = function(fire) return Campfire.Describe(fire) end,
+        fields = {
+            { key = "subZone", type = "text", most = 40, label = "Where", hint = "a camp, a village, an oasis" },
+        },
+    } })

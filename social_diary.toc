@@ -217,6 +217,10 @@ Features/Campfire/Text.lua
 Features/Campfire/Mark.lua
 Features/Campfire/Slip.lua
 Features/Campfire/Capture.lua
+Features/Met/Kind.lua
+Features/Met/Text.lua
+Features/Met/Mark.lua
+Features/Met/Strip.lua
 Features/Firsts/Kind.lua
 Features/Firsts/Text.lua
 Features/Firsts/Mark.lua
