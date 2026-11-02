@@ -7,8 +7,8 @@
 --            twine under a wax seal, the maker's name, an address, a stamp
 --            and its postmark, and a label saying what is inside. "Tear it
 --            open", or a click on the seal, tears it (parcelOpened)
---   torn     the paper ripped open, its flaps torn back, the twine cut and
---            the label torn aside: the closed book inside, its ribbons
+--   torn     the paper ripped open, its flaps torn back and the twine
+--            cut: the closed book inside, its ribbons
 --            hanging out of the foot, and beside it the diary's own note in
 --            pencil, with how many it has pencilled in already. "Open me"
 --            opens the book on the introduction's tour
@@ -45,8 +45,8 @@
 --   UI/Windows/Intro/Wrapped.lua  the wrapped parcel (BuildWrapped,
 --                                 LayWrapped)
 --   UI/Windows/Intro/Torn.lua     torn open: the paper, flaps, the closed
---                                 book and its ribbons, the torn label and
---                                 the note (BuildTorn, LayLabel, LayNote)
+--                                 book and its ribbons, and the note
+--                                 (BuildTorn, LayNote)
 --   UI/Windows/Intro/Parcel.lua   the host frame and the entry points
 --                                 (ns.UI.OfferSlip, HideSlip, ShowIntro,
 --                                 Slip) and the events that offer it
@@ -159,8 +159,7 @@ local SENDER = { x = 18, y = 24, step = 15, alpha = { 0.78, 0.70 } }
 local ADDRESS = { x = 18, y = 84, step = 20, ink = { 0.11, 0.06, 0.02 } }
 
 -- The label: what is inside, before anything else. Its top on the parcel,
--- size, paper, the inked frame `outline` in, and its title's middle. As
--- wide as it is torn aside (TORN_LABEL).
+-- size, paper, the inked frame `outline` in, and its title's middle.
 local LABEL = { y = 245, w = 200, h = 46, paper = { 0.92, 0.85, 0.69 }, outline = 5, alpha = 0.55,
     title = 23, shadows = { { 0.6, 0.8, 0, 0.40 }, { 1, 1.5, 0.5, 0.25 } } }
 
@@ -189,8 +188,6 @@ local FLAPS = {
 -- The twine, cut, lying loose: its box, the mockup's two curves in it.
 local LOOSE = { x = 160, y = 442, steps = 6, outer = 4, inner = 2,
     curves = { { 4, 40, 40, 20, 70, 54, 110, 34 }, { 110, 34, 150, 14, 170, 18, 196, 30 } } }
--- The label torn aside with its paper.
-local TORN_LABEL = { x = 426, y = 432, w = 200, h = 36, turn = 7, title = 18 }
 
 -- The closed book (Style.ClosedBook), and its ribbons out of the foot, one
 -- per ribbon page of the journal (ns.UI.Journal.Ribbons, UI/Journal/
@@ -272,7 +269,6 @@ local PF = {
     postmark = Font("SocialDiaryFontParcelPostmark", FRIZ, 11, { POSTMARK.ink[1], POSTMARK.ink[2], POSTMARK.ink[3], 0.62 }),
     stamp = Font("SocialDiaryFontParcelStamp", MORPHEUS, 18, STAMP.paper),
     seal = Font("SocialDiaryFontParcelSeal", MORPHEUS, 13, WAX.goblin.dark),
-    tornTitle = Font("SocialDiaryFontParcelTornTitle", MORPHEUS, 16, Style.INK_STRONG),
     link = Font("SocialDiaryFontParcelLink", FRIZ, 13, LINK.base, 0.9),
 }
 
@@ -459,7 +455,6 @@ Parcel.LINK = LINK
 Parcel.PAPER = PAPER
 Parcel.FLAPS = FLAPS
 Parcel.LOOSE = LOOSE
-Parcel.TORN_LABEL = TORN_LABEL
 Parcel.BOOK = BOOK
 Parcel.RIBBONS = RIBBONS
 Parcel.NOTE = NOTE

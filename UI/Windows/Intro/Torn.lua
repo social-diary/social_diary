@@ -1,8 +1,8 @@
 -- The parcel torn open (PRV-4): what is left of the paper, its flaps torn
 -- back, the twine cut and lying loose, the closed book with its ribbons out
--- of the foot, the label torn aside, and the diary's note beside the book,
--- a loose sheet. Built once (Parcel.BuildTorn); the label and the note laid
--- at each showing (Parcel.LayLabel, Parcel.LayNote). The look tables,
+-- of the foot, and the diary's note beside the book, a loose sheet. Built
+-- once (Parcel.BuildTorn); the note laid at each showing
+-- (Parcel.LayNote). The look tables,
 -- fonts and kit are UI/Windows/Intro/Scene.lua's, which lists the state
 -- shared on ns.UI.Parcel; wrapped is Wrapped.lua; the host Parcel.lua.
 
@@ -15,11 +15,9 @@ local Parcel = ns.UI.Parcel
 local SCENE = Parcel.SCENE
 local KRAFT = Parcel.KRAFT
 local TWINE = Parcel.TWINE
-local LABEL = Parcel.LABEL
 local PAPER = Parcel.PAPER
 local FLAPS = Parcel.FLAPS
 local LOOSE = Parcel.LOOSE
-local TORN_LABEL = Parcel.TORN_LABEL
 local BOOK = Parcel.BOOK
 local RIBBONS = Parcel.RIBBONS
 local NOTE = Parcel.NOTE
@@ -27,7 +25,6 @@ local CREASE = Parcel.CREASE
 local HELLO = Parcel.HELLO
 local BODY = Parcel.BODY
 local Pencilled = Parcel.Pencilled
-local PF = Parcel.PF
 local Rad = Parcel.Rad
 local Turn = Parcel.Turn
 local Cover = Parcel.Cover
@@ -165,30 +162,6 @@ function Parcel.BuildTorn(host, S)
     host.book = book
     Ribbons(S, book)
 
-    -- The label, torn aside with its paper, over the book's edge.
-    local tag = Cover(host, F)
-    tag:SetFrameLevel(book:GetFrameLevel() + 2)
-    local A, Z = LABEL, TORN_LABEL
-    local ink = { Style.INK[1], Style.INK[2], Style.INK[3], A.alpha }
-    local o = A.outline
-    local parts = {}
-    local function Part(region, x, y, w, h)
-        parts[#parts + 1] = { region, Z.x + x, Z.y + y, w, h }
-        return region
-    end
-    for i, s in ipairs(A.shadows) do
-        Part(S.Shadow(S.Texture(tag, "ARTWORK", i, { SHADE[1], SHADE[2], SHADE[3], s[4] })),
-            s[1] - s[3], s[2] - s[3], Z.w + 2 * s[3], Z.h + 2 * s[3])
-    end
-    Part(S.Texture(tag, "ARTWORK", 3, A.paper), 0, 0, Z.w, Z.h)
-    Part(S.Texture(tag, "ARTWORK", 4, ink), o, o, Z.w - 2 * o, 1)
-    Part(S.Texture(tag, "ARTWORK", 4, ink), o, Z.h - o - 1, Z.w - 2 * o, 1)
-    Part(S.Texture(tag, "ARTWORK", 4, ink), o, o, 1, Z.h - 2 * o)
-    Part(S.Texture(tag, "ARTWORK", 4, ink), Z.w - o - 1, o, 1, Z.h - 2 * o)
-    local title = Style.Text(tag, PF.tornTitle)
-    title:SetText("SOCIAL DIARY")
-    host.tornLabel = { title = title, parts = parts }
-
     -- The diary's note, beside the book: a loose sheet of its own.
     local N = NOTE
     local holder = CreateFrame("Frame", nil, F)
@@ -211,18 +184,6 @@ function Parcel.BuildTorn(host, S)
     end)
     note.later:SetText("Later")
     host.note, host.K = note, K
-end
-
--- The torn label, turned as it lies (straight laid flat, or where text
--- cannot turn).
-function Parcel.LayLabel(host, S, flat)
-    local Z = TORN_LABEL
-    local turn = (not flat and host.turnsText) and Rad(Z.turn) or 0
-    local ox, oy = Z.x + Z.w / 2, Z.y + Z.h / 2
-    for _, part in ipairs(host.tornLabel.parts) do
-        S.Box(part[1], part[2], part[3], part[4], part[5], turn, ox, oy)
-    end
-    S.Line(host.tornLabel.title, ox, Z.y + Z.title, "CENTER", turn, ox, oy)
 end
 
 -- The note: how it lies, the first line (the first time, or again), the

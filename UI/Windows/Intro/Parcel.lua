@@ -15,7 +15,7 @@ local SHOW_DELAY = 4
 local SCENE = Parcel.SCENE
 local Kit = Parcel.Kit
 local BuildWrapped, LayWrapped = Parcel.BuildWrapped, Parcel.LayWrapped
-local BuildTorn, LayLabel, LayNote = Parcel.BuildTorn, Parcel.LayLabel, Parcel.LayNote
+local BuildTorn, LayNote = Parcel.BuildTorn, Parcel.LayNote
 
 --------------------------------------------------------------------------
 -- The host
@@ -54,7 +54,6 @@ local function Build()
         if state == "wrapped" then
             LayWrapped(self, S, maker)
         else
-            LayLabel(self, S, flat)
             LayNote(self, flat, not Parcel.tornNow)
         end
     end

@@ -665,8 +665,7 @@ local function Greeting()
 end
 Check(Greeting():find("I'm your new diary"), "the note does not introduce the diary")
 Check(not S.note.keeps and not S.note.aside, "the note still says what it keeps, or points to /sd")
-Eq(S.tornLabel.title:GetText(), "SOCIAL DIARY", "the torn label does not name the diary")
-Check(not S.tornLabel.italic, "the torn label says more than the diary's name")
+Check(not S.tornLabel, "the torn parcel still has its label")
 local wrote = {}
 for _, line in ipairs(S.note.lines) do
     if line:GetText() ~= "" then wrote[#wrote + 1] = line:GetText() end
