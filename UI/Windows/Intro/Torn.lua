@@ -26,7 +26,6 @@ local NOTE = Parcel.NOTE
 local CREASE = Parcel.CREASE
 local HELLO = Parcel.HELLO
 local BODY = Parcel.BODY
-local KEEPS = Parcel.KEEPS
 local Pencilled = Parcel.Pencilled
 local PF = Parcel.PF
 local Rad = Parcel.Rad
@@ -186,10 +185,9 @@ function Parcel.BuildTorn(host, S)
     Part(S.Texture(tag, "ARTWORK", 4, ink), o, Z.h - o - 1, Z.w - 2 * o, 1)
     Part(S.Texture(tag, "ARTWORK", 4, ink), o, o, 1, Z.h - 2 * o)
     Part(S.Texture(tag, "ARTWORK", 4, ink), Z.w - o - 1, o, 1, Z.h - 2 * o)
-    local title, italic = Style.Text(tag, PF.tornTitle), Style.Text(tag, PF.tornItalic)
-    title:SetText("ONE SOCIAL DIARY")
-    italic:SetText("writes itself")
-    host.tornLabel = { title = title, italic = italic, parts = parts }
+    local title = Style.Text(tag, PF.tornTitle)
+    title:SetText("SOCIAL DIARY")
+    host.tornLabel = { title = title, parts = parts }
 
     -- The diary's note, beside the book: a loose sheet of its own.
     local N = NOTE
@@ -212,12 +210,6 @@ function Parcel.BuildTorn(host, S)
         ns.UI.Parcel.HideSlip(false)
     end)
     note.later:SetText("Later")
-    note.aside = Style.Text(sheet, FONT.small)
-    note.aside:SetText("or type /sd")
-    note.rule = K.Texture("ARTWORK", 0)
-    note.rule:SetColorTexture(Style.GRAPHITE[1], Style.GRAPHITE[2], Style.GRAPHITE[3], 0.25)
-    note.keeps = Style.Text(sheet, FONT.pencilSmall)
-    note.keeps:SetText(KEEPS)
     host.note, host.K = note, K
 end
 
@@ -231,11 +223,10 @@ function Parcel.LayLabel(host, S, flat)
         S.Box(part[1], part[2], part[3], part[4], part[5], turn, ox, oy)
     end
     S.Line(host.tornLabel.title, ox, Z.y + Z.title, "CENTER", turn, ox, oy)
-    S.Line(host.tornLabel.italic, ox, Z.y + Z.italic, "CENTER", turn, ox, oy)
 end
 
 -- The note: how it lies, the first line (the first time, or again), the
--- body a line at a time, the live count, the links and the plain line.
+-- body a line at a time, the live count (if anyone), and the links.
 function Parcel.LayNote(host, flat, again)
     local note, K, N = host.note, host.K, NOTE
     K.Fall("parcel" .. (ns.ownGUID or ""), flat and 0 or Rad(N.turn))
@@ -263,13 +254,13 @@ function Parcel.LayNote(host, flat, again)
             y = y + N.line
         end
     end
-    note.count:SetText(Pencilled(ns.People.PencilledCount()))
-    K.PlaceText(note.count, M, y - N.line + N.count)
+    -- Nobody pencilled in yet: no count at all.
+    local count = Pencilled(ns.People.PencilledCount())
+    note.count:SetText(count or "")
+    note.count:SetShown(count ~= nil)
+    if count then K.PlaceText(note.count, M, y - N.line + N.count) end
     local links = N.h - N.links
     note.open:PlaceAt(M, links)
     note.later:PlaceAt(M + K.Width(note.open.label) + 16, links)
-    K.PlaceText(note.aside, N.w - M, links, "RIGHT")
-    K.Place(note.rule, M, N.h - N.rule, N.w - 2 * M, 1)
-    K.PlaceText(note.keeps, M, N.h - N.keeps)
     note:Show()
 end

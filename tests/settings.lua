@@ -590,16 +590,16 @@ Check(S and S:IsShown(), "the parcel did not show on first login")
 Eq(S.state, "wrapped", "the parcel did not arrive wrapped")
 Check(S.wrapped:IsShown() and not S.torn:IsShown(), "the wrapped parcel is not the one shown")
 
--- Its label names the diary and says nothing leaves this computer
--- (PRV-1), for someone who only ever clicks Later; the days are the book's.
-Eq(S.label.title:GetText(), "ONE SOCIAL DIARY", "the label does not name the diary")
-Check(S.label.keeps:GetText():find("nothing leaves this computer"), "PRV-1 not on the label")
-for _, text in pairs(S.label) do Check(not text:GetText():find("day"), "the label talks of days") end
+-- Its label only names the diary; the days are the book's.
+Eq(S.label.title:GetText(), "SOCIAL DIARY", "the label does not name the diary")
+Check(not S.label.keeps and not S.label.italic, "the label says more than the diary's name")
+Check(not S.aside, "the wrapped parcel still points to /sd")
 
 -- Its maker's: the goblins' for the Horde, the gnomes' for the Alliance,
 -- postmarked today.
 Eq(S.maker, "goblin", "a Horde parcel not from the goblins")
 Eq(S.sender[1]:GetText(), "GRIZZIK'S DIARIES", "the goblins' name is not on it")
+Check(S.address[1]:IsShown(), "the goblins' address is not on it")
 Check(S.seal.letter:IsShown() and not S.seal.cog[1]:IsShown(), "the goblins' seal does not show their coin")
 local today = ("%d %s"):format(tonumber(date("%d")), date("%b"):upper())
 Eq(S.postmark[2]:GetText(), today, "the goblins' postmark is not today's")
@@ -608,6 +608,7 @@ mock.SetUnit("player", F.Like(SELF, { faction = { "Alliance", "Alliance" } }))
 ns.UI.OfferSlip()
 Eq(S.maker, "gnome", "an Alliance parcel not from the gnomes")
 Eq(S.sender[1]:GetText(), "WIZZLEBOLT & DAUGHTER", "the gnomes' name is not on it")
+Check(not S.address[1]:IsShown() and not S.address[2]:IsShown(), "the gnomes' parcel is addressed")
 Check(S.seal.cog[1]:IsShown() and not S.seal.letter:IsShown(), "the gnomes' seal does not show their cog")
 Eq(S.postmark[3]:GetText(), today, "the gnomes' postmark is not today's")
 mock.SetUnit("player", SELF)
@@ -663,7 +664,9 @@ local function Greeting()
     return table.concat(said, " ")
 end
 Check(Greeting():find("I'm your new diary"), "the note does not introduce the diary")
-Check(S.note.keeps:GetText():find("nothing leaves this computer"), "PRV-1 not on the note")
+Check(not S.note.keeps and not S.note.aside, "the note still says what it keeps, or points to /sd")
+Eq(S.tornLabel.title:GetText(), "SOCIAL DIARY", "the torn label does not name the diary")
+Check(not S.tornLabel.italic, "the torn label says more than the diary's name")
 local wrote = {}
 for _, line in ipairs(S.note.lines) do
     if line:GetText() ~= "" then wrote[#wrote + 1] = line:GetText() end
@@ -673,12 +676,12 @@ Check(table.concat(wrote, " "):find("until you ink someone in%.$"), "the note lo
 -- How many it has pencilled in, as it stands: nobody, then one stranger,
 -- then three.
 Eq(ns.People.PencilledCount(), 0, "someone is pencilled in after the wipe")
-Check(S.note.count:GetText():find("Nobody yet"), "the note counts someone after the wipe")
+Check(not S.note.count:IsShown(), "the note counts someone after the wipe")
 local strangers = { "Player-1-00000A01", "Player-1-00000A02", "Player-1-00000A03" }
 ns.Interactions.Add(strangers[1], "trade", {})
 S:Hide()
 ns.UI.OfferSlip()
-Check(S.note.count:GetText():find("pencilled in one already"), "one stranger not counted")
+Check(S.note.count:IsShown() and S.note.count:GetText():find("pencilled in one already"), "one stranger not counted")
 ns.Interactions.Add(strangers[2], "trade", {})
 ns.Interactions.Add(strangers[3], "trade", {})
 S:Hide()

@@ -86,7 +86,8 @@ function Parcel.BuildWrapped(host, S)
     local c = P.crease
     S.Stroke(F, "BORDER", 0, px + c[1], py + c[2], px + c[3], py + c[4], SHADE, c[6], c[5])
 
-    -- The sender, printed, and the address in the maker's hand.
+    -- The sender, printed, and the address in the maker's hand (if the
+    -- maker writes one).
     host.sender = { Style.Text(F, PF.print), Style.Text(F, PF.print) }
     for i, text in ipairs(host.sender) do text:SetAlpha(SENDER.alpha[i]) end
     host.address = { Style.Text(F, PF.hand), Style.Text(F, PF.hand) }
@@ -158,7 +159,7 @@ function Parcel.BuildWrapped(host, S)
         end
     end
 
-    -- The label, pasted on: paper, an inked frame, its words and a rule.
+    -- The label, pasted on: paper, an inked frame and the diary's name.
     local A = LABEL
     local lx, ly = px + (pw - A.w) / 2, py + A.y
     for i, s in ipairs(A.shadows) do
@@ -171,14 +172,9 @@ function Parcel.BuildWrapped(host, S)
     S.Rect(F, "OVERLAY", -2, lx + o, ly + A.h - o - 1, A.w - 2 * o, 1, ink)
     S.Rect(F, "OVERLAY", -2, lx + o, ly + o, 1, A.h - 2 * o, ink)
     S.Rect(F, "OVERLAY", -2, lx + A.w - o - 1, ly + o, 1, A.h - 2 * o, ink)
-    S.Rect(F, "OVERLAY", -2, lx + 12, ly + A.rule, A.w - 24, 1, { Style.INK[1], Style.INK[2], Style.INK[3], 0.25 })
-    local label = { title = Style.Text(F, FONT.page), italic = Style.Text(F, PF.italic), keeps = Style.Text(F, FONT.small) }
-    label.title:SetText("ONE SOCIAL DIARY")
-    label.italic:SetText("writes itself")
-    label.keeps:SetText("Keeps to itself: nothing leaves this computer.")
+    local label = { title = Style.Text(F, FONT.page) }
+    label.title:SetText("SOCIAL DIARY")
     S.Line(label.title, lx + A.w / 2, ly + A.title, "CENTER")
-    S.Line(label.italic, lx + A.w / 2, ly + A.italic, "CENTER")
-    S.Line(label.keeps, lx + A.w / 2, ly + A.keeps, "CENTER")
     host.label = label
 
     -- The seal on the knot: a button, as a click on it tears the paper.
@@ -229,9 +225,6 @@ function Parcel.BuildWrapped(host, S)
         ns.UI.Parcel.HideSlip(false)
     end)
     host.later:SetPoint("LEFT", host.tear, "RIGHT", 14, 0)
-    host.aside = Style.Text(F, PF.aside)
-    host.aside:SetText("or type /sd")
-    host.aside:SetPoint("RIGHT", host, "TOPLEFT", px + pw - 4 - SCENE.left, -(y - SCENE.top))
 end
 
 -- The maker's marks and words, today's postmark, the seal's wax.
@@ -249,8 +242,9 @@ function Parcel.LayWrapped(host, S, maker)
     end
     host.address[2]:SetFontObject(m.aside and PF.handSmall or PF.hand)
     for i, text in ipairs(host.address) do
-        text:SetText(m.address[i])
-        S.Line(text, px + ADDRESS.x, py + ADDRESS.y + (i - 1) * ADDRESS.step, "LEFT")
+        text:SetText(m.address[i] or "")
+        text:SetShown(m.address[i] ~= nil)
+        if m.address[i] then S.Line(text, px + ADDRESS.x, py + ADDRESS.y + (i - 1) * ADDRESS.step, "LEFT") end
     end
 
     local seal = host.seal

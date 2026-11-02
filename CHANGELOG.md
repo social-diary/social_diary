@@ -11,6 +11,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 - Paper Texture Intesity can be set in Settings
 - Onboarding is now improved and more straight-forward
 
+### Changes
+
+- The login parcel and its note carry fewer words
+
 ### Fixes
 
 - Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more

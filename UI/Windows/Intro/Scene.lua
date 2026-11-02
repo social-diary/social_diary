@@ -16,9 +16,8 @@
 --            you again
 --
 -- The parcel is its maker's: gnomish for Alliance, goblin for Horde (seal,
--- stamp, postmark, sender, address). The book and the note are the
--- diary's, the same for both. The label's last line says nothing leaves
--- this computer, so someone who only ever clicks Later has read it; the
+-- stamp, postmark, sender, the goblins' address). The book and the note
+-- are the diary's, the same for both. The label only names the diary; the
 -- retention days are left to the tour and the settings.
 --
 -- It comes back at every login until the introduction has been seen
@@ -160,14 +159,13 @@ local SENDER = { x = 18, y = 24, step = 15, alpha = { 0.78, 0.70 } }
 local ADDRESS = { x = 18, y = 84, step = 20, ink = { 0.11, 0.06, 0.02 } }
 
 -- The label: what is inside, before anything else. Its top on the parcel,
--- size, paper, the inked frame `outline` in, and its lines' middles. A
--- little wider than the mockup's 252: Friz is wider than its stand-in, and
--- the last line must not touch the frame.
-local LABEL = { y = 222, w = 266, h = 92, paper = { 0.92, 0.85, 0.69 }, outline = 5, alpha = 0.55,
-    title = 23, italic = 44, rule = 61, keeps = 76, shadows = { { 0.6, 0.8, 0, 0.40 }, { 1, 1.5, 0.5, 0.25 } } }
+-- size, paper, the inked frame `outline` in, and its title's middle. As
+-- wide as it is torn aside (TORN_LABEL).
+local LABEL = { y = 245, w = 200, h = 46, paper = { 0.92, 0.85, 0.69 }, outline = 5, alpha = 0.55,
+    title = 23, shadows = { { 0.6, 0.8, 0, 0.40 }, { 1, 1.5, 0.5, 0.25 } } }
 
 -- The links on the game world, light, under the wrapped parcel.
-local LINK = { base = { 0.95, 0.90, 0.78 }, hot = { 1, 0.95, 0.81 }, aside = { 1, 0.94, 0.78, 0.75 } }
+local LINK = { base = { 0.95, 0.90, 0.78 }, hot = { 1, 0.95, 0.81 } }
 
 -- Torn open. What is left of the paper: its box, its corners (as fractions
 -- of it, clockwise from the top left), each side's teeth and seed, how
@@ -192,7 +190,7 @@ local FLAPS = {
 local LOOSE = { x = 160, y = 442, steps = 6, outer = 4, inner = 2,
     curves = { { 4, 40, 40, 20, 70, 54, 110, 34 }, { 110, 34, 150, 14, 170, 18, 196, 30 } } }
 -- The label torn aside with its paper.
-local TORN_LABEL = { x = 426, y = 432, w = 200, h = 52, turn = 7, title = 18, italic = 37 }
+local TORN_LABEL = { x = 426, y = 432, w = 200, h = 36, turn = 7, title = 18 }
 
 -- The closed book (Style.ClosedBook), and its ribbons out of the foot, one
 -- per ribbon page of the journal (ns.UI.Journal.Ribbons, UI/Journal/
@@ -211,9 +209,9 @@ local RIBBONS = {
 -- turn, the middles of the first line and the step to its second (the
 -- greeting wraps: "again" is longer than the note is wide), of the body's
 -- first and the step to the next (at most `most`), the count's after the
--- body, and the links, the rule and the plain line from the bottom.
-local NOTE = { x = 520, y = 150, w = 300, h = 252, margin = 20, turn = 2.4,
-    hello = 28, helloLine = 20, body = 57, line = 19, most = 5, count = 28, links = 57, rule = 37, keeps = 22 }
+-- body, and the links from the bottom.
+local NOTE = { x = 520, y = 150, w = 300, h = 225, margin = 20, turn = 2.4,
+    hello = 28, helloLine = 20, body = 57, line = 19, most = 5, count = 28, links = 30 }
 -- Hardly crumpled, its corners curling a little, no folds: it was written
 -- and laid in the parcel flat.
 local CREASE = {
@@ -227,7 +225,7 @@ local CREASE = {
 -- The makers. Placeholders until checked against real NPCs.
 local MAKERS = {
     gnome = { sender = { "WIZZLEBOLT & DAUGHTER", "Diarywrights, Tinker Town" },
-        address = { "To whoever picks", "this up" }, postmark = { "TINKER", "TOWN" } },
+        address = {}, postmark = { "TINKER", "TOWN" } },
     goblin = { sender = { "GRIZZIK'S DIARIES", "Ratchet \194\183 no refunds" },
         address = { "To the new owner", "(paid in full)" }, aside = true, postmark = { "RATCHET" } },
 }
@@ -236,10 +234,10 @@ local MAKERS = {
 local HELLO = { first = "Oh \226\128\148 hello. I'm your new diary.", again = "Your diary, still here whenever you're ready." }
 local BODY = "I write down the people you meet, all by myself, so that months from now you still know who they"
     .. " were. It's only pencil, until you ink someone in."
-local KEEPS = "I keep to myself: nothing leaves this computer."
 
 local function Pencilled(n)
-    if n == 0 then return "Nobody yet. Give me a minute." end
+    -- Nobody yet: nothing to say.
+    if n == 0 then return nil end
     if n == 1 then return "I've pencilled in one already." end
     return ("I've pencilled in %d already."):format(n)
 end
@@ -274,11 +272,8 @@ local PF = {
     postmark = Font("SocialDiaryFontParcelPostmark", FRIZ, 11, { POSTMARK.ink[1], POSTMARK.ink[2], POSTMARK.ink[3], 0.62 }),
     stamp = Font("SocialDiaryFontParcelStamp", MORPHEUS, 18, STAMP.paper),
     seal = Font("SocialDiaryFontParcelSeal", MORPHEUS, 13, WAX.goblin.dark),
-    italic = Font("SocialDiaryFontParcelItalic", NEUTON, 15, Style.INK),
     tornTitle = Font("SocialDiaryFontParcelTornTitle", MORPHEUS, 16, Style.INK_STRONG),
-    tornItalic = Font("SocialDiaryFontParcelTornItalic", NEUTON, 13, Style.INK),
     link = Font("SocialDiaryFontParcelLink", FRIZ, 13, LINK.base, 0.9),
-    aside = Font("SocialDiaryFontParcelAside", FRIZ, 11, LINK.aside, 0.9),
 }
 
 --------------------------------------------------------------------------
@@ -472,7 +467,6 @@ Parcel.CREASE = CREASE
 Parcel.MAKERS = MAKERS
 Parcel.HELLO = HELLO
 Parcel.BODY = BODY
-Parcel.KEEPS = KEEPS
 Parcel.Pencilled = Pencilled
 Parcel.PF = PF
 Parcel.Rad = Rad
