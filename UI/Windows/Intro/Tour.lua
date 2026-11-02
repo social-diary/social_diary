@@ -7,10 +7,12 @@
 -- The sheet is a real loose sheet (UI/Paper/Sheet.lua), laid the way the map
 -- sheet is (UI/Map/HeatSheet.lua), and on it a reduced Your Diary plate,
 -- built up one layer a step: a short road in ink, two level pins, a
--- questing pool, a first green's pouch and its card, two people's rings and
--- strips, each a real piece of the page (UI/Journey/Plate.lua's card and its
+-- pool where you fought, a first green's pouch and its card, a rescue's
+-- mark and the card of the stranger who saved you, a ring and a strip for
+-- Thex, each a real piece of the page (UI/Journey/Plate.lua's card and its
 -- layers, UI/Ink/Trail.lua's ink, UI/Paper/Strip.lua's strips, the find card
--- of the margin's find kind). The road is made up in memory (ROUTE):
+-- and the witness card of the margin's registered kinds, their marks of
+-- the plate's). The road is made up in memory (ROUTE):
 -- nothing of the player's own is read or written while the sheet is out.
 -- One step strip lies in a fixed place and says what the step shows; its
 -- foot is the step's one action: "Continue →" (steps 1 to 3), then an
@@ -89,24 +91,28 @@ local LEVEL = { lines = 20, strips = 25 }
 
 -- The made-up road, fed to the real ink (UI/Ink/Trail.lua's Ink.Build) in
 -- 0..1 of the plate's art box (424 by 323 px). A: the road alone (step 1).
--- B: the road, a 30-minute questing stop and the road on (steps 2 to 5);
--- B's road lies on A's within a pixel. `yards` how far a pixel of the box is
--- (the trail's pxPerYard), `kind` the stop's tint (Ink.TINT's ochre).
+-- B: the road, a 30-minute stop spent fighting and the road on (steps 2 to
+-- 5); B's road lies on A's within a pixel. The stop says what was done there
+-- as a recorded one does (its `act`: 15 of its 30 minutes in combat), and
+-- its kind and tint come of that through the plate's own reading
+-- (UI/Journey/Text/Tips.lua's StopKind: "fighting", Ink.TINT's rust).
+-- `yards` how far a pixel of the box is (the trail's pxPerYard).
+-- (2 Nov 2026, the user: the pool a fight, not a quest.)
 local ROUTE = {
     A = { stops = {}, roads = {
         { from = 0, to = 700, pts = { 0.05, 0.88, 0.12, 0.84, 0.20, 0.78, 0.27, 0.72, 0.34, 0.66, 0.44, 0.60,
             0.53, 0.57, 0.62, 0.52, 0.71, 0.44, 0.80, 0.36, 0.90, 0.26, 0.96, 0.20 } } } },
     B = { stops = { { kind = "stop", from = 300, to = 2100, seconds = 1800, x = 0.34, y = 0.66,
-        sdx = 0.016, sdy = 0.02, rho = 0.2 } },
+        sdx = 0.016, sdy = 0.02, rho = 0.2, act = { combat = 900 } } },
         roads = {
             { from = 0, to = 300, pts = { 0.05, 0.88, 0.12, 0.84, 0.20, 0.78, 0.27, 0.72, 0.32, 0.68 } },
             { from = 2100, to = 2600, pts = { 0.36, 0.64, 0.44, 0.60, 0.53, 0.57, 0.62, 0.52, 0.71, 0.44,
                 0.80, 0.36, 0.90, 0.26, 0.96, 0.20 } } } },
-    yards = 0.1, kind = "questing",
+    yards = 0.1,
 }
 -- The marks, in px of the art box (y down): where the level began (6) and
--- the next was reached (7), the first green's pouch, and the rings of time
--- spent with Bram and with Thex.
+-- the next was reached (7), the first green's pouch, where Bram saved you
+-- (a rescue's mark) and the ring of the time spent with Thex.
 local MARKS = { pin6 = { 24, 281, level = 6 }, pin7 = { 301, 142, level = 7 }, pouch = { 164, 232 },
     bram = { 226, 183 }, thex = { 372, 96 } }
 -- A pin where a level began: ink round paper, `ring` px of ink (the plate's
@@ -148,10 +154,10 @@ local STEPS = {
     { heading = "Your road",
         words = function() return "Wherever you go, the diary draws your road by itself. Each level you reach gets a page like this." end },
     { heading = "What you did",
-        words = function() return "Where you stayed a while, the ink pools. A memorable moment, like your first green item, gets a card of its own." end },
+        words = function() return "Where you stopped to fight, the ink pools. A memorable moment, like your first green item, gets a card of its own." end },
     { heading = "Who you met",
         words = function()
-            return "Anyone you group, trade or whisper with is written down by itself, like Bram and Thex. After "
+            return "Anyone you group, trade, whisper or fight beside is written down by itself, like Bram and Thex. After "
                 .. ns.UI.Journal.PencilDays() .. " they fade."
         end },
     { heading = "Keep one",
@@ -163,7 +169,14 @@ local STEPS = {
 }
 local WORDS = {
     find = { heading = "Your first green!", item = "Wolfskin Bracers" },
-    bram = { name = "Bram Redfen", minutes = 20 },
+    -- Bram: a stranger who saved you from Hogger with 8% of your health
+    -- left. As a witness the player writes in (Core/Custom.lua's moment
+    -- "witnessed"), the record the card reads: the deed, who, the creature
+    -- (bare: "from Hogger", no article) and its rank, the health left, and
+    -- the level you were. That record has no npcID (Hogger's is 448, level
+    -- 11, elite, in Elwynn Forest): nothing on the card or its tooltip reads one.
+    bram = { deed = "saved", name = "Bram Redfen", creature = "Hogger", rank = "elite", bare = "yes", pct = 8,
+        level = 6 },
     thex = { minutes = 35 },
     add = "+ Add",
     progress = "%d of 5",
@@ -430,13 +443,26 @@ local function Build(parent)
         if find.halo then kit.Dot(kit.halo, x, y, find.halo, plate.paper, MARK.halo) end
         find.draw(kit, x, y, colour)
     end)
-    -- Time spent together: the ring of a session (Plate.SHAPE.session).
-    for _, key in ipairs({ "bram", "thex" }) do
-        Mark(layers[key], MARKS[key], function(kit, x, y)
-            kit.Dot(kit.halo, x, y, MARK.together + 4, plate.paper, MARK.halo)
-            Plate.SHAPE.session(kit, x, y)
-        end)
-    end
+    -- Time spent together with Thex: the ring of a session
+    -- (Plate.SHAPE.session).
+    Mark(layers.thex, MARKS.thex, function(kit, x, y)
+        kit.Dot(kit.halo, x, y, MARK.together + 4, plate.paper, MARK.halo)
+        Plate.SHAPE.session(kit, x, y)
+    end)
+    -- Where Bram saved you: a witness's own registered mark ("witnessed"),
+    -- which for a rescue is the close call's, through the registry as the
+    -- plate draws it (the core names no feature). Its witness, made of the
+    -- record by the mark's own `choose`, is what Bram's card is written of.
+    local bramMark = { at = { slot.pad + MARKS.bram[1], slot.pad + MARKS.bram[2] },
+        list = { { kind = "witnessed", witnessed = WORDS.bram } } }
+    WORDS.bram.t = ns.Now()
+    Mark(layers.bram, MARKS.bram, function(kit, x, y)
+        local spec = Plate.MARKS.witnessed
+        if not spec then return end
+        local arg = spec.arg and spec.arg(bramMark.list)
+        if spec.halo then kit.Dot(kit.halo, x, y, spec.halo, plate.paper, MARK.halo) end
+        spec.draw(kit, x, y, arg)
+    end)
 
     ----------------------------------------------------------------------
     -- The strips
@@ -451,9 +477,14 @@ local function Build(parent)
     local find = findKind.new(strips)
     findKind.write(find, { item = { link = nil, whats = ITEM.whats, moments = {}, rec = { name = WORDS.find.item },
         icon = ITEM.icon, short = true } }, { Seed = function() return "intro-find" end, now = ns.Now(), named = {} })
-    local bram = ns.UI.PaperStrip(strips)
-    bram:SetNote({ name = WORDS.bram.name, what = ns.UI.Format.Duration(WORDS.bram.minutes * 60) .. " together",
-        seed = "intro-bram" })
+    -- Bram's card: the margin's own written-witness kind, a stranger's (no
+    -- page to open), written of the witness the mark chose. Nothing of it is
+    -- saved: the record lives in WORDS.bram.
+    local witnessKind = ns.UI.JourneyMargin.KINDS.witnessCustom
+    local bram = witnessKind.new(strips)
+    local saved = Plate.MARKS.witnessed.choose({ bramMark })[1]
+    witnessKind.write(bram, { witness = saved }, { Seed = function() return "intro-bram" end, now = ns.Now() })
+    Tour.saved = saved
     local thex = ns.UI.PaperStrip(strips)
     local step = ns.UI.PaperStrip(strips)
     -- The step strip's words as they were, over the new ones while they
@@ -743,7 +774,7 @@ local function Build(parent)
         -- Its ink, made up: the two roads and the pool, each on its layer.
         local box = { at = function(x, y) return plate.At(x, y) end, fullW = art.w, fullH = art.h,
             pxPerYard = ROUTE.yards }
-        local opts = { kind = function() return ROUTE.kind end }
+        local opts = { kind = ns.UI.JourneyText.StopKind }
         local primsA = Ink.Build(ROUTE.A, box, opts)
         local primsB, _, pools = Ink.Build(ROUTE.B, box, opts)
         local road, pool = {}, {}
@@ -777,6 +808,8 @@ local function Build(parent)
         end
         layers.pool.parts = parts
         Tour.pool = e
+        -- For the tests: what the pool was read as (its kind, its tint).
+        Tour.poolKind, Tour.poolTint = pools[1] and pools[1].kind, pools[1] and pools[1].tint
         for _, key in ipairs({ "pin6", "pin7", "pouch", "bram", "thex" }) do layers[key]:Draw(1) end
 
         -- The strips, where the sheet takes their boxes.

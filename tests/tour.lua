@@ -228,10 +228,27 @@ for n = 2, 5 do
         Check(Inked(Tour.layers.roadB) == #Tour.layers.roadB.list, "step 2's road does not all show")
         Check(Tour.layers.pouch.marks.ink.used > 0, "the pouch is not on the plate")
         Eq(Tour.strips.find.fade, 1, "the find card's box is not at full strength")
+        -- A fight's pool: read as fighting from what was done there, in
+        -- the trail's rust.
+        Eq(Tour.poolKind, "fighting", "the pool is not a fight's")
+        Eq(Tour.poolTint, ns.UI.InkTrail.TINT.fighting, "the pool is not in the fight's rust")
+        Check(Tour.STEPS[2].words():find("Where you stopped to fight, the ink pools"), "step 2's words")
     elseif n == 3 then
         for _, key in ipairs({ "bram", "thex" }) do
             Check(Visible(Tour.layers[key].frame) and Tour.layers[key].marks.ink.used > 0, key .. "'s ring is not drawn")
         end
+        -- Bram's card: a witness's, saved you from Hogger, a stranger's (no
+        -- page), shown at full strength; nothing of it saved.
+        local bram = Tour.strips.bram
+        Check(Visible(bram), "Bram's card is hidden")
+        Eq(bram:GetAlpha(), 1, "Bram's card is not at full strength")
+        Eq(bram:Deed(), "saved you", "Bram's card is not a rescue")
+        Eq(bram:Foe(), "from Hogger", "Bram's card does not name Hogger")
+        Eq(bram.guid, nil, "Bram's card opens a page")
+        Eq(bram.name:GetText(), "Bram Redfen", "Bram's card does not name him")
+        Check(Tour.layers.bram.marks.ink.used + Tour.layers.bram.marks.inner.used + Tour.layers.bram.marks.halo.used > 0,
+            "the rescue's mark is not drawn")
+        Check(Tour.STEPS[3].words():find("fight beside"), "step 3's words")
         -- Laid back, the find card's box (its wash multiplied in, which a
         -- frame's alpha does not reach) fades with it.
         Eq(Tour.strips.find.fade, Tour.BACK, "the find card's box is not laid back with the card")
@@ -254,7 +271,8 @@ Eq(Tour.strips.step.foot.label:GetText(), "Click his name to see his page.", "st
 Check(not Tour.strips.step.foot:IsShown(), "an instruction takes clicks")
 -- Laid back at step 5: road, pins, pool and Bram at .32; Thex at full.
 Eq(Tour.layers.roadB.frame:GetAlpha(), Tour.BACK, "the road is not laid back")
-Eq(Tour.layers.bram.frame:GetAlpha(), Tour.BACK, "Bram's ring is not laid back")
+Eq(Tour.layers.bram.frame:GetAlpha(), Tour.BACK, "Bram's mark is not laid back")
+Eq(Tour.strips.bram:GetAlpha(), Tour.BACK, "Bram's card is not laid back")
 Eq(Tour.layers.thex.frame:GetAlpha(), 1, "Thex's ring is laid back")
 Check(Tour.strips.thex.blot:IsShown(), "Thex's blot did not stay")
 Eq(Tour.strips.thex.guid, GUID, "Thex's strip is not a link")
@@ -465,6 +483,16 @@ for n = 3, 5 do
     if Tour.step < 4 then Tour.strips.step.foot:Click() else Tour.strips.thex.aside:Click() end
     Eq(Tour.step, n, "setup: not at step " .. n)
     Check(host.scripts.OnUpdate ~= nil, "step " .. n .. " has no entrance")
+    if n == 3 then
+        Eq(Tour.strips.bram:GetAlpha(), 0, "Bram's card is laid before its time")
+        host.scripts.OnUpdate(host, 0.6)
+        local a = Tour.strips.bram:GetAlpha()
+        Check(a > 0 and a < 1, "Bram's card does not fade in")
+    elseif n == 4 then
+        host.scripts.OnUpdate(host, 0.15)
+        local a = Tour.strips.bram:GetAlpha()
+        Check(a < 1 and a > Tour.BACK, "Bram's card is not laid back as the step comes in")
+    end
     host.scripts.OnUpdate(host, 1.5)
     Eq(host.scripts.OnUpdate, nil, "step " .. n .. "'s entrance runs past 1.5 s")
 end
