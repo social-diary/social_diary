@@ -220,7 +220,6 @@ Style.FONT = {
     pencilSmall = Font("SocialDiaryFontPencilSmall", FRIZ, 11, Style.GRAPHITE),
     -- The first line of a note in pencil: the parcel's (UI/Windows/Intro/Torn.lua).
     pencilLede = Font("SocialDiaryFontPencilLede", FRIZ, 15, Style.GRAPHITE),
-    pencilTitle = Font("SocialDiaryFontPencilTitle", MORPHEUS, 20, Style.GRAPHITE),
     margin = Font("SocialDiaryFontMargin", FRIZ, 12, Style.ACCENT),
     -- The person's page in Goodmountain (GOODMOUNTAIN, above), mixed case:
     -- their name on their page (27; a long

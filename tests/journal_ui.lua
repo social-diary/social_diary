@@ -608,7 +608,7 @@ Check(J:IsShown(), "the keybind did not open the journal")
 Section("an empty diary's People page: three ways in")
 
 -- An empty diary hides what there is nothing to search or sort, and
--- teaches how someone gets in instead, with a page drawn in pencil.
+-- teaches how someone gets in instead, with a strip taped on the right page.
 local savedDiary, savedRows, savedSeen = ns.db.diary, ns.db.interactions, ns.db.sightings
 ns.db.diary, ns.db.sightings = {}, {}
 ns.db.interactions = { [F.PUG.guid] = { { type = "trade", time = mock.now } } }
@@ -623,6 +623,12 @@ Check(not J.emptyProfile:IsShown(), "the empty diary still says to choose someon
 Eq(J.emptyList:GetText(), "", "the empty diary still prints the old empty text")
 Check(W.laterText:GetText():find("30 days"), "the pencil's days are not the setting's")
 Check(W.laterText:GetText():find("One is there already"), "who is pencilled in already is not counted")
+-- The right page is one strip taped on, saying where the entries will
+-- show up; it names no one, so it opens nothing.
+Check(W.strip and W.strip:IsShown(), "the empty diary's right page has no strip")
+Eq(W.strip.name:GetText(), "This is where your diary entries will show up", "the strip does not say where entries go")
+Eq(W.strip:What(), "", "the strip writes more than its one line")
+Check(W.strip.guid == nil and not W.strip.link:IsMouseClickEnabled(), "the strip opens something")
 
 -- The key: unbound, it says so; bound here, out of combat, in place of
 -- whatever had it.
