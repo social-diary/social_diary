@@ -9,6 +9,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ### Shiny new Things
 
+- _Your Diary_ now allows adding custom events by right clicking the Map
 - _Dungeon View_ explains its default route the first time it opens
 - Paper texture intensity can be set in _Settings_
 
