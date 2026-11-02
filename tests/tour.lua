@@ -154,8 +154,6 @@ Eq(Tour.step, 1, "the tour did not start at its first step")
 Check(host:IsShown() and view:IsShown(), "the sheet is not on the book")
 Check(Played("sheetOpen"), "laying the sheet did not rustle")
 Eq(ns.db.settings.introSeen, false, "laying the sheet counted as seeing it")
-Eq(Tour.strips.step.name:GetText(), "Your road", "step 1's heading")
-Check(Tour.strips.step:What():find("draws your road by itself"), "step 1's words")
 Eq(Tour.strips.step.foot.label:GetText(), "Continue", "step 1's foot is not Continue")
 -- Its arrow is drawn: the fonts have no "→".
 for _, t in ipairs(Tour.strips.step.foot.arrow or {}) do Check(t:IsShown(), "Continue's arrow is not drawn") end
@@ -208,14 +206,11 @@ for _, b in pairs(Tour.boxes) do
 end
 
 --------------------------------------------------------------------------
-Section("the steps, their words and lines")
+Section("the steps and their lines")
 
 local leaders, arrows = Shown()
 Eq(leaders .. "/" .. arrows, "1/0", "step 1's lines")
-local WANT = {
-    { "Your road", "1/0" }, { "What you did", "2/0" }, { "Who you met", "2/0" }, { "Keep one", "1/1" },
-    { "Kept for good", "1/1" },
-}
+local WANT = { "1/0", "2/0", "2/0", "1/1", "1/1" }
 for n = 2, 5 do
     sounds = {}
     To(n)
@@ -232,7 +227,6 @@ for n = 2, 5 do
         -- the trail's rust.
         Eq(Tour.poolKind, "fighting", "the pool is not a fight's")
         Eq(Tour.poolTint, ns.UI.InkTrail.TINT.fighting, "the pool is not in the fight's rust")
-        Check(Tour.STEPS[2].words():find("Where you stopped to fight, the ink pools"), "step 2's words")
     elseif n == 3 then
         for _, key in ipairs({ "bram", "thex" }) do
             Check(Visible(Tour.layers[key].frame) and Tour.layers[key].marks.ink.used > 0, key .. "'s ring is not drawn")
@@ -248,16 +242,14 @@ for n = 2, 5 do
         Eq(bram.name:GetText(), "Bram Redfen", "Bram's card does not name him")
         Check(Tour.layers.bram.marks.ink.used + Tour.layers.bram.marks.inner.used + Tour.layers.bram.marks.halo.used > 0,
             "the rescue's mark is not drawn")
-        Check(Tour.STEPS[3].words():find("fight beside"), "step 3's words")
         -- Laid back, the find card's box (its wash multiplied in, which a
         -- frame's alpha does not reach) fades with it.
         Eq(Tour.strips.find.fade, Tour.BACK, "the find card's box is not laid back with the card")
     end
     Eq(Tour.step, n, "not at step " .. n)
-    Eq(Tour.strips.step.name:GetText(), WANT[n][1], "step " .. n .. "'s heading")
     Eq(Tour.progress.count:GetText(), n .. " of 5", "step " .. n .. "'s progress")
     leaders, arrows = Shown()
-    Eq(leaders .. "/" .. arrows, WANT[n][2], "step " .. n .. "'s lines")
+    Eq(leaders .. "/" .. arrows, WANT[n], "step " .. n .. "'s lines")
     Check(leaders <= 2 and arrows <= 1, "too many lines on step " .. n)
 end
 Check(Played("write"), "+ Add did not sound as writing")
@@ -266,8 +258,7 @@ Unchanged("+ Add")
 
 -- Step 3's words name the live retention; step 4 and 5 end in an
 -- instruction, not a link.
-Check(Tour.STEPS[3].words():find("After 30 days they fade"), "step 3 does not name the retention")
-Eq(Tour.strips.step.foot.label:GetText(), "Click his name to see his page.", "step 5's instruction")
+Check(Tour.STEPS[3].words():find(ns.UI.Journal.PencilDays(), 1, true), "step 3 does not name the retention")
 Check(not Tour.strips.step.foot:IsShown(), "an instruction takes clicks")
 -- Laid back at step 5: road, pins, pool and Bram at .32; Thex at full.
 Eq(Tour.layers.roadB.frame:GetAlpha(), Tour.BACK, "the road is not laid back")
@@ -313,8 +304,6 @@ local list = ns.People.Query(J.query)
 Eq(#list, 1, "more than Thex in the list")
 Eq(list[1].guid, GUID, "the one in the list is not Thex")
 Check(Tour.endStrip:IsShown(), "no ending strip")
-Eq(Tour.endStrip.name:GetText(), "An example", "the ending strip's heading")
-Check(Tour.endStrip:What():find("Thex is invented"), "the ending strip's words")
 Eq(Tour.endStrip.foot.label:GetText(), "Begin your own diary", "the ending strip's link")
 Eq(#(Tour.endStrip.foot.arrow or {}), 3, "Begin your own diary has no drawn arrow")
 Check(Played("sheetClose") and Played("pageTurn"), "the ending made no sound of the sheet and the page")

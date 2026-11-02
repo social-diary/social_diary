@@ -5,30 +5,27 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+## [2.1.0]
+
 ### Shiny new Things
 
 - _Dungeon View_ explains its default route the first time it opens
-- Paper Texture Intesity can be set in Settings
-- Onboarding is now improved and more straight-forward
+- Paper texture intensity can be set in _Settings_
 
 ### Changes
 
-- The login parcel and its note carry fewer words
+- Onboarding and the login parcel are shorter and easier to follow
 - Any key or mouse button can be bound to the addon's shortcuts
+- Clicking your current dungeon in _Your Diary_ opens its _Dungeon View_
 
 ### Fixes
 
-- Fixed various bugs that e.g. lead to resetting sightings detection, Language Support, wrong _Remember this_ target and more
-- _Dungeon View_: right-clicking beside the map no longer puts it away, and reaches the world, so you can still turn the camera with it open
-- _People_:
-  - People you've only seen just now actually show when you last saw them (was "last met")
-  - Back-to-back Dungeons now result in proper concatenated namings ("ran Sunken Temple and Upper Blackrock Spire)
-- _Your Diary_: 
-  - now skips empty levels if the Addon is loaded in on an existing character with no Data for previous levels
-  - Clicking the dungeon you're in opens its _Dungeon View_ so you can trace your way as you go, and a way you've drawn is kept even on a short solo run
-  - A dungeon run's page lists everyone on the run, with _+ Add_ under those not in your diary, and its map is no longer greyed out
-  - On a dungeon run's page, the strip naming the bosses lies over the map scrap again, and the _and n more_ is correctly placed over its card
-
+- Sightings, language support and _Remember this_ behave reliably again
+- _Dungeon View_ stays open when you right-click beside the map
+- _People_ shows the right time for people you've only seen
+- _People_ names back-to-back dungeons together correctly
+- _Your Diary_ skips empty levels from before the addon was installed
+- Dungeon run pages in _Your Diary_ list everyone and lay out correctly
 
 ## [2.0.0]
 
