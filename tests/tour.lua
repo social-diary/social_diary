@@ -108,6 +108,40 @@ local function Shown()
     return leaders, arrows
 end
 
+-- Whether a frame or region would show in the client: nothing up its
+-- parents told to hide (the mock starts every frame hidden, the client
+-- shown, so only what was hidden counts), and none at alpha 0.
+local function Visible(region)
+    local f = region
+    while f do
+        if f.recorded and f.recorded.toldShown == false then return false end
+        if f.GetAlpha and f:GetAlpha() <= 0 then return false end
+        f = f.parent
+    end
+    return true
+end
+-- How many of a layer's textures show, each with ink (alpha over 0).
+local function Inked(layer)
+    local n = 0
+    for _, each in ipairs(layer.list) do
+        if Visible(each.texture) and (each.prim.a or 0) > 0 then n = n + 1 end
+    end
+    return n
+end
+-- Every string on the tour's strips and sheet, for the glyph check: the
+-- fonts (Friz Quadrata, Neuton) have plain ASCII and the curly apostrophe,
+-- and no arrows.
+local function Glyphs(text, what)
+    local rest = (text or ""):gsub("\226\128\153", "")
+    Check(not rest:find("[\128-\255]"), what .. " has a glyph the fonts may lack: " .. tostring(text))
+end
+local function StripGlyphs(strip, what)
+    Glyphs(strip.name:GetText(), what .. "'s name")
+    Glyphs(strip:What(), what .. "'s words")
+    if strip.foot then Glyphs(strip.foot.label:GetText(), what .. "'s foot") end
+    if strip.aside then Glyphs(strip.aside.label:GetText(), what .. "'s link") end
+end
+
 --------------------------------------------------------------------------
 Section("the sheet laid at step 1")
 
@@ -122,7 +156,10 @@ Check(Played("sheetOpen"), "laying the sheet did not rustle")
 Eq(ns.db.settings.introSeen, false, "laying the sheet counted as seeing it")
 Eq(Tour.strips.step.name:GetText(), "Your road", "step 1's heading")
 Check(Tour.strips.step:What():find("draws your road by itself"), "step 1's words")
-Eq(Tour.strips.step.foot.label:GetText(), "Continue \226\134\146", "step 1's foot is not Continue")
+Eq(Tour.strips.step.foot.label:GetText(), "Continue", "step 1's foot is not Continue")
+-- Its arrow is drawn: the fonts have no "→".
+for _, t in ipairs(Tour.strips.step.foot.arrow or {}) do Check(t:IsShown(), "Continue's arrow is not drawn") end
+Eq(#(Tour.strips.step.foot.arrow or {}), 3, "Continue has no drawn arrow")
 Eq(Tour.progress.count:GetText(), "1 of 5", "the progress does not say 1 of 5")
 
 -- Escape is the sheet's while it is out, in the book's place.
@@ -141,6 +178,23 @@ for _, key in ipairs({ "wash", "dab", "rim" }) do
 end
 Check(Tour.layers.roadA.frame:IsShown() and not Tour.layers.pool.frame:IsShown(), "step 1 shows the wrong layers")
 Eq(Tour.layers.pin7.number:GetText(), "7", "pin 7 has no number")
+
+-- The plate shows, on the sheet's paper and inside it, under the strips and
+-- the leaders (2 Nov 2026, in the client: it was left hidden). Its card,
+-- road and pins are drawn and show at the end of step 1.
+Check(Visible(plate) and Visible(plate.sheet), "the plate is hidden")
+local sheetLevel = view.sheet:GetFrameLevel()
+Check(plate:GetFrameLevel() > sheetLevel, "the plate lies under the sheet's paper")
+Check(Tour.strips.step:GetFrameLevel() > plate.over:GetFrameLevel(), "the strips lie under the plate")
+local s = plate.slot
+Check(s.x >= 0 and s.y >= 0 and s.x + s.w <= Tour.SHEET.w and s.y + s.h <= Tour.SHEET.h,
+    ("the plate lies off the sheet: %d, %d, %d by %d"):format(s.x, s.y, s.w, s.h))
+Check(plate.counts.textures > 0, "the plate's card has nothing drawn")
+Check(Inked(Tour.layers.roadA) == #Tour.layers.roadA.list, "step 1's road does not all show in ink")
+for _, key in ipairs({ "pin6", "pin7" }) do
+    Check(Visible(Tour.layers[key].frame) and Tour.layers[key].marks.ink.used > 0, key .. " is not on the plate")
+end
+StripGlyphs(Tour.strips.step, "step 1's strip")
 
 -- No fold through a strip: every fold clear of every strip's box.
 local X, Y, folds = Tour.K.Lines()
@@ -165,6 +219,23 @@ local WANT = {
 for n = 2, 5 do
     sounds = {}
     To(n)
+    StripGlyphs(Tour.strips.step, "step " .. n .. "'s strip")
+    if n >= 3 then StripGlyphs(Tour.strips.thex, "Thex's strip at step " .. n) end
+    if n == 2 then
+        -- The pool and the road under it show in ink, the pouch is drawn,
+        -- and the find card's box is at the card's own strength.
+        Check(Inked(Tour.layers.pool) == #Tour.layers.pool.list, "step 2's pool does not all show")
+        Check(Inked(Tour.layers.roadB) == #Tour.layers.roadB.list, "step 2's road does not all show")
+        Check(Tour.layers.pouch.marks.ink.used > 0, "the pouch is not on the plate")
+        Eq(Tour.strips.find.fade, 1, "the find card's box is not at full strength")
+    elseif n == 3 then
+        for _, key in ipairs({ "bram", "thex" }) do
+            Check(Visible(Tour.layers[key].frame) and Tour.layers[key].marks.ink.used > 0, key .. "'s ring is not drawn")
+        end
+        -- Laid back, the find card's box (its wash multiplied in, which a
+        -- frame's alpha does not reach) fades with it.
+        Eq(Tour.strips.find.fade, Tour.BACK, "the find card's box is not laid back with the card")
+    end
     Eq(Tour.step, n, "not at step " .. n)
     Eq(Tour.strips.step.name:GetText(), WANT[n][1], "step " .. n .. "'s heading")
     Eq(Tour.progress.count:GetText(), n .. " of 5", "step " .. n .. "'s progress")
@@ -226,7 +297,8 @@ Eq(list[1].guid, GUID, "the one in the list is not Thex")
 Check(Tour.endStrip:IsShown(), "no ending strip")
 Eq(Tour.endStrip.name:GetText(), "An example", "the ending strip's heading")
 Check(Tour.endStrip:What():find("Thex is invented"), "the ending strip's words")
-Eq(Tour.endStrip.foot.label:GetText(), "Begin your own diary \226\134\146", "the ending strip's link")
+Eq(Tour.endStrip.foot.label:GetText(), "Begin your own diary", "the ending strip's link")
+Eq(#(Tour.endStrip.foot.arrow or {}), 3, "Begin your own diary has no drawn arrow")
 Check(Played("sheetClose") and Played("pageTurn"), "the ending made no sound of the sheet and the page")
 Eq(ns.db.settings.introSeen, true, "the example is not counted seen")
 for key, v in pairs(escape) do Check(v ~= nil, key) end
@@ -372,9 +444,19 @@ Check(not view.arriving and view.scripts.OnUpdate == nil, "the sheet did not set
 Tour.strips.step.foot:Click()
 Check(host.scripts.OnUpdate ~= nil, "step 2 has no entrance")
 Eq(Tour.strips.find:GetAlpha(), 0, "the find card is laid before its time")
+Eq(Tour.strips.find.fade, 0, "the find card's box shows before the card")
+-- The step strip says its words last: none yet, the old fading off.
+Eq(Tour.strips.step.name:GetAlpha(), 0, "the step strip's words come in first")
+Check(Tour.strips.ghost:IsShown(), "the old words are not over the new")
+host.scripts.OnUpdate(host, 1.0)
+Eq(Tour.strips.step.name:GetAlpha(), 0, "the step strip spoke before the card was laid")
+Check(Tour.strips.find:GetAlpha() > 0.5, "the card is not laid by 1 s")
+Check(not Tour.strips.ghost:IsShown(), "the old words stayed")
 Tour.view.sheet.scripts.OnMouseDown(Tour.view.sheet, "LeftButton")
 Eq(host.scripts.OnUpdate, nil, "a click did not finish the entrance")
 Eq(Tour.strips.find:GetAlpha(), 1, "the find card is not laid once finished")
+Eq(Tour.strips.find.fade, 1, "the find card's box is not at full strength once finished")
+Eq(Tour.strips.step.name:GetAlpha(), 1, "the step strip's words are not said once finished")
 Eq(Tour.layers.roadB.frame:GetAlpha(), Tour.BACK, "the road is not laid back once finished")
 Check(not Tour.strips.ghost:IsShown(), "the old words stayed over the new")
 

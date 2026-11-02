@@ -172,7 +172,12 @@ local HIT = 2
 -- little heavier than a hairline: it is the slip's one way on); the aside
 -- `gap` px at least after the name; the blot `gap` px before the name,
 -- which moves along for it. A link's ink, under the mouse, goes to rubric.
-local EXTRA = { foot = { gap = 6, line = 1.5, alpha = 0.75 }, aside = { gap = 6 }, blot = { gap = 3 } }
+-- A foot that leads on ends in an arrow drawn in its own ink (`arrow`:
+-- `gap` px after the words, `length` px long, its head two strokes `head` px
+-- back at `spread` radians either side, all `width` px): Friz Quadrata has
+-- no "→" (2 Nov 2026, in the client: a box where the arrow should be).
+local EXTRA = { foot = { gap = 6, line = 1.5, alpha = 0.75 }, aside = { gap = 6 }, blot = { gap = 3 },
+    arrow = { gap = 4, length = 9, head = 4, spread = 0.6, width = 1.3 } }
 -- A rival's foot: a rubric line `inset` px in from the bottom edge, inset
 -- as far from the sides, `width` px at `alpha`.
 local RIVAL = { inset = 3, width = 1, alpha = 0.7 }
@@ -595,8 +600,9 @@ function ns.UI.PaperStrip(parent, card)
     -- underlined (the name underlined always, a link written as one), blot
     -- ({ size, alpha }: a drop of ink before the name), aside ({ text, font,
     -- onClick }: a link flush right on the name's line), foot ({ text, font,
-    -- colour, onClick }: a line under what happened, a link where it has an
-    -- onClick, else plain words in `colour`) }.
+    -- colour, onClick, arrow }: a line under what happened, a link where it
+    -- has an onClick, else plain words in `colour`; `arrow` ends it in a
+    -- drawn arrow, EXTRA.arrow) }.
     function strip:SetNote(note)
         self.note = note
         self.guid = note.guid
@@ -767,7 +773,8 @@ function ns.UI.PaperStrip(parent, card)
             label:SetText(foot.text or "")
             label:SetSize(0, 0)
             footW, footH = Width(label) + 2, math.max(math.ceil(label:GetStringHeight() or 0), 13)
-            textW = math.max(textW, footW)
+            local A = EXTRA.arrow
+            textW = math.max(textW, footW + (foot.arrow and (A.gap + A.length) or 0))
         end
         W = math.min(width, math.max(note.least or 0, math.ceil(math.max(textW, picW, underW)) + pad[1] + pad[3]))
         H = pad[2] + picH + nameH + underH + quoteGap
@@ -896,12 +903,32 @@ function ns.UI.PaperStrip(parent, card)
             if not spec then
                 label:Hide()
                 button.line:Hide()
+                for _, t in ipairs(button.arrow or {}) do t:Hide() end
                 button:Hide()
                 return
             end
             label:SetTextColor(colour[1], colour[2], colour[3])
             Write(label, lx + w / 2, ly, w, h)
             label:Show()
+            -- Its arrow after the words, in their ink (EXTRA.arrow).
+            local A = EXTRA.arrow
+            local tw = w
+            if spec.arrow then
+                button.arrow = button.arrow or { Texture("ARTWORK", 1), Texture("ARTWORK", 1), Texture("ARTWORK", 1) }
+                local x0 = lx + w + A.gap
+                local tip, y = x0 + A.length, ly + 0.5
+                local shaft = button.arrow[1]
+                shaft:SetColorTexture(colour[1], colour[2], colour[3], 1)
+                Place(shaft, (x0 + tip) / 2, y, A.length, A.width)
+                for k, side in ipairs({ -1, 1 }) do
+                    local t = button.arrow[k + 1]
+                    local a = math.pi + side * A.spread
+                    t:SetColorTexture(colour[1], colour[2], colour[3], 1)
+                    Place(t, tip + math.cos(a) * A.head / 2, y - math.sin(a) * A.head / 2, A.head + 0.5, A.width, a)
+                end
+                w = w + A.gap + A.length
+            end
+            for _, t in ipairs(button.arrow or {}) do t:SetShown(spec.arrow == true) end
             button.Ink(false)
             Place(button.line, lx + (w - 2) / 2, ly + h / 2, w - 2, line or 1)
             button.line:SetShown(button.onClick ~= nil)

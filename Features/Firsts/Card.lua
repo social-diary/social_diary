@@ -270,6 +270,31 @@ function FindCard.New(parent)
         GameTooltip:Hide()
     end)
 
+    -- A wash is multiplied into what lies under it (MOD), which a frame's
+    -- alpha does not reach: faded with the card (card:SetAlpha, as the
+    -- tour's sheet fades and lays back what it shows, UI/Windows/Intro/
+    -- Tour.lua), its colours go that far toward white, which multiplies to
+    -- nothing, so the box fades with the slip it is pasted on.
+    card.fade = 1
+    local function Faded(c)
+        local k = 1 - card.fade
+        return { c[1] + (1 - c[1]) * k, c[2] + (1 - c[2]) * k, c[3] + (1 - c[3]) * k }
+    end
+    local function Paint()
+        local wash = card.wash
+        if not wash then return end
+        local D, L, R = Faded(wash.deep), Faded(wash.left), Faded(wash.right)
+        Style.Gradient(card.boxWash[1], "HORIZONTAL", { D[1], D[2], D[3], 1 }, { L[1], L[2], L[3], 1 })
+        Style.Gradient(card.boxWash[2], "HORIZONTAL", { L[1], L[2], L[3], 1 }, { R[1], R[2], R[3], 1 })
+        card:Hot(card.hot)
+    end
+    local setAlpha = card.SetAlpha
+    function card:SetAlpha(a)
+        setAlpha(self, a)
+        self.fade = math.max(0, math.min(1, a or 1))
+        Paint()
+    end
+
     -- The rule (a wash's tide line) as under the mouse or not. The tide's
     -- full sides, the bottom and right (all four laid flat), go to the
     -- name's ink.
@@ -281,7 +306,7 @@ function FindCard.New(parent)
             local ink = FindCard.Ink(self.quality)
             for i, tide in ipairs(self.boxTide) do
                 local full = self.flat or i == 2 or i == 4
-                local c = not full and wash.tideIn or (on and ink or wash.tide)
+                local c = Faded(not full and wash.tideIn or (on and ink or wash.tide))
                 tide:SetColorTexture(c[1], c[2], c[3], 1)
             end
         end
@@ -442,10 +467,7 @@ function FindCard.New(parent)
             card.boxRule:Hide()
             Lay(card.boxGround, 0, 0, w + 2, h + 2)
             local u0, u1, us = -w / 2 - 1, w / 2 + 1, left + chip.textAt[1]
-            local D, L, R = wash.deep, wash.left, wash.right
-            Style.Gradient(card.boxWash[1], "HORIZONTAL", { D[1], D[2], D[3], 1 }, { L[1], L[2], L[3], 1 })
             Lay(card.boxWash[1], (u0 + us) / 2, 0, us - u0, h + 2)
-            Style.Gradient(card.boxWash[2], "HORIZONTAL", { L[1], L[2], L[3], 1 }, { R[1], R[2], R[3], 1 })
             Lay(card.boxWash[2], (us + u1) / 2, 0, u1 - us, h + 2)
             -- Top and bottom across the corners, left and right between
             -- them, so no corner is multiplied twice.
@@ -454,7 +476,7 @@ function FindCard.New(parent)
             Lay(tide[2], 0, h / 2 + 0.5, w + 2, 1)
             Lay(tide[3], -w / 2 - 0.5, 0, 1, h)
             Lay(tide[4], w / 2 + 0.5, 0, 1, h)
-            card:Hot(card.hot)
+            Paint()
         else
             -- A white item's: its heavier bottom and right, its rule, its
             -- ground.

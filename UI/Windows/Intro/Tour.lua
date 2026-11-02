@@ -61,13 +61,18 @@ ns.UI.Tour = Tour
 --------------------------------------------------------------------------
 
 -- The sheet: its size on the book's 808 by 568 (about 40 px of book show
--- either side and 24 above and below, so it reads as a sheet lying on the
--- book; the map sheet is 600 by 492), the key it falls by, and how it lies:
--- turned `turn` degrees (as SetRotation, counter-clockwise: the mockup's
--- -1.0) with its middle `at` px off the book's (x right, y up: the
--- mockup's 6 right, 4 down). Its host's global name, for Escape.
-local SHEET = { w = 720, h = 520, key = "intro", turn = 1.0, at = { 6, -4 }, name = "SocialDiaryIntroTour",
-    book = "SocialDiaryJournalFrame" }
+-- either side, 12 above and 16 below, so it reads as a sheet lying on the
+-- book, and covers Your Diary's heading; the map sheet is 600 by 492), the
+-- key it falls by, and how it lies: turned `turn` degrees (as SetRotation,
+-- counter-clockwise: the mockup's -1.0) with its middle `at` px off the
+-- book's (x right, y up). Its host's global name, for Escape. Its folds are
+-- the map sheet's (CREASE) with the facets' light at half its slope
+-- (`crease.light`, the map's 1.8): the map's print hides how the facets
+-- differ, this sheet's bare paper does not. (2 Nov 2026, in the client: at
+-- 520 px and 4 px down, the character's name showed over its top edge,
+-- and at the map's light its middle third read as darker panels.)
+local SHEET = { w = 720, h = 540, key = "intro", turn = 1.0, at = { 6, 2 }, name = "SocialDiaryIntroTour",
+    book = "SocialDiaryJournalFrame", crease = { light = 0.9 } }
 -- Where Your Diary's right page lies on the sheet (its top left): the plate,
 -- its slot and the row of strips under it are the page's own
 -- (UI/Journey/Look.lua's LAYOUT[1][1].top), from there.
@@ -136,7 +141,9 @@ local BLOT = { size = 5, alpha = 0.6, peak = 0.92, at = 0.35, from = 0.2 }
 
 -- The words. The step's heading in the hand, its words (at most 25), and its
 -- foot: "Continue →" or the instruction. "30 days" is the live retention.
-local CONTINUE = "Continue \226\134\146"
+-- Each link that leads on ends in an arrow the strip draws (the fonts have
+-- no "→": UI/Paper/Strip.lua's EXTRA.arrow), so its words end without one.
+local CONTINUE = "Continue"
 local STEPS = {
     { heading = "Your road",
         words = function() return "Wherever you go, the diary draws your road by itself. Each level you reach gets a page like this." end },
@@ -162,7 +169,7 @@ local WORDS = {
     progress = "%d of 5",
     ending = { heading = "An example",
         words = "This is how the people you add will look. Thex is invented; your own fill in as you play.",
-        begin = "Begin your own diary \226\134\146" },
+        begin = "Begin your own diary" },
 }
 -- The find card's item: a green leather bracer's picture from the client's
 -- icons (a typed name has no link, so it takes the card's fallbacks, the
@@ -171,20 +178,24 @@ local ITEM = { icon = "Interface\\Icons\\INV_Bracer_07", whats = { "uncommon" } 
 
 -- The steps' entrances (ms; step 1's from the sheet laid, its first
 -- `arrive` its arrival, UI/Paper/Sheet.lua's ARRIVE): when each piece starts
--- and ends. The road shown in its build order
--- at an even pace, pin 7 stamped (alpha 0 to 1, scale `stamp` to 1) as the
--- line reaches it; a pool's wash, dabs (in their build order), rim (round
--- the pool) and drops as it is left; leaders drawn as the pen goes; strips
--- laid on (alpha, and a slide from `slide` px); words cross-faded.
+-- and ends. The road shown in its build order at an even pace, pin 7
+-- stamped (alpha 0 to 1, scale `stamp` to 1) as the line reaches it; a
+-- pool's wash, dabs (in their build order), rim (round the pool) and drops
+-- as it is left; leaders drawn as the pen goes; strips laid on (alpha, and a
+-- slide from `slide` px). The step strip says its piece last (`say`), once
+-- what it tells of has landed (the user's round of 2 Nov 2026, in the
+-- client): the old words fade off at once (`out`), the new come in after
+-- the step's own pieces, and its leader or arrow is drawn from it last.
+-- On step 1 the whole strip comes in so.
 local MOTION = {
-    arrive = 240, stamp = 0.7, stampTime = 140, slide = { -3, -8 }, words = 220, back = 300,
-    [1] = { road = { 240, 1240 }, pin = 940, leader = { 1240, 1480 } },
-    [2] = { wash = { 0, 220 }, dab = { 150, 550 }, rim = { 500, 750 }, drops = { 760, 860 }, leader = { 780, 1040 },
-        pouch = 900, findLeader = { 1000, 1240 }, card = { 1150, 1410 } },
+    arrive = 240, stamp = 0.7, stampTime = 140, slide = { -3, -8 }, out = 200, back = 300,
+    [1] = { road = { 240, 1000 }, pin = 760, say = { 1000, 1220 }, leader = { 1220, 1460 } },
+    [2] = { wash = { 0, 200 }, dab = { 120, 480 }, rim = { 420, 640 }, drops = { 640, 720 }, pouch = 720,
+        findLeader = { 800, 1000 }, card = { 900, 1120 }, say = { 1120, 1300 }, leader = { 1300, 1500 } },
     [3] = { bram = 0, thex = 150, bramLeader = { 300, 540 }, bramStrip = { 500, 760 }, thexLeader = { 620, 860 },
-        thexStrip = { 820, 1080 } },
-    [4] = { add = { 100, 320 }, arrow = { 350, 670 } },
-    [5] = { blot = { 0, 520 }, name = { 60, 380 }, arrow = { 500, 820 } },
+        thexStrip = { 820, 1080 }, say = { 1080, 1300 } },
+    [4] = { add = { 100, 320 }, say = { 320, 540 }, arrow = { 540, 860 } },
+    [5] = { blot = { 0, 520 }, name = { 60, 380 }, say = { 520, 740 }, arrow = { 740, 1060 } },
 }
 
 --------------------------------------------------------------------------
@@ -283,7 +294,7 @@ local function Build(parent)
     host:Hide()
     Tour.host = host
 
-    local view, K = ns.UI.LooseSheet(host, SHEET.w, SHEET.h, { arrive = true })
+    local view, K = ns.UI.LooseSheet(host, SHEET.w, SHEET.h, { arrive = true, crease = SHEET.crease })
     local S = view.sheet
     -- Away until it is laid, so laying it rustles and arrives.
     view:Hide(true)
@@ -373,7 +384,7 @@ local function Build(parent)
             return K2.Quad(region, unpack(p))
         end
         local kit = Plate.MarkKit(layer.frame, place, quad, plate.paper)
-        layer.at = { mx, my }
+        layer.at, layer.marks = { mx, my }, kit
         function layer:Draw(s)
             scale = s or 1
             kit:Begin()
@@ -470,7 +481,7 @@ local function Build(parent)
     local function StepNote(n, tall)
         local s = STEPS[n]
         local foot = s.todo and { text = s.todo, font = FONT.body, colour = RED }
-            or { text = CONTINUE, font = FONT.strong, onClick = function() Tour.Continue() end }
+            or { text = CONTINUE, font = FONT.strong, arrow = true, onClick = function() Tour.Continue() end }
         return { name = s.heading, strong = true, what = s.words(), ink = Style.INK, lines = STEP.lines,
             seed = "intro-step", tall = tall, foot = foot }
     end
@@ -725,6 +736,10 @@ local function Build(parent)
             t = (slot.t or 0) - math.deg(view.angle or 0) }, { __index = slot }))
         plate:Draw({ mapID = nil, stops = {}, roads = {}, flights = {}, pins = {} }, { from = 0, to = 0 }, { 0, 0, 1, 1 },
             { moments = {}, fights = {}, now = ns.Now() })
+        -- A plate is made hidden and shown by whoever draws it (the page's
+        -- Plated, UI/Journey/Caption.lua). (2 Nov 2026, in the client: left
+        -- hidden, the sheet showed its strips and leaders on bare paper.)
+        plate:Show()
         -- Its ink, made up: the two roads and the pool, each on its layer.
         local box = { at = function(x, y) return plate.At(x, y) end, fullW = art.w, fullH = art.h,
             pxPerYard = ROUTE.yards }
@@ -865,18 +880,28 @@ local function Build(parent)
                     -(my + MOTION.slide[2] * (1 - t)))
             end)
         end
-        local function Words()
-            if from == nil then return end
-            Track(0, MOTION.words, function(t) ghost:SetAlpha(1 - t) end)
-            Track(MOTION.words, MOTION.words, function() ghost:Hide() end)
+        -- The step strip's words (its paper stays): each piece of writing
+        -- on it at `a`.
+        local function Say(a)
+            step.name:SetAlpha(a)
+            for _, line in ipairs(step:WhatLines()) do line:SetAlpha(a) end
+            local foot = step.foot
+            foot.label:SetAlpha(a)
+            foot.line:SetAlpha(a)
+            for _, t in ipairs(foot.arrow or {}) do t:SetAlpha(a) end
         end
-        -- The step strip's old words over the new, fading.
+        -- The old words lie over the new on a slip just like it, fading off
+        -- at once; the new come in last (M.say). Step 1's whole strip.
         if from ~= nil then
             ghost:SetNote(StepNote(from, Tour.tall))
             ghost.note.foot.onClick = nil
             LayStrip(ghost, STEP.x, STEP.y, STEP.w, STEP.turn)
+            Track(0, MOTION.out, function(t) ghost:SetAlpha(1 - t) end)
+            Track(MOTION.out, MOTION.out, function(t) if t >= 1 then ghost:Hide() end end)
+            Track(M.say[1], M.say[2], Say)
+        else
+            Track(M.say[1], M.say[2], function(t) step:SetAlpha(t) end)
         end
-        Words()
 
         if n == 1 then
             local road = layers.roadA.textures
@@ -1028,7 +1053,7 @@ local function LayEnding()
     end
     endStrip:SetNote({ name = WORDS.ending.heading, strong = true, what = WORDS.ending.words, ink = Style.INK,
         lines = STEP.lines, seed = "intro-ending", tilt = -ENDING.turn, light = true,
-        foot = { text = WORDS.ending.begin, font = FONT.strong, onClick = function() Tour.Begin() end } })
+        foot = { text = WORDS.ending.begin, font = FONT.strong, arrow = true, onClick = function() Tour.Begin() end } })
     endStrip:Layout(ENDING.x, ENDING.y, ENDING.w)
 end
 
