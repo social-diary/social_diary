@@ -104,7 +104,7 @@ end
 
 Text.RUN = {
     nobody = "Nobody fell.",
-    nothing = "Nothing came up with us.",
+    nothing = "No noteworthy drops.",
     you = "you",
     someone = "someone",
     open = "Click to open its map.",
