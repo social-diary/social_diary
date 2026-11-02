@@ -14,6 +14,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Changes
 
 - The login parcel and its note carry fewer words
+- Any key or mouse button can be bound to the addon's shortcuts
 
 ### Fixes
 

@@ -663,21 +663,42 @@ W.key.catcher.scripts.OnKeyDown(W.key.catcher, "ESCAPE")
 Check(not W.key.listening, "Escape did not cancel")
 Eq(mock.bindings["ALT-B"], "SOCIALDIARY_REMEMBER", "Escape changed the binding")
 W.key.bind:Click()
--- Keys for typing and moving need a modifier: refused alone, still listening.
-for _, key in ipairs({ "F", "W", "7", "SPACE", "ENTER", "BACKSLASH", "UP", "TAB", "F5", "-", "NUMPAD1" }) do
+-- Enter and Backspace are refused, with a modifier or without: still
+-- listening, and said.
+for _, press in ipairs({ { "ENTER" }, { "BACKSPACE" }, { "ENTER", "shift" }, { "BACKSPACE", "ctrl" } }) do
+    local key, mod = press[1], press[2]
+    if mod then mock.modifiers[mod] = true end
     W.key.catcher.scripts.OnKeyDown(W.key.catcher, key)
-    Check(W.key.listening, key .. " alone ended the listening")
-    Eq(mock.bindings[key], nil, key .. " alone was bound")
-    Check(W.keyStatus:GetText():find("Shift, Ctrl or Alt"), key .. " alone was refused without a word")
+    if mod then mock.modifiers[mod] = false end
+    Check(W.key.listening, key .. " ended the listening")
+    Eq(mock.bindings[key], nil, key .. " was bound")
+    Eq(W.keyStatus:GetText(), ns.UI.Keys.REFUSED, key .. " was refused without a word")
 end
-mock.modifiers.shift = true
+-- Any other key goes, a letter alone among them.
 W.key.catcher.scripts.OnKeyDown(W.key.catcher, "W")
+Eq(mock.bindings.W, "SOCIALDIARY_REMEMBER", "a letter alone was not bound")
+-- The mouse: the left or right button cancels, the others and the wheel bind.
+W.key.bind:Click()
+Check(W.key.catcher:IsShown(), "listening does not take the mouse")
+W.key.catcher.scripts.OnMouseDown(W.key.catcher, "LeftButton")
+Check(not W.key.listening and not W.key.catcher:IsShown(), "a left click did not cancel")
+Eq(mock.bindings.BUTTON1, nil, "the left button was bound")
+W.key.bind:Click()
+W.key.catcher.scripts.OnMouseDown(W.key.catcher, "RightButton")
+Check(not W.key.listening, "a right click did not cancel")
+W.key.bind:Click()
+W.key.catcher.scripts.OnMouseDown(W.key.catcher, "Button4")
+Eq(mock.bindings.BUTTON4, "SOCIALDIARY_REMEMBER", "the fourth mouse button was not bound")
+W.key.bind:Click()
+mock.modifiers.shift = true
+W.key.catcher.scripts.OnMouseWheel(W.key.catcher, 1)
 mock.modifiers.shift = false
-Eq(mock.bindings["SHIFT-W"], "SOCIALDIARY_REMEMBER", "a letter with a modifier was not bound")
+Eq(mock.bindings["SHIFT-MOUSEWHEELUP"], "SOCIALDIARY_REMEMBER", "the wheel with a modifier was not bound")
 W.key.bind:Click()
 W.key.catcher.scripts.OnKeyDown(W.key.catcher, "F15")
 Eq(mock.bindings["F15"], "SOCIALDIARY_REMEMBER", "the new key was not bound")
-Eq(mock.bindings["SHIFT-W"], nil, "the old key still runs Remember this")
+Eq(mock.bindings["SHIFT-MOUSEWHEELUP"], nil, "the old key still runs Remember this")
+Eq(mock.bindings.W, nil, "the old key still runs Remember this")
 Eq(mock.bindings["ALT-B"], nil, "the old key still runs Remember this")
 mock.inCombat = true
 W.key.bind:Click()

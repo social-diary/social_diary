@@ -38,30 +38,24 @@ local function ActionName(before, action)
     return _G["BINDING_NAME_" .. before] or before
 end
 
--- The named keys that need a modifier: moving, the chat, the action bars and
--- the keys beside them. F13 and up are nobody's, so they stay free to bind.
-local BARE_KEYS = {
-    SPACE = true, ENTER = true, TAB = true, BACKSPACE = true, BACKSLASH = true,
-    UP = true, DOWN = true, LEFT = true, RIGHT = true,
-    SLASH = true, MINUS = true, EQUALS = true, COMMA = true, PERIOD = true, SEMICOLON = true,
-    APOSTROPHE = true, LEFTBRACKET = true, RIGHTBRACKET = true, GRAVE = true,
-    DELETE = true, HOME = true, END = true, PAGEUP = true, PAGEDOWN = true, INSERT = true,
-    NUMLOCK = true,
-}
-for i = 1, 12 do BARE_KEYS["F" .. i] = true end
+-- The keys that are never bound, with a modifier or without: Enter and
+-- Backspace (the chat's), and the left and right mouse buttons (every
+-- click). What else to bind is the user's to choose. Modifiers alone never
+-- bind, and Escape cancels.
+local NEVER = { ENTER = true, BACKSPACE = true, BUTTON1 = true, BUTTON2 = true }
 
--- Keys that type, move, open the chat or sit on the action bars. Bound on
--- their own, one stray press would take that away from the user without a
--- word, so they need a modifier with them. Any one character is such a key:
--- the bindings write most punctuation as itself ("-", "/"), and a keyboard's
--- own letters (an "Ö") are one character of several bytes. Asked of the bare
--- key only: a combo goes through. Modifiers alone never bind, and Escape
--- cancels.
-function Keys.NeedsModifier(key)
-    return BARE_KEYS[key] == true or key:find("^NUMPAD") ~= nil
-        or key:find("^[\1-\127\194-\244][\128-\191]*$") ~= nil
+-- Whether `key` (the bare key, as the bindings write it) is never bound.
+function Keys.Refused(key)
+    return NEVER[key] == true
 end
-Keys.MODIFIER_HINT = "That key is better left to the game. Hold Shift, Ctrl or Alt with it."
+Keys.REFUSED = "That key stays with the game. Choose another."
+
+-- The mouse's buttons as the bindings write them; the left and right are
+-- BUTTON1 and BUTTON2.
+local BUTTONS = { LeftButton = "BUTTON1", RightButton = "BUTTON2", MiddleButton = "BUTTON3" }
+function Keys.Button(button)
+    return BUTTONS[button] or button:upper()
+end
 Keys.COMBAT = "Not during a fight. Try again after it."
 
 -- What the setter asks before it takes `key` from what has it; nil when the
@@ -180,10 +174,14 @@ function Keys.Setter(parent, action, status)
         end
     end
 
-    -- Listening for the key: it takes the keyboard until a key that is not
-    -- only a modifier, and Escape cancels. Never in a fight, and never past
-    -- the page closing (the caller stops it then).
+    -- Listening for the key: it takes the keyboard, and the mouse over the
+    -- whole screen, until a key, button or turn of the wheel that is not
+    -- only a modifier. Escape, or a left or right click, cancels. Never in
+    -- a fight, and never past the page closing (the caller stops it then).
     local catcher = CreateFrame("Frame", nil, s)
+    catcher:SetAllPoints(UIParent)
+    catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+    catcher:Hide()
     s.catcher = catcher
 
     function s:Stop()
@@ -191,8 +189,31 @@ function Keys.Setter(parent, action, status)
         self.listening = false
         if listening == self then listening = nil end
         catcher:EnableKeyboard(false)
+        catcher:EnableMouse(false)
+        catcher:EnableMouseWheel(false)
         catcher:SetScript("OnKeyDown", nil)
+        catcher:SetScript("OnMouseDown", nil)
+        catcher:SetScript("OnMouseWheel", nil)
+        catcher:Hide()
         self:Refresh()
+    end
+
+    -- A key or button pressed while listening: refused, or bound (asked
+    -- first if something else has it).
+    local function Pressed(key)
+        if Keys.Refused(key) then
+            s.status:SetText(Keys.REFUSED)
+            return
+        end
+        local combo = Keys.Combo(key)
+        s:Stop()
+        local question = Keys.Question(s.action, combo)
+        if question then
+            s.status:SetText("")
+            ns.UI.Dialog.Confirm(question, function() s:Take(combo) end, Keys.TAKE)
+        else
+            s:Take(combo)
+        end
     end
 
     function s:Listen()
@@ -204,27 +225,29 @@ function Keys.Setter(parent, action, status)
         listening = self
         self.listening = true
         self.status:SetText("")
+        catcher:Show()
         catcher:EnableKeyboard(true)
         catcher:SetPropagateKeyboardInput(false)
+        catcher:EnableMouse(true)
+        catcher:EnableMouseWheel(true)
         catcher:SetScript("OnKeyDown", function(_, key)
             if MODIFIER_KEYS[key] then return end
             if key == "ESCAPE" then
                 self:Stop()
                 return
             end
-            local combo = Keys.Combo(key)
-            if combo == key and Keys.NeedsModifier(key) then
-                self.status:SetText(Keys.MODIFIER_HINT)
+            Pressed(key)
+        end)
+        catcher:SetScript("OnMouseDown", function(_, button)
+            local key = Keys.Button(button)
+            if key == "BUTTON1" or key == "BUTTON2" then
+                self:Stop()
                 return
             end
-            self:Stop()
-            local question = Keys.Question(self.action, combo)
-            if question then
-                self.status:SetText("")
-                ns.UI.Dialog.Confirm(question, function() self:Take(combo) end, Keys.TAKE)
-            else
-                self:Take(combo)
-            end
+            Pressed(key)
+        end)
+        catcher:SetScript("OnMouseWheel", function(_, delta)
+            Pressed(delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")
         end)
         self:Refresh()
     end

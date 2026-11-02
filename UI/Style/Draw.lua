@@ -110,21 +110,6 @@ function Style.Curve(parent, layer, x1, y1, cx, cy, x2, y2, colour, alpha, thick
     return strokes
 end
 
--- A pencilled arrow on `parent` (x right, y down from its top left): a
--- curve from `from` bending toward `bend`, ending in a head at `to`, two
--- strokes `head` long back from the point, either side of the way it came
--- in. For the onboarding pages' pointers down to the ribbons.
-function Style.Arrow(parent, layer, from, bend, to, alpha, head)
-    local G = Style.GRAPHITE
-    Style.Curve(parent, layer, from[1], from[2], bend[1], bend[2], to[1], to[2], G, alpha, 1.2, 9)
-    local back = math.atan2(bend[2] - to[2], bend[1] - to[1])
-    for _, side in ipairs({ -0.5, 0.5 }) do
-        local t = back + side
-        Style.Stroke(parent, layer, to[1], to[2], to[1] + head * math.cos(t), to[2] + head * math.sin(t),
-            G, alpha, 1.2)
-    end
-end
-
 -- A lozenge: a square of flat colour turned on its point, `size` across.
 function Style.Lozenge(parent, layer, size, colour, sublevel)
     local l = parent:CreateTexture(nil, layer, nil, sublevel)

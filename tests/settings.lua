@@ -945,19 +945,22 @@ Eq(REMEMBER.keycap.text:GetText(), "F16", "Remember this's key is not shown")
 Eq(JOURNAL.keycap.text:GetText(), "no key", "the journal still shows the key it lost")
 Check(P.keyStatus:GetText():find("Open the journal"), "what the key did before is not said: " .. P.keyStatus:GetText())
 REMEMBER.bind:Click()
-REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "Q")
-Check(REMEMBER.listening and P.keyStatus:GetText() == Keys.MODIFIER_HINT, "a typing key alone was not refused")
+REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "ENTER")
+Check(REMEMBER.listening and P.keyStatus:GetText() == Keys.REFUSED, "Enter was not refused")
 REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "ESCAPE")
 
--- A bare key refused keeps listening; the same with a modifier goes through.
-for _, key in ipairs({ "UP", "LEFT", "TAB", "F1", "F12", "NUMPAD0", "NUMPADPLUS", "SLASH", "MINUS", "EQUALS",
-    "/", "-", "=", ",", ".", ";", "'", "[", "]", "\195\150", "BACKSPACE", "DELETE", "HOME", "END", "PAGEUP",
-    "PAGEDOWN", "INSERT" }) do
-    Check(Keys.NeedsModifier(key), key .. " can be bound alone")
+-- Only Enter, Backspace and the left and right mouse buttons are refused;
+-- the rest is the user's to choose.
+for _, key in ipairs({ "ENTER", "BACKSPACE", "BUTTON1", "BUTTON2" }) do
+    Check(Keys.Refused(key), key .. " can be bound")
 end
-for _, key in ipairs({ "F13", "F24", "BUTTON4", "PAUSE", "PRINTSCREEN" }) do
-    Check(not Keys.NeedsModifier(key), key .. " needs a modifier")
+for _, key in ipairs({ "Q", "W", "SPACE", "TAB", "UP", "F1", "F13", "NUMPAD0", "-", "/", "\195\150",
+    "BUTTON3", "BUTTON4", "MOUSEWHEELUP", "DELETE" }) do
+    Check(not Keys.Refused(key), key .. " is refused")
 end
+Eq(Keys.Button("LeftButton"), "BUTTON1", "the left button's name")
+Eq(Keys.Button("MiddleButton"), "BUTTON3", "the middle button's name")
+Eq(Keys.Button("Button4"), "BUTTON4", "the fourth button's name")
 
 -- A key something else has is asked about: the listening over, the status
 -- line clear of the refusal, nothing bound until yes. Cancel leaves it all.
@@ -967,7 +970,7 @@ local saves = mock.bindingSaves
 local function PressAltG()
     REMEMBER:Refresh()
     REMEMBER.bind:Click()
-    REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "Q")
+    REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "ENTER")
     mock.modifiers.alt = true
     REMEMBER.catcher.scripts.OnKeyDown(REMEMBER.catcher, "G")
     mock.modifiers.alt = false
@@ -1135,7 +1138,7 @@ end
 for key in pairs(ns.UI.Slip().book.ribbons) do
     Check(ribbonKeys[key], "the parcel has a ribbon for " .. key .. ", which has no ribbon in the book")
 end
--- The empty People page's arrow points at Recently nearby's ribbon, under
--- a link in the page's own name.
+-- The empty People page's link to Recently nearby is in the page's own
+-- name.
 Eq(ns.UI.JournalFrame().welcome.nearby.label:GetText(), ns.UI.Journal.Page("nearby").ribbon.label,
     "the empty page's link is not in Recently nearby's name")

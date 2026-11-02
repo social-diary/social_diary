@@ -4,8 +4,7 @@
 -- The left page, in place of the search and the list, says the three ways
 -- in, each drawn: the right-click menu with Remember this ringed in red; the
 -- Remember this key, which ships unbound, so it can be bound right here; and
--- Recently nearby, with how many are pencilled in already and a pencilled
--- arrow down to its ribbon. The right page, in place of "Choose someone",
+-- Recently nearby, with how many are pencilled in already. The right page, in place of "Choose someone",
 -- is a page drawn in pencil with notes in the margin, and what the diary
 -- does when they come back.
 --
@@ -20,7 +19,6 @@ local J = ns.UI.Journal
 
 local BOOK = ns.UI.Journal.BOOK
 local LEFT_X, LEFT_W, RIGHT_X, RIGHT_W = BOOK.LEFT_X, BOOK.LEFT_W, BOOK.RIGHT_X, BOOK.RIGHT_W
-local BOOK_H = BOOK.BOOK_H
 
 local REMEMBER = "SOCIALDIARY_REMEMBER"
 
@@ -33,16 +31,6 @@ local WAYS = { top = 54, gap = 16, under = 6 }
 -- unevenly it was drawn, and its ink.
 local MENU = { w = 160, row = 17, pad = 5, indent = 12, edge = 0.65,
     ring = { w = 118, h = 21, overshoot = 0.12, wobble = 0.05, alpha = 0.85, steps = 28 } }
--- The pencilled arrow from Recently nearby down to its ribbon: from, the
--- point it bends toward, to (book coordinates, y down), and its head,
--- placed by hand; the link's words are the page's own name
--- (ns.UI.Journal.Page("nearby").ribbon.label, UI/Journal/Pages.lua). Its
--- point stops ARROW_CLEAR above the page's bottom edge, short of the ribbon
--- (in the client, 8 Oct 2026, a point at the edge sat on the cloth).
-local ARROW_CLEAR = 18
-local ARROW = { from = { LEFT_X + 118, BOOK_H - 92 - ARROW_CLEAR + 5 },
-    bend = { LEFT_X + 112, BOOK_H - 22 - ARROW_CLEAR + 5 },
-    to = { 131, BOOK_H - ARROW_CLEAR }, head = 8, alpha = 0.70 }
 -- The page drawn in pencil, on the right, and its notes in the margin:
 -- where each starts (y down), and the point its leader runs to.
 local SAMPLE = { top = 56, w = 266, portrait = 46 }
@@ -135,9 +123,6 @@ local function BuildLeft(w)
     w.nearby = Style.Link(w, FONT.body, function() J.TurnTo("nearby") end)
     w.nearby:SetText(J.Page("nearby").ribbon.label)
     w.nearby:SetPoint("TOPLEFT", w.laterText, "BOTTOMLEFT", 0, -WAYS.under)
-
-    -- The pencilled arrow down to the purple ribbon.
-    Style.Arrow(w, "ARTWORK", ARROW.from, ARROW.bend, ARROW.to, ARROW.alpha, ARROW.head)
 end
 
 --------------------------------------------------------------------------
@@ -269,7 +254,7 @@ local function Refresh()
     local days = J.PencilDays()
     local n = ns.People.PencilledCount()
     local already = n == 0 and "" or (n == 1 and " One is there already." or (" %d are there already."):format(n))
-    w.laterText:SetText(("Everyone you cross paths with stays pencilled in for %s.%s"):format(days, already))
+    w.laterText:SetText(("Everyone you cross paths with is saved for %s.%s"):format(days, already))
     w.key:Refresh()
 end
 
