@@ -83,9 +83,10 @@ local function Context()
         local ns = T.Load()
         mock.SetUnit("player", T.F.SELF)
         mock.fire("ADDON_LOADED", ns.addonName)
-        -- A reader who has read the front matter, so the book opens on
-        -- People; the onboarding tests set it back (tests/settings.lua).
-        ns.db.settings.frontRead = true
+        -- A reader who has seen the introduction, so the book opens
+        -- without its tour; the onboarding tests set it back
+        -- (tests/settings.lua, tests/tour.lua).
+        ns.db.settings.introSeen = true
         mock.fire("PLAYER_LOGIN")
         return ns
     end

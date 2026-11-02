@@ -165,11 +165,6 @@ Follows("a loose sheet's grain", 0.14, function()
     return Alpha(facets[1])
 end)
 
--- A plate pasted on a page (the bookplate, the frontispiece), at once.
-local LOOK = { paper = { 1, 1, 1 }, grain = 0.10, shadows = {}, rules = {}, lozenge = 3, lozengeInset = 4,
-    glue = { size = 8, alpha = 0.1 } }
-local plate = Style.PastedPlate(host, 0, 0, 100, 100, LOOK)
-Follows("a pasted plate's grain", 0.10, function() return Alpha(plate.grain) end)
 
 --------------------------------------------------------------------------
 Section("the saved grain at load")
@@ -181,7 +176,7 @@ _G.SocialDiaryCharDB = { schema = 2, settings = { paperGrain = 50 } }
 local silent = Said(function() mock.fire("ADDON_LOADED", ns2.addonName) end)
 Eq(#silent, 0, "loading the grain wrote in the chat")
 Eq(ns2.Style.GrainStrength(), 0.5, "the saved grain was not applied at load")
-ns2.db.settings.frontRead = true
+ns2.db.settings.introSeen = true
 mock.fire("PLAYER_LOGIN")
 ns2.UI.ShowJournal()
 local book = ns2.UI.JournalFrame().book

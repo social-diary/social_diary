@@ -216,7 +216,9 @@ local Seed, Width, Turned = ns.UI.Surface.Seed, ns.UI.Surface.Width, ns.UI.Surfa
 
 -- A card on `parent` (the right page): a paper strip with the box under
 -- its heading. card:SetFind(item, seed, now, gift) with an item of
--- FindCard.Items and the line under the box (Firsts.GiftLine) or nil, then
+-- FindCard.Items (or one made up, as the tour's, UI/Windows/Intro/Tour.lua:
+-- `icon`, its picture where it has no link; `short`, the short heading
+-- only) and the line under the box (Firsts.GiftLine) or nil, then
 -- card:Layout(x, y, width) as a strip's; card.overfull where it will not
 -- fit `width` (the page leaves it off). Laid through the strip's hooks
 -- (UI/Paper/Strip.lua), `hooks`, filled in below, after the box's drawing.
@@ -291,7 +293,7 @@ function FindCard.New(parent)
     function card:SetFind(item, seed, now, gift)
         self.found, self.now, self.gift, self.seedKey = item, now, gift, seed
         self.quality = FindCard.Quality(item.link, item.whats)
-        self.iconFile = FindCard.Icon(item.link)
+        self.iconFile = item.icon or FindCard.Icon(item.link)
         self.itemName = ns.Firsts.ItemName(item.link) or ns.Firsts.Name(item.rec) or "?"
         self:SetNote({ name = ns.Firsts.Heading(item.whats), what = gift, strong = true, seed = seed,
             turn = FIND.turn, tip = function() return FindCard.Tip(item, now) end })
@@ -310,7 +312,7 @@ function FindCard.New(parent)
     -- second line's words if any.
     local function Heading(room, note)
         local Firsts = ns.Firsts
-        for _, short in ipairs({ false, true }) do
+        for _, short in ipairs(card.found.short and { true } or { false, true }) do
             local words = Firsts.Heading(card.found.whats, short)
             for _, size in ipairs({ 0, FIND.small }) do
                 Hand(card.name, size)

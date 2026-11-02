@@ -57,7 +57,7 @@ If you are unsure, choose per character and say so in your report.
 - **Add every default to one of those two tables.** A setting without a
   default works, but it is always per character. The two tables are the
   only list of which file a key lives in.
-- An account setting shown on the Settings page says it applies to every
+- An account setting shown on the Settings page says it  every
   character. Per-character settings need no label: that is the default.
 - `ns.db.settings` is a view and cannot be iterated (`pairs` returns
   nothing). Iterate a nested table instead (`ns.db.settings.cities`).

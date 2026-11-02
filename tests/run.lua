@@ -16,6 +16,8 @@ local FILES = {
     "trade",
     "chat",
     "diary",
+    "sample",
+    "tour",
     "notes",
     "menus",
     "group_sessions",

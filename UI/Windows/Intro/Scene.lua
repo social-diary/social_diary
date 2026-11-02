@@ -1,8 +1,7 @@
 -- The parcel at login (PRV-4): the diary has just arrived, and opening it
 -- is the first moment of role-play. A few seconds after login, until the
--- book's introduction has been read -- the frontispiece
--- (UI/Journal/Frontispiece.lua), then the front matter (UI/Journal/Front.lua),
--- which says what is kept -- it lies near the top of the screen:
+-- book's introduction has been seen -- its tour on a loose sheet over Your
+-- Diary (UI/Windows/Intro/Tour.lua) -- it lies near the top of the screen:
 --
 --   wrapped  the first time: a book-shaped parcel in brown paper, tied with
 --            twine under a wax seal, the maker's name, an address, a stamp
@@ -12,7 +11,7 @@
 --            the label torn aside: the closed book inside, its ribbons
 --            hanging out of the foot, and beside it the diary's own note in
 --            pencil, with how many it has pencilled in already. "Open me"
---            opens the book at the frontispiece
+--            opens the book on the introduction's tour
 --   again    a later login, still unread: torn already, the note greeting
 --            you again
 --
@@ -20,10 +19,10 @@
 -- stamp, postmark, sender, address). The book and the note are the
 -- diary's, the same for both. The label's last line says nothing leaves
 -- this computer, so someone who only ever clicks Later has read it; the
--- retention days are left to the frontispiece and the settings.
+-- retention days are left to the tour and the settings.
 --
--- It comes back at every login until the front matter has been read
--- (frontRead): Later, and Escape, only put it away until then. It never
+-- It comes back at every login until the introduction has been seen
+-- (introSeen): Later, and Escape, only put it away until then. It never
 -- shows in a fight: it waits for the fight to end, and a fight that starts
 -- while it is up puts it away until then.
 --

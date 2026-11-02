@@ -44,6 +44,14 @@
 -- taped where the card says (`tapeAt` as { x, y, slant, w, h }) and
 -- throwing its own shadows (`shadow`, `soft`).
 --
+-- A slip may also carry a line of its own under what happened (`foot`: a
+-- link such as "Continue →", or a plain instruction in a colour of its
+-- own), a link set flush right on the name's line (`aside`: "+ Add"), and
+-- a blot of ink left before the name (`blot`), each written and turned with
+-- the slip: the tour's strips (UI/Windows/Intro/Tour.lua). Their buttons,
+-- which cannot turn, lie square over their words, a level over the strip's
+-- own, so a click on them is theirs and not the name's.
+--
 -- Where the player wrote a note about the person there, the slip quotes
 -- it under the name (`quote`), in their hand a size down
 -- (FONT.noteQuoted), between curly quotes, the opening one hung into the
@@ -159,6 +167,12 @@ local TACK = { size = 7, inset = 4, down = 4, shine = 0.4, shadow = { 1.2, 0.35 
 local TURNED = { room = 4 }
 -- How far round the strip and its tape, as drawn, the mouse finds it (px).
 local HIT = 2
+-- The tour's lines (`foot`, `aside`, `blot`, UI/Windows/Intro/Tour.lua): the
+-- foot `gap` px under what happened, its link's underline `line` px (a
+-- little heavier than a hairline: it is the slip's one way on); the aside
+-- `gap` px at least after the name; the blot `gap` px before the name,
+-- which moves along for it. A link's ink, under the mouse, goes to rubric.
+local EXTRA = { foot = { gap = 6, line = 1.5, alpha = 0.75 }, aside = { gap = 6 }, blot = { gap = 3 } }
 -- A rival's foot: a rubric line `inset` px in from the bottom edge, inset
 -- as far from the sides, `width` px at `alpha`.
 local RIVAL = { inset = 3, width = 1, alpha = 0.7 }
@@ -317,6 +331,33 @@ function ns.UI.PaperStrip(parent, card)
     strip.link:SetScript("OnMouseUp", function(_, which)
         if which == "RightButton" and strip.onRight then strip.onRight() end
     end)
+
+    -- The tour's lines (EXTRA): a link or an instruction at the foot, a
+    -- link at the name line's end, and a blot before the name, each with a
+    -- square button over it for its click. Made the first time a note asks
+    -- for one, so every other strip is made as it always was.
+    local function Line(font)
+        local button = CreateFrame("Button", nil, strip)
+        button.label = Style.Text(strip, font)
+        button.line = Texture("ARTWORK", 1)
+        button.label:Hide()
+        button.line:Hide()
+        button:Hide()
+        button:SetScript("OnClick", function(self) if self.onClick then self.onClick() end end)
+        local function Ink(on)
+            local c = (on and button.onClick) and Style.RUBRIC or button.colour or Style.INK_STRONG
+            button.line:SetColorTexture(c[1], c[2], c[3], button.alpha or Style.HAIRLINE)
+        end
+        button:SetScript("OnEnter", function() Ink(true) end)
+        button:SetScript("OnLeave", function() Ink(false) end)
+        button.Ink = Ink
+        return button
+    end
+    local function Extras(note)
+        if note.foot and not strip.foot then strip.foot = Line(Style.FONT.strong) end
+        if note.aside and not strip.aside then strip.aside = Line(Style.FONT.body) end
+        if note.blot and not strip.blot then strip.blot = Texture("ARTWORK", 2) end
+    end
 
     -- What happened, a line at a time; and a measure for wrapping it.
     strip.lines = {}
@@ -508,7 +549,7 @@ function ns.UI.PaperStrip(parent, card)
     -- with it. Only a strip that opens someone's page.
     function strip:Hover(on)
         on = on and self.guid ~= nil
-        self.underline:SetShown(on)
+        self.underline:SetShown(on or self.nameLink == true)
         target = on and 1 or 0
         if self.lift ~= target then self:SetScript("OnUpdate", Step) end
     end
@@ -517,7 +558,7 @@ function ns.UI.PaperStrip(parent, card)
     local function Settle()
         target, strip.lift = 0, 0
         strip:SetScript("OnUpdate", nil)
-        strip.underline:Hide()
+        strip.underline:SetShown(strip.nameLink == true)
         if body then Apply() end
     end
     strip:HookScript("OnHide", Settle)
@@ -547,10 +588,19 @@ function ns.UI.PaperStrip(parent, card)
     -- toward its bottom right), ground ({ frame, layers, colour }: its
     -- outline's shadow, as UI/Paper/Light.lua's Cast gives it, drawn on
     -- `frame`, a layer under what the strip lies on: the dungeon map's
-    -- strips on the world under it, where they stick out past the sheet) }.
+    -- strips on the world under it, where they stick out past the sheet),
+    -- and for the tour's slips (UI/Windows/Intro/Tour.lua): lines (the most
+    -- lines what happened takes, STRIP.lines unless said), ink (what
+    -- happened's colour, faded ink unless said), tall (its least height),
+    -- underlined (the name underlined always, a link written as one), blot
+    -- ({ size, alpha }: a drop of ink before the name), aside ({ text, font,
+    -- onClick }: a link flush right on the name's line), foot ({ text, font,
+    -- colour, onClick }: a line under what happened, a link where it has an
+    -- onClick, else plain words in `colour`) }.
     function strip:SetNote(note)
         self.note = note
         self.guid = note.guid
+        self.nameLink = note.underlined == true
         self.onClick = note.onClick
         self.tip = note.tip
         self.name:SetText(note.name or "")
@@ -640,6 +690,18 @@ function ns.UI.PaperStrip(parent, card)
         -- lines.
         self.name:SetSize(0, 0)
         local nameW, nameH = Width(self.name) + 2, math.max(math.ceil(self.name:GetStringHeight() or 0), 14)
+        -- A blot before the name moves it along; a link at its line's end
+        -- (the tour's, EXTRA) takes room after it.
+        local blot, aside, foot = note.blot, note.aside, note.foot
+        Extras(note)
+        local indent = blot and (blot.size + EXTRA.blot.gap) or 0
+        local asideW = 0
+        if aside then
+            self.aside.label:SetFontObject(aside.font or Style.FONT.body)
+            self.aside.label:SetText(aside.text or "")
+            self.aside.label:SetSize(0, 0)
+            asideW = Width(self.aside.label) + 2
+        end
         local Q = STRIP.quote
         local said, cut = {}, false
         if note.quote and note.quote ~= "" then
@@ -648,7 +710,7 @@ function ns.UI.PaperStrip(parent, card)
         self.quoteCut = cut
         -- The opening quote hangs into the margin, so the words line up.
         local hang = #said > 0 and math.min(Q.hang, pad[1] - 1, Measure(voice, Q.open)) or 0
-        local quoteH, textW = 0, nameW
+        local quoteH, textW = 0, indent + nameW + (aside and (EXTRA.aside.gap + asideW) or 0)
         for i, words in ipairs(said) do
             local line = self.said[i]
             if not line then
@@ -663,8 +725,9 @@ function ns.UI.PaperStrip(parent, card)
         end
         for i = #said + 1, #self.said do self.said[i]:Hide() end
         self.quoteLines = #said
-        local wrapped = Balanced(note.what, inner)
-        for i = STRIP.lines + 1, #wrapped do wrapped[i] = nil end
+        local most = note.lines or STRIP.lines
+        local wrapped = Balanced(note.what, inner, nil, most)
+        for i = most + 1, #wrapped do wrapped[i] = nil end
         local lineH = 0
         -- The picture's room over the name, and the gap under it.
         local pic = note.picture
@@ -680,6 +743,13 @@ function ns.UI.PaperStrip(parent, card)
             end
             line:SetText(words)
             line:SetSize(0, 0)
+            -- Its own ink where the note asks (the tour's, EXTRA), and back
+            -- to the font's faded ink after.
+            if note.ink or line.inked then
+                local ink = note.ink or Style.INK_FADED
+                line:SetTextColor(ink[1], ink[2], ink[3])
+                line.inked = note.ink ~= nil
+            end
             lineH = math.max(lineH, math.ceil(line:GetStringHeight() or 0), 11)
             textW = math.max(textW, Width(line) + 2)
             line:Show()
@@ -689,9 +759,20 @@ function ns.UI.PaperStrip(parent, card)
         -- Under their words, a little further down than under the name.
         local quoteGap = #said > 0 and (Q.gap + quoteH * #said) or 0
         local whatGap = #said > 0 and Q.after or (under and under.after or STRIP.gap)
+        -- The foot's line (EXTRA.foot), under all of it.
+        local footW, footH = 0, 0
+        if foot then
+            local label = self.foot.label
+            label:SetFontObject(foot.font or Style.FONT.strong)
+            label:SetText(foot.text or "")
+            label:SetSize(0, 0)
+            footW, footH = Width(label) + 2, math.max(math.ceil(label:GetStringHeight() or 0), 13)
+            textW = math.max(textW, footW)
+        end
         W = math.min(width, math.max(note.least or 0, math.ceil(math.max(textW, picW, underW)) + pad[1] + pad[3]))
         H = pad[2] + picH + nameH + underH + quoteGap
-            + (#wrapped > 0 and (whatGap + lineH * #wrapped) or 0) + pad[4]
+            + (#wrapped > 0 and (whatGap + lineH * #wrapped) or 0) + (foot and (EXTRA.foot.gap + footH) or 0) + pad[4]
+        H = math.max(H, note.tall or 0)
         -- A blank slip is the size its caller wrote on.
         if note.size then W, H = note.size[1], note.size[2] end
         -- Its own stock and shadows, where it has them.
@@ -787,12 +868,65 @@ function ns.UI.PaperStrip(parent, card)
 
         -- The writing, under it.
         local top = -H / 2 + pad[2] + picH
-        Write(self.name, left + nameW / 2, top + nameH / 2, nameW, nameH)
+        local nameLeft = left + indent
+        Write(self.name, nameLeft + nameW / 2, top + nameH / 2, nameW, nameH)
         -- For the tests and a card: the name's writing, from the middle.
-        self.nameBox = { left, top, left + nameW, top + nameH }
+        self.nameBox = { nameLeft, top, nameLeft + nameW, top + nameH }
         local U = Style.INK_STRONG
         self.underline:SetColorTexture(U[1], U[2], U[3], Style.HAIRLINE)
-        Place(self.underline, left + nameW / 2, top + nameH, nameW, 1)
+        Place(self.underline, nameLeft + nameW / 2, top + nameH, nameW, 1)
+        self.underline:SetShown(self.nameLink == true)
+
+        -- A button over a line of writing w by h at lx, ly of the strip: square
+        -- (buttons cannot turn), on its middle, a level over the strip's own.
+        local function Over(button, lx, ly, w, h)
+            local bx, by = Out(lx, ly)
+            button:ClearAllPoints()
+            button:SetPoint("CENTER", parent, "TOPLEFT", bx, -by)
+            button:SetSize(w + 4, h + 4)
+            button:SetFrameLevel(self:GetFrameLevel() + 2)
+        end
+        -- One of the tour's lines (EXTRA), its words at lx (their left), ly
+        -- (their middle), a link underlined where it has a click.
+        local function Extra(button, spec, lx, ly, w, h, colour, line)
+            if not button then return end
+            local label = button.label
+            button.onClick = spec and spec.onClick
+            button.colour, button.alpha = colour, line and EXTRA.foot.alpha or Style.HAIRLINE
+            if not spec then
+                label:Hide()
+                button.line:Hide()
+                button:Hide()
+                return
+            end
+            label:SetTextColor(colour[1], colour[2], colour[3])
+            Write(label, lx + w / 2, ly, w, h)
+            label:Show()
+            button.Ink(false)
+            Place(button.line, lx + (w - 2) / 2, ly + h / 2, w - 2, line or 1)
+            button.line:SetShown(button.onClick ~= nil)
+            Over(button, lx + w / 2, ly, w, h)
+            button:EnableMouse(button.onClick ~= nil)
+            button:SetShown(button.onClick ~= nil)
+            -- Where its words lie, from the strip's middle (y down), and on
+            -- `parent`: for an arrow to them.
+            local px, py = Out(lx + w / 2, ly)
+            button.at = { lx = lx, ly = ly, w = w, h = h, x = px, y = py }
+        end
+        -- The link at the name line's end, flush right, sitting on the
+        -- name's line as Recently nearby's "+ Add" does.
+        Extra(self.aside, aside, W / 2 - pad[3] - asideW, top + nameH / 2 + 1, asideW, 14,
+            Style.INK_STRONG)
+        -- The blot before the name, at its middle's height.
+        self.blotAt = nil
+        if blot then
+            local I = Style.INK_STRONG
+            Style.Disc(self.blot, I[1], I[2], I[3], blot.alpha or 0.6)
+            local bx, by = left + blot.size / 2, top + nameH / 2 + 1
+            Place(self.blot, bx, by, blot.size, blot.size)
+            self.blotAt = { lx = bx, ly = by, size = blot.size }
+        end
+        if self.blot then self.blot:SetShown(blot ~= nil) end
         -- The room under the name: where it lies, as the picture's.
         self.under = nil
         if under then
@@ -815,6 +949,10 @@ function ns.UI.PaperStrip(parent, card)
             local w = Width(line) + 2
             Write(line, left + w / 2, lineTop + (i - 0.5) * lineH, w, lineH)
         end
+        -- The foot, under what happened.
+        local footTop = lineTop + (#wrapped > 0 and lineH * #wrapped or 0) + EXTRA.foot.gap
+        Extra(self.foot, foot, left, footTop + footH / 2, footW, footH,
+            foot and foot.colour or Style.INK_STRONG, EXTRA.foot.line)
 
         -- A rival's foot, in rubric.
         local R = Style.RUBRIC

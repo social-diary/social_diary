@@ -132,7 +132,7 @@ mock.MenuClick("Last met")
 Eq(ns.Setting("peopleSort"), "lastMet", "picking a sort did not save it")
 
 -- The ribbons are the journal's pages: Your Diary (green) open by default
--- once the front matter has been read (JRN-16), People (red) next.
+-- once the introduction has been seen (JRN-16), People (red) next.
 Check(J.views.journey:IsShown() and not J.views.people:IsShown(), "Your Diary is not the first page")
 Check(J.ribbons.journey.active and not J.ribbons.people.active, "the open page's ribbon is not marked")
 J.ribbons.people:Click()

@@ -17,13 +17,10 @@
 -- in UI/Journey/Plate.lua), the People list (UI/Journal/People.lua), the profile (UI/Journal/Profile.lua)
 -- with its timeline (UI/Journal/Timeline.lua, in the words of
 -- UI/Words/Timeline.lua), Recently nearby (UI/Journal/Nearby.lua) and the
--- settings (UI/Settings/Page.lua). In front of them lies the introduction: the
--- frontispiece (UI/Journal/Frontispiece.lua), pencil and ink, then the front
--- matter (UI/Journal/Front.lua), bookplate and contents. The book opens on
--- the frontispiece until the front matter has been read, and on Your Diary
--- after that (JRN-16);
--- an empty diary's People page teaches how someone gets in
--- (UI/Journal/Empty.lua).
+-- settings (UI/Settings/Page.lua). The book opens on Your Diary (JRN-16),
+-- with the introduction's tour laid on it as a loose sheet until it has been
+-- seen (UI/Windows/Intro/Tour.lua); an empty diary's People page teaches
+-- how someone gets in (UI/Journal/Empty.lua).
 --
 -- The journal only reads. Editing goes through the entry dialog, which already
 -- routes every change through ns.Diary; the journal refreshes when it closes.
@@ -101,10 +98,9 @@ J.editing = false
 J.query = { search = "", sort = "lastMet" }
 
 -- Which of the journal's pages is open: "journey", "people", "nearby" or
--- "settings", or the introduction in front of them all: "frontispiece",
--- then "front", the front matter. Each page registers itself
--- (J.RegisterPage, UI/Journal/Pages.lua): each but those two has a ribbon,
--- and everything on a page lives in that page's container. Its `leaf` is
+-- "settings". Each page registers itself (J.RegisterPage,
+-- UI/Journal/Pages.lua) with its ribbon, and everything on a page lives in
+-- that page's container. Its `leaf` is
 -- where it lies in the book: Your Diary first (JRN-16), People next,
 -- Recently nearby and the settings last (negative counts from the back).
 J.view = "journey"
@@ -142,7 +138,7 @@ function J.ByKey(list, key)
 end
 
 -- How long the pencil keeps a stranger, in words: "7 days" (the
--- frontispiece, the front matter's contents, the empty People page).
+-- introduction's tour, UI/Windows/Intro/Tour.lua, and the empty People page).
 function J.PencilDays()
     return ns.UI.Format.Count(ns.BufferDays(), "day", "days")
 end
@@ -189,18 +185,10 @@ local function TurnStack()
         J.journal:FitPages(J.journal.book:SetStack(STILL_STACK, STILL_STACK))
         return
     end
-    local stacked, flyleaves = J.StackCounts()
+    local stacked = J.StackCounts()
     local entries = ns.Diary.Count()
     local pages = math.min(BOOK_PAGES, stacked + entries)
     local open = J.Page(J.view)
-    -- The frontispiece is the first leaf and the front matter the second:
-    -- the whole book lies under the right page, Your Diary's with it, and
-    -- the flyleaves after the open one.
-    if open.flyleaf then
-        local turned = open.flyleaf
-        J.journal:FitPages(J.journal.book:SetStack(turned, FLYLEAVES + pages + flyleaves - 1 - turned))
-        return
-    end
     local at = open.leaf > 0 and open.leaf or pages + 1 + open.leaf
     local leaf = open.leaves and open.leaves()
     if leaf then
@@ -226,9 +214,10 @@ local function ShowView()
     end
     local open = J.Page(J.view)
     if open.refresh then open.refresh() end
-    -- Left before its end, the introduction asks to be gone back to
-    -- (UI/Journal/IntroLabel.lua).
-    J.RefreshIntroLabel()
+    -- The introduction's sheet lies on Your Diary, its example on Thex's
+    -- page: either goes once its page is turned away from
+    -- (UI/Windows/Intro/Tour.lua).
+    ns.UI.Tour.Turned()
 end
 
 local function Build()
@@ -241,8 +230,12 @@ local function Build()
     panel.book = Style.Book(panel, LEFT_PAGE, BOOK_W, BOOK_H)
     panel.book:SetPoint("TOPLEFT", COVER, -COVER)
     panel.book:SetPoint("BOTTOMRIGHT", -COVER, COVER)
-    -- Closing the book ends writing mode; what was typed is kept.
-    panel:HookScript("OnHide", function() J.EndEdit() end)
+    -- Closing the book ends writing mode; what was typed is kept. The
+    -- introduction's sheet, or its example, goes with it.
+    panel:HookScript("OnHide", function()
+        J.EndEdit()
+        ns.UI.Tour.Closed()
+    end)
 
     ns.On("SD_PAPER_CHANGED", function()
         panel.book:ApplyPaper()
@@ -272,7 +265,7 @@ local function Build()
     local x = 112 - RIBBON_W
     for _, r in ipairs(J.Ribbons()) do
         -- A ribbon pulled turns the book to its page, with the sound of it:
-        -- from the introduction too, which playtesters asked for.
+        -- from under the introduction's sheet too, which puts it away.
         panel.ribbons[r.key] = Style.BookRibbon(panel.book, x, RIBBON_W, COVER, r.colour, r.label, function()
             if J.view ~= r.key then Style.PlaySound("pageTurn") end
             ns.UI.SetJournalView(r.key)
@@ -318,8 +311,8 @@ function ns.UI.SelectPerson(guid)
     J.RefreshProfile()
 end
 
--- Turns to one of the journal's pages: "frontispiece", "front", "journey",
--- "people", "nearby" or "settings".
+-- Turns to one of the journal's pages: "journey", "people", "nearby" or
+-- "settings".
 function ns.UI.SetJournalView(key)
     if not J.Page(key) then return end
     if key ~= "people" and J.editing then J.EndEdit() end
@@ -375,19 +368,22 @@ function ns.UI.RefreshTimeline()
     J.RefreshTimelineList()
 end
 
--- Opened on nobody in particular before the front matter has been read
--- (PRV-4), it opens on the introduction, at the frontispiece; after, on whichever page was open last, Your
--- Diary to begin with (JRN-16). Opened on someone, it opens on them: the
--- slip keeps asking for the front matter until it has been read.
+-- Opened on nobody in particular before the introduction has been seen
+-- (PRV-4), it opens on Your Diary with the introduction's sheet laid on it
+-- (UI/Windows/Intro/Tour.lua); after, on whichever page was open last, Your
+-- Diary to begin with (JRN-16). Opened on someone, it opens on them, and
+-- the parcel keeps offering the introduction until it has been seen.
 function ns.UI.ShowJournal(guid)
     J.journal = J.journal or Build()
     -- A book opened afresh is leafed through from the start again.
     if not J.journal:IsShown() then leaves, leafCount = {}, 0 end
+    local unseen = false
     if guid then
         J.selected = ns.SafeGUID(guid)
         J.view = "people"
-    elseif not ns.Setting("frontRead") then
-        J.view = "frontispiece"
+    elseif not ns.Setting("introSeen") then
+        J.view = "journey"
+        unseen = true
     end
 
     -- Shown before the page is chosen: the Recently nearby page only
@@ -400,6 +396,7 @@ function ns.UI.ShowJournal(guid)
     -- opening an unchanged diary twice builds it once.
     J.RefreshList()
     J.RefreshProfile()
+    if unseen then ns.UI.Tour.Offer() end
 end
 
 -- The book, built if it was not yet, without opening it: for the settings

@@ -4,7 +4,7 @@
 --
 -- Pure functions over Core/JourneyRecap.lua's entries, no frames: the page
 -- (UI/Journey/Page.lua) and the plates (UI/Journey/Plate.lua) lay them out.
--- The journal's voice, as the front matter and the timeline speak it: prose,
+-- The journal's voice, as the profile and the timeline speak it: prose,
 -- relative dates, quiet. It recaps where you went and who you were with; it
 -- never counts quests or keeps a score.
 --

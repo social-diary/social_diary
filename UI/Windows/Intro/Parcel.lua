@@ -1,8 +1,8 @@
 -- The parcel's host and entry points (PRV-4): the frame the scene lies on
 -- (SocialDiaryIntroFrame), laying it wrapped or torn, tearing it
--- (Parcel.HideSlip), and ns.UI.OfferSlip, ns.UI.ShowIntro and ns.UI.Slip
--- (for the tests), with the events that offer it at login and keep it out
--- of a fight. What it looks like, and the state shared on ns.UI.Parcel, is
+-- (Parcel.HideSlip), and ns.UI.OfferSlip and ns.UI.Slip (for the tests),
+-- with the events that offer it at login and keep it out of a fight. What
+-- "Open me" opens, ns.UI.ShowIntro, is the tour's (UI/Windows/Intro/Tour.lua). What it looks like, and the state shared on ns.UI.Parcel, is
 -- UI/Windows/Intro/Scene.lua's; its pieces Wrapped.lua and Torn.lua.
 
 local addonName, ns = ...
@@ -84,10 +84,10 @@ function Parcel.HideSlip(quiet)
     if not quiet then Style.PlaySound("sheetClose") end
 end
 
--- Lays it over the game, if it is still due: the front matter unread, not
+-- Lays it over the game, if it is still due: the introduction unseen, not
 -- put away this login, and no fight on.
 function ns.UI.OfferSlip()
-    if ns.Setting("frontRead") or Parcel.later then return end
+    if ns.Setting("introSeen") or Parcel.later then return end
     if InCombatLockdown() then
         Parcel.waiting = true
         return
@@ -102,12 +102,6 @@ function ns.UI.OfferSlip()
     Style.PlaySound("sheetOpen")
 end
 
--- The introduction: the book turned to its first leaf, the frontispiece.
-function ns.UI.ShowIntro()
-    ns.UI.SetJournalView("frontispiece")
-    ns.UI.ShowJournal()
-end
-
 -- Test hook: the parcel's host.
 function ns.UI.Slip()
     return Parcel.slip
@@ -115,7 +109,7 @@ end
 
 ns.On("PLAYER_LOGIN", function()
     Parcel.later, Parcel.tornNow = false, false
-    if ns.Setting("frontRead") then return end
+    if ns.Setting("introSeen") then return end
     C_Timer.After(SHOW_DELAY, ns.UI.OfferSlip)
 end)
 

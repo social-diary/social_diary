@@ -4,26 +4,19 @@
 -- every page, builds it, hangs its ribbon, refreshes it as it is turned
 -- to and lays the stack beneath for it, all from here. What is drawn by
 -- hand round the pages keeps its hand-placed positions and reads only each
--- page's colour and label from here (Journal.Ribbons): the front matter's
--- contents (UI/Journal/Front.lua), the parcel's closed book
--- (UI/Windows/Intro/Torn.lua) and the empty People page's arrow
--- (UI/Journal/Empty.lua). tests/pages.lua fails where a ribbon page has
--- no cut-out in the contents (unless it says contents = false) or no
--- ribbon in the parcel.
+-- page's colour and label from here (Journal.Ribbons): the parcel's closed
+-- book (UI/Windows/Intro/Torn.lua) and the empty People page's arrow
+-- (UI/Journal/Empty.lua). tests/settings.lua fails where a ribbon page has
+-- no ribbon in the parcel.
 --
 --   Journal.RegisterPage(key, {
---       order    = 10,   ribbon order, left to right (and the contents'); gaps
+--       order    = 10,   ribbon order, left to right; gaps
 --       ribbon   = { colour = "green", label = "Your Diary" },
---                        Style.RIBBONS' cloth and the tooltip's words; nil for
---                        a flyleaf, which has none
---       leaf     = 1,    a ribbon page's place in the stack: n from the
---                        front, -n from the back
---       flyleaf  = 0,    a page without a ribbon, before the stack: 0 the
---                        first leaf, 1 the second
+--                        Style.RIBBONS' cloth and the tooltip's words
+--       leaf     = 1,    its place in the stack: n from the front, -n from
+--                        the back
 --       leaves   = fn,   optional: function() -> n, a leaf inside the page
 --                        (People: the selected person's entry), or nil
---       contents = false,  optional: a ribbon page the front matter's
---                        contents leave out on purpose (the settings)
 --       buildOrder = 10, when it is built as the book is made, among the
 --                        others; see below
 --       build    = function(container, panel),  once, as the book is made
@@ -34,9 +27,10 @@
 -- book is made once, so a page registered or removed after that is refused.
 --
 -- The build order is not the ribbon order, and is kept apart from it on
--- purpose: the book has always built People's pieces first, then the
--- frontispiece, the front matter, Your Diary, Recently nearby and the
--- settings, and every frame, font and event handler a page makes is
+-- purpose: the book has always built People's pieces first, then Your
+-- Diary, Recently nearby and the settings (the frontispiece and the front
+-- matter, between People and Your Diary, went with the introduction's tour,
+-- 2 Nov 2026), and every frame, font and event handler a page makes is
 -- numbered and run in that order (the golden dump, tests/golden/). So each
 -- page says its turn (buildOrder); those that say none come after, as they
 -- registered. Pages() is by `order`, BuildOrder() by buildOrder.
@@ -63,16 +57,12 @@ local function Check(key, spec)
     if spec.buildOrder ~= nil and type(spec.buildOrder) ~= "number" then
         return false, "Journal.RegisterPage: " .. key .. "'s buildOrder is not a number"
     end
-    if spec.ribbon ~= nil then
-        local r = spec.ribbon
-        if type(r) ~= "table" or type(r.colour) ~= "string" or type(r.label) ~= "string" then
-            return false, "Journal.RegisterPage: " .. key .. "'s ribbon is not { colour, label }"
-        end
-        if type(spec.leaf) ~= "number" or spec.leaf == 0 or spec.leaf % 1 ~= 0 or spec.flyleaf ~= nil then
-            return false, "Journal.RegisterPage: " .. key .. " has a ribbon, so a leaf (n or -n) and no flyleaf"
-        end
-    elseif spec.flyleaf ~= 0 and spec.flyleaf ~= 1 or spec.leaf ~= nil then
-        return false, "Journal.RegisterPage: " .. key .. " has no ribbon, so a flyleaf (0 or 1) and no leaf"
+    local r = spec.ribbon
+    if type(r) ~= "table" or type(r.colour) ~= "string" or type(r.label) ~= "string" then
+        return false, "Journal.RegisterPage: " .. key .. "'s ribbon is not { colour, label }"
+    end
+    if type(spec.leaf) ~= "number" or spec.leaf == 0 or spec.leaf % 1 ~= 0 then
+        return false, "Journal.RegisterPage: " .. key .. " has no leaf (n or -n)"
     end
     return true
 end
@@ -90,10 +80,8 @@ local function Changed(registry)
     for i = #byKey, 1, -1 do byKey[i] = nil end
     for i = #buildOrder, 1, -1 do buildOrder[i] = nil end
     for _, spec in ipairs(registry:Ordered()) do
-        if spec.ribbon then
-            ribbons[#ribbons + 1] = { key = spec.key, colour = spec.ribbon.colour, label = spec.ribbon.label,
-                page = spec }
-        end
+        ribbons[#ribbons + 1] = { key = spec.key, colour = spec.ribbon.colour, label = spec.ribbon.label,
+            page = spec }
         byKey[#byKey + 1] = spec
         buildOrder[#buildOrder + 1] = spec
     end
@@ -102,7 +90,7 @@ local function Changed(registry)
 end
 
 local pages = ns.Registry.New({
-    what = "Journal.RegisterPage(key, { order, ribbon = { colour, label }, leaf or flyleaf, build, ... })",
+    what = "Journal.RegisterPage(key, { order, ribbon = { colour, label }, leaf, build, ... })",
     order = "order",
     default = 100,
     check = Check,
@@ -129,7 +117,7 @@ function J.Page(key)
     return pages:Get(key)
 end
 
--- Every page, by order (the flyleaves, which give none, last).
+-- Every page, by order.
 function J.Pages()
     return pages:Ordered()
 end
@@ -150,12 +138,7 @@ function J.BuildOrder()
     return buildOrder
 end
 
--- How many pages lie in the stack (the ribbon pages), and how many before
--- it (the flyleaves).
+-- How many pages lie in the stack: every page has a ribbon and a leaf.
 function J.StackCounts()
-    local stacked, flyleaves = 0, 0
-    for _, spec in ipairs(pages:Ordered()) do
-        if spec.flyleaf then flyleaves = flyleaves + 1 else stacked = stacked + 1 end
-    end
-    return stacked, flyleaves
+    return #pages:Ordered()
 end

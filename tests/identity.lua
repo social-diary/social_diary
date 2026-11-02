@@ -34,7 +34,7 @@ ns.InitDB()
 Section("version numbers, for migrations")
 
 -- Each file and the diary in use carry their own number.
-Eq(_G.SocialDiaryDB.schema, 1, "the account file has no version")
+Eq(_G.SocialDiaryDB.schema, 2, "the account file has no version")
 Eq(_G.SocialDiaryCharDB.schema, 2, "the per-character file has no version")
 Eq(_G.SocialDiaryCharDB.data.schema, 5, "the diary has no version")
 
@@ -108,7 +108,7 @@ Eq(next(ns.db.characters), nil, "the character's own diary did not start empty")
 Check(_G.SocialDiaryDB.shared and _G.SocialDiaryDB.shared.characters["Player-1-4"],
     "the old diary was not kept as the shared one")
 Eq(_G.SocialDiaryDB.diary, nil, "the old diary was left loose in the account file")
-Eq(_G.SocialDiaryDB.schema, 1, "the old account file did not get its own version")
+Eq(_G.SocialDiaryDB.schema, 2, "the old account file did not get its own version")
 Eq(_G.SocialDiaryDB.shared.schema, 3, "the old diary's version was not kept for its next load")
 Eq(ns.OwnCharacters()[SELF.guid].first, "Old", "the user's own characters were lost")
 Eq(_G.SocialDiaryDB.shared.settings, nil, "the old settings were kept in the shared diary")

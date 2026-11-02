@@ -21,7 +21,7 @@ yours in the same file before writing, and match them.
 
 | Register | Where | Sounds like |
 |---|---|---|
-| **Book prose** | Your Diary entries (`UI/Journey/Text/`, `Core/JourneyRecap.lua`), the profile story (`UI/Journal/Profile.lua`), front matter, frontispiece, empty states, map keys | “Reached level 12 on 6 October. The road goes on.” |
+| **Book prose** | Your Diary entries (`UI/Journey/Text/`, `Core/JourneyRecap.lua`), the profile story (`UI/Journal/Profile.lua`), the introduction's tour (`UI/Windows/Intro/Tour.lua`), empty states, map keys | “Reached level 12 on 6 October. The road goes on.” |
 | **Book ledger** | Timeline rows (`UI/Words/Timeline.lua`), People list, Nearby page, tooltips, card tags and margin words | “Quested together for 1 h 5 min” · “killed you twice” |
 | **Book furniture** | Settings, keybinds, link-choices, confirms, the Blizzard settings stub | “Keep my own route” / “Applies to every character.” |
 | **Chat** | `ns.Print` output, `/sd` help (`Core/Slash.lua`) | `Social Diary added Thex to the diary.` |
@@ -49,7 +49,7 @@ envelope.
   sound like an advert, not a diary. Keep the verb and say it plainly:
   “Every meeting is remembered”, or with more room, “Each meeting is
   automatically noted down”. This holds for headings, toasts, the
-  frontispiece and the addon's own description too.
+  introduction's tour and the addon's own description too.
 - **Vary the prose** that repeats per level or per row. Use the existing
   seeded variant tables (`STOPS` etc. in `UI/Journey/Text/Prose.lua`) rather than
   one fixed template.

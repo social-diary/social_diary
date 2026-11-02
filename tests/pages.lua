@@ -2,9 +2,9 @@
 -- sections (UI/Settings/Page.lua), with pages and sections of the test's
 -- own: registered before the book is made, they get a ribbon or a row, are
 -- built, turned to, refreshed and placed in the stack like the diary's own;
--- one taken out again leaves no trace. That every ribbon page has a cut-out
--- in the front matter's contents and a ribbon on the parcel's closed book
--- is checked with the diary's own pages alone, in tests/settings.lua.
+-- one taken out again leaves no trace. That every ribbon page has a ribbon
+-- on the parcel's closed book is checked with the diary's own pages alone,
+-- in tests/settings.lua.
 
 local T = ...
 local Section, Check, Eq = T.Section, T.Check, T.Eq
@@ -33,34 +33,29 @@ Section("the journal's own pages")
 
 Eq(Keys(J.Ribbons()), "journey people nearby settings", "the ribbons, left to right")
 Eq(J.Ribbons()[3].colour .. " " .. J.Ribbons()[3].label, "purple Recently nearby", "a ribbon's cloth and words")
-Eq(Keys(J.BuildOrder()), "people frontispiece front journey nearby settings",
+Eq(Keys(J.BuildOrder()), "people journey nearby settings",
     "the pages are not built in the book's old order (the golden dump's frames follow it)")
-Eq(Keys(J.PagesByKey()), "front frontispiece journey nearby people settings", "the containers' order")
-Eq(J.Page("frontispiece").flyleaf, 0, "the frontispiece is not the first leaf")
-Eq(J.Page("front").flyleaf, 1, "the front matter is not the second leaf")
-Eq(J.Page("front").ribbon, nil, "a flyleaf with a ribbon")
+Eq(Keys(J.PagesByKey()), "journey nearby people settings", "the containers' order")
+Eq(J.Page("frontispiece"), nil, "the frontispiece is still a page")
+Eq(J.Page("front"), nil, "the front matter is still a page")
 Eq(J.Page("people").leaf, 2, "People does not lie second")
 Eq(J.Page("settings").leaf, -1, "the settings do not lie last")
 Check(J.Page("people").leaves ~= nil, "People has no leaf inside it")
-local stacked, flyleaves = J.StackCounts()
-Eq(stacked .. "/" .. flyleaves, "4/2", "four pages in the stack, two before it")
+Eq(J.StackCounts(), 4, "four pages in the stack")
 
 --------------------------------------------------------------------------
 Section("what a page must say")
 
-Check(Refused(J.RegisterPage, "bad", { flyleaf = 0 }):find("no build"), "a page without a build")
-Check(Refused(J.RegisterPage, "bad", { build = Build }):find("flyleaf"), "a page neither ribbon nor flyleaf")
-Check(Refused(J.RegisterPage, "bad", { build = Build, flyleaf = 2 }):find("flyleaf"), "a third flyleaf")
+Check(Refused(J.RegisterPage, "bad", { leaf = 3 }):find("no build"), "a page without a build")
+Check(Refused(J.RegisterPage, "bad", { build = Build, leaf = 3 }):find("ribbon"), "a page without a ribbon")
 Check(Refused(J.RegisterPage, "bad", { build = Build, ribbon = { colour = "red", label = "Bad" } })
     :find("leaf"), "a ribbon page without a leaf")
 Check(Refused(J.RegisterPage, "bad", { build = Build, ribbon = { colour = "red" }, leaf = 3 })
     :find("colour, label"), "a ribbon without words")
 Check(Refused(J.RegisterPage, "bad", { build = Build, ribbon = { colour = "red", label = "Bad" }, leaf = 0 })
     :find("leaf"), "a ribbon page at leaf 0")
-Check(Refused(J.RegisterPage, "bad", { build = Build, flyleaf = 1, leaf = 3 }):find("no leaf"),
-    "a flyleaf in the stack")
-Check(Refused(J.RegisterPage, "bad", { build = Build, flyleaf = 1, refresh = 3 }):find("refresh"),
-    "a refresh that is not a function")
+Check(Refused(J.RegisterPage, "bad", { build = Build, ribbon = { colour = "red", label = "Bad" }, leaf = 3,
+    refresh = 3 }):find("refresh"), "a refresh that is not a function")
 Eq(J.Page("bad"), nil, "a refused page was kept")
 
 --------------------------------------------------------------------------
@@ -111,7 +106,7 @@ Eq(Keys(J.Ribbons()), "gone journey people nearby test settings", "the page's ri
 Check(J.RemovePage("gone") ~= nil, "a page taken out was not found")
 Eq(J.RemovePage("gone"), nil, "a page taken out twice")
 Eq(Keys(J.Ribbons()), "journey people nearby test settings", "the ribbons with the test's page")
-Eq(Keys(J.BuildOrder()), "people frontispiece front journey nearby settings test",
+Eq(Keys(J.BuildOrder()), "people journey nearby settings test",
     "a page that says no buildOrder is not built after the others")
 Eq(J.StackCounts(), 5, "the test's page not in the stack")
 
@@ -126,7 +121,7 @@ for _, spec in ipairs(J.Pages()) do
 end
 ns.UI.ShowJournal()
 local book = J.journal
-Eq(table.concat(madeOrder, " "), "people frontispiece front journey nearby settings test",
+Eq(table.concat(madeOrder, " "), "people journey nearby settings test",
     "the book did not build its pages in their build order")
 -- The containers were made by key, before any page was built into one.
 local made = {}
@@ -166,15 +161,13 @@ ns.UI.SetJournalView("settings")
 Eq(Stack(), (pages - 1) .. "/2", "the settings' place with the test's page in the book")
 ns.UI.SetJournalView("journey")
 Eq(Stack(), "0/" .. (2 + pages - 1), "Your Diary's place with the test's page in the book")
-ns.UI.SetJournalView("frontispiece")
-Eq(Stack(), "0/" .. (2 + pages + 1), "the frontispiece's place with the test's page in the book")
 
 -- A key no page has is not turned to; the book is made once.
 ns.UI.SetJournalView("test")
 ns.UI.SetJournalView("gone")
 Eq(ns.UI.JournalView(), "test", "a page taken out was turned to")
 Eq(refreshed, 2, "the page was not refreshed as it opened again")
-Check(Refused(J.RegisterPage, "late", { flyleaf = 0, build = Build }):find("already made"),
+Check(Refused(J.RegisterPage, "late", { leaf = 3, build = Build }):find("already made"),
     "a page registered after the book was made")
 Check(Refused(J.RemovePage, "test"):find("already made"), "a page taken out after the book was made")
 ns.UI.CloseJournal()

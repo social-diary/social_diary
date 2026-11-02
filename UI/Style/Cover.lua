@@ -1,8 +1,8 @@
 -- The book's cover and the sheets like it (Style, from UI/Style/Tokens.lua):
 -- the leather cover with its brass corners (Style.Cover), the loose sheet
 -- the entry editor sits on outside the journal (Style.EntryPaper), the book
--- closed for the parcel at login (Style.ClosedBook), and a plate pasted onto
--- the page (Style.PastedPlate). The open book, its ribbons and the brass are
+-- closed for the parcel at login (Style.ClosedBook). The open book, its
+-- ribbons and the brass are
 -- in UI/Style/Book.lua, which loads first.
 
 local addonName, ns = ...
@@ -684,68 +684,4 @@ function Style.ClosedBook(parent, w, h, title)
     end
 
     return book
-end
-
-
--- A plate pasted onto the page, `w` by `h` at x, y (y down): a sheet of
--- paper a shade lighter than the page, with its grain; its shadow, down and
--- to the right; the glue soaked through at its corners, unevenly; and an
--- engraved frame, a hairline per pixel of each rule, with a lozenge in each
--- corner over it, red and lapis by turns. The bookplate (UI/Journal/Front.lua)
--- and the frontispiece's figure (UI/Journal/Frontispiece.lua). P is its look:
--- paper, grain, rules ({ inset, width, alpha }), lozenge, lozengeInset,
--- glue ({ size, alpha }), shadows ({ drop, alpha }).
-function Style.PastedPlate(parent, x, y, w, h, P)
-    local INK = Style.INK
-    local plate = CreateFrame("Frame", nil, parent)
-    plate:SetSize(w, h)
-    plate:SetPoint("TOPLEFT", x, -y)
-
-    for i, shadow in ipairs(P.shadows) do
-        local s = plate:CreateTexture(nil, "BACKGROUND", nil, -8 + i)
-        s:SetPoint("TOPLEFT", shadow.drop, -shadow.drop)
-        s:SetPoint("BOTTOMRIGHT", shadow.drop, -shadow.drop)
-        s:SetColorTexture(INK[1], INK[2], INK[3], shadow.alpha)
-    end
-    local paper = plate:CreateTexture(nil, "BACKGROUND", nil, -4)
-    paper:SetAllPoints()
-    paper:SetColorTexture(P.paper[1], P.paper[2], P.paper[3], 1)
-    local grainPath = Style.Art("grain")
-    if grainPath then
-        local grain = plate:CreateTexture(nil, "BACKGROUND", nil, -3)
-        grain:SetAllPoints()
-        grain:SetTexture(grainPath)
-        grain:SetTexCoord(0.31, 0.58, 0.12, 0.47)
-        plate.grain = grain
-        local function Apply() grain:SetAlpha(P.grain * Style.GrainStrength()) end
-        Apply()
-        ns.On("SD_PAPER_CHANGED", Apply)
-    end
-
-    local glue = { 1, 0.7, 0.85, 1.25 }
-    for i, corner in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
-        local g = plate:CreateTexture(nil, "BACKGROUND", nil, -2)
-        g:SetSize(P.glue.size, P.glue.size)
-        g:SetPoint("CENTER", plate, corner)
-        Style.Disc(g, INK[1], INK[2], INK[3], P.glue.alpha * glue[i])
-    end
-
-    -- The frames only give each hairline its place; the lines are drawn on
-    -- the plate itself, so the lozenges lie over them.
-    for _, rule in ipairs(P.rules) do
-        for step = 0, rule.width - 1 do
-            local inset = rule.inset + step
-            local place = CreateFrame("Frame", nil, plate)
-            place:SetPoint("TOPLEFT", inset, -inset)
-            place:SetPoint("BOTTOMRIGHT", -inset, inset)
-            Style.Hairline(plate, "BORDER", 0, rule.alpha, place)
-        end
-    end
-    for i, corner in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMLEFT" }) do
-        local l = Style.Lozenge(plate, "ARTWORK", P.lozenge, i % 2 == 1 and Style.RUBRIC or Style.LAPIS)
-        local dx = corner:find("LEFT") and P.lozengeInset or -P.lozengeInset
-        local dy = corner:find("TOP") and -P.lozengeInset or P.lozengeInset
-        l:SetPoint("CENTER", plate, corner, dx, dy)
-    end
-    return plate
 end

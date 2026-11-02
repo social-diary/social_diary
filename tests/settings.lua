@@ -1,6 +1,6 @@
 -- Privacy: the settings page, forgetting one person or everyone, and the
--- onboarding that says what is kept: the parcel at login and the book's
--- front matter.
+-- onboarding that says what is kept: the parcel at login and what it opens,
+-- the introduction's tour (its steps and ways out: tests/tour.lua).
 
 local T = ...
 local mock, F = T.mock, T.F
@@ -12,7 +12,7 @@ local STRANGER, SELF = F.STRANGER, F.SELF
 local A, B, C = STRANGER.guid, F.GARRICK.guid, F.PUG.guid
 
 --------------------------------------------------------------------------
-Section("settings, deletion and the front matter (PRV-1 to PRV-5)")
+Section("settings, deletion and the introduction (PRV-1 to PRV-5)")
 
 mock.RunTimers()
 
@@ -578,9 +578,9 @@ ns.db.characters["Player-1-9"] = nil
 P:Refresh()
 Eq(P.shareDiary:GetChecked(), false, "the switch does not show the own diary loaded again")
 
--- PRV-4: the parcel at every login until the front matter has been read.
+-- PRV-4: the parcel at every login until the introduction has been seen.
 ns.UI.CloseJournal()
-ns.db.settings.frontRead = false
+ns.db.settings.introSeen = false
 ns.db.settings.parcelOpened = false
 mock.timers = {}
 mock.fire("PLAYER_LOGIN")
@@ -621,7 +621,7 @@ Check(S.counts.textures < 450, ("the parcel takes %d textures"):format(S.counts.
 S.later:Click()
 Check(not S:IsShown(), "Later did not put the parcel away")
 Eq(ns.db.settings.parcelOpened, false, "Later tore the parcel open")
-Eq(ns.db.settings.frontRead, false, "Later counted as reading the front matter")
+Eq(ns.db.settings.introSeen, false, "Later counted as seeing the introduction")
 mock.fire("PLAYER_LOGIN")
 mock.RunTimers()
 Check(S:IsShown(), "the parcel did not come back at the next login")
@@ -714,37 +714,21 @@ mock.inCombat = false
 mock.fire("PLAYER_REGEN_ENABLED")
 Check(S:IsShown(), "the torn parcel did not come back after the fight")
 
--- Open it: the book opens on the introduction's first leaf, the
--- frontispiece; that is not reading the front matter yet.
+-- Open it: the book opens on Your Diary with the introduction's tour laid
+-- on it, at its first step; that is not seeing it yet.
 S.note.open:Click()
 Check(not S:IsShown(), "opening the book left the parcel up")
 Check(_G.SocialDiaryJournalFrame:IsShown(), "Open me did not open the book")
-Eq(ns.UI.JournalView(), "frontispiece", "the book did not open on the frontispiece")
-Eq(ns.db.settings.frontRead, false, "the frontispiece counted as reading the front matter")
-local FP = ns.UI.Frontispiece()
-Check(FP.key.pencil:GetText():find("after 30 days"), "the frontispiece does not use the retention setting")
-Check(FP.key.ink:GetText():find("for good"), "the frontispiece does not say ink is kept")
-Eq(FP.figure.faded.days[1]:GetText(), "day 1", "the fading starts on another day")
-Eq(FP.figure.faded.days[4]:GetText(), "day 30", "the fading does not end at the retention")
-Eq(FP.figure.inked.name:GetText(), "THEX THEXIMUS", "the inked name is missing")
-Eq(FP.figure.inked.ghost:GetText(), "THEX THEXIMUS", "no pencil under the ink")
-Check(FP.drawn, "the leaders and the ring were not drawn")
-Check(not (ns.UI.IntroLabel() and ns.UI.IntroLabel():IsShown()), "the label shows on the introduction itself")
+Eq(ns.UI.JournalView(), "journey", "the book did not open on Your Diary")
+local Tour = ns.UI.Tour
+Eq(Tour.step, 1, "the tour was not laid at its first step")
+Check(Tour.host:IsShown() and Tour.view:IsShown(), "the tour's sheet is not on the book")
+Eq(ns.db.settings.introSeen, false, "laying the tour counted as seeing it")
 
--- Its corner turns to the front matter, and that is reading it.
-FP.corner:Click()
-Eq(ns.UI.JournalView(), "front", "the frontispiece's corner did not turn to the front matter")
-Eq(ns.db.settings.frontRead, true, "the front matter was not marked read")
-local FM = ns.UI.FrontMatter()
-Check(FM.kept.where:GetText():find("in your WTF folder"), "PRV-1 not stated")
-Check(FM.kept.limits:GetText():find("nameplates on"), "what it cannot see is not stated")
-Check(FM.contents.nearby.about:GetText():find("30 days"), "the contents do not use the retention setting")
-Check(FM.plate.name:GetText():find("ULVERSTON"), "the bookplate does not name the character")
-Check(ns.db.meta.begun[SELF.guid], "when the diary was begun was not stamped")
-Check(FM.plate.begun:GetText():find("^Begun "), "the bookplate does not say when it was begun")
-
+-- When the diary was begun is still stamped, though no bookplate shows it.
 -- A stamp taken before the client knew the zone says no zone, not an
 -- empty one, and takes the zone once it is known, the same login.
+Check(ns.db.meta.begun[SELF.guid], "when the diary was begun was not stamped")
 local begun = ns.db.meta.begun
 local stamped = begun[SELF.guid]
 begun[SELF.guid] = nil
@@ -752,95 +736,48 @@ local zone = mock.zone
 mock.zone = ""
 ns.TouchOwnCharacter()
 Eq(begun[SELF.guid].zone, nil, "an empty zone was stamped")
-ns.UI.RefreshFrontMatter()
-Check(FM.plate.begun:GetText():find("^Begun on "), "the bookplate names an empty zone")
 mock.zone = zone
 mock.fire("PLAYER_ENTERING_WORLD")
 Eq(begun[SELF.guid].zone, zone, "the zone was not filled in once known")
 begun[SELF.guid] = stamped
 
--- The contents: a cut-out of each page beside its name.
-local C = FM.contents
-Check(C.journey.cut and C.journey.cut.drawn, "Your Diary's cut-out was not drawn")
-Eq(C.people.cut.name:GetText(), "THEX THEXIMUS", "People's cut-out is not Thex's page")
-Eq(C.people.cut.corners, 3, "People's cut-out is not held by three corners")
-Eq(#C.nearby.cut.rows, 3, "Recently nearby's cut-out has no rows")
-Eq(C.nearby.cut.corners, 0, "Recently nearby's cut-out has corners")
-
--- Chat, switched off and on from here, as the settings would.
-FM.kept.chat.no:Click()
-Eq(ns.db.settings.storeChat, false, "Don't did not switch chat off")
-Check(FM.kept.chat.no.current, "the current chat choice is not marked")
-FM.kept.chat.yes:Click()
-Eq(ns.db.settings.storeChat, true, "Keep did not switch chat on")
-
--- PRV-7: the road, said as it is, and switched from here like the chat.
-Check(FM.kept.limits:GetText():find("only your own position"), "it does not say whose position the road is")
-Check(FM.kept.limits:GetText():find("kept for good"), "it does not say for how long")
-Check(FM.kept.route.yes.current, "the current road choice is not marked")
-FM.kept.route.no:Click()
-Eq(ns.db.settings.keepRoute, false, "Don't did not switch the road off")
-Check(FM.kept.limits:GetText():find("No road of yours"), "the front matter ignores the road setting")
-Check(FM.kept.route.no.current, "the off choice is not marked")
-FM.kept.route.yes:Click()
-Eq(ns.db.settings.keepRoute, true, "Keep did not switch the road back on")
-
--- The ribbons turn the book from the introduction (playtesters asked),
--- and leaving it that way puts a label under the book: OK goes back.
+-- A ribbon pulled from under the sheet puts it away: seen, and the parcel
+-- stays away at the next login.
 local J = _G.SocialDiaryJournalFrame
-Eq(ns.db.settings.introDone, false, "the introduction counts as done before its end")
 J.ribbons.people:Click()
-Eq(ns.UI.JournalView(), "people", "the People ribbon did not turn the book from the front matter")
-local L = ns.UI.IntroLabel()
-Check(L and L:IsShown() and L.view:IsShown(), "no label after leaving the introduction early")
-L.ok:Click()
-Eq(ns.UI.JournalView(), "frontispiece", "OK did not turn back to the introduction")
-Check(not L:IsShown(), "the label stayed on the introduction")
-J.ribbons.nearby:Click()
-Eq(ns.UI.JournalView(), "nearby", "the ribbon did not turn the book from the frontispiece")
-Check(L:IsShown(), "the label did not come back")
-
--- Closed and opened again, it is still there; Dismiss puts it away for good.
+Eq(ns.UI.JournalView(), "people", "the People ribbon did not turn the book from under the tour")
+Eq(Tour.step, nil, "the tour stayed out on another page")
+Eq(ns.db.settings.introSeen, true, "leaving the tour by a ribbon did not count as seeing it")
 ns.UI.CloseJournal()
 ns.UI.ShowJournal()
-Eq(ns.UI.JournalView(), "nearby", "the book did not open where it was left once read")
-Check(L:IsShown() and L.view:IsShown(), "the label did not come back with the book")
-L.dismiss:Click()
-Check(not L:IsShown(), "Dismiss did not put the label away")
-Eq(ns.db.settings.introDone, true, "Dismiss was not kept")
-ns.UI.SetJournalView("people")
-Check(not L:IsShown(), "the label came back after Dismiss")
-
--- Turned through to its end, the introduction is done, label or not.
-ns.db.settings.introDone = false
-ns.UI.SetJournalView("front")
-FM.corner:Click()
-Eq(ns.UI.JournalView(), "journey", "the corner did not turn the page to Your Diary")
-Eq(ns.db.settings.introDone, true, "the end of the introduction was not kept")
-Check(not L:IsShown(), "the label showed after the introduction's end")
-ns.UI.CloseJournal()
-ns.UI.ShowJournal()
-Eq(ns.UI.JournalView(), "journey", "the book still opens on the introduction once read")
+Eq(ns.UI.JournalView(), "people", "the book did not open where it was left once seen")
+Eq(Tour.step, nil, "the tour came back once seen")
 ns.UI.CloseJournal()
 
 mock.fire("PLAYER_LOGIN")
 mock.RunTimers()
-Check(not S:IsShown(), "the parcel came back once the front matter was read")
+Check(not S:IsShown(), "the parcel came back once the introduction was seen")
 
--- /sd about and the settings turn back to it.
+-- /sd about and the settings lay it again.
 SlashCmdList.SOCIALDIARY("about")
-Eq(ns.UI.JournalView(), "frontispiece", "/sd about did not turn to the introduction")
+Eq(ns.UI.JournalView(), "journey", "/sd about did not turn to Your Diary")
+Eq(Tour.step, 1, "/sd about did not lay the tour")
 ns.UI.SetJournalView("settings")
+Eq(Tour.step, nil, "the tour stayed out on the settings")
+Eq(P.intro:GetText(), "Show the introduction again", "the settings' link is not the new one")
 P.intro:Click()
-Eq(ns.UI.JournalView(), "frontispiece", "the settings' link did not turn to the introduction")
+Eq(ns.UI.JournalView(), "journey", "the settings' link did not turn to Your Diary")
+Eq(Tour.step, 1, "the settings' link did not lay the tour")
 ns.UI.CloseJournal()
+Eq(Tour.step, nil, "the tour stayed out with the book closed")
 
--- Opened on someone, the book opens on them, read or not.
-ns.db.settings.frontRead = false
+-- Opened on someone, the book opens on them, seen or not, and no sheet.
+ns.db.settings.introSeen = false
 ns.UI.ShowJournal(A)
-Eq(ns.UI.JournalView(), "people", "a book opened on someone opened on the front matter")
+Eq(ns.UI.JournalView(), "people", "a book opened on someone opened on the tour")
+Eq(Tour.step, nil, "a book opened on someone laid the tour")
 ns.UI.CloseJournal()
-ns.db.settings.frontRead = true
+ns.db.settings.introSeen = true
 
 --------------------------------------------------------------------------
 Section("forgetting, everywhere (PRV-3)")
@@ -1175,35 +1112,22 @@ end
 ns.UI.CloseJournal()
 
 --------------------------------------------------------------------------
-Section("every ribbon page in the contents and on the parcel (decision 4)")
+Section("every ribbon page on the parcel (decision 4)")
 
--- The front matter's cut-outs and the parcel's ribbons are placed by hand,
--- by the page's key, and take the page's colour and name from the
--- registry (UI/Journal/Pages.lua): a ribbon page added without its
--- cut-out (unless it says contents = false) or its ribbon on the closed
--- book fails here. And neither places one for a page that has no ribbon.
+-- The parcel's ribbons are placed by hand, by the page's key, and take the
+-- page's colour and name from the registry (UI/Journal/Pages.lua): a ribbon
+-- page added without its ribbon on the closed book fails here, and so does
+-- a ribbon on the parcel for a page that has none.
 local ribbonKeys = {}
 for _, ribbon in ipairs(ns.UI.Journal.Ribbons()) do
     local key = ribbon.key
     ribbonKeys[key] = true
-    local entry = ns.UI.FrontMatter().contents[key]
-    if ribbon.page.contents == false then
-        Eq(entry, nil, key .. " is in the contents, though it says it is not")
-    else
-        Check(entry and entry.cut, key .. " has no cut-out in the front matter's contents")
-        Eq(entry and entry.link.label:GetText(), ribbon.label, key .. "'s name in the contents is not its ribbon's")
-    end
     local cloth = ns.UI.Slip().book.ribbons[key]
     Check(cloth ~= nil, key .. " has no ribbon on the parcel's closed book")
     local want = ns.Style.RIBBONS[ribbon.colour].cloth
     local got = cloth and cloth.recorded.calls.SetColorTexture or {}
     Eq(table.concat({ tostring(got[1]), tostring(got[2]), tostring(got[3]) }, " "),
         table.concat({ want[1], want[2], want[3] }, " "), key .. "'s ribbon on the parcel is not its cloth")
-end
-for key, entry in pairs(ns.UI.FrontMatter().contents) do
-    if type(entry) == "table" and entry.cut then
-        Check(ribbonKeys[key], "the contents have a cut-out for " .. key .. ", which has no ribbon")
-    end
 end
 for key in pairs(ns.UI.Slip().book.ribbons) do
     Check(ribbonKeys[key], "the parcel has a ribbon for " .. key .. ", which has no ribbon in the book")

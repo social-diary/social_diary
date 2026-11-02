@@ -247,14 +247,14 @@ local function BuildNav(parent)
         page.brackets[key] = Bracket(parent, x + BRACKET.x, bottoms[key], ys)
     end
 
-    -- The way back to the introduction (the frontispiece, then the front
-    -- matter, which says what is kept), at the foot of the page, clear of
+    -- The way back to the introduction (its tour on a loose sheet over Your
+    -- Diary, UI/Windows/Intro/Tour.lua), at the foot of the page, clear of
     -- the ribbons.
     page.intro = Style.Link(parent, FONT.body, function()
         Style.PlaySound("pageTurn")
         ns.UI.ShowIntro()
     end)
-    page.intro:SetText("The introduction")
+    page.intro:SetText("Show the introduction again")
     page.intro:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", BOOK.LEFT_X + BOOK.LEFT_W, -BOOK.BOOK_H + 22)
 end
 
@@ -282,11 +282,9 @@ local function BuildPage(parent)
     return page
 end
 
--- The grey ribbon's page, the book's last (UI/Journal/Pages.lua): the
--- front matter does not list it among its contents.
+-- The grey ribbon's page, the book's last (UI/Journal/Pages.lua).
 ns.UI.Journal.RegisterPage("settings", {
     order = 40, ribbon = { colour = "gray", label = "Settings" }, leaf = -1, buildOrder = 60,
-    contents = false,
     build = function(container) BuildPage(container) end,
     refresh = function() SettingsUI.Refresh() end,
 })

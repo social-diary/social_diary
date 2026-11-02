@@ -54,7 +54,7 @@ local SPREAD = { name = "SocialDiaryTableSpread", book = "SocialDiaryJournalFram
 -- edge from the corner, turned `turn` degrees (the other way to the map).
 -- A slip of the diary's own page (Style.PAPER), `h` px tall and at least
 -- `least` px long: `ribbon` px at its left for the ribbon's eyelet, then
--- the words in pencil (13 pt, the frontispiece's), `pad` px of paper after them; its cut edge in ink
+-- the words in pencil (13 pt, FONT.pencil's), `pad` px of paper after them; its cut edge in ink
 -- at `edge`. The diary's red ribbon (Style.RIBBONS.red) comes out from
 -- under its foot `tail.at` px from its left end, `tail.w` px wide and
 -- `tail.len` long, hanging `tail.hang` degrees off straight down to the

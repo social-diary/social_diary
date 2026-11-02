@@ -384,6 +384,9 @@ end
 ns.On("ADDON_LOADED", function(_, loaded)
     if loaded ~= addonName then return end
     ns.InitDB()
+    -- The tour's example person, left over from a /reload, crash or logout
+    -- mid-tour: gone before anything lists people (Core/Sample.lua).
+    Call(ns.Sample.Remove)
 end)
 
 ns.On("PLAYER_ENTERING_WORLD", function() ns.FillBegunZone() end)

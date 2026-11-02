@@ -664,16 +664,14 @@ local function Run(art)
     ns.UI.Reunion(A, "group")
     Dump("reunion toast", SocialDiaryToastFrame)
 
-    ns.db.settings.frontRead = false
+    ns.db.settings.introSeen = false
     ns.db.settings.parcelOpened = false
     ns.UI.OfferSlip()
     Dump("parcel, wrapped", SocialDiaryIntroFrame)
     ns.UI.Slip():Tear()
     Dump("parcel, torn", SocialDiaryIntroFrame)
     ns.UI.ShowIntro()
-    Dump("frontispiece", J.book)
-    ns.UI.SetJournalView("front")
-    Dump("front matter", J.book)
+    Dump("introduction's tour", J.book)
     ns.UI.CloseJournal()
 
     Dump("social tab", social)

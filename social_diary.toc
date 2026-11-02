@@ -25,6 +25,8 @@ Core/Sightings.lua
 Core/Diary.lua
 Core/Notes.lua
 Core/Sessions.lua
+# The tour's example person, written through the stores above.
+Core/Sample.lua
 Core/Instances.lua
 # Dungeon Crawler Forever's data (GPL-3.0-or-later, Vendor/DungeonCrawlerForever/
 # VERSION): the table it loads into first, then its files as they ship,
@@ -149,10 +151,6 @@ UI/Dungeon/Spread.lua
 UI/Dungeon/Way.lua
 UI/Dungeon/Tutorial.lua
 UI/Journal/Nearby.lua
-UI/Journal/Front.lua
-UI/Journal/Corner.lua
-UI/Journal/Frontispiece.lua
-UI/Journal/IntroLabel.lua
 UI/Journal/Empty.lua
 # The reunion toast: the card first (ns.UI.Toast), its words, the queue and
 # the entry point, then placing it.
@@ -179,11 +177,14 @@ UI/Settings/Sections/Memory.lua
 UI/Settings/Sections/About.lua
 UI/Blizzard/Signpost.lua
 # The parcel at login: its scene first (ns.UI.Parcel, and the fonts made
-# as it loads), wrapped, torn, then the host and the entry points.
+# as it loads), wrapped, torn, then the host and the entry points. The
+# introduction's tour after it (ns.UI.Tour, ns.UI.ShowIntro): it takes the
+# plate, the strips and Core/Sample.lua as it is laid, never at load.
 UI/Windows/Intro/Scene.lua
 UI/Windows/Intro/Wrapped.lua
 UI/Windows/Intro/Torn.lua
 UI/Windows/Intro/Parcel.lua
+UI/Windows/Intro/Tour.lua
 UI/Blizzard/SocialTab.lua
 UI/Blizzard/Bindings.lua
 UI/Blizzard/Minimap.lua

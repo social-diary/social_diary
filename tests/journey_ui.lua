@@ -55,7 +55,7 @@ Section("the first ribbon, and the book opening on it (JRN-16)")
 
 ns.UI.ShowJournal()
 local J = _G.SocialDiaryJournalFrame
-Eq(ns.UI.JournalView(), "journey", "the book does not open on Your Diary once the front matter is read")
+Eq(ns.UI.JournalView(), "journey", "the book does not open on Your Diary once the introduction is seen")
 Check(J.views.journey:IsShown() and not J.views.people:IsShown(), "Your Diary's page is not the one shown")
 Check(J.ribbons.journey.active, "the green ribbon is not marked")
 local order = {}

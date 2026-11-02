@@ -29,7 +29,6 @@ local LOOSE = {
     SelectPerson = "tests",
     RefreshJournal = "tests",
     RefreshTimeline = "tests",
-    RefreshFrontMatter = "tests",
     RefreshNearbyPage = "tests",
     RefreshJourneyPage = "tests",
     RedrawJourneyPage = "Dev",      -- /sd journey, the tests, plate_dump.lua
@@ -47,7 +46,7 @@ local LOOSE = {
     TogglePicker = "Core",
     ClosePicker = "tests",          -- uidump.lua
     -- The parcel at login and the reunion toast
-    ShowIntro = "Core",             -- /sd intro
+    ShowIntro = "Core",             -- /sd about
     OfferSlip = "tests",
     Reunion = "Dev",                -- /sd test reunion, the tests
     ReunionShowing = "Dev",
@@ -69,9 +68,6 @@ local LOOSE = {
     JourneyPage = "tests",          -- also Dev and plate_dump.lua
     NearbyPage = "tests",           -- set when the page is built
     SettingsPage = "tests",
-    FrontMatter = "tests",
-    Frontispiece = "tests",
-    IntroLabel = "tests",
     Slip = "tests",
     OnUnitTooltip = "tests",        -- kept for a tooltip test; none reads it yet
 }
@@ -79,7 +75,7 @@ local LOOSE = {
 -- Module tables: a table with functions of its own.
 local MODULES = {
     Chrome = true, Dialog = true, Entry = true, Format = true, Keys = true, Pool = true,
-    Journal = true, Settings = true, Parcel = true, Toast = true, MinimapButton = true,
+    Journal = true, Settings = true, Parcel = true, Tour = true, Toast = true, MinimapButton = true,
     Surface = true, Light = true, LinkSheet = true, NoteSheet = true, MapSheet = true, MapArt = true,
     Pen = true, InkTrail = true, InkBlot = true, Hand = true, TimelineText = true,
     YourDiary = true, JourneyPlate = true, JourneyText = true, JourneyLook = true, JourneyMargin = true,

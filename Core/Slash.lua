@@ -364,7 +364,7 @@ Register("sessions", CommandSessions, "together sessions, or |cffffd100/sd sessi
 Register("sightings", function(rest) Dispatch(groups.sightings, rest) end,
     "sighting capture; |cffffd100/sd sightings help|r for more")
 Register("settings", function() ns.UI.ShowSettings() end, "open the settings")
-Register("about", function() ns.UI.ShowIntro() end, "what Social Diary records, and where")
+Register("about", function() ns.UI.ShowIntro() end, "show the introduction again")
 Register("forget", CommandForget, "delete everything about <name>, in the diary or not")
 -- Not a dev command, though it is the one that shows them: listed only
 -- while debug is on, it could never be found to turn debug on.

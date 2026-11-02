@@ -449,8 +449,11 @@ Plate.PASSES, Plate.PASS_ORDER = PASSES, PASS_ORDER
 
 -- A map's art size in its own pixels, remembered (it never changes), and
 -- whether the client said; ART where it did not.
+-- No map at all (the tour's plate, UI/Windows/Intro/Tour.lua: blank stock)
+-- is ART's size, never asked.
 local layers = {}
 local function LayerSize(mapID)
+    if mapID == nil then return ART.w, ART.h, false end
     local hit = layers[mapID]
     if hit == nil then
         local list = mapID and C_Map.GetMapArtLayers and C_Map.GetMapArtLayers(mapID)
@@ -1373,16 +1376,21 @@ local function New(parent, slot)
         -- The window's art may reach past the art box (`box`, a full page
         -- drawn with room to pan): under the card's margin, clipped.
         if box then ax, ay, aw, ah = box[1], box[2], box[3], box[4] end
-        local layer, pieces = ns.UI.MapArt.For(mapID)
+        -- Without a map (the tour's plate, UI/Windows/Intro/Tour.lua) the
+        -- art box is the card's own stock: no art, and no ground for it.
+        local layer, pieces
+        if mapID then layer, pieces = ns.UI.MapArt.For(mapID) end
         local LW, LH = LayerSize(mapID)
         if layer then LW, LH = layer.layerWidth, layer.layerHeight end
 
         local B = Style.MAP_BACKGROUND
-        Split(ax, ay, ax + aw, ay + ah, function(x0, y0, x1, y1, light)
-            local texture = backgroundPool:Next()
-            Fill(texture, B[1] * light, B[2] * light, B[3] * light, 1)
-            Bend(texture, x0, y0, x1, y1, true)
-        end, box ~= nil)
+        if mapID then
+            Split(ax, ay, ax + aw, ay + ah, function(x0, y0, x1, y1, light)
+                local texture = backgroundPool:Next()
+                Fill(texture, B[1] * light, B[2] * light, B[3] * light, 1)
+                Bend(texture, x0, y0, x1, y1, true)
+            end, box ~= nil)
+        end
 
         local wx0, wy0, wx1, wy1 = window[1], window[2], window[3], window[4]
         local tiles, explored = 0, 0
@@ -2133,6 +2141,35 @@ local function New(parent, slot)
     function plate:SetRing(r)
         self.ringAt = r
         DrawRing()
+    end
+
+    -- A layer of its own over the picture, for what is drawn on the card
+    -- from outside: the tour's made-up road, its pool and its marks
+    -- (UI/Windows/Intro/Tour.lua), each on a layer so it can be faded on its
+    -- own and shown a piece at a time. A frame `level` levels over the
+    -- picture (under the mat, the neat line and the photo corners, which lie
+    -- over everything on it), placed about the picture's middle as the
+    -- plate's own ink is, and a kit to draw on it as the plate draws:
+    --   kit.Pool(layer, sublevel)  textures on the layer, handed out in turn
+    --   kit.Prim(prim, texture)    one of the trail's primitives (Ink.Build's),
+    --                              placed and lit as the plate's own trail
+    --   kit.Text(font)             a font string on the layer
+    --   kit.Place, kit.Quad, kit.PlaceText, kit.Width  the card's toolkit
+    -- Nothing on it is begun or finished with the plate: the caller's own.
+    function plate:Layer(level)
+        local frame = CreateFrame("Frame", nil, content)
+        frame:SetAllPoints(content)
+        frame:SetFrameLevel(content:GetFrameLevel() + (level or 1))
+        frame.anchorTo = pivot
+        local kit = { frame = frame, Place = Place, Quad = Quad, PlaceText = PlaceText, Width = Width }
+        function kit.Pool(layer, sublevel) return Pool(layer, sublevel, nil, frame) end
+        function kit.Prim(prim, texture) return DrawPrim(prim, texture) end
+        function kit.Text(font)
+            local text = Style.Text(frame, font)
+            text.anchorTo = pivot
+            return text
+        end
+        return frame, kit
     end
 
     -- Where a point of the map (0..1) lies on the page, through the card's

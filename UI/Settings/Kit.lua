@@ -153,9 +153,8 @@ local function Pane(s)
 end
 
 -- A setting from the saved table, in column `c`, refreshed with the page.
--- `after` runs once it is written. Written through ns.SetSetting, as the
--- front matter writes the same settings (storeChat, keepRoute), so a
--- setting is written one way only. Every switch refreshes the page, so the
+-- `after` runs once it is written. Written through ns.SetSetting, as every
+-- other writer of a setting does, so a setting is written one way only. Every switch refreshes the page, so the
 -- settings that depend on it fade or come back.
 -- `hint` is the switch's small print, hung under its label.
 local function Switch(c, text, key, indent, after, hint)

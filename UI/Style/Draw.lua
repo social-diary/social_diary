@@ -139,7 +139,7 @@ end
 -- its measure: w, h, how far it overshoots where it began, how unevenly it
 -- was drawn, its ink's alpha and its strokes, and `colour` for any ink but
 -- rubric. Round "Remember this" on the empty
--- People page (UI/Journal/Empty.lua) and on the frontispiece's figure.
+-- People page (UI/Journal/Empty.lua).
 function Style.HandRing(parent, layer, x, y, R)
     local a0 = math.rad(200)
     local sweep = 2 * math.pi * (1 + R.overshoot)

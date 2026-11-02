@@ -91,6 +91,12 @@ local CREASE = {
 -- `uneven`; where folds cross the bands overlap, so it is dirtier there.
 -- `scale` is the grime art's pixels per pixel of sheet.
 local GRUNGE = { band = 10, alpha = 0.16, uneven = 0.5, tint = { 0.22, 0.14, 0.06 }, scale = 2 }
+-- Laid on the book in a moment rather than at once (`arrive`, the tour's
+-- sheet, UI/Windows/Intro/Tour.lua): over `time` seconds it comes up from
+-- nothing and settles the last `drop` px down onto the book, eased out
+-- (as the strip's hover, UI/Paper/Strip.lua). Never laid flat, where
+-- nothing moves.
+local ARRIVE = { time = 0.24, drop = 10 }
 
 -- The paper as it lies loose, and as it is glued in: its stock, the ink of
 -- its edge, and its shadows (as SHADOWS: down, right, larger, dark) in
@@ -138,6 +144,9 @@ end
 --   ground    what it lies on, as the house light has it (UI/Paper/Light.lua's
 --             GROUND): its shadow darker and wider on the game world (the
 --             dungeon's map, the book put aside); the book's page by default
+--   arrive    shown, it arrives (ARRIVE) instead of being there at once, by
+--             a short OnUpdate that stops itself; view:Land() puts it down
+--             at once (a click while it comes). Not laid flat, nor glued
 --
 -- Returns the view, with `sheet` (the frame everything is drawn on),
 -- `bends` (whether it bends as it is laid now), `flat` (laid flat by the
@@ -881,13 +890,43 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     local function Rustle(key)
         if parent:IsVisible() and not opts.quiet and not opts.glued then Style.PlaySound(key) end
     end
+
+    -- Its arrival (opts.arrive, ARRIVE): `arrived` from 0 to 1, the paper's
+    -- alpha and how far above the book it still is.
+    local arrived = 1
+    local function Arriving(self, elapsed)
+        arrived = math.min(1, arrived + (elapsed or 0) / ARRIVE.time)
+        local t = 1 - (1 - arrived) ^ 4
+        self:SetAlpha(t)
+        S:ClearAllPoints()
+        S:SetPoint("CENTER", view, "CENTER", view.dx or 0, (view.dy or 0) + ARRIVE.drop * (1 - t))
+        if arrived >= 1 then
+            self.arriving = false
+            self:SetScript("OnUpdate", nil)
+        end
+    end
+    function view:Land()
+        if self.arriving then
+            arrived = 1
+            Arriving(self, 0)
+        end
+    end
+
     function view:Show()
         local was = self:IsShown()
         show(self)
-        if not was then Rustle("sheetOpen") end
+        if not was then
+            Rustle("sheetOpen")
+            if opts.arrive and not opts.glued and ns.Setting("flatSheets") ~= true then
+                arrived, self.arriving = 0, true
+                self:SetScript("OnUpdate", Arriving)
+                Arriving(self, 0)
+            end
+        end
     end
     function view:Hide(quiet)
         local was = self:IsShown()
+        self:Land()
         hide(self)
         if was and not quiet then Rustle("sheetClose") end
     end

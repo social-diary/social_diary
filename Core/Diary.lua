@@ -135,7 +135,9 @@ local function Prepare(guid, opts)
 end
 
 -- Writes a prepared entry into the diary, unless they are in it already.
-local function Insert(entry, here)
+-- `quiet` says nothing in chat: the tour's example person (Core/Sample.lua)
+-- is written by the addon, not added by the user.
+local function Insert(entry, here, quiet)
     local guid = entry.guid
     local existing = ns.db.diary[guid]
     if existing then return existing, false end
@@ -147,15 +149,17 @@ local function Insert(entry, here)
     ns.Characters.SeenFromSightings(guid)
     if here then ns.Characters.Seen(guid) end
 
-    ns.Print("added |cffffffff%s|r to the diary.", ns.Characters.FullName(guid) or guid)
+    if not quiet then
+        ns.Print("added |cffffffff%s|r to the diary.", ns.Characters.FullName(guid) or guid)
+    end
     ns.Debug("%d buffered interaction(s) came with them",
         ns.Interactions.Count(guid))
 
     return entry, true
 end
 
--- The one way in. `opts` may carry unit, source, where, note, tags and relationship;
--- all of them are optional, because DIA-4 wants adding to cost two actions and
+-- The one way in. `opts` may carry unit, source, where, note, tags,
+-- relationship and quiet (no line in chat); all of them are optional, because DIA-4 wants adding to cost two actions and
 -- everything else to be fillable afterwards.
 --
 -- Returns the entry and true when it was newly added, or the existing entry
@@ -166,7 +170,7 @@ function Diary.Add(guid, opts)
     local prepared, here = Prepare(guid, opts)
     if not prepared then return nil, false end
 
-    local entry, added = Insert(prepared, here)
+    local entry, added = Insert(prepared, here, opts.quiet)
     if not added then return entry, false end
 
     guid = entry.guid

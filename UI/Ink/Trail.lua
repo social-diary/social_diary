@@ -567,7 +567,8 @@ end
 -- py or nil, fullW, fullH, pxPerYard }. `opts`: points(road) -> its flat
 -- map points, kind(stop) -> its kind, pressure (a road's own, for the
 -- ladder in the checks), cap (a share of CAP, for a plate smaller than a
--- page: UI/Journey/Plate.lua). Returns the primitives in draw order, the counts
+-- page: UI/Journey/Plate.lua). Returns the primitives in draw order (each
+-- with `n`, its place as made, and `part`, "road" or "pool"), the counts
 -- { quads, dots, dabs, pools, droplets, stops, roads, step, length, brisk },
 -- and the pools, longest first: { seg, segs (every stop drawn as it, its
 -- own first), kind, e, T, seconds, deaths, more, droplet, tint }.
@@ -672,6 +673,7 @@ function Ink.Build(sheet, box, opts)
 
     -- The pools, longest first, each keeping one dab for every pool still
     -- to come: past the cap a short stay is at least its wash or its dot.
+    local roadsMade = #out
     for i, pool in ipairs(pools) do
         local room = { dabs = min(POOL.perPool, CAP.dabs - counts.dabs - (#pools - i)) }
         if room.dabs <= 0 then break end
@@ -680,8 +682,14 @@ function Ink.Build(sheet, box, opts)
         if pool.droplet then counts.droplets = counts.droplets + 1 else counts.pools = counts.pools + 1 end
     end
 
-    -- A steady draw order: by layer, then as made.
-    for i, prim in ipairs(out) do prim.n = i end
+    -- A steady draw order: by layer, then as made. Each says what made it
+    -- (`part`: "road" or "pool"), for a drawing that shows the two apart (the
+    -- tour's plate, UI/Windows/Intro/Tour.lua, lays the road back as the pool
+    -- comes in).
+    for i, prim in ipairs(out) do
+        prim.n = i
+        prim.part = i <= roadsMade and "road" or "pool"
+    end
     table.sort(out, function(a, b)
         if a.layer ~= b.layer then return a.layer < b.layer end
         return a.n < b.n

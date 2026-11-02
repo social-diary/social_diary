@@ -25,7 +25,7 @@ local addonName, ns = ...
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
 local SCHEMA_VERSION = 5     -- a diary
-local ACCOUNT_SCHEMA = 1     -- SocialDiaryDB, apart from the shared diary
+local ACCOUNT_SCHEMA = 2     -- SocialDiaryDB, apart from the shared diary
 local CHARACTER_SCHEMA = 2   -- SocialDiaryCharDB, apart from its own diary
 
 -- One diary: everything recorded about other players, and the roads of the
@@ -52,8 +52,9 @@ local DIARY = {
     -- Bookkeeping that is about the addon rather than about other players.
     meta = {
         lastLogin = nil,
-        -- [guid] = when that character began this diary, for the bookplate
-        -- on the front matter (UI/Journal/Front.lua): { time, zone, level }.
+        -- [guid] = when that character began this diary: { time, zone,
+        -- level }. Stamped still (ns.TouchOwnCharacter), though the
+        -- bookplate that showed it went with the front matter (2 Nov 2026).
         begun = {},
 
         nextSessionId = 1,
@@ -78,13 +79,19 @@ local ACCOUNT_SETTINGS = {
     -- DAT-1: one diary for every character instead of one each. Read at
     -- login only: a change applies after a /reload (ns.ShareDiary).
     shareDiary = false,
-    -- PRV-4: the book's front matter, which says what is kept, has been
-    -- read. Until it has, the parcel asks for it at every login
-    -- (UI/Windows/Intro/Parcel.lua) and the journal opens on it.
+    -- Stored, no longer read (2 Nov 2026, STEPS.account[2]): PRV-4's front
+    -- matter read, and the old introduction turned through to its end or
+    -- its label dismissed. Both went with the front matter; kept so no
+    -- saved field is dropped.
     frontRead = false,
-    -- The introduction turned through to its end, or its label under
-    -- the book dismissed: the label stops asking (UI/Journal/IntroLabel.lua).
     introDone = false,
+    -- PRV-4: the introduction's tour on the loose sheet has been seen,
+    -- finished or put away (UI/Windows/Intro/Tour.lua). Until then it is
+    -- offered: the parcel at login (UI/Windows/Intro/Parcel.lua), and the
+    -- book opened on nobody.
+    -- Replaces frontRead and introDone, which stay stored but unread
+    -- (STEPS.account[2]).
+    introSeen = false,
     -- The note on the dungeon map has been shown: only ever the once
     -- (UI/Dungeon/Tutorial.lua).
     dungeonTutorialSeen = false,
@@ -170,6 +177,15 @@ STEPS.diary[5] = function(t)
     end
 end
 
+-- Account 2 (2 Nov 2026): the tour replaces the front matter's introduction. A
+-- reader who has read the front matter has seen what the tour shows, so it
+-- is not offered to them again. frontRead and introDone stay as stored.
+STEPS.account[2] = function(t)
+    if type(t.settings) == "table" and t.settings.frontRead == true then
+        t.settings.introSeen = true
+    end
+end
+
 -- 2 (29 Oct 2026): the session gap is no longer a setting
 -- (Core/Sessions.lua), so its saved value goes.
 STEPS.character[2] = function(t)
@@ -190,6 +206,7 @@ end
 ns._test.Migrate = Migrate
 ns._test.DiarySteps = STEPS.diary
 ns._test.CharacterSteps = STEPS.character
+ns._test.AccountSteps = STEPS.account
 
 -- Before schema 4 the account file was the one diary, every character's.
 -- It is kept as the shared diary rather than thrown away, so turning sharing

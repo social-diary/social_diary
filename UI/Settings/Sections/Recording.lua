@@ -15,8 +15,7 @@ local MAX_CHAT_LINES = 5000  -- above it, "No maximum" says it better
 local function BuildRecording(pane, c)
     local page = SettingsUI.page
 
-    -- JRN-17, through the same call as the front matter's links, so the
-    -- timer starts and stops at once.
+    -- JRN-17: the timer starts and stops at once.
     c:Heading("Your Diary")
     page.keepRoute = Switch(c, "Keep my own route", "keepRoute", nil,
         function(on) ns.JourneyCapture.SetEnabled(on) end,
