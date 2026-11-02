@@ -9,6 +9,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - _Dungeon View_ explains its default route the first time it opens
 - Paper Texture Intesity can be set in Settings
+- Onboarding is now improved and more straight-forward
 
 ### Fixes
 

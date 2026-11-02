@@ -151,21 +151,21 @@ local BLOT = { size = 5, alpha = 0.6, peak = 0.92, at = 0.35, from = 0.2 }
 -- no "→": UI/Paper/Strip.lua's EXTRA.arrow), so its words end without one.
 local CONTINUE = "Continue"
 local STEPS = {
-    { heading = "Your road",
-        words = function() return "Wherever you go, the diary draws your road by itself. Each level you reach gets a page like this." end },
+    { heading = "Social Diary",
+        words = function() return "Wherever you go, the diary marks your path. Each level you reach gets a page like this." end },
     { heading = "What you did",
-        words = function() return "Where you stopped to fight, the ink pools. A memorable moment, like your first green item, gets a card of its own." end },
+        words = function() return "Red splats show where you've fought. Memorable moments, such as finding your first green item, are shown in cards." end },
     { heading = "Who you met",
         words = function()
-            return "Anyone you group, trade, whisper or fight beside is written down by itself, like Bram and Thex. After "
-                .. ns.UI.Journal.PencilDays() .. " they fade."
+            return "Any player you interact with, is written down automatically, like Bram and Thex. After "
+                .. ns.UI.Journal.PencilDays() .. " their data is deleted."
         end },
     { heading = "Keep one",
-        words = function() return "To keep someone for good, add them. Recently nearby has + Add beside everyone you\226\128\153ve met." end,
-        todo = "Click + Add beside Thex." },
+        words = function() return "To keep someone for good, add them to your diary." end,
+        todo = "Add Thex now." },
     { heading = "Kept for good",
         words = function() return "Thex is in your diary now. When you meet again, the diary will tell you." end,
-        todo = "Click his name to see his page." },
+        todo = "Click him to see his page." },
 }
 local WORDS = {
     find = { heading = "Your first green!", item = "Wolfskin Bracers" },
@@ -180,8 +180,8 @@ local WORDS = {
     thex = { minutes = 35 },
     add = "+ Add",
     progress = "%d of 5",
-    ending = { heading = "An example",
-        words = "This is how the people you add will look. Thex is invented; your own fill in as you play.",
+    ending = { heading = "An Example",
+        words = "This is how the people you add will look.",
         begin = "Begin your own diary" },
 }
 -- The find card's item: a green leather bracer's picture from the client's
