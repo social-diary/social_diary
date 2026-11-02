@@ -1,6 +1,7 @@
 -- Settings: Dungeons and Raids, Interface's third subpage (UI/Settings/Page.lua
 -- lists the sections; the controls are UI/Settings/Kit.lua's): how a run's
--- map is drawn on the table spread (UI/Dungeon/).
+-- map is drawn on the table spread (UI/Dungeon/), and whether the diary
+-- opens on it while inside (ns.UI.OpenJournal).
 
 local addonName, ns = ...
 
@@ -19,7 +20,9 @@ local function BuildDungeons(pane, c)
     c:Heading("Dungeon maps")
     page.dungeonRoute = Switch(c, "Show the usual way through on each map", "dungeonRoute", nil, Redraw,
         "The diary can't follow you inside, so it inks the usual way up to the furthest boss you killed and pencils the rest.")
+    page.openOnRun = Switch(c, "Open the diary on the map of the run you’re in", "openOnRun", nil, nil,
+        "Only inside a dungeon or raid. Anywhere else, the diary opens where you left it.")
 end
 
 SettingsUI.RegisterSection("dungeons", { order = 26, label = "Dungeons and Raids", parent = "interface",
-    about = "How a run's map is drawn", build = BuildDungeons })
+    about = "How a run’s map is drawn, and when it opens", build = BuildDungeons })

@@ -410,10 +410,27 @@ function ns.UI.CloseJournal()
     if J.journal then J.journal:Hide() end
 end
 
+-- The diary as the player opens it (the key, the minimap button, the Social
+-- tab, /sd). Inside a dungeon or raid it opens on the run going on: its map
+-- out on the table over Your Diary, the run's page under it where Your Diary
+-- has one, so putting the map away lands there (UI/Dungeon/Spread.lua).
+-- Not with "openOnRun" off, and not before the introduction has been seen:
+-- that comes first.
+function ns.UI.OpenJournal()
+    local inside, visit = ns.Instances.Inside()
+    if not (inside and ns.Setting("openOnRun") and ns.Setting("introSeen")) then
+        return ns.UI.ShowJournal()
+    end
+    ns.UI.SetJournalView("journey")
+    ns.UI.ShowJournal()
+    ns.UI.YourDiary.OpenRun(visit.id)
+    if not (J.visit and J.visit.id == visit.id) then ns.UI.OpenVisit(visit.id, "journey") end
+end
+
 function ns.UI.ToggleJournal()
     if J.journal and J.journal:IsShown() then
         ns.UI.CloseJournal()
     else
-        ns.UI.ShowJournal()
+        ns.UI.OpenJournal()
     end
 end

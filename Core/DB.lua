@@ -124,6 +124,7 @@ local CHARACTER_SETTINGS = {
     paperGrain = 100,   -- "Paper Texture Intensity", percent of the art grain's designed strength (Style.SetGrain)
     revealMap = false,  -- "Always show the whole map": the map sheets fill in unexplored areas too (UI/Map/Art.lua)
     dungeonRoute = true,  -- MAP-4: a run's map draws the usual way through (UI/Dungeon/Print.lua)
+    openOnRun = true,   -- inside a dungeon or raid, opening the diary lays the run's map out (ns.UI.OpenJournal)
     -- The parcel at login has been torn open: from then on it comes back
     -- torn, the diary's note beside the book (UI/Windows/Intro/Parcel.lua).
     parcelOpened = false,

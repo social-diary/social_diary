@@ -87,7 +87,7 @@ local function Build(window)
     tab:SetScript("OnClick", function()
         if SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
         HideUIPanel(window)
-        ns.UI.ShowJournal()
+        ns.UI.OpenJournal()
     end)
 
     -- Tabs come and go (Recruit a Friend, for one), so follow the last one.

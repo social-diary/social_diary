@@ -63,6 +63,7 @@ local FILES = {
     "dungeon_rolls",
     "dungeon_ui",
     "dungeon_spread",
+    "open_on_run",
     "dungeon_light",
     "dungeon_way",
     "dungeon_way_ui", "dungeon_mouse",

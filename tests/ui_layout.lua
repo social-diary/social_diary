@@ -22,6 +22,7 @@ local LOOSE = {
     ShowJournal = "Dev",            -- /sd and the tests open it
     CloseJournal = "tests",
     ToggleJournal = "bindings",     -- also Core/Slash
+    OpenJournal = "tests",          -- and the Social tab, through ToggleJournal
     SetJournalView = "tests",       -- and plate_dump.lua
     JournalView = "tests",
     JournalShowing = "tests",
