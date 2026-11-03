@@ -418,10 +418,11 @@ Eq(probe.readable, 3, "the kills read")
 Eq(probe.hidden, 1, "the kills hidden")
 Eq(probe.other, 1, "a kill of something not a creature")
 Eq(probe.attackerHidden, 1, "a killer hidden")
-Eq(#probe.kills, 3, "the readable kills kept")
+Eq(#probe.kills, 4, "the kills kept, a hidden one with its time only")
 Eq(probe.kills[1].npc, 11318, "the first kill's NPC ID")
 for _, k in ipairs(probe.kills) do
     for key in pairs(k) do Check(key == "t" or key == "npc", "the probe kept more than a time and an NPC ID") end
+    Check(type(k.t) == "number", "a kill without its time")
 end
 -- Outside a run: nothing.
 mock.fire("PARTY_KILL", G, trogg)
@@ -447,3 +448,128 @@ DEFAULT_CHAT_FRAME.AddMessage = add
 
 ns.UI.OpenVisit(run.id, "journey")
 ns.db.instances[run.id] = nil
+
+--------------------------------------------------------------------------
+Section("the killer: at a pull of what killed them (KILLER)")
+
+-- The pattern of a real run (3 Nov 2026, Ragefire Chasm, two level 60s in
+-- a level 15 group): its times, kills and killers, the names and GUIDs
+-- made up. Oggleflint fell 12:19 in, Taragaman 25:02; a ghost's run out
+-- and back of 18 s between.
+local S = 100000
+local function Killed(name, npc) return { name = name, npcID = npc, source = "recap" } end
+local replay = {
+    id = 9390, instanceID = RFC, name = "Ragefire Chasm", startedAt = S, me = G,
+    members = { { guid = G }, { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" },
+        { guid = "Player-1-D" } },
+    spans = { { from = S, to = S + 1258, ghost = true }, { from = S + 1276 } },
+    bossesKilled = { "Oggleflint", "Taragaman the Hungerer" },
+    pulls = { { id = 2732, name = "Oggleflint", start = S + 739, stop = S + 739, killed = true },
+        { id = 2733, name = "Taragaman the Hungerer", start = S + 1502, stop = S + 1502, killed = true } },
+    deathLog = {
+        { guid = "Player-1-A", time = S + 170, killer = Killed("Ragefire Trogg", 11318) },
+        { guid = "Player-1-B", time = S + 369, killer = Killed("Oggleflint", 11517) },
+        { guid = "Player-1-C", time = S + 844, killer = Killed("Molten Elemental", 11321) },
+        { guid = "Player-1-D", time = S + 855, killer = Killed("Molten Elemental", 11321) },
+        { guid = G, time = S + 880, killer = Killed("Molten Elemental", 11321) },
+        { guid = "Player-1-A", time = S + 1562, killer = Killed("Searing Blade Enforcer", 11323) },
+        { guid = "Player-1-B", time = S + 1770, killer = Killed("Voidwalker Minion", 8996) },
+    },
+}
+Eq(ns.PaceData[RFC].summons[8996], 11324, "the Voidwalker Minion is no Searing Blade Warlock's")
+local rn = Run.Notes(replay)
+local rplan = Page.Plan({ visit = replay, floor = floor, box = { x = 0, y = 0, w = W, h = H }, At = At, notes = rn,
+    route = true })
+local rpath = rplan.path
+-- The pull a point lies at, and the NPC IDs in it.
+local function PullAt(x, y)
+    local gx, gy = fit.ToGame(x / W, y / H)
+    local yd = Pace.Project(rpath.course, gx, gy)
+    local best, bd
+    for _, p in ipairs(rpath.course.pulls) do
+        local d = math.abs(p.at - yd)
+        if not bd or d < bd then best, bd = p, d end
+    end
+    return best, bd, yd
+end
+local function Holds(p, npc)
+    for _, id in ipairs(p.npcs or {}) do if id == npc then return true end end
+end
+local placed = {}
+for _, l in ipairs(rn.legs) do
+    local x, y, lhow = Page.LegPoint(rpath, l)
+    local npc = l.death.killer.npcID
+    Eq(lhow, "killer", l.death.killer.name .. "'s death not placed by its killer")
+    local p, off, yd = PullAt(x, y)
+    Check(off <= clear + 0.5, l.death.killer.name .. "'s death off a pull: " .. off)
+    Check(Holds(p, npc) or Holds(p, ns.PaceData[RFC].summons[npc]),
+        l.death.killer.name .. "'s death at a pull without it: " .. table.concat(p.names, "/"))
+    placed[#placed + 1] = { name = l.death.killer.name, yd = yd, l = l }
+end
+Eq(#placed, 6, "the deaths on the way (Oggleflint's is his)")
+if os.getenv("PACE_SHOW") then  -- PACE_SHOW=1: the replay as placed, against the time alone
+    for _, e in ipairs(placed) do
+        local l = e.l
+        local i0 = l.after and rpath.stops[D.Norm(l.after.name)] or 1
+        local i9 = l.before and rpath.stops[D.Norm(l.before.name)] or (i0 == i1 and i2 or i0 == i2 and i3 or i1)
+        local t = Pace.Place(rpath.course, i0, i9, l.dt, not l.open and l.known or nil)
+        local p = PullAt(Page.LegPoint(rpath, l))
+        print(("%-24s time alone %5.0f yd   killer %5.0f yd  (%s)"):format(e.name, t, e.yd, table.concat(p.names, "/")))
+    end
+end
+-- Each where the time alone could not: the Trogg past the Earthborers,
+-- the three Elementals together at their pulls on the way to Taragaman.
+Check(placed[1].yd >= 190 and placed[1].yd < course.cum[i1], "the Trogg not at the Troggs: " .. placed[1].yd)
+local tyd = Pace.Place(rpath.course, 1, i1, placed[1].l.dt, placed[1].l.known)
+Check(math.abs(tyd - placed[1].yd) > 10, "the Trogg where the time alone puts it")
+Check(Near(placed[2].yd, placed[3].yd, 0.5) and Near(placed[3].yd, placed[4].yd, 0.5), "the wipe's deaths apart")
+Check(placed[2].yd > 970 and placed[2].yd < 1075, "the Elementals not at theirs: " .. placed[2].yd)
+local myd = Pace.Place(rpath.course, i1, i2, placed[2].l.dt, placed[2].l.known)
+Check(myd < 900, "the time alone already at the Elementals")
+-- The wipe's strip points at the Elementals too.
+Eq(#rn.wipes, 1, "the Elementals' wipe")
+local _, _, whow2 = Page.LegPoint(rpath, rn.wipes[1])
+Eq(whow2, "killer", "the wipe not placed by its killer")
+-- Past Taragaman: the Enforcer, and the Warlock's Voidwalker at a Warlock.
+Check(placed[5].yd > course.cum[i2] and placed[5].yd < course.cum[i3], "the Enforcer off the leg to Jergosh")
+Check(placed[6].yd > course.cum[i2] and placed[6].yd < course.cum[i3], "the Voidwalker off the leg to Jergosh")
+
+-- What the killer cannot say, the time does.
+local dt0 = placed[2].l.dt
+local function How(leg) return select(3, Page.LegPoint(rpath, leg)) end
+local base = { after = placed[5].l.after, before = placed[5].l.before, open = placed[5].l.open,
+    frac = placed[5].l.frac, dt = placed[5].l.dt, known = placed[5].l.known }
+local function With(killer)
+    local l = {}
+    for k, v in pairs(base) do l[k] = v end
+    l.death = { guid = "Player-1-A", time = S + 1562, killer = killer }
+    return l
+end
+Eq(How(With(Killed("Molten Elemental", 11321))), "pace", "a killer from another leg placed by it")
+Eq(How(With(Killed("Kobold Vermin", 6))), "pace", "a killer in no pull placed by it")
+Eq(How(With({ player = true, npcID = 11323 })), "pace", "a player killer placed by it")
+Eq(How(With(nil)), "pace", "no killer")
+Eq(How(With({ name = "Searing Blade Enforcer" })), "pace", "a killer without its NPC ID")
+-- Directly: no NPC ID, the time's answer; the same with one in no pull.
+local a1, _, _, h1 = Pace.Place(rpath.course, i1, i2, dt0, nil)
+local a2, _, _, h2 = Pace.Place(rpath.course, i1, i2, dt0, nil, 99999)
+Eq(h1, "time", "no killer: not the time")
+Eq(h2, "time", "a killer in no pull: not the time")
+Check(Near(a1, a2), "a killer in no pull moved it")
+-- Always at a pull holding it, whatever the time.
+for dt = 0, 3000, 150 do
+    local yd, _, leg, h = Pace.Place(rpath.course, i1, i2, dt, nil, 11321)
+    Eq(h, "killer", "the Elementals' killer at " .. dt .. " s")
+    local ok = false
+    for _, p in ipairs(leg.pulls) do
+        if Near(leg.from + p.at, yd) and Holds(p, 11321) then ok = true end
+    end
+    Check(ok, "a death to an Elemental not at an Elemental at " .. dt .. " s")
+end
+-- A known leg: the pull holding it nearest where the time says.
+local kyd, kr, kleg = Pace.Place(rpath.course, 1, i1, 170, 739, 11318)
+local nearest
+for _, p in ipairs(kleg.pulls) do
+    if Holds(p, 11318) and (not nearest or math.abs(p.at - kr.yd) < math.abs(nearest.at - kr.yd)) then nearest = p end
+end
+Check(Near(kyd, kleg.from + nearest.at), "a known leg's killer not at the nearest Trogg")

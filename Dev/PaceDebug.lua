@@ -25,9 +25,11 @@
 -- client kept it back, or "no killer".
 --
 -- The kill probe: while inside a run, every PARTY_KILL is counted, and
--- whether its victim's GUID could be read (an NPC ID) or was secret; the
--- readable ones are kept in order (seconds into the run, NPC ID), at most
--- PROBE.most a run. It is to learn whether trash kills can be counted
+-- whether its victim's GUID could be read (an NPC ID) or was secret; each
+-- is kept in order (seconds into the run, and its NPC ID where readable),
+-- at most PROBE.most a run. (3 Nov 2026, Ragefire Chasm: all 30 creature
+-- kills came secret, the killer too; the count and the time are what is
+-- left.) It is to learn whether trash kills can be counted
 -- inside an instance on Forever (a count along the way: 3 Nov 2026), so
 -- it holds creatures only, never a player's name or GUID. Kept in
 -- SocialDiaryCharDB.paceProbe by run until /sd pace clear; /sd pace
@@ -113,8 +115,10 @@ local function Probe(attacker, victim)
     end
     run.events = run.events + 1
     if ns.IsSecret(attacker) then run.attackerHidden = run.attackerHidden + 1 end
+    local t = math.floor(ns.Now() - (visit.startedAt or ns.Now()))
     if ns.IsSecret(victim) then
         run.hidden = run.hidden + 1
+        if #run.kills < PROBE.most then run.kills[#run.kills + 1] = { t = t } end
         return
     end
     local npc = ns.NpcID(victim)
@@ -124,9 +128,7 @@ local function Probe(attacker, victim)
         return
     end
     run.readable = run.readable + 1
-    if #run.kills < PROBE.most then
-        run.kills[#run.kills + 1] = { t = math.floor(ns.Now() - (visit.startedAt or ns.Now())), npc = npc }
-    end
+    if #run.kills < PROBE.most then run.kills[#run.kills + 1] = { t = t, npc = npc } end
 end
 
 ns.On("PARTY_KILL", function(_, attacker, victim) Probe(attacker, victim) end)
@@ -143,15 +145,17 @@ local function ReportProbe(visit)
         run.events, run.readable, run.hidden, run.other, run.attackerHidden)
     local byNpc, order = {}, {}
     for _, k in ipairs(run.kills) do
-        if not byNpc[k.npc] then order[#order + 1] = k.npc end
-        byNpc[k.npc] = (byNpc[k.npc] or 0) + 1
+        if k.npc then
+            if not byNpc[k.npc] then order[#order + 1] = k.npc end
+            byNpc[k.npc] = (byNpc[k.npc] or 0) + 1
+        end
     end
     local parts = {}
     for _, npc in ipairs(order) do parts[#parts + 1] = ("#%d x%d"):format(npc, byNpc[npc]) end
     if #parts > 0 then Say("  by NPC ID: %s", table.concat(parts, ", ")) end
     local first = run.kills[1]
     local last = run.kills[#run.kills]
-    if first then Say("  the readable kills from %s to %s into the run", Clock(first.t), Clock(last.t)) end
+    if first then Say("  the kills from %s to %s into the run", Clock(first.t), Clock(last.t)) end
 end
 
 -- The way as the map has it: the user's own, else the usual one; the

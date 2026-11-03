@@ -545,17 +545,30 @@ local function NextStop(path, i0)
     return i0 < #path.route and #path.route or nil
 end
 
+-- What killed a moment on the way, its NPC ID: a death's (`death`), or
+-- the first of a wipe's deaths that says (`deaths`); nil for a roll, a
+-- level-up or a death nothing is known to have killed.
+local function KillerOf(leg)
+    local deaths = leg.deaths or { leg.death }
+    for _, d in ipairs(deaths) do
+        local k = type(d) == "table" and d.killer
+        local npc = type(k) == "table" and not k.player and tonumber(k.npcID)
+        if npc then return npc end
+    end
+end
+
 -- Where the route model puts a moment on the leg from point i0 to the
 -- boss at point i1 (Core/DungeonPace.lua: the packs on the way, the time
--- into the leg, how long it took where its boss fell), kept PACE_CLEAR
--- yards off both of its ends (the boss behind and the one ahead, never on
--- them); nil where the dungeon has no pace data or the leg is not one the
--- model takes, or it lies off the floor shown.
+-- into the leg, how long it took where its boss fell, and what killed it),
+-- kept PACE_CLEAR yards off both of its ends (the boss behind and the one
+-- ahead, never on them); nil where the dungeon has no pace data or the leg
+-- is not one the model takes, or it lies off the floor shown. x, y and how:
+-- "killer" (at a pull of what killed it) or "pace".
 local PACE_CLEAR = 12
 local function PacePoint(path, leg, i0, i1, open)
     local Pace, course = ns.DungeonPace, path.course
     if not (Pace and course and i1 and leg.dt) then return nil end
-    local yd = Pace.Place(course, i0, i1, leg.dt, not open and leg.known or nil)
+    local yd, _, _, by = Pace.Place(course, i0, i1, leg.dt, not open and leg.known or nil, KillerOf(leg))
     if not yd then return nil end
     local from, to = course.cum[i0], course.cum[i1]
     local clear = math.min(PACE_CLEAR, (to - from) / 2)
@@ -563,7 +576,7 @@ local function PacePoint(path, leg, i0, i1, open)
     local k, t = Pace.Along(course, yd)
     local a, b = k and path.pts[k], k and path.pts[k + 1]
     if not (a and b) then return nil end
-    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t
+    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, by == "killer" and "killer" or "pace"
 end
 
 -- Where a death on the way lies (MAP-9): where the route model puts it
@@ -573,8 +586,9 @@ end
 -- the next stop whose boss still stands, at most OPEN_MOST of the way, so
 -- it never lies on that boss nor past it; just past `after` where nothing
 -- says how far. nil where the way through does not say (no route, a stop
--- off this floor). x, y and how it was placed: "pace", "eased" (an open
--- leg), "share" (between kills) or "past" (just past `after`).
+-- off this floor). x, y and how it was placed: "killer" or "pace" (the
+-- route model, PacePoint), "eased" (an open leg), "share" (between kills)
+-- or "past" (just past `after`).
 local OPEN_MOST = 0.9
 local function LegPoint(path, leg)
     if not path then return nil end
@@ -584,8 +598,8 @@ local function LegPoint(path, leg)
     if not i0 then return nil end
     local open = leg.open and leg.frac and not i1
     if open then i1 = NextStop(path, i0) end
-    local px, py = PacePoint(path, leg, i0, i1, open)
-    if px then return px, py, "pace" end
+    local px, py, phow = PacePoint(path, leg, i0, i1, open)
+    if px then return px, py, phow end
     local how = not i1 and "past" or open and "eased" or "share"
     local pts = {}
     if i1 then

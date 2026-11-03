@@ -6,9 +6,11 @@ page_data.json and config.json), for Core/DungeonPace.lua.
     python3 -I Dev/pace_export.py ref/route-model-handover/pipeline/dungeons/ragefire_chasm Core/Pace/RagefireChasm.lua
 
 What it keeps: the entrance and the bosses in game yards (the anchors the
-addon fits to its own map with), and every trash pack (a pull: where it
-stands, its size, its elites, who is in it, and the boss whose room it
-guards). Not the pipeline's legs, paths or transform: those were made for
+addon fits to its own map with), every trash pack (a pull: where it stands,
+its size, its elites, who is in it by name and by NPC ID, and the boss whose
+room it guards), and the summons (config.json's "summons": an NPC that is in
+no pack, a pet or an add, to the NPC that brings it) so a death to one is
+a death to its summoner's pull. Not the pipeline's legs, paths or transform: those were made for
 its own reference map and its own shortest ways; the addon lays the packs
 on the way it draws (Dungeon Crawler Forever's usual way, or the player's).
 
@@ -39,7 +41,9 @@ def main(work, out):
     L.append("-- " + source + ".")
     L.append("-- Game yards (x north, y west): the entrance and the bosses, which the")
     L.append("-- addon fits its own map to, and every trash pack (where it stands, its")
-    L.append("-- size and elites, who is in it, `boss` the boss whose room it guards).")
+    L.append("-- size and elites, who is in it by name and NPC ID, `boss` the boss whose")
+    L.append("-- room it guards); `summons`: an NPC in no pack (a pet, an add) to the NPC")
+    L.append("-- that brings it, so a death to it is a death at its summoner's pull.")
     L.append("-- Excluded by the pipeline's config: %s." % (", ".join(cfg.get("exclude", []) + cfg.get("no_pull", [])) or "nothing"))
     L.append("")
     L.append("local addonName, ns = ...")
@@ -52,12 +56,23 @@ def main(work, out):
     for b in page["bosses"]:
         L.append("        { name = %s, x = %s, y = %s }," % (lua_str(b["name"]), num(float(b["x"])), num(float(b["y"]))))
     L.append("    },")
+    npcs = {}
+    for sp in page["spawns"]:
+        if sp.get("p") is not None:
+            npcs.setdefault(sp["p"], set()).add(int(sp["id"]))
     L.append("    packs = {")
     for p in page["packs"]:
         names = ", ".join(lua_str(n) for n in p["names"])
+        ids = ", ".join(str(i) for i in sorted(npcs.get(p["id"], ())))
+        if not ids:
+            sys.exit("pack %d has no NPC IDs in page_data.json's spawns" % p["id"])
         boss = (", boss = " + lua_str(p["boss"])) if p.get("boss") else ""
-        L.append("        { x = %s, y = %s, size = %d, elites = %d, names = { %s }%s }," % (
-            num(float(p["x"])), num(float(p["y"])), p["size"], p["elites"], names, boss))
+        L.append("        { x = %s, y = %s, size = %d, elites = %d, names = { %s }, npcs = { %s }%s }," % (
+            num(float(p["x"])), num(float(p["y"])), p["size"], p["elites"], names, ids, boss))
+    L.append("    },")
+    L.append("    summons = {")
+    for npc, s_ in sorted(cfg.get("summons", {}).items(), key=lambda kv: int(kv[0])):
+        L.append("        [%d] = %d, -- %s: %s" % (int(npc), int(s_["by"]), s_.get("name", ""), s_.get("note", "")))
     L.append("    },")
     L.append("}")
     L.append("")

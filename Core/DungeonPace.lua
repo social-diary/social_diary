@@ -18,10 +18,13 @@
 --
 --   DungeonPace.Fit(instanceID)        the data's yards on the map's floor, or nil (FIT)
 --   DungeonPace.Course(visit, route)   the way in yards with its pulls, or nil
---   DungeonPace.Place(course, i0, i1, dt, known)
+--   DungeonPace.Place(course, i0, i1, dt, known, npc)
 --                                      yards along the way (from its start) for a
 --                                      moment dt seconds into the leg from point i0
---                                      to the boss at point i1; and the model's answer
+--                                      to the boss at point i1, at a pull of the
+--                                      killer `npc` where the leg has one (KILLER);
+--                                      the model's answer, the leg, and how
+--                                      ("killer" or "time")
 --   DungeonPace.Along(course, yd)      the segment k (point k to k + 1) and how far
 --                                      along it (0..1) that is
 --   DungeonPace.Project(course, gx, gy) the way's point nearest game yards gx, gy:
@@ -30,8 +33,8 @@
 -- A course: { instanceID, route, floor, cum (yards to each point), game
 -- (each point in game yards, false off the floor fitted), broken (segment
 -- k is off the floor fitted), pulls ({ at (yards from the way's
--- start), elites, size, names, boss (a guard's), pack (its index) }, in
--- order along the way) }.
+-- start), elites, size, names, npcs (its NPC IDs), boss (a guard's), pack
+-- (its index) }, in order along the way) }.
 
 local addonName, ns = ...
 
@@ -49,7 +52,18 @@ local FIT = { least = 4, most = 12 }
 -- guard of a boss's room (`boss`) is pulled just before that boss, on the
 -- leg to it only.
 local PULL = { radius = 15 }
-DungeonPace.FIT, DungeonPace.PULL = FIT, PULL
+-- What killed a death on the way (the death recap's NPC ID, Features/
+-- Deaths/Capture.lua) is the strongest thing known of where it was: only
+-- the leg's pulls holding that creature (or the one that summons it, the
+-- data's `summons`) may be where it died, the time choosing among them. A
+-- group's pace is known far worse than its killer (two level 60s in a
+-- level 15 group: 3 Nov 2026), so the time is weighed with a pace spread
+-- of `spread` (the model's own is 0.35). Where the time gives none of them
+-- any weight, the one nearest the time's own place. No such pull on the
+-- leg (a patrol, a creature not in the data, a killer from another leg):
+-- the time alone.
+local KILLER = { spread = 1.0 }
+DungeonPace.FIT, DungeonPace.PULL, DungeonPace.KILLER = FIT, PULL, KILLER
 
 local function Norm(name) return ns.Dungeons.Norm(name) end
 
@@ -201,7 +215,7 @@ function DungeonPace.Course(visit, route)
         end
         if at then
             pulls[#pulls + 1] = { at = at, elites = math.max(1, pack.elites or 1), size = pack.size,
-                names = pack.names, boss = pack.boss, pack = n }
+                names = pack.names, npcs = pack.npcs, boss = pack.boss, pack = n }
         end
     end
     table.sort(pulls, function(a, b)
@@ -213,7 +227,7 @@ function DungeonPace.Course(visit, route)
 end
 
 -- The leg from point i0 to the boss at point i1, as the model takes it: {
--- length, pulls ({ at from i0, elites, size }) }; nil where it is not one
+-- length, pulls ({ at from i0, elites, size, npcs }) }; nil where it is not one
 -- (i1 not after i0, no boss at i1, a stretch broken, no length).
 function DungeonPace.Leg(course, i0, i1)
     if not (course and i0 and i1 and i1 > i0 and course.route[i1]) then return nil end
@@ -232,22 +246,65 @@ function DungeonPace.Leg(course, i0, i1)
         else
             mine = p.at >= from and p.at < to
         end
-        if mine then pulls[#pulls + 1] = { at = p.at - from, elites = p.elites, size = p.size } end
+        if mine then pulls[#pulls + 1] = { at = p.at - from, elites = p.elites, size = p.size, npcs = p.npcs } end
     end
     return { length = to - from, pulls = pulls, from = from, to = target }
 end
 
+-- The leg's pulls (indices) holding creature `npc`, or what summons it.
+local function Holding(course, leg, npc)
+    if not npc then return nil end
+    local data = ns.PaceData and ns.PaceData[course.instanceID]
+    local by = data and data.summons and data.summons[npc]
+    local out = {}
+    for i, p in ipairs(leg.pulls) do
+        for _, id in ipairs(p.npcs or {}) do
+            if id == npc or id == by then
+                out[#out + 1] = i
+                break
+            end
+        end
+    end
+    return #out > 0 and out or nil
+end
+
 -- Yards along the way (from its start) for a moment `dt` seconds into the
 -- leg from point i0 to the boss at point i1, the leg `known` seconds long
--- when its boss fell (nil while it stands); and the model's answer
--- (Core/Pace/Model.lua's PlaceDeath). nil where the leg is not one (Leg)
--- or no time is known.
-function DungeonPace.Place(course, i0, i1, dt, known)
+-- when its boss fell (nil while it stands), killed by creature `npc` (nil
+-- where not known): at a pull holding it where the leg has one (KILLER),
+-- else where the time puts it. Then the model's answer (Core/Pace/
+-- Model.lua's PlaceDeath), the leg, and how: "killer" or "time". nil where
+-- the leg is not one (Leg) or no time is known.
+function DungeonPace.Place(course, i0, i1, dt, known, npc)
     local Model = ns.PaceModel
     local leg = Model and dt and DungeonPace.Leg(course, i0, i1)
     if not leg then return nil end
-    local r = Model.PlaceDeath(leg, math.max(0, dt), nil, { knownKill = known and known > 0 and known or nil })
-    return leg.from + r.yd, r, leg
+    dt = math.max(0, dt)
+    known = known and known > 0 and known or nil
+    local r = Model.PlaceDeath(leg, dt, nil, { knownKill = known })
+    local candidates = Holding(course, leg, npc)
+    if not candidates then return leg.from + r.yd, r, leg, "time" end
+    -- The time's weight on each, with the wide spread; a known leg's time
+    -- is one place, so the nearest.
+    local best, bestW
+    if not known then
+        local wide = Model.PlaceDeath(leg, dt, { spread = KILLER.spread })
+        local by = {}
+        for _, s in ipairs(wide.samples) do
+            if s.kind == "pull" then by[s.pull] = (by[s.pull] or 0) + s.w end
+        end
+        for _, i in ipairs(candidates) do
+            local w = by[i] or 0
+            if w > 0 and (not bestW or w > bestW) then best, bestW = i, w end
+        end
+    end
+    if not best then
+        for _, i in ipairs(candidates) do
+            local d = math.abs(leg.pulls[i].at - r.yd)
+            if not bestW or d < bestW then best, bestW = i, d end
+        end
+    end
+    return leg.from + leg.pulls[best].at, r, leg, "killer"
 end
 
 -- The stretch `yd` yards along the way lies on: k (point k to k + 1) and
