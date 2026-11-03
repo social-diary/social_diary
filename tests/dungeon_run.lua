@@ -369,10 +369,66 @@ for _, l in ipairs(n.legs) do
 end
 Eq(early.after, nil, "a death before any kill starts at a boss")
 Eq(early.before.name, "Faldrim Anvilmar", "... and goes towards the first kill")
+Eq(early.open, nil, "a leg with a kill after it is open")
 -- An item no table holds is found on the way, even right after a kill:
 -- only a boss's own table says it dropped there (MAP-11).
 Eq(#n.bosses[2].loot, 0, "loot no table holds went to the boss killed before it")
 Eq(#n.unplaced.loot, 1, "loot no table holds was placed")
+
+--------------------------------------------------------------------------
+Section("open legs: no kill after the moment, eased toward the next boss (OPEN)")
+
+-- 3 Nov 2026, in the client: a run with no kill had every wipe on one spot.
+local Eased, half = Run.Eased, Run.OPEN.half
+Check(math.abs(Eased(half) - 0.5) < 1e-9, "half way after `half` seconds")
+Eq(Eased(0), 0, "at the leg's start")
+Eq(Eased(-30), 0, "before the leg's start")
+Check(Eased(20 * half) < 1, "the curve reaches the boss")
+local none = {
+    instanceID = 3065, startedAt = 1000, me = F.SELF.guid,
+    members = { { guid = F.SELF.guid }, { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" } },
+    bossesKilled = {}, pulls = {},
+    deathLog = {
+        { guid = "Player-1-A", time = 1060, killer = { name = "Dark Iron Looter" } },
+        { guid = "Player-1-B", time = 1600, killer = { name = "Dark Iron Looter" } },
+        { guid = "Player-1-C", time = 1620, killer = { name = "Dark Iron Looter" } },
+        { guid = "Player-1-A", time = 2400, killer = { name = "Dark Iron Looter" } },
+    },
+}
+local on = Run.Notes(none)
+Eq(#on.legs, 4, "every death before any kill is on the way")
+local last = -1
+for _, l in ipairs(on.legs) do
+    Eq(l.open, true, "a leg with no kill is open")
+    Eq(l.after, nil, "... starts at the way in")
+    Eq(l.before, nil, "... toward no kill")
+    Check(math.abs(l.frac - Eased(l.death.time - 1000)) < 1e-9, "eased by the time since the run began")
+    Check(l.frac > last, "the deaths out of order on the way")
+    last = l.frac
+end
+Check(on.legs[1].frac ~= on.legs[4].frac, "two deaths far apart in time on one spot")
+Eq(#on.wipes, 1, "half the group dead within a minute, no kill yet")
+Eq(on.wipes[1].open, true, "the wipe's leg is open")
+Check(math.abs(on.wipes[1].frac - Eased(600)) < 1e-9, "the wipe at its first death")
+local when = Run.When(none, on, 1240)
+Eq(when.open, true, "a moment with no kill after it is open")
+Check(math.abs(when.frac - 0.5) < 1e-9, "... eased like a death")
+
+-- Past the last kill: from that kill, toward whatever still stands.
+local past = {
+    instanceID = 3065, startedAt = 1000, me = F.SELF.guid,
+    members = { { guid = F.SELF.guid }, { guid = "Player-1-A" } },
+    bossesKilled = { "Faldrim Anvilmar" },
+    pulls = { { id = 3493, name = "Faldrim Anvilmar", start = 1100, stop = 1200, killed = true } },
+    deathLog = { { guid = "Player-1-A", time = 1440, killer = { name = "Dark Iron Looter" } } },
+}
+local pl = Run.Notes(past).legs[1]
+Eq(pl.after.name, "Faldrim Anvilmar", "past the last kill, from it")
+Eq(pl.open, true, "... open")
+Check(math.abs(pl.frac - 0.5) < 1e-9, "eased from the kill: " .. tostring(pl.frac))
+-- No start known: nothing to ease from.
+local nostart = Run.When({ instanceID = 3065 }, { bosses = {} }, nil)
+Eq(nostart.open, nil, "eased without a start")
 
 --------------------------------------------------------------------------
 Section("forgetting a member takes their deaths and loot (PRV-3)")

@@ -5,6 +5,11 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Fixes
+
+- _Dungeon View_ spreads deaths and wipes along the way to the next boss
+  instead of piling them up at the entrance when no boss has fallen yet
+
 ## [2.1.0]
 
 ### Shiny new Things

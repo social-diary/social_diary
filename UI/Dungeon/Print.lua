@@ -255,7 +255,8 @@ end
 -- floor on it, or nil. { route, own (the user drew it), pts (each { x, y },
 -- or false off the floor shown), stops (a boss's name, ns.Dungeons.Norm,
 -- to its point), reached (the furthest stop whose boss fell; the user's
--- own way all of it, WAY-14) }, or nil without a way through. A stop is
+-- own way all of it, WAY-14), killed (the bosses that fell, by
+-- ns.Dungeons.Norm) }, or nil without a way through. A stop is
 -- its boss: where the boss stands, the way meets it.
 local function Path(visit, wing, At, notes)
     local D = ns.Dungeons
@@ -275,7 +276,7 @@ local function Path(visit, wing, At, notes)
         end
     end
     if own then reached = #route end
-    return { route = route, own = own, pts = pts, stops = stops, reached = reached }
+    return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at }
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.
@@ -530,16 +531,33 @@ local function Cross(plan, P, x, y, pencil, stock, tip)
     plan.crosses[#plan.crosses + 1] = { x = x, y = y, pencil = pencil or nil, tip = tip }
 end
 
+-- The first stop on the way after point `i0` whose boss still stands
+-- (path.killed), else the way's last point; nil past the end.
+local function NextStop(path, i0)
+    local Norm = ns.Dungeons.Norm
+    for k = i0 + 1, #path.route do
+        local boss = path.route[k].boss
+        if boss and not path.killed[Norm(boss)] then return k end
+    end
+    return i0 < #path.route and #path.route or nil
+end
+
 -- Where a death on the way lies (MAP-9): `frac` of the way along the
--- route from `after`'s stop (the way in without one) to `before`'s; just
--- past `after` with no `before`. nil where the way through does not say
--- (no route, a stop off this floor).
+-- route from `after`'s stop (the way in without one) to `before`'s. On an
+-- open leg (`open`: no kill after it, Core/DungeonRun.lua's OPEN) to the
+-- next stop whose boss still stands, at most OPEN_MOST of the way, so it
+-- never lies on that boss nor past it; just past `after` where nothing
+-- says how far. nil where the way through does not say (no route, a stop
+-- off this floor).
+local OPEN_MOST = 0.9
 local function LegPoint(path, leg)
     if not path then return nil end
     local Norm = ns.Dungeons.Norm
     local i0 = leg.after and path.stops[Norm(leg.after.name)] or (not leg.after and 1) or nil
     local i1 = leg.before and path.stops[Norm(leg.before.name)]
     if not i0 then return nil end
+    local open = leg.open and leg.frac and not i1
+    if open then i1 = NextStop(path, i0) end
     local pts = {}
     if i1 then
         local step = i1 >= i0 and 1 or -1
@@ -558,7 +576,8 @@ local function LegPoint(path, leg)
         lengths[k] = math.sqrt((pts[k][1] - pts[k - 1][1]) ^ 2 + (pts[k][2] - pts[k - 1][2]) ^ 2)
         total = total + lengths[k]
     end
-    local want = i1 and total * math.max(0.05, math.min(0.95, leg.frac or 0.5)) or math.min(total, 16)
+    local most = open and OPEN_MOST or 0.95
+    local want = i1 and total * math.max(0.05, math.min(most, leg.frac or 0.5)) or math.min(total, 16)
     for k = 2, #pts do
         if want <= lengths[k] or k == #pts then
             local t = lengths[k] > 0 and math.min(1, want / lengths[k]) or 0
@@ -568,7 +587,7 @@ local function LegPoint(path, leg)
     end
 end
 
-DungeonPage.LegPoint = LegPoint
+DungeonPage.LegPoint, DungeonPage.OPEN_MOST = LegPoint, OPEN_MOST
 
 -- Where a moment at time `t` on the way lies on the map (a drop rolled for
 -- that no boss's table holds: the rolls' strips, pass B): on the route
@@ -617,9 +636,25 @@ local function Deaths(plan, P, stock)
             for _, death in ipairs(e.deaths) do loose[#loose + 1] = death end
         end
     end
+    -- Deaths on the way that land together (a pull, a wipe) fan out round
+    -- the first, as at a boss.
+    local onWay = {}
+    local function Fan(x, y)
+        for _, p in ipairs(onWay) do
+            if (p.x - x) ^ 2 + (p.y - y) ^ 2 < D.halo ^ 2 then
+                p.n = p.n + 1
+                local turn = math.floor(p.n / 2) * (p.n % 2 == 0 and 1 or -1)
+                local a = math.rad(D.start + turn * D.step)
+                return p.x + math.cos(a) * D.ring, p.y + math.sin(a) * D.ring
+            end
+        end
+        onWay[#onWay + 1] = { x = x, y = y, n = 0 }
+        return x, y
+    end
     for k, leg in ipairs(notes.legs or {}) do
         local tip = Style.TipList(W.Death(visit, leg.death), { W.Leg(leg, plan.names) })
         local x, y = LegPoint(plan.path, leg)
+        if x then x, y = Fan(x, y) end
         if not x then
             local t = Near(leg.after) or Near(leg.before)
             if t then x, y = t.x - (t.r + D.ring) * 0.9, t.y + (t.r + D.ring) * 0.9 + k * 2 end

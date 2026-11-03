@@ -13,13 +13,17 @@
 --             first pull to its kill (else its last pull's end), wipes and
 --             all, and `share` that of the run's time inside (`inside`);
 --             kills first in the order they fell, then those still standing;
---   legs = { { death, after = boss|nil, before = boss|nil, frac = 0..1|nil } },
---   wipes = { { after, before, frac, deaths = { death }, killer = name } },
+--   legs = { { death, after = boss|nil, before = boss|nil, frac = 0..1|nil, open = true|nil } },
+--             `open` a leg with no kill after the moment (none yet, or
+--             past the last): its `frac` eased by the time since the
+--             leg began (OPEN), toward the next boss the way meets, never
+--             reaching it (UI/Dungeon/Print.lua's LegPoint);
+--   wipes = { { after, before, frac, open, deaths = { death }, killer = name } },
 --             wipes to trash on the way, at the leg of their first death;
---   near = { { after, before, frac, deaths = { death } } },
+--   near = { { after, before, frac, open, deaths = { death } } },
 --             near wipes to trash on the way (NEAR), as `wipes`; a boss's
 --             own are its entry's `near` (a count of kills nearly lost);
---   levels = { { guid, level, time, after, before, frac } },
+--   levels = { { guid, level, time, after, before, frac, open } },
 --             level-ups during the run, the user's and the group's, on the
 --             leg they happened on, as a death on the way is (LevelUps);
 --   inside = seconds,  -- the run's time inside (its spans), for `share`
@@ -42,7 +46,16 @@ local WIPE_WINDOW = 60
 -- `least`; or deaths to trash within WIPE_WINDOW that came as near
 -- without reaching half (a wipe).
 local NEAR = { less = 1, least = 2 }
-DungeonRun.WIPE_WINDOW, DungeonRun.NEAR = WIPE_WINDOW, NEAR
+-- A moment on an open leg (no kill after it: none yet, or past the last)
+-- lies `1 - 2^(-dt / half)` of the way to the next boss the way meets, dt
+-- the seconds since the leg began (the last kill, else the run's start):
+-- half way there after `half` seconds, closing in after, never there. The
+-- group cannot have gone past a boss still standing, and how long a leg
+-- takes is not known until it ends; the curve keeps the moments in the
+-- order they happened. (3 Nov 2026, in the client: every wipe of a run
+-- with no kill lay on one spot by the way in.)
+local OPEN = { half = 240 }
+DungeonRun.WIPE_WINDOW, DungeonRun.NEAR, DungeonRun.OPEN = WIPE_WINDOW, NEAR, OPEN
 
 -- The group at `t` (members who had joined and not yet left), or
 -- everyone who was ever in it.
@@ -68,21 +81,30 @@ local function Nearly(visit, t)
 end
 DungeonRun.Nearly = Nearly
 
+-- How far along an open leg a moment `dt` seconds into it lies (OPEN).
+function DungeonRun.Eased(dt)
+    return 1 - 2 ^ (-math.max(0, dt) / OPEN.half)
+end
+
 -- Where a moment at time `t` lies between the kills (`kills`, in time
 -- order): the kill before it, the one after, and how far along between
--- them (from the start of the run before the first).
+-- them (from the start of the run before the first); with no kill after
+-- it, how far along the open leg (OPEN), and `open`.
 local function Between(visit, kills, t)
     local after, before
     for _, k in ipairs(kills) do
         if k.at <= t then after = k elseif not before then before = k end
     end
-    local frac
+    local frac, open
     if after and before then
         frac = (t - after.at) / math.max(1, before.at - after.at)
     elseif before then
         frac = 1 - math.min(1, (before.at - t) / math.max(1, before.at - (visit.startedAt or t)))
+    else
+        local from = after and after.at or visit.startedAt
+        if from and t then frac, open = DungeonRun.Eased(t - from), true end
     end
-    return after and after.boss, before and before.boss, frac
+    return after and after.boss, before and before.boss, frac, open
 end
 
 -- Level-ups during `visit`, { { guid, level, time } } by time: the user's
@@ -201,11 +223,9 @@ function DungeonRun.Notes(visit)
             if death.pull then
                 inPull[death.pull] = (inPull[death.pull] or 0) + 1
             end
-        elseif #kills == 0 then
-            out.legs[#out.legs + 1] = { death = death }
         else
-            local after, before, frac = Between(visit, kills, death.time)
-            out.legs[#out.legs + 1] = { death = death, after = after, before = before, frac = frac }
+            local after, before, frac, open = Between(visit, kills, death.time)
+            out.legs[#out.legs + 1] = { death = death, after = after, before = before, frac = frac, open = open }
         end
     end
 
@@ -268,11 +288,11 @@ function DungeonRun.Notes(visit)
         if n >= Half(visit, t) then
             local killer = legs[i].death.killer
             out.wipes[#out.wipes + 1] = { after = legs[i].after, before = legs[i].before,
-                frac = legs[i].frac, deaths = deaths, killer = killer and killer.name }
+                frac = legs[i].frac, open = legs[i].open, deaths = deaths, killer = killer and killer.name }
             i = j
         elseif n >= Nearly(visit, t) then
             out.near[#out.near + 1] = { after = legs[i].after, before = legs[i].before, frac = legs[i].frac,
-                deaths = deaths }
+                open = legs[i].open, deaths = deaths }
             i = j
         else
             i = i + 1
@@ -304,9 +324,9 @@ function DungeonRun.Notes(visit)
     -- Level-ups, on the leg they happened on.
     out.levels = {}
     for _, up in ipairs(DungeonRun.LevelUps(visit)) do
-        local after, before, frac = Between(visit, kills, up.time)
+        local after, before, frac, open = Between(visit, kills, up.time)
         out.levels[#out.levels + 1] = { guid = up.guid, level = up.level, time = up.time, after = after,
-            before = before, frac = frac }
+            before = before, frac = frac, open = open }
     end
 
     -- Ghost runs (MAP-12): out as a ghost, and back in after.
@@ -348,16 +368,17 @@ function DungeonRun.Wipes(visit)
 end
 
 -- Where a moment at time `t` lies on the run's way, between its kills
--- (`notes`, DungeonRun.Notes'): { after, before, frac } as a death on the
--- way's leg is (a drop found on the way, rolled for: the map's strips).
+-- (`notes`, DungeonRun.Notes'): { after, before, frac, open } as a death
+-- on the way's leg is (a drop found on the way, rolled for: the map's
+-- strips).
 function DungeonRun.When(visit, notes, t)
     local kills = {}
     for _, e in ipairs(notes and notes.bosses or {}) do
         if e.killed and e.at then kills[#kills + 1] = e end
     end
     table.sort(kills, function(a, b) return a.at < b.at end)
-    local after, before, frac = Between(visit, kills, t or visit.startedAt or 0)
-    return { after = after, before = before, frac = frac }
+    local after, before, frac, open = Between(visit, kills, t or visit.startedAt or 0)
+    return { after = after, before = before, frac = frac, open = open }
 end
 
 --------------------------------------------------------------------------

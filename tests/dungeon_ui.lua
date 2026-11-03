@@ -1379,5 +1379,45 @@ D.combined = nil
 view.chosen[RFK.id] = nil
 ns.UI.OpenVisit(RFK.id, G)
 
+--------------------------------------------------------------------------
+Section("an open leg on the way: to the next boss still standing, never past it")
+
+do
+    local N = D.Norm
+    -- The way in, then Alpha, Gamma and Beta, 100 px apart along a line.
+    local path = {
+        route = { { f = 1, x = 0, y = 0 }, { boss = "Alpha" }, { boss = "Gamma" }, { boss = "Beta" } },
+        pts = { { 0, 0 }, { 100, 0 }, { 200, 0 }, { 300, 0 } },
+        stops = { [N("Alpha")] = 2, [N("Gamma")] = 3, [N("Beta")] = 4 },
+        killed = {},
+    }
+    local Eased, most = ns.DungeonRun.Eased, Page.OPEN_MOST
+    local prev = -1
+    for _, dt in ipairs({ 5, 60, 240, 600, 1800, 7200 }) do
+        local x, y = Page.LegPoint(path, { open = true, frac = Eased(dt) })
+        Check(x and y == 0, "no kill yet: not on the way")
+        Check(x > prev or x >= 100 * most - 1e-9, "no kill yet: out of order at " .. dt .. " s")
+        Check(x <= 100 * most + 1e-9, "no kill yet: past the first boss at " .. dt .. " s: " .. tostring(x))
+        prev = x
+    end
+    Check(math.abs(Page.LegPoint(path, { open = true, frac = Eased(240) }) - 50) < 1e-6,
+        "half way to the first boss after OPEN.half")
+    -- Gamma fell, Alpha too: from Alpha past Gamma, toward Beta.
+    path.killed = { [N("Alpha")] = 1, [N("Gamma")] = 2 }
+    local x = Page.LegPoint(path, { after = { name = "Alpha" }, open = true, frac = 0.5 })
+    Check(math.abs(x - 200) < 1e-6, "a boss that fell is not the next stop: " .. tostring(x))
+    -- All fell: toward the way's end; at its end, nowhere on the way.
+    path.killed[N("Beta")] = 3
+    x = Page.LegPoint(path, { after = { name = "Alpha" }, open = true, frac = 0.5 })
+    Check(math.abs(x - 200) < 1e-6, "nothing standing: not toward the way's end")
+    Eq(Page.LegPoint(path, { after = { name = "Beta" }, open = true, frac = 0.5 }), nil,
+        "past the way's end, on it")
+    -- A closed leg, and an old one with no frac, as before.
+    x = Page.LegPoint(path, { after = { name = "Alpha" }, before = { name = "Beta" }, frac = 0.25 })
+    Check(math.abs(x - 150) < 1e-6, "a closed leg moved: " .. tostring(x))
+    x = Page.LegPoint(path, { after = { name = "Alpha" } })
+    Check(math.abs(x - 116) < 1e-6, "a leg with nothing to go by moved: " .. tostring(x))
+end
+
 SlashCmdList.SOCIALDIARY("testdata remove")
 ns.UI.CloseJournal()
