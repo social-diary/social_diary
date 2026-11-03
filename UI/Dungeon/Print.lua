@@ -256,7 +256,9 @@ end
 -- or false off the floor shown), stops (a boss's name, ns.Dungeons.Norm,
 -- to its point), reached (the furthest stop whose boss fell; the user's
 -- own way all of it, WAY-14), killed (the bosses that fell, by
--- ns.Dungeons.Norm) }, or nil without a way through. A stop is
+-- ns.Dungeons.Norm), course (the way in yards with the packs on it, where
+-- the dungeon has pace data: Core/DungeonPace.lua) }, or nil without a way
+-- through. A stop is
 -- its boss: where the boss stands, the way meets it.
 local function Path(visit, wing, At, notes)
     local D = ns.Dungeons
@@ -276,7 +278,8 @@ local function Path(visit, wing, At, notes)
         end
     end
     if own then reached = #route end
-    return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at }
+    return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at,
+        course = ns.DungeonPace and ns.DungeonPace.Course(visit, route) or nil }
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.
@@ -542,13 +545,36 @@ local function NextStop(path, i0)
     return i0 < #path.route and #path.route or nil
 end
 
--- Where a death on the way lies (MAP-9): `frac` of the way along the
--- route from `after`'s stop (the way in without one) to `before`'s. On an
--- open leg (`open`: no kill after it, Core/DungeonRun.lua's OPEN) to the
--- next stop whose boss still stands, at most OPEN_MOST of the way, so it
--- never lies on that boss nor past it; just past `after` where nothing
+-- Where the route model puts a moment on the leg from point i0 to the
+-- boss at point i1 (Core/DungeonPace.lua: the packs on the way, the time
+-- into the leg, how long it took where its boss fell), kept PACE_CLEAR
+-- yards off both of its ends (the boss behind and the one ahead, never on
+-- them); nil where the dungeon has no pace data or the leg is not one the
+-- model takes, or it lies off the floor shown.
+local PACE_CLEAR = 12
+local function PacePoint(path, leg, i0, i1, open)
+    local Pace, course = ns.DungeonPace, path.course
+    if not (Pace and course and i1 and leg.dt) then return nil end
+    local yd = Pace.Place(course, i0, i1, leg.dt, not open and leg.known or nil)
+    if not yd then return nil end
+    local from, to = course.cum[i0], course.cum[i1]
+    local clear = math.min(PACE_CLEAR, (to - from) / 2)
+    yd = math.max(from + clear, math.min(to - clear, yd))
+    local k, t = Pace.Along(course, yd)
+    local a, b = k and path.pts[k], k and path.pts[k + 1]
+    if not (a and b) then return nil end
+    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t
+end
+
+-- Where a death on the way lies (MAP-9): where the route model puts it
+-- (PacePoint), for a dungeon with pace data; else `frac` of the way along
+-- the route from `after`'s stop (the way in without one) to `before`'s. On
+-- an open leg (`open`: no kill after it, Core/DungeonRun.lua's OPEN) to
+-- the next stop whose boss still stands, at most OPEN_MOST of the way, so
+-- it never lies on that boss nor past it; just past `after` where nothing
 -- says how far. nil where the way through does not say (no route, a stop
--- off this floor).
+-- off this floor). x, y and how it was placed: "pace", "eased" (an open
+-- leg), "share" (between kills) or "past" (just past `after`).
 local OPEN_MOST = 0.9
 local function LegPoint(path, leg)
     if not path then return nil end
@@ -558,6 +584,9 @@ local function LegPoint(path, leg)
     if not i0 then return nil end
     local open = leg.open and leg.frac and not i1
     if open then i1 = NextStop(path, i0) end
+    local px, py = PacePoint(path, leg, i0, i1, open)
+    if px then return px, py, "pace" end
+    local how = not i1 and "past" or open and "eased" or "share"
     local pts = {}
     if i1 then
         local step = i1 >= i0 and 1 or -1
@@ -581,13 +610,14 @@ local function LegPoint(path, leg)
     for k = 2, #pts do
         if want <= lengths[k] or k == #pts then
             local t = lengths[k] > 0 and math.min(1, want / lengths[k]) or 0
-            return pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * t, pts[k - 1][2] + (pts[k][2] - pts[k - 1][2]) * t
+            return pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * t, pts[k - 1][2] + (pts[k][2] - pts[k - 1][2]) * t,
+                how
         end
         want = want - lengths[k]
     end
 end
 
-DungeonPage.LegPoint, DungeonPage.OPEN_MOST = LegPoint, OPEN_MOST
+DungeonPage.LegPoint, DungeonPage.OPEN_MOST, DungeonPage.PACE_CLEAR = LegPoint, OPEN_MOST, PACE_CLEAR
 
 -- Where a moment at time `t` on the way lies on the map (a drop rolled for
 -- that no boss's table holds: the rolls' strips, pass B): on the route
@@ -1038,6 +1068,9 @@ function DungeonPage.Ink(plan, P, stock)
     end
     if plan.door then plan.targets.door = { x = plan.door.x, y = plan.door.y, r = 7 } end
     Deaths(plan, P, stock)
+    -- A development overlay over the marks (Dev/PaceDebug.lua's packs of
+    -- the pace data), set only by /sd pace map; a release never has it.
+    if DungeonPage.DevOverlay then DungeonPage.DevOverlay(plan, P) end
     -- Where each wipe on the way lies (MAP-17), for its strip's arrow (step
     -- 2): the leg point of its first death, else by the boss before or
     -- after it.

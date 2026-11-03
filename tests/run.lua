@@ -60,6 +60,8 @@ local FILES = {
     "instances",
     "dungeons",
     "dungeon_run",
+    "pace_model",
+    "pace",
     "dungeon_rolls",
     "dungeon_ui",
     "dungeon_spread",

@@ -69,12 +69,14 @@ for i, line in ipairs(P.licensing) do licence[i] = line:GetText() end
 Check(licence[1]:find("GNU General Public License v3 or later") and licence[1]:find("1%.7%.0") and licence[1]:find("MIT"),
     "the licence line: " .. tostring(licence[1]))
 Check(licence[2]:find("Dungeon Crawler Forever by Per"), "no credit for Dungeon Crawler Forever")
+Check(licence[3]:find("TrinityCore and VMaNGOS", 1, true) and licence[3]:find("GPL v2 or later", 1, true),
+    "no credit for the spawn positions: " .. tostring(licence[3]))
 local credits = ns.Dungeons.Credits()
-Eq(#licence, 3 + #credits, "a line per licence and per artist")
+Eq(#licence, 4 + #credits, "a line per licence and per artist")
 for i, credit in ipairs(credits) do
     local artist = credit.text:gsub("^Map art:%s*", "")
-    Check(licence[2 + i]:find(artist, 1, true) and licence[2 + i]:find(credit.dungeons[1], 1, true),
-        "an artist not credited for their maps: " .. licence[2 + i])
+    Check(licence[3 + i]:find(artist, 1, true) and licence[3 + i]:find(credit.dungeons[1], 1, true),
+        "an artist not credited for their maps: " .. licence[3 + i])
 end
 Check(licence[#licence]:find("SIL Open Font License 1%.1"), "no licence for the font")
 Eq(P.questieCredit:GetText(), "Questie and QuestieDB, which Social Diary reads from while the game runs, if you have"

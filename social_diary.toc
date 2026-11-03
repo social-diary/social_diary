@@ -46,6 +46,12 @@ Core/DungeonRoutes.lua
 Core/Dungeons.lua
 Core/DungeonRun.lua
 Core/DungeonWay.lua
+# The route model (Core/Pace/Model.lua) and the pace data it reads
+# (GPL-2.0-or-later, from TrinityCore and VMaNGOS: Core/Pace/*.lua's
+# headers), laid on the map's own way by Core/DungeonPace.lua.
+Core/Pace/Model.lua
+Core/Pace/RagefireChasm.lua
+Core/DungeonPace.lua
 Core/RunPage.lua
 Core/Roster.lua
 Core/Reunions.lua
@@ -293,6 +299,7 @@ Dev/LootProbe.lua
 Dev/HandTest.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
+Dev/PaceDebug.lua
 Dev/TestData.lua
 Features/LevelUps/Dev.lua
 Features/Trade/Dev.lua

@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Changes
+
+- _Dungeon View_ places deaths and wipes in Ragefire Chasm by the trash between bosses
+
 ### Fixes
 
 - _Dungeon View_ spreads deaths and wipes along the way to the next boss
