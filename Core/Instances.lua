@@ -10,7 +10,9 @@
 -- loot = { { guid, item, itemID, time } }, inferred = { [boss name] =
 -- "loot" } (a kill only its loot told of), rolls = { { key, hkey, item,
 -- itemID, time, need = { [guid] = roll, or true when only the choice was
--- said }, winner, winRoll, winNeed } } (group loot rolls, Need only) }.
+-- said }, winner, winRoll, winNeed } } (group loot rolls, Need only),
+-- combat = { { from, to } } (the user's own fights inside, `to` nil while
+-- one goes on; Combat) }.
 --
 -- Capture/Instances.lua tells this file what the client says (in, out, the
 -- group, pulls, loot), and the deaths' capture tells it who died. The open
@@ -31,6 +33,11 @@ local GAP = 30 * 60
 local KEEP_SECONDS = 10 * 60
 -- Caps, so one long night cannot grow a record without end.
 local MAX_DEATHS, MAX_LOOT, MAX_PULLS, MAX_SPANS, MAX_ROLLS = 60, 40, 60, 40, 40
+-- The user's fights inside (Combat): at most `most` a run; one that starts
+-- within `join` seconds of the last one's end carries it on (a chain
+-- pull, a mob that ran and came back).
+local COMBAT = { most = 400, join = 5 }
+Instances.COMBAT = COMBAT
 
 Instances.GAP = GAP
 
@@ -142,6 +149,8 @@ function Instances.Close(now)
     if span and not span.to then span.to = now end
     visit.endedAt = span and span.to or now
     visit.pull = nil
+    local fight = visit.combat and visit.combat[#visit.combat]
+    if fight and not fight.to then fight.to = visit.endedAt end
     if not Kept(visit, now) then
         ns.db.instances[visit.id] = nil
         ns.Debug("visit %d to %s: not kept (alone, no kill, short)", visit.id, tostring(visit.name))
@@ -195,7 +204,33 @@ function Instances.Leave(now, ghost)
     span.to = now or ns.Now()
     span.ghost = ghost or nil
     visit.endedAt = span.to
+    -- A fight does not go on outside.
+    local fight = visit.combat and visit.combat[#visit.combat]
+    if fight and not fight.to then fight.to = span.to end
     ns.Touch()
+end
+
+-- The user went into a fight (`on`) or out of it, inside a run: kept as
+-- visit.combat, so the time between fights can be told from the fights
+-- (Core/DungeonRun.lua's Active: a long wait is not progress along the
+-- way). Nothing outside a run.
+function Instances.Combat(on, now)
+    local inside, visit = Instances.Inside()
+    if not inside then return end
+    now = now or ns.Now()
+    visit.combat = visit.combat or {}
+    local fights = visit.combat
+    local last = fights[#fights]
+    if on then
+        if last and not last.to then return end
+        if last and now - last.to <= COMBAT.join then
+            last.to = nil
+        elseif #fights < COMBAT.most then
+            fights[#fights + 1] = { from = now }
+        end
+    elseif last and not last.to then
+        last.to = now
+    end
 end
 
 -- Out longer than GAP, or at login: a run left open ends.

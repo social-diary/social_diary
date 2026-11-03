@@ -19,9 +19,10 @@
 --             past the last): its `frac` eased by the time since the
 --             leg began (OPEN), toward the next boss the way meets, never
 --             reaching it (UI/Dungeon/Print.lua's LegPoint); `dt` the
---             seconds inside from the leg's start (the kill before, else
---             the run's start) to the moment, `known` to the kill after
---             (Inside), for the route model (Core/DungeonPace.lua);
+--             seconds spent getting on (Active: inside, long waits out)
+--             from the leg's start (the kill before, else the run's
+--             start) to the moment, `known` to the kill after, for the
+--             route model (Core/DungeonPace.lua);
 --   wipes = { { after, before, frac, open, dt, known, deaths = { death }, killer = name } },
 --             wipes to trash on the way, at the leg of their first death;
 --   near = { { after, before, frac, open, dt, known, deaths = { death } } },
@@ -107,20 +108,56 @@ end
 -- (Not DungeonRun.Inside: that is the run's whole time inside, for its page.)
 DungeonRun.InsideBetween = Inside
 
+-- Time between fights (the user's, visit.combat: Core/Instances.lua's
+-- Combat) counts up to `most` seconds at a stretch: walking to the next
+-- pull is progress along the way, a long wait (drinking, rebuffing, a rez,
+-- someone away) is not, and only its first `most` seconds count. (3 Nov
+-- 2026: a second wipe at one pull, minutes after the first, was put by
+-- the time near the boss.) Judged only from the first fight kept: a run
+-- whose fights were kept from part way (an older build) counts its time
+-- before that whole.
+local IDLE = { most = 120 }
+DungeonRun.IDLE = IDLE
+
+-- Seconds spent getting on from `a` to `b`: inside (Inside), less what
+-- each stretch out of combat, from the first fight kept, held beyond
+-- IDLE.most. Without fights kept, the time inside.
+local function Active(visit, a, b)
+    local inside = Inside(visit, a, b)
+    local fights = visit.combat
+    if inside <= 0 or type(fights) ~= "table" or not fights[1] or not fights[1].from then return inside end
+    local idle, at = 0, math.max(a, fights[1].from)
+    local function Gap(g0, g1)
+        if g1 > g0 then idle = idle + math.max(0, Inside(visit, g0, g1) - IDLE.most) end
+    end
+    for _, f in ipairs(fights) do
+        if f.from and f.from >= b then break end
+        if f.from then
+            Gap(at, math.min(f.from, b))
+            at = math.max(at, f.to or b)
+        end
+        if at >= b then break end
+    end
+    Gap(at, b)
+    return math.max(0, inside - idle)
+end
+DungeonRun.Active = Active
+
 -- Where a moment at time `t` lies between the kills (`kills`, in time
 -- order): the kill before it, the one after, and how far along between
 -- them (from the start of the run before the first), by the time spent
--- inside (Inside); with no kill after it, how far along the open leg
--- (OPEN), and `open`. And the seconds inside from the leg's start to the
--- moment (`dt`) and to the kill after (`known`), for the route model.
+-- getting on (Active: inside, the long waits left out); with no kill after
+-- it, how far along the open leg (OPEN), and `open`. And those seconds
+-- from the leg's start to the moment (`dt`) and to the kill after
+-- (`known`), for the route model.
 local function Between(visit, kills, t)
     local after, before
     for _, k in ipairs(kills) do
         if k.at <= t then after = k elseif not before then before = k end
     end
     local from = after and after.at or visit.startedAt
-    local dt = from and t and Inside(visit, from, t) or nil
-    local known = from and before and Inside(visit, from, before.at) or nil
+    local dt = from and t and Active(visit, from, t) or nil
+    local known = from and before and Active(visit, from, before.at) or nil
     local frac, open
     if before and from then
         frac = math.max(0, math.min(1, dt / math.max(1, known)))
@@ -395,8 +432,8 @@ function DungeonRun.Wipes(visit)
 end
 
 -- Where a moment at time `t` lies on the run's way, between its kills
--- (`notes`, DungeonRun.Notes'): { after, before, frac, open, dt, known }
--- as a death on the way's leg is (a drop found on the way, rolled for: the
+-- (`notes`, DungeonRun.Notes'): { after, before, frac, open, dt, known,
+-- time (`t`) } as a death on the way's leg is (a drop found on the way, rolled for: the
 -- map's strips).
 function DungeonRun.When(visit, notes, t)
     local kills = {}
@@ -405,7 +442,7 @@ function DungeonRun.When(visit, notes, t)
     end
     table.sort(kills, function(a, b) return a.at < b.at end)
     local after, before, frac, open, dt, known = Between(visit, kills, t or visit.startedAt or 0)
-    return { after = after, before = before, frac = frac, open = open, dt = dt, known = known }
+    return { after = after, before = before, frac = frac, open = open, dt = dt, known = known, time = t }
 end
 
 --------------------------------------------------------------------------

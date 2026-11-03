@@ -257,8 +257,8 @@ end
 -- to its point), reached (the furthest stop whose boss fell; the user's
 -- own way all of it, WAY-14), killed (the bosses that fell, by
 -- ns.Dungeons.Norm), course (the way in yards with the packs on it, where
--- the dungeon has pace data: Core/DungeonPace.lua) }, or nil without a way
--- through. A stop is
+-- the dungeon has pace data: Core/DungeonPace.lua), visit, notes, anchors
+-- (Anchors, laid when first asked) }, or nil without a way through. A stop is
 -- its boss: where the boss stands, the way meets it.
 local function Path(visit, wing, At, notes)
     local D = ns.Dungeons
@@ -279,7 +279,7 @@ local function Path(visit, wing, At, notes)
     end
     if own then reached = #route end
     return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at,
-        course = ns.DungeonPace and ns.DungeonPace.Course(visit, route) or nil }
+        course = ns.DungeonPace and ns.DungeonPace.Course(visit, route) or nil, visit = visit, notes = notes }
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.
@@ -566,19 +566,106 @@ local function Items(leg)
     return { { dt = leg.dt, npc = KillerOf(leg.death) } }
 end
 
+-- When a moment on the way happened: a wipe's first death, a death, a
+-- roll's or a level-up's time.
+local function TimeOf(leg)
+    return leg.deaths and leg.deaths[1] and leg.deaths[1].time or leg.death and leg.death.time or leg.time
+end
+
+local LegPoint
+
+-- The sure places on the way (3 Nov 2026): where the route model put a
+-- moment by what killed it (PacePoint's "killer"), the group was there
+-- then. A leg is placed on from the last such place before a moment, not
+-- from its start: the time since a wipe at a pull is the time since that
+-- pull, however long the leg took to get there. path.anchors[key] (key:
+-- the leg's points, "i0:i1"), in the order they happened: { dt (seconds
+-- into the leg), yd (yards along the way), time, wipe (a wipe's: the group
+-- starts that pull again) }. Laid once a sheet, the
+-- moments taken in the order they happened (a wipe, a near wipe, a death
+-- alone), each placed from the anchors before it.
+local function Anchors(path)
+    if path.anchors then return path.anchors end
+    path.anchors = {}
+    local notes = path.notes
+    if not (notes and path.course) then return path.anchors end
+    local units, grouped, wipes = {}, {}, {}
+    for n, list in ipairs({ notes.wipes or {}, notes.near or {} }) do
+        for _, w in ipairs(list) do
+            units[#units + 1] = w
+            if n == 1 then wipes[w] = true end
+            for _, d in ipairs(w.deaths or {}) do grouped[d] = true end
+        end
+    end
+    for _, l in ipairs(notes.legs or {}) do
+        if not grouped[l.death] then units[#units + 1] = l end
+    end
+    local order = {}
+    for i, u in ipairs(units) do order[u] = i end
+    table.sort(units, function(a, b)
+        local ta, tb = TimeOf(a) or 0, TimeOf(b) or 0
+        if ta ~= tb then return ta < tb end
+        return order[a] < order[b]
+    end)
+    for _, u in ipairs(units) do
+        local _, _, how, info = LegPoint(path, u)
+        if how == "killer" and info and u.dt then
+            local list = path.anchors[info.key] or {}
+            path.anchors[info.key] = list
+            list[#list + 1] = { dt = u.dt, yd = info.yd, time = TimeOf(u), wipe = wipes[u] or nil }
+        end
+    end
+    return path.anchors
+end
+
 -- Where the route model puts a moment on the leg from point i0 to the
 -- boss at point i1 (Core/DungeonPace.lua: the packs on the way, the time
 -- into the leg, how long it took where its boss fell, and what killed it;
--- a wipe's deaths together, at one pull),
--- kept PACE_CLEAR yards off both of its ends (the boss behind and the one
--- ahead, never on them); nil where the dungeon has no pace data or the leg
--- is not one the model takes, or it lies off the floor shown. x, y and how:
--- "killer" (at a pull of what killed it) or "pace".
+-- a wipe's deaths together, at one pull), from the last sure place on the
+-- leg before it (Anchors), kept PACE_CLEAR yards off both of the leg's
+-- ends (the boss behind and the one ahead, never on them). After a wipe
+-- the group starts that pull again: the clock starts again at the user's
+-- first fight after it (visit.combat), whatever came between (a rez, a run
+-- back, drinking). Else, where the group went out between that place and
+-- the moment (a release, a run back in), the walk back to it from the way
+-- in, at the model's pace, is not time spent getting on. nil where the
+-- dungeon has no pace data or the
+-- leg is not one the model takes, or it lies off the floor shown. x, y,
+-- how ("killer": at a pull of what killed it; or "pace") and { yd, key
+-- (the leg's), anchor (the place it went from, or nil), shift (seconds
+-- taken off: the anchor's and the walk back) }.
 local PACE_CLEAR = 12
 local function PacePoint(path, leg, i0, i1, open)
     local Pace, course = ns.DungeonPace, path.course
     if not (Pace and course and i1 and leg.dt) then return nil end
-    local yd, _, _, by = Pace.PlaceGroup(course, i0, i1, Items(leg), not open and leg.known or nil)
+    local key = i0 .. ":" .. i1
+    local anchor
+    for _, a in ipairs(Anchors(path)[key] or {}) do
+        if a.dt < leg.dt then anchor = a end
+    end
+    local shift, start = 0, nil
+    if anchor then
+        shift, start = anchor.dt, anchor.yd
+        local t, visit, Run = TimeOf(leg), path.visit, ns.DungeonRun
+        local fights = visit and visit.combat
+        if t and anchor.time and anchor.wipe and type(fights) == "table" and fights[1] then
+            local resume = t
+            for _, f in ipairs(fights) do
+                if f.from and f.from > anchor.time then
+                    resume = math.min(f.from, t)
+                    break
+                end
+            end
+            shift = shift + Run.Active(visit, anchor.time, resume)
+        elseif t and anchor.time and visit and Run.InsideBetween(visit, anchor.time, t) < t - anchor.time - 1 then
+            shift = shift + anchor.yd / ns.PaceModel.DEFAULTS.speed
+        end
+    end
+    local items = Items(leg)
+    for _, it in ipairs(items) do it.dt = math.max(0, it.dt - shift) end
+    local known = not open and leg.known or nil
+    if known then known = known - shift > 0 and known - shift or nil end
+    local yd, _, _, by = Pace.PlaceGroup(course, i0, i1, items, known, start)
     if not yd then return nil end
     local from, to = course.cum[i0], course.cum[i1]
     local clear = math.min(PACE_CLEAR, (to - from) / 2)
@@ -586,7 +673,8 @@ local function PacePoint(path, leg, i0, i1, open)
     local k, t = Pace.Along(course, yd)
     local a, b = k and path.pts[k], k and path.pts[k + 1]
     if not (a and b) then return nil end
-    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, by == "killer" and "killer" or "pace"
+    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, by == "killer" and "killer" or "pace",
+        { yd = yd, key = key, anchor = anchor, shift = shift }
 end
 
 -- Where a death on the way lies (MAP-9): where the route model puts it
@@ -597,10 +685,10 @@ end
 -- it never lies on that boss nor past it; just past `after` where nothing
 -- says how far. nil where the way through does not say (no route, a stop
 -- off this floor). x, y and how it was placed: "killer" or "pace" (the
--- route model, PacePoint), "eased" (an open leg), "share" (between kills)
--- or "past" (just past `after`).
+-- route model, PacePoint, with what it says of it), "eased" (an open leg),
+-- "share" (between kills) or "past" (just past `after`).
 local OPEN_MOST = 0.9
-local function LegPoint(path, leg)
+function LegPoint(path, leg)
     if not path then return nil end
     local Norm = ns.Dungeons.Norm
     local i0 = leg.after and path.stops[Norm(leg.after.name)] or (not leg.after and 1) or nil
@@ -608,8 +696,8 @@ local function LegPoint(path, leg)
     if not i0 then return nil end
     local open = leg.open and leg.frac and not i1
     if open then i1 = NextStop(path, i0) end
-    local px, py, phow = PacePoint(path, leg, i0, i1, open)
-    if px then return px, py, phow end
+    local px, py, phow, pinfo = PacePoint(path, leg, i0, i1, open)
+    if px then return px, py, phow, pinfo end
     local how = not i1 and "past" or open and "eased" or "share"
     local pts = {}
     if i1 then

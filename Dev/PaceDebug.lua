@@ -20,6 +20,12 @@
 --                     (blue rings: how far the fit puts them off the map's
 --                     own); again to take it off
 --
+-- The report gives the run's time inside and the part of it spent getting
+-- on (Core/DungeonRun.lua's Active: a wait out of combat past IDLE.most is
+-- left out), and for a moment placed on from a sure place before it (a
+-- death placed by its killer: Print.lua's Anchors), where that was and
+-- how much time was taken off.
+--
 -- Each death also says what killed it as the run recorded it (name, NPC
 -- ID, from the recap or the guess at the moment), "hidden" where the
 -- client kept it back, or "no killer".
@@ -181,6 +187,11 @@ local function Report()
         return
     end
     Say("  fit: floor %d, %d anchors, worst %.1f yd off", fit.floor, fit.anchors, fit.worst)
+    local fights = type(visit.combat) == "table" and #visit.combat or 0
+    local inside = ns.DungeonRun.InsideBetween(visit, visit.startedAt or 0, visit.endedAt or ns.Now())
+    local active = ns.DungeonRun.Active(visit, visit.startedAt or 0, visit.endedAt or ns.Now())
+    Say("  your fights kept: %d; inside %s, of it getting on %s (waits past %s left out)", fights, Clock(inside),
+        Clock(active), Clock(ns.DungeonRun.IDLE.most))
     local route, own = Way(visit)
     local course = Pace.Course(visit, route)
     if not course then
@@ -221,8 +232,8 @@ local function Report()
         end
     end
     local function Line(kind, time, leg, who)
-        local x, y, how = nil, nil, nil
-        if path then x, y, how = Page.LegPoint(path, leg.death and together[leg.death] or leg) end
+        local x, y, how, info = nil, nil, nil, nil
+        if path then x, y, how, info = Page.LegPoint(path, leg.death and together[leg.death] or leg) end
         if leg.death and together[leg.death] then how = tostring(how) .. ", with its wipe" end
         local to = leg.before and leg.before.name or (leg.open and "the next boss standing") or "?"
         local where = "nowhere"
@@ -233,6 +244,10 @@ local function Report()
         Say("  %s %s%s: %s -> %s, %s into the leg (of %s): %s at %s", Clock((time or 0) - (visit.startedAt or 0)),
             kind, who and (" " .. who) or "", leg.after and leg.after.name or "the way in", to, Clock(leg.dt),
             leg.known and Clock(leg.known) or "-", tostring(how), where)
+        if info and info.anchor then
+            Say("      placed on from the sure place at %.0f yd (%s %s into the leg), %s taken off",
+                info.anchor.yd, info.anchor.wipe and "a wipe" or "a death", Clock(info.anchor.dt), Clock(info.shift))
+        end
     end
     for _, l in ipairs(notes.legs or {}) do
         Line("death", l.death.time, l, Who(visit, l.death.guid))

@@ -230,9 +230,12 @@ function DungeonPace.Course(visit, route)
 end
 
 -- The leg from point i0 to the boss at point i1, as the model takes it: {
--- length, pulls ({ at from i0, elites, size, npcs }) }; nil where it is not one
+-- length, pulls ({ at from its start, elites, size, npcs }), from (yards
+-- along the way where it starts), to (its boss) }; from `start` yards along
+-- the way where given (an anchor, Print.lua's Anchors: the rest of the leg,
+-- the pull there still on it), else from point i0. nil where it is not one
 -- (i1 not after i0, no boss at i1, a stretch broken, no length).
-function DungeonPace.Leg(course, i0, i1)
+function DungeonPace.Leg(course, i0, i1, start)
     if not (course and i0 and i1 and i1 > i0 and course.route[i1]) then return nil end
     local target = course.route[i1].boss
     if not target then return nil end
@@ -240,6 +243,7 @@ function DungeonPace.Leg(course, i0, i1)
         if course.broken[k] then return nil end
     end
     local from, to = course.cum[i0], course.cum[i1]
+    if start then from = math.max(from, math.min(to, start)) end
     if to - from < 1 then return nil end
     local key, pulls = Norm(target), {}
     for _, p in ipairs(course.pulls) do
@@ -280,13 +284,15 @@ end
 -- that the time weighs most, summed over all of them (with the wide
 -- spread); where the time weighs none (or the leg is known, and the time
 -- is one place), the one nearest where the time puts them, on average.
--- Else where the time puts the first. Then the model's answer for the
--- first (Core/Pace/Model.lua's PlaceDeath), the leg, and how: "killer" or
--- "time". nil where the leg is not one (Leg) or no time is known.
-function DungeonPace.PlaceGroup(course, i0, i1, items, known)
+-- Else where the time puts the first. From `start` yards along the way
+-- where given (an anchor: the seconds are then from it, and so is
+-- `known`). Then the model's answer for the first (Core/Pace/Model.lua's
+-- PlaceDeath), the leg, and how: "killer" or "time". nil where the leg is
+-- not one (Leg) or no time is known.
+function DungeonPace.PlaceGroup(course, i0, i1, items, known, start)
     local Model = ns.PaceModel
     local first = items and items[1]
-    local leg = Model and first and first.dt and DungeonPace.Leg(course, i0, i1)
+    local leg = Model and first and first.dt and DungeonPace.Leg(course, i0, i1, start)
     if not leg then return nil end
     known = known and known > 0 and known or nil
     local r = Model.PlaceDeath(leg, math.max(0, first.dt), nil, { knownKill = known })

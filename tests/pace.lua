@@ -383,6 +383,7 @@ Check(text:find("fit: floor 213, 5 anchors", 1, true), "the report's fit: " .. t
 Check(text:find("leg to Oggleflint: 520 yd", 1, true), "the report's legs")
 Check(select(2, text:gsub(": pace[^\n]- at ", "")) >= 5, "the report's moments placed by the model")
 Check(text:find(": pace, with its wipe at ", 1, true), "the report's deaths with their wipe")
+Check(text:find("your fights kept: 0; inside ", 1, true), "the report's fights and time getting on")
 Check(text:find("Oggleflint killed 10:00", 1, true), "the report's kills")
 -- Each moment in yards along the way.
 Check(text:find("yd along", 1, true), "the report's yards along the way")
@@ -605,11 +606,17 @@ local tplan = Page.Plan({ visit = twice, floor = floor, box = { x = 0, y = 0, w 
     route = true })
 local tpath = tplan.path
 local function YdAt(x, y) return (Pace.Project(tpath.course, fit.ToGame(x / W, y / H))) end
--- The second wipe: the Trogg pull its two Trogg deaths weigh most,
--- together (the time at 4:56 and 5:33, the wide spread).
-local leg1t = Pace.Leg(tpath.course, 1, i1)
+-- The second wipe: placed from the last sure place before it (the lone
+-- Earthborer death at 2:05, an anchor), at the Trogg pull its two Trogg
+-- deaths weigh most together (their seconds since that anchor, the wide
+-- spread).
+local w2x, w2y, w2how, w2info = Page.LegPoint(tpath, tn.wipes[2])
+Check(w2info and w2info.anchor, "the second wipe not placed from an anchor")
+Eq(w2info.anchor.dt, 125, "the second wipe's anchor not the last sure death before it")
+Check(math.abs(w2info.anchor.yd - 45) < 1, "the anchor not at the Earthborers: " .. w2info.anchor.yd)
+local leg1t = Pace.Leg(tpath.course, 1, i1, w2info.anchor.yd)
 local sum = {}
-for _, dt in ipairs({ 296, 333 }) do
+for _, dt in ipairs({ 296 - 125, 333 - 125 }) do
     for _, smp in ipairs(Model.PlaceDeath(leg1t, dt, { spread = Pace.KILLER.spread }).samples) do
         if smp.kind == "pull" and Holds(leg1t.pulls[smp.pull], 11318) then
             sum[smp.pull] = (sum[smp.pull] or 0) + smp.w
@@ -618,10 +625,10 @@ for _, dt in ipairs({ 296, 333 }) do
 end
 local want2
 for i, w in pairs(sum) do if not want2 or w > sum[want2] or (w == sum[want2] and i < want2) then want2 = i end end
-local w2x, w2y, w2how = Page.LegPoint(tpath, tn.wipes[2])
 Eq(w2how, "killer", "the second wipe not placed by its killers")
-Check(Near(YdAt(w2x, w2y), leg1t.pulls[want2].at, 0.5),
-    ("the second wipe not at the pull its deaths weigh most: %.0f, want %.0f"):format(YdAt(w2x, w2y), leg1t.pulls[want2].at))
+Check(Near(YdAt(w2x, w2y), leg1t.from + leg1t.pulls[want2].at, 0.5),
+    ("the second wipe not at the pull its deaths weigh most: %.0f, want %.0f"):format(YdAt(w2x, w2y),
+        leg1t.from + leg1t.pulls[want2].at))
 -- Its first death, alone, has no killer; the wipe is not where that alone
 -- puts it, nor where its first Trogg death alone does, necessarily: one
 -- place for all.
@@ -672,3 +679,176 @@ for _, p in ipairs(kleg2.pulls) do
 end
 Check(Near(kg, kleg2.from + nearestT.at), "a known group not at the Trogg nearest its mean")
 Eq(Pace.PlaceGroup(tpath.course, 1, i1, {}), nil, "a group of nothing")
+
+--------------------------------------------------------------------------
+Section("the user's fights kept on the run (Instances.Combat)")
+
+do
+    local I = ns.Instances
+    local t0 = mock.now
+    local v = I.Enter({ instanceID = RFC, name = "Ragefire Chasm", instanceType = "party", difficultyID = 1 }, t0)
+    local function At(dt) mock.now = t0 + dt end
+    At(10) mock.fire("PLAYER_REGEN_DISABLED")
+    At(40) mock.fire("PLAYER_REGEN_ENABLED")
+    At(43) mock.fire("PLAYER_REGEN_DISABLED")   -- within COMBAT.join: the same fight
+    At(60) mock.fire("PLAYER_REGEN_ENABLED")
+    At(200) mock.fire("PLAYER_REGEN_DISABLED")
+    I.Leave(t0 + 250, true)                       -- out as a ghost mid-fight
+    At(255) mock.fire("PLAYER_REGEN_ENABLED")      -- outside: nothing
+    At(270) mock.fire("PLAYER_REGEN_DISABLED")     -- outside: nothing
+    I.Enter({ instanceID = RFC, name = "Ragefire Chasm", instanceType = "party", difficultyID = 1 }, t0 + 300)
+    Eq(#v.combat, 2, "the fights kept")
+    Eq(v.combat[1].from, t0 + 10, "the first fight's start")
+    Eq(v.combat[1].to, t0 + 60, "a fight carried on across a short break")
+    Eq(v.combat[2].from, t0 + 200, "the second fight's start")
+    Eq(v.combat[2].to, t0 + 250, "a fight not ended at going out")
+    At(310) mock.fire("PLAYER_REGEN_DISABLED")
+    I.Close(t0 + 320)
+    Eq(v.combat[3].to, t0 + 320, "a fight not ended with the run")
+    -- At most COMBAT.most a run.
+    local full = I.Enter({ instanceID = 43, name = "Wailing Caverns", instanceType = "party", difficultyID = 1 }, t0 + 400)
+    for k = 1, I.COMBAT.most + 5 do
+        At(400 + k * 20) mock.fire("PLAYER_REGEN_DISABLED")
+        At(400 + k * 20 + 10) mock.fire("PLAYER_REGEN_ENABLED")
+    end
+    Eq(#full.combat, I.COMBAT.most, "the fights past the cap")
+    I.Close(mock.now)
+    ns.db.instances[v.id], ns.db.instances[full.id] = nil, nil
+    mock.now = t0
+end
+
+--------------------------------------------------------------------------
+Section("the time spent getting on: long waits left out (IDLE)")
+
+do
+    local most = Run.IDLE.most
+    -- Fights at 10-40 and 300-330: the wait of 260 s between counts `most`.
+    local v = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 10, to = 40 }, { from = 300, to = 330 } } }
+    Eq(Run.Active(v, 0, 400), 400 - (260 - most), "a long wait not left out")
+    Eq(Run.Active(v, 0, 250), 250 - (210 - most), "a wait still going on not left out")
+    Eq(Run.Active(v, 0, 100), 100, "a short wait left out")
+    Eq(Run.Active(v, 320, 400), 80, "from inside a fight")
+    -- Before the first fight kept, everything counts (fights kept from
+    -- part way into a run).
+    local late = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 600, to = 620 } } }
+    Eq(Run.Active(late, 0, 600), 600, "the time before the first fight kept left out")
+    -- Time outside is not left out twice.
+    local away2 = { startedAt = 0, spans = { { from = 0, to = 200 }, { from = 260 } },
+        combat = { { from = 10, to = 40 }, { from = 300, to = 330 } } }
+    Eq(Run.Active(away2, 0, 400), 340 - (200 - most), "time outside left out twice")
+    -- A fight still going on.
+    local open = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 10, to = 40 }, { from = 300 } } }
+    Eq(Run.Active(open, 0, 400), 400 - (260 - most), "a fight still going on")
+    -- Without fights kept: the time inside.
+    Eq(Run.Active({ startedAt = 0, spans = { { from = 0 } } }, 0, 900), 900, "a run without fights kept")
+    -- The notes go by it.
+    local w = Run.When(v, { bosses = {} }, 400)
+    Eq(w.dt, 400 - (260 - most), "a moment's seconds into its leg not by the time getting on")
+end
+
+--------------------------------------------------------------------------
+Section("sure places: a leg placed on from the last one (Anchors)")
+
+-- A wipe to Troggs, then ten minutes of nothing (a rez, drinking), then a
+-- second wipe to Troggs: the same pull.
+local S3 = 300000
+local function Wipe(at, who)
+    local list = {}
+    for k, guid in ipairs(who) do
+        list[#list + 1] = { guid = guid, time = S3 + at + k * 3, killer = Killed("Ragefire Trogg", 11318) }
+    end
+    return list
+end
+local again = {
+    id = 9392, instanceID = RFC, name = "Ragefire Chasm", startedAt = S3, me = G,
+    members = { { guid = G }, { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" },
+        { guid = "Player-1-D" } },
+    spans = { { from = S3 } }, bossesKilled = {}, pulls = {}, deathLog = {},
+    combat = { { from = S3 + 20, to = S3 + 60 }, { from = S3 + 100, to = S3 + 140 }, { from = S3 + 200, to = S3 + 290 },
+        { from = S3 + 950, to = S3 + 1000 } },
+}
+for _, d in ipairs(Wipe(280, { "Player-1-A", "Player-1-B", "Player-1-C" })) do again.deathLog[#again.deathLog + 1] = d end
+for _, d in ipairs(Wipe(990, { "Player-1-A", "Player-1-B", "Player-1-D" })) do again.deathLog[#again.deathLog + 1] = d end
+local function Placed(visit)
+    local n = Run.Notes(visit)
+    local plan = Page.Plan({ visit = visit, floor = floor, box = { x = 0, y = 0, w = W, h = H }, At = At, notes = n,
+        route = true })
+    local out = {}
+    for i, w in ipairs(n.wipes) do
+        local x, y, how, info = Page.LegPoint(plan.path, w)
+        out[i] = { yd = Pace.Project(plan.path.course, fit.ToGame(x / W, y / H)), how = how, info = info }
+    end
+    return out, n, plan
+end
+local p, an = Placed(again)
+Eq(#an.wipes, 2, "the two wipes")
+Eq(p[1].how, "killer", "the first wipe not by its killers")
+Eq(p[2].how, "killer", "the second wipe not by its killers")
+Check(p[2].info.anchor, "the second wipe not placed from the first")
+Check(Near(p[1].yd, p[2].yd, 0.5), ("the second wipe not at the first's pull: %.0f, then %.0f"):format(p[1].yd, p[2].yd))
+-- The wait taken out by the fights: without them, the second goes on.
+local bare = {}
+for k, v in pairs(again) do bare[k] = v end
+bare.id, bare.combat = 9393, nil
+local q = Placed(bare)
+Check(q[2].yd > q[1].yd + 30, ("without the fights kept the second wipe stays: %.0f, then %.0f"):format(q[1].yd, q[2].yd))
+-- Nothing placed from an anchor lies behind it: moments after the first
+-- wipe, at any time (a roll found on the way, as Anchor asks).
+local _, _, aplan = Placed(again)
+local first = an.wipes[1]
+local behind = 0
+for later = 10, 1500, 50 do
+    local leg = Run.When(again, an, first.deaths[1].time + later)
+    local x, y, _, info = Page.LegPoint(aplan.path, leg)
+    if info and info.anchor then
+        behind = behind + 1
+        local yd = Pace.Project(aplan.path.course, fit.ToGame(x / W, y / H))
+        Check(yd >= info.anchor.yd - 0.5, ("a moment %d s after the wipe placed behind it: %.0f < %.0f")
+            :format(later, yd, info.anchor.yd))
+    end
+end
+Check(behind > 20, "moments after the wipe not placed from it: " .. behind)
+
+-- After a wipe, with the fights kept: the clock starts again at the
+-- first fight after it.
+local ra = p[2].info.anchor
+Eq(ra.wipe, true, "the first wipe's anchor not a wipe's")
+Check(Near(p[2].info.shift, ra.dt + Run.Active(again, ra.time, S3 + 950), 1e-6),
+    "the clock not started again at the first fight after the wipe")
+
+-- Out and back in between (a release, a run back), no fights kept: the
+-- walk back from the way in to the anchor is not time getting on.
+local out = {}
+for k, v in pairs(again) do out[k] = v end
+out.id = 9394
+out.combat = nil
+out.spans = { { from = S3, to = S3 + 400, ghost = true }, { from = S3 + 700 } }
+local r, rn2 = Placed(out)
+local a = r[2].info.anchor
+Check(a, "after a run back, no anchor")
+Check(Near(r[2].info.shift, a.dt + a.yd / Model.DEFAULTS.speed, 1e-6),
+    ("the walk back not taken off: shift %.1f, anchor %.1f s at %.0f yd"):format(r[2].info.shift, a.dt, a.yd))
+Check(Near(q[2].info.shift, q[2].info.anchor.dt, 1e-6), "a walk back taken off without going out")
+Eq(#rn2.wipes, 2, "the wipes after a run back")
+
+-- A leg whose boss fell: from the anchor, the rest of the leg's time.
+local closed = {}
+for k, v in pairs(again) do closed[k] = v end
+closed.id = 9395
+closed.bossesKilled = { "Oggleflint" }
+closed.pulls = { { id = 2732, name = "Oggleflint", start = S3 + 1400, stop = S3 + 1400, killed = true } }
+local c3 = Placed(closed)
+Check(c3[2].info.anchor, "a known leg not placed from the anchor")
+Check(c3[2].yd >= c3[2].info.anchor.yd - 0.5 and c3[2].yd <= course.cum[i1], "a known leg's wipe off the rest of it")
+
+-- /sd pace on the repeated wipe: the second placed on from the first.
+ns.db.instances[again.id] = again
+local add2 = DEFAULT_CHAT_FRAME.AddMessage
+local said2 = {}
+DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said2[#said2 + 1] = tostring(msg) end
+SlashCmdList.SOCIALDIARY("pace")
+DEFAULT_CHAT_FRAME.AddMessage = add2
+local text2 = table.concat(said2, "\n")
+Check(text2:find("your fights kept: 4", 1, true), "the report's fights: " .. text2)
+Check(text2:find("placed on from the sure place at %d+ yd %(a wipe"), "the report's anchor: " .. text2)
+ns.db.instances[again.id] = nil
