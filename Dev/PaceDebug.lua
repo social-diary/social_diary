@@ -12,6 +12,7 @@
 --                     way (and off it), to set against where a death you
 --                     just had was placed
 --   /sd pace at X Y   the same for game yards (a GM's .gps: X, then Y)
+--   /sd pace clear    forget the kill probe's counts (below)
 --   /sd pace map      on the map sheet, over the marks: every pack of the
 --                     pace data (red where a pull on the way, grey where the
 --                     way does not pass it, larger for more elites), each
@@ -19,14 +20,29 @@
 --                     (blue rings: how far the fit puts them off the map's
 --                     own); again to take it off
 --
--- Prints names from the run; nothing is saved. Dev only: the TOC's Dev/
--- block never goes in a release.
+-- Each death also says what killed it as the run recorded it (name, NPC
+-- ID, from the recap or the guess at the moment), "hidden" where the
+-- client kept it back, or "no killer".
+--
+-- The kill probe: while inside a run, every PARTY_KILL is counted, and
+-- whether its victim's GUID could be read (an NPC ID) or was secret; the
+-- readable ones are kept in order (seconds into the run, NPC ID), at most
+-- PROBE.most a run. It is to learn whether trash kills can be counted
+-- inside an instance on Forever (a count along the way: 3 Nov 2026), so
+-- it holds creatures only, never a player's name or GUID. Kept in
+-- SocialDiaryCharDB.paceProbe by run until /sd pace clear; /sd pace
+-- reports it with the run.
+--
+-- Prints names from the run. Dev only: the TOC's Dev/ block never goes in a
+-- release.
 
 local addonName, ns = ...
 
 local Page = ns.UI.DungeonPage
 
 local RED, GREY = { 0.70, 0.13, 0.10 }, { 0.35, 0.35, 0.35 }
+-- The kill probe keeps at most `most` readable kills a run.
+local PROBE = { most = 400 }
 
 local function Say(fmt, ...) ns.Print(fmt:format(...)) end
 
@@ -55,7 +71,87 @@ local function Who(visit, guid)
     for _, m in ipairs(visit.members or {}) do
         if m.guid == guid and m.first then return m.first end
     end
-    return tostring(guid):sub(-6)
+    local first = ns.Characters and ns.Characters.Name and ns.Characters.Name(guid)
+    return first or tostring(guid):sub(-6)
+end
+
+-- What killed a death, as the run recorded it.
+local function Killer(death)
+    local k = death and death.killer
+    if type(k) ~= "table" then return "no killer" end
+    if k.environment then return "the world (" .. tostring(k.environment) .. ")" end
+    if k.player then return "a player" end
+    if not (k.name or k.npcID) then return "hidden (" .. tostring(k.source or "guess") .. ")" end
+    return ("%s #%s (%s)"):format(tostring(k.name or "?"), tostring(k.npcID or "?"), tostring(k.source or "guess"))
+end
+
+--------------------------------------------------------------------------
+-- The kill probe
+--------------------------------------------------------------------------
+
+local function ProbeStore(create)
+    if type(SocialDiaryCharDB) ~= "table" then return nil end
+    if type(SocialDiaryCharDB.paceProbe) ~= "table" then
+        if not create then return nil end
+        SocialDiaryCharDB.paceProbe = {}
+    end
+    return SocialDiaryCharDB.paceProbe
+end
+
+-- A kill by the group, while a run is open: counted, its victim's NPC ID
+-- kept where it can be read.
+local function Probe(attacker, victim)
+    local visit = ns.Instances and ns.Instances.Current and ns.Instances.Current()
+    if not visit or not visit.id then return end
+    local store = ProbeStore(true)
+    if not store then return end
+    local run = store[visit.id]
+    if type(run) ~= "table" then
+        run = { instanceID = visit.instanceID, events = 0, readable = 0, hidden = 0, other = 0, attackerHidden = 0,
+            kills = {} }
+        store[visit.id] = run
+    end
+    run.events = run.events + 1
+    if ns.IsSecret(attacker) then run.attackerHidden = run.attackerHidden + 1 end
+    if ns.IsSecret(victim) then
+        run.hidden = run.hidden + 1
+        return
+    end
+    local npc = ns.NpcID(victim)
+    if not npc then
+        -- A player, a pet, or a GUID of another shape: not a creature.
+        run.other = run.other + 1
+        return
+    end
+    run.readable = run.readable + 1
+    if #run.kills < PROBE.most then
+        run.kills[#run.kills + 1] = { t = math.floor(ns.Now() - (visit.startedAt or ns.Now())), npc = npc }
+    end
+end
+
+ns.On("PARTY_KILL", function(_, attacker, victim) Probe(attacker, victim) end)
+
+-- The probe's line for `visit`, said.
+local function ReportProbe(visit)
+    local store = ProbeStore(false)
+    local run = store and store[visit.id]
+    if type(run) ~= "table" then
+        Say("  kill probe: nothing seen on this run (it counts from when it was loaded, inside a run)")
+        return
+    end
+    Say("  kill probe: %d kills seen: %d readable, %d hidden, %d not creatures; the killer hidden on %d",
+        run.events, run.readable, run.hidden, run.other, run.attackerHidden)
+    local byNpc, order = {}, {}
+    for _, k in ipairs(run.kills) do
+        if not byNpc[k.npc] then order[#order + 1] = k.npc end
+        byNpc[k.npc] = (byNpc[k.npc] or 0) + 1
+    end
+    local parts = {}
+    for _, npc in ipairs(order) do parts[#parts + 1] = ("#%d x%d"):format(npc, byNpc[npc]) end
+    if #parts > 0 then Say("  by NPC ID: %s", table.concat(parts, ", ")) end
+    local first = run.kills[1]
+    local last = run.kills[#run.kills]
+    if first then Say("  the readable kills from %s to %s into the run", Clock(first.t), Clock(last.t)) end
 end
 
 -- The way as the map has it: the user's own, else the usual one; the
@@ -125,13 +221,24 @@ local function Report()
             kind, who and (" " .. who) or "", leg.after and leg.after.name or "the way in", to, Clock(leg.dt),
             leg.known and Clock(leg.known) or "-", tostring(how), where)
     end
-    for _, l in ipairs(notes.legs or {}) do Line("death", l.death.time, l, Who(visit, l.death.guid)) end
+    for _, l in ipairs(notes.legs or {}) do
+        Line("death", l.death.time, l, Who(visit, l.death.guid))
+        Say("      killed by %s", Killer(l.death))
+    end
     for _, w in ipairs(notes.wipes or {}) do Line("wipe", w.deaths[1] and w.deaths[1].time, w) end
     for _, w in ipairs(notes.near or {}) do Line("near wipe", w.deaths[1] and w.deaths[1].time, w) end
     for _, b in ipairs(notes.bosses or {}) do
         if b.killed then Say("  %s killed %s", b.boss.name, Clock((b.at or 0) - (visit.startedAt or 0))) end
     end
     if #(notes.legs or {}) == 0 then Say("  no deaths on the way") end
+    -- The deaths at bosses too: what the run says killed them.
+    for _, b in ipairs(notes.bosses or {}) do
+        for _, d in ipairs(b.deaths or {}) do
+            Say("  %s death %s at %s: killed by %s", Clock((d.time or 0) - (visit.startedAt or 0)), Who(visit, d.guid),
+                b.boss.name, Killer(d))
+        end
+    end
+    ReportProbe(visit)
 end
 
 -- The packs over the marks (Print.lua's DevOverlay hook).
@@ -221,6 +328,9 @@ ns.Slash.Register("pace", function(rest)
     local gx, gy = rest:match("^at%s+(%-?[%d.]+)[%s,]+(%-?[%d.]+)")
     if rest == "map" then
         Map()
+    elseif rest == "clear" then
+        if type(SocialDiaryCharDB) == "table" then SocialDiaryCharDB.paceProbe = nil end
+        Say("pace: the kill probe's counts forgotten")
     elseif rest == "here" then
         Here()
     elseif gx then
@@ -230,4 +340,4 @@ ns.Slash.Register("pace", function(rest)
     else
         Report()
     end
-end, "how the route model placed a run's moments: |cffffd100/sd pace [here | at X Y | map]|r", { dev = true })
+end, "how the route model placed a run's moments: |cffffd100/sd pace [here | at X Y | map | clear]|r", { dev = true })

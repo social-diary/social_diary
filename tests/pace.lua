@@ -396,6 +396,46 @@ Check(said[1] and said[1]:find(" [0-5] yd along the way"), "pace at the way in: 
 said = {}
 SlashCmdList.SOCIALDIARY("pace here")
 Check(said[1] and said[1]:find("^.-pace: "), "pace here says nothing")
+-- Each death says what killed it, as the run recorded it.
+Check(text:find("killed by Ragefire Trogg #? (guess)", 1, true), "the report's killers: " .. text)
+
+-- The kill probe: kills inside a run counted, readable or hidden.
+local mock = T.mock
+local current = ns.Instances.Current
+ns.Instances.Current = function() return run end
+SocialDiaryCharDB.paceProbe = nil
+local trogg = "Creature-0-1-389-0-11318-0000000001"
+mock.fire("PARTY_KILL", G, trogg)
+mock.fire("PARTY_KILL", G, "Creature-0-1-389-0-11320-0000000002")
+mock.fire("PARTY_KILL", G, trogg)
+mock.fire("PARTY_KILL", mock.secret(G), mock.secret(trogg))
+mock.fire("PARTY_KILL", G, "Player-1-00000001")
+ns.Instances.Current = current
+local probe = SocialDiaryCharDB.paceProbe and SocialDiaryCharDB.paceProbe[run.id]
+Check(probe, "the probe kept nothing")
+Eq(probe.events, 5, "the kills seen")
+Eq(probe.readable, 3, "the kills read")
+Eq(probe.hidden, 1, "the kills hidden")
+Eq(probe.other, 1, "a kill of something not a creature")
+Eq(probe.attackerHidden, 1, "a killer hidden")
+Eq(#probe.kills, 3, "the readable kills kept")
+Eq(probe.kills[1].npc, 11318, "the first kill's NPC ID")
+for _, k in ipairs(probe.kills) do
+    for key in pairs(k) do Check(key == "t" or key == "npc", "the probe kept more than a time and an NPC ID") end
+end
+-- Outside a run: nothing.
+mock.fire("PARTY_KILL", G, trogg)
+Eq(probe.events, 5, "a kill outside a run counted")
+said = {}
+SlashCmdList.SOCIALDIARY("pace")
+text = table.concat(said, "\n")
+Check(text:find("kill probe: 5 kills seen: 3 readable, 1 hidden, 1 not creatures; the killer hidden on 1", 1, true),
+    "the report's probe: " .. text)
+Check(text:find("#11318 x2, #11320 x1", 1, true), "the report's kills by NPC ID")
+said = {}
+SlashCmdList.SOCIALDIARY("pace clear")
+Eq(SocialDiaryCharDB.paceProbe, nil, "the probe not cleared")
+
 local hitsBefore = view.pools.hit.used
 SlashCmdList.SOCIALDIARY("pace map")
 Eq(Page.DevOverlay ~= nil, true, "the overlay not on")
