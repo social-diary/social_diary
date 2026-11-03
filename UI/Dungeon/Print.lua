@@ -545,21 +545,31 @@ local function NextStop(path, i0)
     return i0 < #path.route and #path.route or nil
 end
 
--- What killed a moment on the way, its NPC ID: a death's (`death`), or
--- the first of a wipe's deaths that says (`deaths`); nil for a roll, a
--- level-up or a death nothing is known to have killed.
-local function KillerOf(leg)
-    local deaths = leg.deaths or { leg.death }
-    for _, d in ipairs(deaths) do
-        local k = type(d) == "table" and d.killer
-        local npc = type(k) == "table" and not k.player and tonumber(k.npcID)
-        if npc then return npc end
+-- What killed a death, its NPC ID; nil for a player, or nothing known.
+local function KillerOf(death)
+    local k = type(death) == "table" and death.killer
+    return type(k) == "table" and not k.player and tonumber(k.npcID) or nil
+end
+
+-- What the route model places for a moment on the way (Core/DungeonPace.lua's
+-- PlaceGroup items): a wipe's (or a near wipe's) deaths, all of them, the
+-- seconds into the leg from its first; a death alone; or a roll or a
+-- level-up, with no killer.
+local function Items(leg)
+    if leg.deaths and leg.deaths[1] then
+        local t0, items = leg.deaths[1].time or 0, {}
+        for _, d in ipairs(leg.deaths) do
+            items[#items + 1] = { dt = leg.dt + math.max(0, (d.time or t0) - t0), npc = KillerOf(d) }
+        end
+        return items
     end
+    return { { dt = leg.dt, npc = KillerOf(leg.death) } }
 end
 
 -- Where the route model puts a moment on the leg from point i0 to the
 -- boss at point i1 (Core/DungeonPace.lua: the packs on the way, the time
--- into the leg, how long it took where its boss fell, and what killed it),
+-- into the leg, how long it took where its boss fell, and what killed it;
+-- a wipe's deaths together, at one pull),
 -- kept PACE_CLEAR yards off both of its ends (the boss behind and the one
 -- ahead, never on them); nil where the dungeon has no pace data or the leg
 -- is not one the model takes, or it lies off the floor shown. x, y and how:
@@ -568,7 +578,7 @@ local PACE_CLEAR = 12
 local function PacePoint(path, leg, i0, i1, open)
     local Pace, course = ns.DungeonPace, path.course
     if not (Pace and course and i1 and leg.dt) then return nil end
-    local yd, _, _, by = Pace.Place(course, i0, i1, leg.dt, not open and leg.known or nil, KillerOf(leg))
+    local yd, _, _, by = Pace.PlaceGroup(course, i0, i1, Items(leg), not open and leg.known or nil)
     if not yd then return nil end
     local from, to = course.cum[i0], course.cum[i1]
     local clear = math.min(PACE_CLEAR, (to - from) / 2)
@@ -695,9 +705,17 @@ local function Deaths(plan, P, stock)
         onWay[#onWay + 1] = { x = x, y = y, n = 0 }
         return x, y
     end
+    -- A wipe's deaths (and a near wipe's) were one pull: each lies where
+    -- the wipe does (LegPoint of it, the place its strip points at).
+    local together = {}
+    for _, list in ipairs({ notes.wipes or {}, notes.near or {} }) do
+        for _, w in ipairs(list) do
+            for _, d in ipairs(w.deaths or {}) do together[d] = w end
+        end
+    end
     for k, leg in ipairs(notes.legs or {}) do
         local tip = Style.TipList(W.Death(visit, leg.death), { W.Leg(leg, plan.names) })
-        local x, y = LegPoint(plan.path, leg)
+        local x, y = LegPoint(plan.path, together[leg.death] or leg)
         if x then x, y = Fan(x, y) end
         if not x then
             local t = Near(leg.after) or Near(leg.before)

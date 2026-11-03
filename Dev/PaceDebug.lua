@@ -212,9 +212,18 @@ local function Report()
     local plan = floor and Page.Plan({ visit = visit, floor = floor, box = { x = 0, y = 0, w = 1, h = 1 },
         At = At, notes = notes, route = true })
     local path = plan and plan.path
+    -- A wipe's deaths lie where the wipe does, as on the map (Print.lua's
+    -- Deaths); the line still says the death's own leg and time.
+    local together = {}
+    for _, list in ipairs({ notes.wipes or {}, notes.near or {} }) do
+        for _, w in ipairs(list) do
+            for _, d in ipairs(w.deaths or {}) do together[d] = w end
+        end
+    end
     local function Line(kind, time, leg, who)
         local x, y, how = nil, nil, nil
-        if path then x, y, how = Page.LegPoint(path, leg) end
+        if path then x, y, how = Page.LegPoint(path, leg.death and together[leg.death] or leg) end
+        if leg.death and together[leg.death] then how = tostring(how) .. ", with its wipe" end
         local to = leg.before and leg.before.name or (leg.open and "the next boss standing") or "?"
         local where = "nowhere"
         if x then

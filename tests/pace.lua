@@ -381,7 +381,8 @@ local text = table.concat(said, "\n")
 if os.getenv("PACE_SHOW") then print(text) end  -- PACE_SHOW=1: the report as written
 Check(text:find("fit: floor 213, 5 anchors", 1, true), "the report's fit: " .. text)
 Check(text:find("leg to Oggleflint: 520 yd", 1, true), "the report's legs")
-Check(select(2, text:gsub(": pace at ", "")) >= 5, "the report's moments placed by the model")
+Check(select(2, text:gsub(": pace[^\n]- at ", "")) >= 5, "the report's moments placed by the model")
+Check(text:find(": pace, with its wipe at ", 1, true), "the report's deaths with their wipe")
 Check(text:find("Oggleflint killed 10:00", 1, true), "the report's kills")
 -- Each moment in yards along the way.
 Check(text:find("yd along", 1, true), "the report's yards along the way")
@@ -573,3 +574,101 @@ for _, p in ipairs(kleg.pulls) do
     if Holds(p, 11318) and (not nearest or math.abs(p.at - kr.yd) < math.abs(nearest.at - kr.yd)) then nearest = p end
 end
 Check(Near(kyd, kleg.from + nearest.at), "a known leg's killer not at the nearest Trogg")
+
+--------------------------------------------------------------------------
+Section("a wipe is one pull: its strip and all its crosses there")
+
+-- The pattern of a second real run (3 Nov 2026): no kill yet, two wipes on
+-- the way to Oggleflint, some deaths without a killer; names made up.
+local S2 = 200000
+local twice = {
+    id = 9391, instanceID = RFC, name = "Ragefire Chasm", startedAt = S2, me = G,
+    members = { { guid = G }, { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" },
+        { guid = "Player-1-D" } },
+    spans = { { from = S2 } }, bossesKilled = {}, pulls = {},
+    deathLog = {
+        { guid = "Player-1-A", time = S2 + 22 },
+        { guid = "Player-1-B", time = S2 + 26, killer = Killed("Earthborer", 11320) },
+        { guid = "Player-1-C", time = S2 + 36 },
+        { guid = "Player-1-D", time = S2 + 125, killer = Killed("Earthborer", 11320) },
+        { guid = "Player-1-A", time = S2 + 282 },
+        { guid = "Player-1-D", time = S2 + 288 },
+        { guid = "Player-1-B", time = S2 + 296, killer = Killed("Ragefire Trogg", 11318) },
+        { guid = "Player-1-C", time = S2 + 333, killer = Killed("Ragefire Trogg", 11318) },
+    },
+}
+local tn = Run.Notes(twice)
+Eq(#tn.wipes, 2, "the two wipes")
+Eq(#tn.wipes[1].deaths, 3, "the first wipe's deaths")
+Eq(#tn.wipes[2].deaths, 4, "the second wipe's deaths")
+local tplan = Page.Plan({ visit = twice, floor = floor, box = { x = 0, y = 0, w = W, h = H }, At = At, notes = tn,
+    route = true })
+local tpath = tplan.path
+local function YdAt(x, y) return (Pace.Project(tpath.course, fit.ToGame(x / W, y / H))) end
+-- The second wipe: the Trogg pull its two Trogg deaths weigh most,
+-- together (the time at 4:56 and 5:33, the wide spread).
+local leg1t = Pace.Leg(tpath.course, 1, i1)
+local sum = {}
+for _, dt in ipairs({ 296, 333 }) do
+    for _, smp in ipairs(Model.PlaceDeath(leg1t, dt, { spread = Pace.KILLER.spread }).samples) do
+        if smp.kind == "pull" and Holds(leg1t.pulls[smp.pull], 11318) then
+            sum[smp.pull] = (sum[smp.pull] or 0) + smp.w
+        end
+    end
+end
+local want2
+for i, w in pairs(sum) do if not want2 or w > sum[want2] or (w == sum[want2] and i < want2) then want2 = i end end
+local w2x, w2y, w2how = Page.LegPoint(tpath, tn.wipes[2])
+Eq(w2how, "killer", "the second wipe not placed by its killers")
+Check(Near(YdAt(w2x, w2y), leg1t.pulls[want2].at, 0.5),
+    ("the second wipe not at the pull its deaths weigh most: %.0f, want %.0f"):format(YdAt(w2x, w2y), leg1t.pulls[want2].at))
+-- Its first death, alone, has no killer; the wipe is not where that alone
+-- puts it, nor where its first Trogg death alone does, necessarily: one
+-- place for all.
+local w1x, w1y = Page.LegPoint(tpath, tn.wipes[1])
+Check(math.abs(YdAt(w1x, w1y) - 44) < 1, "the first wipe not at the first Earthborers: " .. YdAt(w1x, w1y))
+
+-- On the sheet: every cross of a wipe within a ring of where its strip
+-- points, whatever killed it or did not.
+ns.db.instances[twice.id] = twice
+Check(ns.UI.OpenVisit(twice.id, "journey"), "the second run did not open")
+local tv = Page.Spread().map
+local tvp = tv.plan
+for wi, w in ipairs(tvp.notes.wipes) do
+    local t = tvp.targets["wipe:" .. wi]
+    Check(t, "no target for wipe " .. wi)
+    local crosses = 0
+    for _, d in ipairs(w.deaths) do
+        for _, cr in ipairs(tvp.crosses) do
+            if cr.pencil and (cr.x - t.x) ^ 2 + (cr.y - t.y) ^ 2 <= (Page.DEATH.ring + 1e-6) ^ 2 then
+                crosses = crosses + 1
+                break
+            end
+        end
+    end
+    Eq(crosses, #w.deaths, "a cross of wipe " .. wi .. " away from its strip's target")
+end
+-- Pencil crosses round wipe 2's target: its four deaths, fanned.
+local round = 0
+local t2 = tvp.targets["wipe:2"]
+for _, cr in ipairs(tvp.crosses) do
+    if cr.pencil and (cr.x - t2.x) ^ 2 + (cr.y - t2.y) ^ 2 <= (Page.DEATH.ring + 1e-6) ^ 2 then round = round + 1 end
+end
+Eq(round, 4, "the second wipe's crosses round its target")
+ns.UI.OpenVisit(twice.id, "journey")
+ns.db.instances[twice.id] = nil
+
+-- PlaceGroup directly: no killer among them, the first's time; a known
+-- leg, the pull holding one nearest where the time puts them on average.
+local g1, _, _, gh1 = Pace.PlaceGroup(tpath.course, 1, i1, { { dt = 282 }, { dt = 288 } })
+Eq(gh1, "time", "a group without killers not by time")
+Check(Near(g1, (Pace.Place(tpath.course, 1, i1, 282))), "a group without killers not at its first's time")
+local kg, _, kleg2, kh = Pace.PlaceGroup(tpath.course, 1, i1, { { dt = 100, npc = 11318 }, { dt = 140, npc = 11318 } }, 600)
+Eq(kh, "killer", "a known group not by its killers")
+local mean = ((Model.PlaceDeath(kleg2, 100, nil, { knownKill = 600 }).yd) + (Model.PlaceDeath(kleg2, 140, nil, { knownKill = 600 }).yd)) / 2
+local nearestT
+for _, p in ipairs(kleg2.pulls) do
+    if Holds(p, 11318) and (not nearestT or math.abs(p.at - mean) < math.abs(nearestT.at - mean)) then nearestT = p end
+end
+Check(Near(kg, kleg2.from + nearestT.at), "a known group not at the Trogg nearest its mean")
+Eq(Pace.PlaceGroup(tpath.course, 1, i1, {}), nil, "a group of nothing")

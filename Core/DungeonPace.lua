@@ -25,6 +25,9 @@
 --                                      killer `npc` where the leg has one (KILLER);
 --                                      the model's answer, the leg, and how
 --                                      ("killer" or "time")
+--   DungeonPace.PlaceGroup(course, i0, i1, items, known)
+--                                      the same for moments that were one pull (a
+--                                      wipe's deaths): one place for all of them
 --   DungeonPace.Along(course, yd)      the segment k (point k to k + 1) and how far
 --                                      along it (0..1) that is
 --   DungeonPace.Project(course, gx, gy) the way's point nearest game yards gx, gy:
@@ -268,43 +271,64 @@ local function Holding(course, leg, npc)
     return #out > 0 and out or nil
 end
 
--- Yards along the way (from its start) for a moment `dt` seconds into the
--- leg from point i0 to the boss at point i1, the leg `known` seconds long
--- when its boss fell (nil while it stands), killed by creature `npc` (nil
--- where not known): at a pull holding it where the leg has one (KILLER),
--- else where the time puts it. Then the model's answer (Core/Pace/
--- Model.lua's PlaceDeath), the leg, and how: "killer" or "time". nil where
--- the leg is not one (Leg) or no time is known.
-function DungeonPace.Place(course, i0, i1, dt, known, npc)
+-- Yards along the way (from its start) for moments on the leg from point
+-- i0 to the boss at point i1 that happened together (one death, or the
+-- deaths of a wipe: one pull, 3 Nov 2026), the leg `known` seconds long
+-- when its boss fell (nil while it stands). `items` are { dt (seconds into
+-- the leg), npc (what killed it, or nil) }, the first the earliest. Where
+-- any of them has a killer the leg holds (KILLER): at the pull holding one
+-- that the time weighs most, summed over all of them (with the wide
+-- spread); where the time weighs none (or the leg is known, and the time
+-- is one place), the one nearest where the time puts them, on average.
+-- Else where the time puts the first. Then the model's answer for the
+-- first (Core/Pace/Model.lua's PlaceDeath), the leg, and how: "killer" or
+-- "time". nil where the leg is not one (Leg) or no time is known.
+function DungeonPace.PlaceGroup(course, i0, i1, items, known)
     local Model = ns.PaceModel
-    local leg = Model and dt and DungeonPace.Leg(course, i0, i1)
+    local first = items and items[1]
+    local leg = Model and first and first.dt and DungeonPace.Leg(course, i0, i1)
     if not leg then return nil end
-    dt = math.max(0, dt)
     known = known and known > 0 and known or nil
-    local r = Model.PlaceDeath(leg, dt, nil, { knownKill = known })
-    local candidates = Holding(course, leg, npc)
-    if not candidates then return leg.from + r.yd, r, leg, "time" end
-    -- The time's weight on each, with the wide spread; a known leg's time
-    -- is one place, so the nearest.
-    local best, bestW
-    if not known then
-        local wide = Model.PlaceDeath(leg, dt, { spread = KILLER.spread })
-        local by = {}
-        for _, s in ipairs(wide.samples) do
-            if s.kind == "pull" then by[s.pull] = (by[s.pull] or 0) + s.w end
-        end
-        for _, i in ipairs(candidates) do
-            local w = by[i] or 0
-            if w > 0 and (not bestW or w > bestW) then best, bestW = i, w end
+    local r = Model.PlaceDeath(leg, math.max(0, first.dt), nil, { knownKill = known })
+    local held, score, sum, n = {}, {}, 0, 0
+    for _, it in ipairs(items) do
+        local candidates = it.dt and Holding(course, leg, it.npc)
+        if candidates then
+            local dt = math.max(0, it.dt)
+            sum, n = sum + Model.PlaceDeath(leg, dt, nil, { knownKill = known }).yd, n + 1
+            local by = {}
+            if not known then
+                for _, smp in ipairs(Model.PlaceDeath(leg, dt, { spread = KILLER.spread }).samples) do
+                    if smp.kind == "pull" then by[smp.pull] = (by[smp.pull] or 0) + smp.w end
+                end
+            end
+            for _, i in ipairs(candidates) do
+                held[i] = true
+                score[i] = (score[i] or 0) + (by[i] or 0)
+            end
         end
     end
+    if n == 0 then return leg.from + r.yd, r, leg, "time" end
+    local best, bestW
+    for i in pairs(held) do
+        local w = score[i]
+        if w > 0 and (not bestW or w > bestW or (w == bestW and i < best)) then best, bestW = i, w end
+    end
     if not best then
-        for _, i in ipairs(candidates) do
-            local d = math.abs(leg.pulls[i].at - r.yd)
-            if not bestW or d < bestW then best, bestW = i, d end
+        local mean = sum / n
+        for i in pairs(held) do
+            local d = math.abs(leg.pulls[i].at - mean)
+            if not bestW or d < bestW or (d == bestW and i < best) then best, bestW = i, d end
         end
     end
     return leg.from + leg.pulls[best].at, r, leg, "killer"
+end
+
+-- One moment: PlaceGroup with it alone, `dt` seconds into the leg, killed
+-- by creature `npc` (nil where not known).
+function DungeonPace.Place(course, i0, i1, dt, known, npc)
+    if not dt then return nil end
+    return DungeonPace.PlaceGroup(course, i0, i1, { { dt = dt, npc = npc } }, known)
 end
 
 -- The stretch `yd` yards along the way lies on: k (point k to k + 1) and
