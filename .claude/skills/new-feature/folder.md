@@ -30,13 +30,21 @@ read a feature's exports **at call time** (Witnesses' card uses
 `ns.Hunts.LuckyCard`'s pen). The dependency then goes one way only, and the
 TOC order follows it.
 
+**Groups.** Features of one kind may sit one level down in a group folder,
+`Features/<Group>/<Name>/` (`Features/Classes/Hunter/`: one class's
+moments). A group holds folders only and makes no namespace; each feature
+in it makes `ns.<Name>` as any other, so names are unique across groups.
+kinds.lua checks the nesting, the TOC and `.pkgmeta`'s `Features/*/*/Dev.lua`.
+A group gets shared files only once a second feature in it shows what is
+shared.
+
 ## Registries and where their specs are
 
 | Registry | Spec comment above it in | Notes |
 |---|---|---|
 | `ns.Rows.Register(kind, spec)` | `Core/Rows.lua` (header) | Flags core reads instead of naming kinds: `climb`, `fight`, `witness`, `dealt` (from `Rows.DEALT` only). Words (`text`), `icon`, `reason`, `moment` in the same call. A `text` that says "you" goes through `ns.UI.Format.You(row.me, "{You} killed ")`, so a shared diary names the alt that wrote it (`UI/Words/Format.lua`). |
 | `ns.Journey.RegisterList(name, spec)` | `Core/Journey.lua` | `cap` (goes into `Journey.T`), `named`, `readNames` (`true` or a function: the list reads its own creature names), `prune(j, now)`, `forget(j, guid)`. A keyed table registers with no `cap`, for `prune` / `forget` alone (Firsts). Write with `Journey.Append(j, name, rec, where)`, read with `Journey.List(j, name)`. |
-| `ns.JourneyRecap.RegisterMoment(kind, spec)` | `Core/JourneyRecap.lua` | `order`, `list` or `gather`, `entry`, `field`, `rank`, `light`, `rankAs`, `moment`, `person` (a moment that is also someone's: a gift). Needs a mark of the same kind (kinds.lua). |
+| `ns.JourneyRecap.RegisterMoment(kind, spec)` | `Core/JourneyRecap.lua` | `order`, `list` or `gather`, `entry`, `field`, `rank`, `light`, `rankAs`, `moment`, `person` (a moment that is also someone's: a gift), `custom` (a card the player may edit or insert: its spec in `Core/Custom.lua`'s header; `custom.offer()` keeps a class's card off other classes' pickers). Needs a mark of the same kind (kinds.lua). |
 | `ns.UI.JourneyPlate.RegisterMark(kind, spec)` | `UI/Journey/Plate.lua` | `order` (not the road deaths' turn), `cap` + `count` (in `Plate.CAP`), `radius`, `halo`, `hover`, `draw(kit, x, y, arg)`, `arg`, `tip`, `keep`, `join`, `chosen`, `choose`. |
 | `ns.UI.JourneyPlate.RegisterPass(key, spec)` | `UI/Journey/Plate.lua` | After every mark: `order` (killer 10, foe 20, witness 30, print 90), `draw(plate, c)`, `new(plate, kit)` for its own layers on the `over` frame. |
 | `ns.UI.JourneyMargin.Register(kind, spec)` | `UI/Journey/Margin.lua` | `order`, `pool`, `count`, `item`/`items`, `new`, `write`, `mark`, `assume`, `say`, `filler`, `flag`, `wants`, `fits`, `after`. |

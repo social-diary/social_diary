@@ -351,3 +351,42 @@ do
     M.scrap = nil
     Eq(#Custom.FindPeople("", 4), 0, "nothing typed finds nobody")
 end
+
+--------------------------------------------------------------------------
+Section("a kind offered only to some characters")
+
+-- A class's moment (Features/Classes/<Class>/) is offered only on that
+-- class (Core/Custom.lua's `offer`): the picker leaves it out elsewhere, and
+-- an insert is refused, while a card already on the route stays editable.
+do
+    local M = ns.JourneyRecap.MOMENTS
+    local offered = false
+    M.trait = { kind = "trait", entry = "traits", gather = function() end, field = "s", order = 998,
+        custom = { label = "Trait", fields = { { key = "note", type = "text" } },
+            offer = function() return offered end,
+            wrap = function(rec) return { rec = rec } end, timeOf = function(entry) return entry.rec.t end } }
+    local function Listed()
+        for _, k in ipairs(ns.UI.YourDiary.CardSheet.Kinds()) do
+            if k.kind == "trait" then return true end
+        end
+        return false
+    end
+    local where = { mapID = 1412, x = 0.5, y = 0.5, from = t0, to = now }
+
+    Check(not Custom.Offered("trait"), "not offered")
+    Check(not Listed(), "not in the picker")
+    Eq(Custom.Insert("trait", { note = "a note" }, where), nil, "not inserted")
+
+    offered = true
+    Check(Custom.Offered("trait"), "offered")
+    Check(Listed(), "in the picker")
+    local card = Custom.Insert("trait", { note = "a note" }, where)
+    Check(card ~= nil, "inserted")
+
+    offered = false
+    Check(Custom.Edit("trait", card, { note = "another" }), "still edited where no longer offered")
+    Eq(card.note, "another", "the edit taken")
+    Check(Custom.Offered("close"), "a kind with no offer is offered")
+    Custom.Remove(card)
+    M.trait = nil
+end

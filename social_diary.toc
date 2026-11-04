@@ -270,6 +270,17 @@ Features/Hunts/Text.lua
 Features/Hunts/Mark.lua
 Features/Hunts/HuntCard.lua
 Features/Hunts/LuckyCard.lua
+# A class's moments: one feature a class, in the Classes group
+# (Features/Classes/<Class>/). A hunter's tames hear UNIT_SPELLCAST_SENT
+# and UNIT_PET, which nothing else hears, and only on a hunter; their
+# SD_WORLD_SETTLED reads nothing Firsts or Profession caps keep, so they
+# sit anywhere in the block (Features/Classes/Hunter/Capture.lua's header).
+Features/Classes/Hunter/Kind.lua
+Features/Classes/Hunter/Data.lua
+Features/Classes/Hunter/Text.lua
+Features/Classes/Hunter/Mark.lua
+Features/Classes/Hunter/Card.lua
+Features/Classes/Hunter/Capture.lua
 
 Capture/Menus.lua
 Capture/Group.lua
@@ -316,4 +327,5 @@ Features/CloseCalls/Dev.lua
 Features/Witnesses/Dev.lua
 Features/Hunts/Dev.lua
 Features/Duels/Dev.lua
+Features/Classes/Hunter/Dev.lua
 #@end-do-not-package@

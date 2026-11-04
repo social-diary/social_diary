@@ -16,19 +16,17 @@ local LINKS = {
       line = "Report a bug or suggest an idea on GitHub.",
       url = "https://github.com/social-diary/social_diary/issues" },
     { key = "comments", heading = "Comments",
-      line = "Leave a comment or a kind word on CurseForge.",
+      line = "Leave a comment on CurseForge.",
       url = "https://www.curseforge.com/wow/addons/social-diary/comments" },
 }
 
-local COPY_HINT = "The game can’t open links. Click one to select it, press Ctrl+C"
-    .. " (Cmd+C on a Mac), then paste it into your browser."
+local COPY_HINT = "Copy and Paste this link"
 
 -- The version the bug form asks for, and the extra chat messages that help.
 local function VersionText()
-    return ("You have version |cff%s%s|r. The bug form asks for it."):format(Style.HEX.strong, ns.version)
+    return ("You are on version |cff%s%s|r.."):format(Style.HEX.strong, ns.version)
 end
-local DEBUG_TEXT = ("Before you report a bug, type |cff%s/sd debug|r and make it happen again: the extra"
-    .. " chat messages help find it. Type it again to turn them off."):format(Style.HEX.strong)
+local DEBUG_TEXT = ("If something breaks, try to write down what happened as precisely as possible!"):format(Style.HEX.strong)
 
 -- A line of the page, wrapped to the column.
 local function Line(pane, c, text, font, gap)

@@ -83,6 +83,8 @@ local FILES = {
     "duels",
     "you",
     "duels_ui",
+    "hunter_tames",
+    "hunter_tames_ui",
     "kinds",
     "margin_caption",
     "registry",

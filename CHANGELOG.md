@@ -9,6 +9,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - Occasional hints point out features you may have missed
 - A _Feedback_ page in _Settings_ for bug reports and comments
+- Hunters: _Your Diary_ remembers the pets you tame and name
 
 ### Changes
 

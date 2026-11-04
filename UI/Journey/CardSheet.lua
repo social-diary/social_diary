@@ -313,13 +313,14 @@ local function Fields()
 end
 
 -- The kinds that may be added, by their types' order, then their `at` within a
--- type, then by name, so the order does not hang on `pairs`.
+-- type, then by name, so the order does not hang on `pairs`. A kind whose
+-- `offer` says no (a class's moment on another class) is left out.
 local function Kinds()
     local order, list = {}, {}
     for i, group in ipairs(GROUPS) do order[group.key] = i end
     for kind, moment in pairs(ns.JourneyRecap.MOMENTS) do
         local spec = moment.custom
-        if spec and spec.label then
+        if spec and spec.label and ns.Custom.Offered(kind) then
             local at = order[spec.group] or order.other
             list[#list + 1] = { kind = kind, spec = spec, type = at, words = GROUPS[at].words, at = spec.at or 0 }
         end

@@ -59,6 +59,10 @@
 --            card, asked without an `arg`
 --   describe optional function(rec) → a menu's line for one card, where a spot
 --            merges several or one is hidden; `label` where nil
+--   offer    optional function() → whether the logged-in character may insert
+--            a card of this kind now: a class's moments only on that class
+--            (asked at call time; offered where nil). It gates inserting only:
+--            a card already on the route is still edited, hidden and reset
 -- and each field, for its row on the form (UI/Journey/CardSheet.lua): label;
 -- hint (optional: beside a number, under a text while it is empty); for a
 -- choice names (value → words). A choice is shown as a box per value, at most
@@ -80,6 +84,12 @@ end
 
 -- The kinds that may be custom, and their specs: the editor's to read.
 Custom.Spec = SpecOf
+
+-- Whether a card of `kind` may be inserted now (its spec's `offer`).
+function Custom.Offered(kind)
+    local spec = SpecOf(kind)
+    return spec ~= nil and (spec.offer == nil or spec.offer() == true)
+end
 
 --------------------------------------------------------------------------
 -- Reading
@@ -262,7 +272,8 @@ end
 -- is no route.
 function Custom.Insert(kind, fields, where)
     local spec, j = SpecOf(kind), Journey.Mine()
-    if not (spec and j and where and where.mapID and where.x and where.y and where.from and where.to) then
+    if not (spec and Custom.Offered(kind) and j and where and where.mapID and where.x and where.y and where.from
+            and where.to) then
         return nil
     end
     local t = Custom.TimeNear(j, where.mapID, where.x, where.y, where.from, where.to)

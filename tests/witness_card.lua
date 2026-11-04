@@ -393,7 +393,9 @@ Eq(table.concat(seen, ", "), "10:Wenna:tried to save you:M, 11:Numa:saved you:L,
 -- In the margin where the killer's card would be: after the people and
 -- the finds, ahead of the close call's card and the luck.
 Check(Any(margins, "^11:person,find,witness,lucky$"), "level 11's margin: " .. table.concat(margins, "; "))
-Check(Any(margins, "^14:witness,foe,lucky$"), "level 14's margin: " .. table.concat(margins, "; "))
+-- (Level 14's Savannah Prowler, a hunter's tame, ranks with the people:
+-- Features/Classes/Hunter/Card.lua, 4 Nov.)
+Check(Any(margins, "^14:tame,witness,foe,lucky$"), "level 14's margin: " .. table.concat(margins, "; "))
 Check(Any(margins, "^13:find,witness$"), "level 13's margin: " .. table.concat(margins, "; "))
 -- (The oasis week's campfire, sat by with Tester, comes last of all: its
 -- slip, Features/Campfire/Slip.lua, 14 Oct; the duels with Tester just

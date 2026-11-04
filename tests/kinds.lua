@@ -132,19 +132,44 @@ end
 
 local toc = Read("social_diary.toc")
 local packaged = toc:match("^(.-)#@do%-not%-package@") or toc
-local features = Ls("ls -1 Features")
+
+-- A feature is a folder of files: Features/<Name>/, or one level down in a
+-- group, Features/<Group>/<Name>/ (Features/Classes/Hunter/: the moments of
+-- one class). A group holds folders only, and makes no namespace of its
+-- own; each feature in it makes ns.<Name>, so two features may not share a
+-- name across groups.
+local features, folders = {}, {}
+for _, top in ipairs(Ls("ls -1 Features")) do
+    local inner = Ls("find Features/" .. top .. " -mindepth 1 -maxdepth 1 -type d | sort")
+    if #inner == 0 then
+        features[#features + 1] = top
+        folders[top] = "Features/" .. top
+    else
+        Check(#Ls("find Features/" .. top .. " -mindepth 1 -maxdepth 1 -type f") == 0,
+            "Features/" .. top .. " holds folders and files: a group holds folders only")
+        for _, dir in ipairs(inner) do
+            local name = dir:match("([^/]+)$")
+            Check(#Ls("find " .. dir .. " -mindepth 1 -type d") == 0, dir .. " is nested deeper than a group")
+            Check(folders[name] == nil, dir .. " shares its name with " .. tostring(folders[name]))
+            features[#features + 1] = name
+            folders[name] = dir
+        end
+    end
+end
 Check(#features > 0, "no Features/ folder")
 for _, name in ipairs(features) do
-    for _, file in ipairs(Ls("ls -1 Features/" .. name)) do
-        local path = "Features/" .. name .. "/" .. file
+    for _, file in ipairs(Ls("ls -1 " .. folders[name])) do
+        local path = folders[name] .. "/" .. file
         Check(toc:find(path, 1, true) ~= nil, path .. " is not in the TOC")
         if file == "Dev.lua" then
             Check(packaged:find(path, 1, true) == nil, path .. " would be packaged")
         end
     end
-    Check(ns[name] ~= nil, "Features/" .. name .. " makes no ns." .. name)
+    Check(ns[name] ~= nil, folders[name] .. " makes no ns." .. name)
 end
-Check(Read(".pkgmeta"):find("Features/*/Dev.lua", 1, true) ~= nil, ".pkgmeta does not leave the features' Dev.lua out")
+local pkgmeta = Read(".pkgmeta")
+Check(pkgmeta:find("Features/*/Dev.lua", 1, true) ~= nil, ".pkgmeta does not leave the features' Dev.lua out")
+Check(pkgmeta:find("Features/*/*/Dev.lua", 1, true) ~= nil, ".pkgmeta does not leave a group's features' Dev.lua out")
 
 -- Every file under these folders, however deep (UI's areas are folders).
 for _, dir in ipairs({ "Core", "UI", "Capture", "Dev" }) do
