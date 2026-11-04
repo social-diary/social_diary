@@ -181,6 +181,7 @@ UI/Settings/Sections/Dungeons.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Memory.lua
+UI/Settings/Sections/Feedback.lua
 UI/Settings/Sections/About.lua
 UI/Blizzard/Signpost.lua
 # The parcel at login: its scene first (ns.UI.Parcel, and the fonts made

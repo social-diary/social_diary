@@ -400,6 +400,96 @@ function Style.WritingLine(parent, width, font, hint, onCommit)
     return box
 end
 
+-- Text to copy out of the game (a web address: the client cannot open
+-- one): a slip washed with ink and ruled round in a hairline, as the search
+-- field is, `text` written on it. Read-only: typing puts the text back, so
+-- nothing can be lost from it. A click or the cursor selects all of it for
+-- Ctrl+C; Enter and Escape let go. Its edge darkens under the mouse and
+-- while it has the cursor. `width` is the slip's; `.height` what it takes.
+local COPY_H, COPY_PAD = 22, 7
+
+function Style.CopyField(parent, width, text)
+    local INK, STRONG = Style.INK, Style.INK_STRONG
+    local holder = CreateFrame("Frame", nil, parent)
+    holder:SetSize(width, COPY_H)
+    holder.height = COPY_H
+
+    local fill = holder:CreateTexture(nil, "BACKGROUND")
+    fill:SetAllPoints()
+    fill:SetColorTexture(INK[1], INK[2], INK[3], 0.07)
+
+    -- The rule round it, top and left a shade lighter: lit from the top left.
+    holder.edges = {}
+    for i, side in ipairs({ { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" },
+        { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
+        local edge = holder:CreateTexture(nil, "BORDER")
+        edge:SetPoint(side[1])
+        edge:SetPoint(side[2])
+        if i <= 2 then edge:SetHeight(1) else edge:SetWidth(1) end
+        holder.edges[i] = edge
+    end
+
+    local box = CreateFrame("EditBox", nil, holder)
+    holder.box = box
+    box:SetPoint("TOPLEFT", COPY_PAD, 0)
+    box:SetPoint("BOTTOMRIGHT", -COPY_PAD, 0)
+    box:SetFontObject(Style.FONT.strong)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(0)
+
+    local function Ink(hot)
+        local c = hot and STRONG or INK
+        for i, edge in ipairs(holder.edges) do
+            local a = hot and Style.HAIRLINE_HOT or Style.HAIRLINE
+            edge:SetColorTexture(c[1], c[2], c[3], (i == 1 or i == 3) and a * 0.7 or a)
+        end
+    end
+
+    -- The text as given, the cursor at its start so a long one shows its
+    -- beginning.
+    local function Restore(self)
+        self:SetText(holder.value)
+        self:SetCursorPosition(0)
+    end
+
+    local function SelectAll(self)
+        self:HighlightText()
+    end
+
+    box:SetScript("OnTextChanged", function(self)
+        if self:GetText() ~= holder.value then
+            Restore(self)
+            if self:HasFocus() then SelectAll(self) end
+        end
+    end)
+    box:SetScript("OnEditFocusGained", function(self)
+        SelectAll(self)
+        Ink(true)
+    end)
+    box:SetScript("OnEditFocusLost", function(self)
+        self:HighlightText(0, 0)
+        Restore(self)
+        Ink(self:IsMouseOver())
+    end)
+    -- The click that gave it the cursor also set the cursor down, which
+    -- would undo the selection: select again once the button is up.
+    box:SetScript("OnMouseUp", SelectAll)
+    box:SetScript("OnEnter", function() Ink(true) end)
+    box:SetScript("OnLeave", function(self) Ink(self:HasFocus()) end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+
+    function holder:SetValue(value)
+        self.value = value or ""
+        Restore(box)
+    end
+    function holder:GetValue() return self.value end
+
+    Ink(false)
+    holder:SetValue(text)
+    return holder
+end
+
 -- A box to tick, drawn in ink: a hairline square, and a tick written into
 -- it in two strokes. Only the picture: Style.Checkbox, and the rows that
 -- toggle around one, do the clicking.

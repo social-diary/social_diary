@@ -51,6 +51,7 @@ local FILES = {
     "people",
     "reunion",
     "settings",
+    "feedback",
     "hints",
     "hints_ui",
     "paper_grain",

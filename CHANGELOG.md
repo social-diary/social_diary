@@ -8,6 +8,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Shiny new Things
 
 - Occasional hints point out features you may have missed
+- A _Feedback_ page in _Settings_ for bug reports and comments
 
 ### Changes
 

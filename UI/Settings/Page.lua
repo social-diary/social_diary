@@ -1,7 +1,8 @@
 -- Settings (PRV-2, PRV-3, DAT-3): the journal's grey ribbon.
 --
 -- A page of the book like the others, in two panes: the left page lists the
--- sections (Recording, Interface, Sounds, Integrations, Memory, About), with Interface's
+-- sections (Recording, Interface, Sounds, Integrations, Memory, Feedback,
+-- About), with Interface's
 -- two subpages (Toasts, Keybinds & Shortcuts) hung under it, and the right
 -- page shows the chosen one's settings. Written in the same ink as the
 -- rest of the book: boxes to tick, numbers on a line and ruled scales
