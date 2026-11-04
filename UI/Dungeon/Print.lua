@@ -1081,6 +1081,9 @@ local function Splats(plan, P)
             P.Quad(pools.bloodCore, SPLAT.rimInk, SPLAT.rimInk[4], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8])
         end
         plan.flavour[#plan.flavour + 1] = { kind = "blood", x = sp.x, y = sp.y, r = spread + 4, n = sp.n }
+        -- A stain is a few ms (its blot): laying the sheet may wait for the
+        -- next frame after each (UI/Dungeon/Sheet.lua's STAGE).
+        DungeonPage.Step()
     end
 end
 
@@ -1132,10 +1135,15 @@ local function Flavour(plan, P, stock)
     end
     for _, c in ipairs(plan.crosses) do busy[#busy + 1] = { x = c.x, y = c.y, r = DEATH.halo / 2 } end
     if plan.door then busy[#busy + 1] = { x = plan.door.x, y = plan.door.y, r = KILL.halo / 2 } end
+    local Step = DungeonPage.Step
     Circles(plan, P, busy)
+    Step()
     Scribbles(plan, P, busy)
+    Step()
     Rests(plan, P, busy)
+    Step()
     Splats(plan, P)
+    Step()
     Levels(plan, P, busy, stock)
 end
 
@@ -1151,6 +1159,9 @@ function DungeonPage.Ink(plan, P, stock)
     local W = DungeonPage.Words
 
     plan.routeCounts = plan.route and DrawRoute(P, plan.path) or { ink = 0, pencil = 0 }
+    -- Where laying the sheet may wait for the next frame (UI/Dungeon/
+    -- Sheet.lua's STAGE): between the passes, never inside one.
+    DungeonPage.Step()
 
     if plan.door then
         local d = plan.door
@@ -1188,7 +1199,9 @@ function DungeonPage.Ink(plan, P, stock)
         P.Hit(pools.hit, mark.x, mark.y, HOVER, Style.TipList(plan.names[mark.name] or mark.name, lines))
     end
     if plan.door then plan.targets.door = { x = plan.door.x, y = plan.door.y, r = 7 } end
+    DungeonPage.Step()
     Deaths(plan, P, stock)
+    DungeonPage.Step()
     -- A development overlay over the marks (Dev/PaceDebug.lua's packs of
     -- the pace data), set only by /sd pace map; a release never has it.
     if DungeonPage.DevOverlay then DungeonPage.DevOverlay(plan, P) end

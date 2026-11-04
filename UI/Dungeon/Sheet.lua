@@ -97,6 +97,18 @@ local LABEL = { inset = 16, h = 24, pad = 10, gap = 16, edge = 0.45, foot = 26, 
 -- numbers, the squares that take the mouse, the strips lying on it
 -- (UI/Dungeon/Notes.lua).
 local LEVELS = { medals = 1, labels = 3, hits = 5, notes = 7 }
+-- Laid a few frames at a time (4 Nov 2026, the user: a tenth of a second
+-- held is a lag you feel). The client draws nothing while Lua runs, and
+-- laying a whole map takes about that: so the spread lays it in slices of
+-- `budget` ms, a frame each, the first at once, and puts the sheet down
+-- once it is all laid (view:OpenStaged). The work stops to wait for the
+-- next frame only where DungeonPage.Step is called (between the sheet's
+-- parts, between the ink's passes, after each strip), once its slice is
+-- spent; a part between two steps is never cut. Without a clock (the
+-- tests' mock leaves it still) a slice is never spent and it is laid at
+-- once.
+local STAGE = { budget = 6 }
+DungeonPage.STAGE = STAGE
 
 DungeonPage.SHEET, DungeonPage.FOLDS, DungeonPage.LABEL, DungeonPage.SIZE = SHEET, FOLDS, LABEL, SIZE
 DungeonPage.AGE = AGE
@@ -106,6 +118,18 @@ DungeonPage.AGE = AGE
 function DungeonPage.Age(seconds)
     local days = math.max(0, (seconds or 0) / 86400)
     return math.min(1, days / AGE.full) ^ AGE.curve
+end
+
+-- The lay going on now, a slice a frame (STAGE): { co (the coroutine),
+-- view, done, started (ms, when its slice began) }, or nil.
+local laying
+
+-- Where laying a sheet may stop for the next frame: it does, inside a lay
+-- going on a slice a frame, once the slice is spent; else nothing.
+function DungeonPage.Step()
+    local job = laying
+    if not (job and debugprofilestop and coroutine.running() == job.co) then return end
+    if debugprofilestop() - job.started >= STAGE.budget then coroutine.yield() end
 end
 
 -- The paper and the grime for that wear: the stock yellowed, the grime
@@ -311,7 +335,7 @@ end
 -- (the floors') and view.labelBox, view.none (the pencil line), view.straight (laid straight, as
 -- its masks cannot turn), and the toolkit, view.K. view:Under() is the
 -- floor's point under the cursor, view.From(x, y) any point of the sheet's
--- (WAY-12).
+-- (WAY-12). Each time it is laid, view.onLaid(visit, guid) where set.
 function DungeonPage.Sheet(parent)
     -- Its size now: the shown map's (Shape).
     local W, H = SHEET.w, SHEET.h
@@ -502,8 +526,9 @@ function DungeonPage.Sheet(parent)
     -- chosen for it, else the one the run mostly took place on. Kept for
     -- the tests: view.w, view.h (its size), view.grid (its folds, {
     -- across, down }), view.kept (the part of the floor printed, in its
-    -- units), view.scale (px of the sheet per unit).
-    function view:Open(visit, guid)
+    -- units), view.scale (px of the sheet per unit). It may stop for the
+    -- next frame at each DungeonPage.Step (STAGE).
+    local function LayFor(self, visit, guid)
         -- Another run: the pen on this one is put down first (WAY-11).
         DungeonPage.WayBefore(self, visit)
         self.visit, self.guid = visit, guid
@@ -514,6 +539,7 @@ function DungeonPage.Sheet(parent)
         if not floors or #floors == 0 then
             self.floorIndex, self.straight = nil, false
             Bare(visit)
+            if self.onLaid then self.onLaid(visit, guid) end
             return
         end
         self.none:Hide()
@@ -561,12 +587,14 @@ function DungeonPage.Sheet(parent)
         local plan = DungeonPage.Plan({ visit = visit, floor = floor, wing = wing, box = box, At = At,
             notes = notes, route = drawRoute, inside = { inset, inset, W - inset, H - inset },
             foot = { x = LABEL.foot, y = H - LABEL.foot } })
+        DungeonPage.Step()
 
         -- A combined map's masks that cannot turn: that sheet lies straight.
         self.straight = floor.combined == true and not self.printer.masksTurn
         Fall(visit, self.straight and 0 or math.rad(SHEET.turn))
         K.Clear(plan.spots, FOLDS.reach, FOLDS.pad)
         K.Lay()
+        DungeonPage.Step()
 
         groundPool:Begin()
         Lay(groundPool, Style.MAP_BACKGROUND, 1, 0, 0, W, H, true)
@@ -575,16 +603,87 @@ function DungeonPage.Sheet(parent)
         framePool:Begin()
         Band(framePool, Style.INK_STRONG, FRAME.alpha, 0, 0, W, H, FRAME.width)
         framePool:Finish()
+        DungeonPage.Step()
 
         self.plan = DungeonPage.Ink(plan, P, self.paper)
         Links(floors, index)
         -- The pencil's slip on its top edge (UI/Dungeon/Way.lua), before
         -- the strips, which keep out from under it.
         DungeonPage.WayLaid(self)
+        DungeonPage.Step()
         DungeonPage.LayNotes(self, self.plan, P, K)
         -- Laid again while the pen is out (another floor, the screen
         -- changed): it is taken up again on what is shown now.
         DungeonPage.WayAfter(self)
+        -- The spread told what it is laid from (UI/Dungeon/Spread.lua's
+        -- Laid), so opening the run again with nothing moved shows it as
+        -- it lies.
+        if self.onLaid then self.onLaid(visit, guid) end
+    end
+
+    -- What drives a lay a slice a frame: shown only while one goes on (the
+    -- sheet itself is hidden then, and a hidden frame hears no OnUpdate).
+    local driver = CreateFrame("Frame", nil, UIParent)
+    driver:Hide()
+    view.driver = driver
+
+    -- Stops the lay going on a slice a frame for this sheet, if one is:
+    -- what it would have called once laid (OpenStaged's `done`), or nil.
+    -- The sheet is left half laid: whatever lays it next lays all of it.
+    function view:StopLaying()
+        local job = laying
+        if not (job and job.view == self) then return nil end
+        laying = nil
+        driver:SetScript("OnUpdate", nil)
+        driver:Hide()
+        return job.done
+    end
+
+    -- Whether a lay goes on a slice a frame for this sheet now.
+    function view:Laying()
+        return laying ~= nil and laying.view == self
+    end
+
+    -- Lays the sheet for `visit`, opened from `guid`'s page, all of it now.
+    -- A lay going on a slice a frame is overtaken: this one finishes it
+    -- (its `done` is called after, so the sheet still comes down).
+    function view:Open(visit, guid)
+        local done = self:StopLaying()
+        LayFor(self, visit, guid)
+        if done then done() end
+    end
+
+    -- The same, a slice of STAGE.budget ms a frame, the first now; done()
+    -- once it is all laid (not if it is stopped or overtaken first). A
+    -- fault inside goes to the client's error handler, the lay given up.
+    function view:OpenStaged(visit, guid, done)
+        self:StopLaying()
+        local job = { view = self, done = done }
+        job.co = coroutine.create(function() LayFor(self, visit, guid) end)
+        laying = job
+        local function Slice()
+            if laying ~= job then return end
+            job.started = debugprofilestop and debugprofilestop() or 0
+            local ok, err = coroutine.resume(job.co)
+            if laying ~= job then return end
+            if not ok or coroutine.status(job.co) == "dead" then
+                laying = nil
+                driver:SetScript("OnUpdate", nil)
+                driver:Hide()
+                if not ok then
+                    err = debug.traceback(job.co, tostring(err))
+                    local handle = geterrorhandler and geterrorhandler()
+                    if handle then return handle(err) end
+                    error(err, 0)
+                end
+                if done then done() end
+            end
+        end
+        Slice()
+        if laying == job then
+            driver:SetScript("OnUpdate", Slice)
+            driver:Show()
+        end
     end
 
     -- The floor's point under the cursor: srcFloorID, x, y (as a route
