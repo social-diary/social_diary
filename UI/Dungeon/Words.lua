@@ -66,6 +66,13 @@ Words.Whose = Whose
 -- An item that dropped for someone: "dropped for Tester", "dropped for you".
 function Words.Dropped(visit, guid) return "dropped for " .. Whose(visit, guid) end
 
+-- Under an item found on the way, from trash (UI/Dungeon/Notes.lua's
+-- wayLoot), for whom: "dropped for Tester on the way", "dropped for you on
+-- the way". A boss's "dropped for" with the page's "on the way" (as "Wiped
+-- on the way"), so the two sit side by side; its tooltip line is the same,
+-- capitalised.
+function Words.FoundFor(visit, guid) return "dropped for " .. Whose(visit, guid) .. " on the way" end
+
 -- Loot worth a note: the user's own, or a diary entry's (MAP-13). A
 -- stranger's is only counted.
 function Words.Noted(visit, guid)
@@ -210,6 +217,14 @@ function Words.WentDown(n) return ("%s went down"):format(NUMBER[n] or tostring(
 function Words.LevelScrawl(level) return tostring(level) end
 function Words.LevelTip(visit, up)
     return ns.Style.TipList(("Level %d"):format(up.level), { "Reached by " .. Whose(visit, up.guid) })
+end
+
+-- A find on the way's mark (Print.lua's Finds), its tooltip: the item
+-- itself over its strip's line, capitalised, "Dropped for Tester on the
+-- way" (FoundFor). The link as it comes, coloured for the dark tooltip.
+function Words.FoundTip(visit, f)
+    local entry = f.entry or {}
+    return ns.Style.TipList(entry.item or "?", { Capital(Words.FoundFor(visit, entry.guid)) })
 end
 
 -- Rolls (pass B). An item snagged from you: "Brom snagged it from you"

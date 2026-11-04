@@ -543,3 +543,50 @@ Eq(lv.levels[1].after.name, "Roogug", "the level-up after the kill before it")
 Eq(lv.levels[1].before, nil, "no kill after it")
 ns.db.journey[ns.ownGUID].levels[30], ns.db.journey[ns.ownGUID].levels[29] = nil, nil
 
+
+--------------------------------------------------------------------------
+Section("loot found on the way worth a mark (WAY_LOOT)")
+
+do
+    local me = "Player-1-0"
+    local found = {
+        instanceID = 3065, startedAt = 0, me = me,
+        members = { { guid = me }, { guid = "Player-1-A" }, { guid = "Player-1-B" } },
+        bossesKilled = { "Faldrim Anvilmar", "Infurnus" },
+        pulls = {
+            { id = 3493, name = "Faldrim Anvilmar", start = 600, stop = 700, killed = true },
+            { id = 3495, name = "Infurnus", start = 1200, stop = 1250, killed = true },
+        },
+        -- the user out of combat from 1300 to 1400: the loot line at 1350
+        -- came after the fight that ended at 1300
+        pauses = { { from = 1300, to = 1400 } },
+        loot = {
+            { guid = "Player-1-A", item = Link(900001, "Invented Epic Blade", 4), itemID = 900001, time = 900 },
+            { guid = me, item = Link(900002, "Invented Rare Ring", 3), itemID = 900002, time = 1350 },
+            { guid = "Player-1-B", item = Link(900003, "Invented Rare Belt", 3), itemID = 900003, time = 1360 },
+            { guid = me, item = Link(900004, "Invented Green Boots", 2), itemID = 900004, time = 1370 },
+            { guid = me, item = CHEST, itemID = 271098, time = 1380 },  -- Plunder's table: his, not the way's
+        },
+        spans = { { from = 0 } },
+    }
+    local fn = Run.Notes(found)
+    Eq(#fn.wayLoot, 2, "the finds worth a mark: a stranger's epic and the user's rare")
+    local epic, rare = fn.wayLoot[1], fn.wayLoot[2]
+    Eq(epic.entry.itemID, 900001, "the stranger's epic, first by time")
+    Eq(epic.quality, 4, "the epic's quality")
+    Eq(epic.mine, nil, "the stranger's epic is not the user's")
+    Eq(epic.after.name, "Faldrim Anvilmar", "the epic's leg starts at Faldrim")
+    Eq(epic.before.name, "Magmatus", "... and ends at Magmatus (the client's Infurnus)")
+    Eq(epic.time, 900, "a find outside a pause keeps its time")
+    Eq(rare.entry.itemID, 900002, "the user's rare")
+    Eq(rare.mine, true, "the user's rare is theirs")
+    Eq(rare.time, 1300, "a find in a pause goes back to where the fight ended")
+    Eq(rare.after.name, "Magmatus", "the rare's leg starts at Magmatus")
+    -- Plunder's chest proves his kill at 1380 (MAP-16): the rare's leg ends there.
+    Eq(rare.before.name, "Plunder", "the rare's leg ends at Plunder, killed going by his chest")
+    Check(rare.dt ~= nil, "the rare has its seconds into the leg, for the route model")
+    -- The rest stay where they were: unplaced, and only counted.
+    Eq(#fn.unplaced.loot, 4, "everything off the boss tables still unplaced")
+    -- Not a sure place for the route model: nothing about it is a death.
+    Eq(#fn.legs, 0, "a find made a death on the way")
+end

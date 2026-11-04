@@ -94,8 +94,8 @@ local CHALK = { colour = { 0.93, 0.89, 0.76 }, under = { offset = 0.9, alpha = 0
 -- the more the hand shows. In order of what gives way to what, when two
 -- would clash (the lesser drawn smaller or moved off): a good drop for you
 -- (LOOT), a wipe's scribble (SCRIBBLE), the pen at rest where the group
--- stayed long (REST), the blood where people died (SPLAT), a level-up's
--- star (LEVEL).
+-- stayed long (REST), the blood where people died (SPLAT), a find on
+-- the way (FIND), a level-up's star (LEVEL).
 --   LOOT      round a boss's face, for the best drop there for you: a rare
 --             (blue) one ink loop by hand, `pad` px out from the face,
 --             over its start by `overshoot` of a turn, uneven by `wobble`;
@@ -122,6 +122,17 @@ local CHALK = { colour = { 0.93, 0.89, 0.76 }, under = { offset = 0.9, alpha = 0
 --             `size` px, on a dot of paper `halo` across, the new level
 --             scrawled `text.dx`, `text.dy` px off it, `text.size` pt in the
 --             hand, in chalk
+--   FIND      something good found on the way (Core/DungeonRun.lua's
+--             WAY_LOOT), with no face to circle: LOOT's loop drawn round
+--             the spot instead, the way a hand rings a place on a map. A
+--             pip of ink `pip` px where it fell, ringed `radius` px out,
+--             on a dot of paper reaching `pad` px past the loops (at
+--             `haloAlpha`). Your rare one loop (`rare`); someone else's
+--             epic two, `apart` px apart, as light (`theirs`); your epic
+--             two heavier (`epic`) and `glint.n` short strokes flashing
+--             off its upper right in chalk (`glint.at` degrees, y down,
+--             `glint.spread` apart, from `glint.from` to `glint.to` px past
+--             the loops). Never a star (LEVEL's) nor crossed (DEATH's)
 local LOOT = { pad = 4, overshoot = 0.14, wobble = 0.05, steps = 30,
     rare = { width = 1.5, alpha = 0.9, loops = 1 }, epic = { width = 2.1, alpha = 0.95, loops = 2, apart = 3.5 },
     star = { size = 9, out = 8, width = 1.3 } }
@@ -134,6 +145,10 @@ local SPLAT = { cluster = 18, drops = 5, per = 3, spread = 2.5, grow = 1.4,
     ink = { { 0.42, 0.11, 0.06, 0.62 }, { 0.30, 0.065, 0.04, 0.55 } }, rim = 0.8, rimInk = { 0.25, 0.05, 0.03, 0.5 },
     step = 0.8, warp = { 0.6, 8 }, cap = 360 }
 local LEVEL = { size = 9, halo = 13, haloAlpha = 0.8, width = 1.2, text = { size = 14, dx = 10, dy = -6 } }
+local FIND = { pip = 2.4, radius = 3.5, apart = 2, pad = 1.5, haloAlpha = 0.8,
+    rare = { width = 1.4, alpha = 0.9, loops = 1 }, theirs = { width = 1.4, alpha = 0.85, loops = 2 },
+    epic = { width = 1.9, alpha = 0.95, loops = 2 },
+    glint = { n = 3, at = -45, spread = 30, from = 1.5, to = 5, width = 1 } }
 local APART = { clear = 25, step = 9, tries = 3, tether = { 1, 0.7 }, gap = 12, inset = 6,
     spots = { { 13, -11 }, { -13, -11 }, { 13, 11 }, { -13, 11 }, { 0, -16 }, { 0, 16 }, { 16, 0 }, { -16, 0 } } }
 
@@ -142,6 +157,7 @@ DungeonPage.APART, DungeonPage.MEDAL, DungeonPage.DEATH, DungeonPage.HOVER = APA
 DungeonPage.CHALK = CHALK
 DungeonPage.LOOT, DungeonPage.SCRIBBLE, DungeonPage.REST, DungeonPage.SPLAT, DungeonPage.LEVEL =
     LOOT, SCRIBBLE, REST, SPLAT, LEVEL
+DungeonPage.FIND = FIND
 
 -- What the pen at rest draws for a boss the group spent `share` of the
 -- run's time inside at (REST): "knot", "circle" or nil.
@@ -1120,10 +1136,57 @@ local function Levels(plan, P, busy, stock)
     end
 end
 
+-- What a find on the way is drawn as (FIND): "epic" for your epic or
+-- better, "theirs" for someone else's, "rare" for your rare.
+function DungeonPage.FindTier(f)
+    if f.quality >= 4 then return f.mine and "epic" or "theirs" end
+    return "rare"
+end
+
+-- The finds on the way (FIND): at the place Ink gave each ("loot:<n>"),
+-- moved off what is there; the place kept where it ended up, with the
+-- loops' reach, for its strip's leader.
+local function Finds(plan, P, busy, stock)
+    local pools, F = P.pools, FIND
+    for i, f in ipairs(plan.notes.wayLoot or {}) do
+        local t = plan.targets["loot:" .. i]
+        if t then
+            local tier = DungeonPage.FindTier(f)
+            local L = F[tier]
+            local apart = L.loops > 1 and F.apart or 0
+            local reach = F.radius + apart * L.loops + L.width
+            local G = F.glint
+            local outer = tier == "epic" and reach + G.to or reach
+            local x, y = t.x, t.y
+            if not Free(busy, x, y, outer) then
+                x, y = Beside(busy, x, y, outer * 2 + 2, outer, { 45, 135, -45, -135, 90, -90, 0, 180 })
+            end
+            local U = Stream(plan.visit.id .. ":find:" .. i)
+            P.Dot(pools.halo, x, y, 2 * (reach + F.pad), stock, F.haloAlpha)
+            P.Dot(pools.ink, x, y, F.pip, Style.INK_STRONG, L.alpha)
+            Hand(P, pools.loot, Loop(x, y, F.radius, L.loops, apart, U, LOOT.wobble), L.width, Style.INK_STRONG,
+                L.alpha, true, nil, 1)
+            if tier == "epic" then
+                for k = 1, G.n do
+                    local a = math.rad(G.at + (k - (G.n + 1) / 2) * G.spread + U(-6, 6))
+                    local r0, r1 = reach + G.from, reach + G.to * (k == (G.n + 1) / 2 and 1 or 0.75)
+                    Hand(P, pools.scribble, { x + r0 * math.cos(a), y + r0 * math.sin(a),
+                        x + r1 * math.cos(a), y + r1 * math.sin(a) }, G.width, CHALK.colour, 1, false,
+                        pools.scribbleUnder, 0)
+                end
+            end
+            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.FoundTip(plan.visit, f))
+            plan.flavour[#plan.flavour + 1] = { kind = "find", tier = tier, x = x, y = y, r = outer + 1, find = i }
+            busy[#busy + 1] = { x = x, y = y, r = outer }
+            t.x, t.y, t.r = x, y, reach
+        end
+    end
+end
+
 -- The moments, in order of what gives way to what (the less important
 -- drawn after, round what is there): the drops' loops, the wipes'
 -- scribbles, the pen at rest, the blood (under the crosses, where they
--- are), the level-ups. Kept on the plan: plan.flavour ({ kind, x, y, r,
+-- are), the finds on the way, the level-ups. Kept on the plan: plan.flavour ({ kind, x, y, r,
 -- ... } each), which the margin notes keep clear of too.
 local function Flavour(plan, P, stock)
     plan.flavour = {}
@@ -1144,6 +1207,7 @@ local function Flavour(plan, P, stock)
     Step()
     Splats(plan, P)
     Step()
+    Finds(plan, P, busy, stock)
     Levels(plan, P, busy, stock)
 end
 
@@ -1224,6 +1288,17 @@ function DungeonPage.Ink(plan, P, stock)
             if t then x, y = t.x - (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
         end
         if x then plan.targets["near:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
+    end
+    -- And each find on the way worth a mark (Core/DungeonRun.lua's
+    -- WAY_LOOT, "loot:<n>"): where the route model puts its time (by time
+    -- alone, never a sure place), else by the boss before or after it.
+    for i, f in ipairs(plan.notes.wayLoot or {}) do
+        local x, y = LegPoint(plan.path, f)
+        if not x then
+            local t = (f.after and plan.targets[f.after.name]) or (f.before and plan.targets[f.before.name])
+            if t then x, y = t.x + (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
+        end
+        if x then plan.targets["loot:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
     end
 
     -- The best drop for you at each boss, for its loop (LOOT).

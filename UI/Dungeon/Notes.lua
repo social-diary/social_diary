@@ -12,7 +12,8 @@
 -- Chosen, not dumped (MAP-15): wipes first, then near wipes, then loot
 -- for you and the diary's people, then tries, then the runs back; at most NOTES.most, the
 -- rest counted ("and 2 more", in pencil by the floors' label; told in
--- the bosses' tooltips too). A stranger's loot is never a note. Only notes
+-- the bosses' tooltips too). A stranger's loot is never a note, but for
+-- an epic found on the way (wayLoot, 4 Nov 2026). Only notes
 -- about something on the floor shown appear; another floor lays its own.
 --
 -- Each is laid in the order chosen, the first free place taken (PLACE):
@@ -121,8 +122,8 @@ end
 
 -- The notes worth a strip, in the order they are chosen: { rank, kind
 -- ("wipe", "wayWipe", "near", "wayNear", "snagged", "finally", "loot",
--- "bad", "tries", "ranBack"), boss (or door = true,
--- or wipe = its index in notes.wipes), name, what, guid (a diary entry to
+-- "wayLoot", "bad", "tries", "ranBack"), boss (or door = true,
+-- or wipe = its index in notes.wipes, or wayLoot = its in notes.wayLoot), name, what, guid (a diary entry to
 -- open, not the page's own person), items, seed }. A boss's loot for you
 -- and the diary's people is one note, its items in its heading (MAP-13:
 -- one leader a boss): `items` = { { item, guid (theirs to open, or nil),
@@ -218,6 +219,23 @@ function DungeonPage.Choose(visit, notes, guid)
                 Add({ rank = 3, order = i, kind = "tries", boss = e.boss, name = name,
                     what = not e.killed and Words.STANDING or nil })
             end
+        end
+    end
+    -- Loot found on the way (Core/DungeonRun.lua's WAY_LOOT): an epic for
+    -- anyone, a rare for you; a strip each, at its mark, ranked as a
+    -- boss's loot. A stranger's epic too (4 Nov 2026, the user: an epic
+    -- is memorable whoever's it is; a boss's stranger loot stays only
+    -- counted). Not an item a pair already tells of.
+    for i, f in ipairs(notes.wayLoot or {}) do
+        local entry = f.entry
+        if not paired[entry.itemID or -1] then
+            local diary = entry.guid ~= guid and ns.Diary.IsDiary(entry.guid)
+            local it = { item = entry.item, guid = diary and entry.guid or nil, mine = f.mine,
+                line = Words.Capital(Words.FoundFor(visit, entry.guid)), quality = f.quality,
+                from = "", text = Style.Inkify(entry.item or "?") }
+            Add({ rank = 2, order = f.time or 0, kind = "wayLoot", wayLoot = i, items = { it }, name = it.text,
+                what = Words.FoundFor(visit, entry.guid), guid = diary and entry.guid or nil,
+                tier = DungeonPage.Tier({ it }) })
         end
     end
     for i, w in ipairs(notes.wipes or {}) do
@@ -725,6 +743,7 @@ local function Target(plan, note)
     if note.when and not note.boss then return DungeonPage.Anchor(plan, note.when) end
     local t = plan.targets
     return (note.door and t.door) or (note.wipe and t["wipe:" .. note.wipe]) or (note.near and t["near:" .. note.near])
+        or (note.wayLoot and t["loot:" .. note.wayLoot])
         or (note.boss and t[note.boss.name]) or nil
 end
 

@@ -31,6 +31,12 @@
 --   levels = { { guid, level, time, after, before, frac, open, dt, known } },
 --             level-ups during the run, the user's and the group's, on the
 --             leg they happened on, as a death on the way is (LevelUps);
+--   wayLoot = { { entry, quality, mine, time, after, before, frac, open, dt, known } },
+--             loot found on the way worth a mark and a strip (WAY_LOOT): an
+--             epic for anyone, a rare or better for the user; on the leg
+--             of `time`, the fight's end where the loot line came in the
+--             pause after it (WayLootTime), as a death on the way is;
+--             display only, never a sure place for the route model;
 --   inside = seconds,  -- the run's time inside (its spans), for `share`
 --   ranBack = n,       -- times out as a ghost and back (MAP-12)
 --   unplaced = { deaths = { death }, loot = { entry } },
@@ -46,6 +52,13 @@ ns.DungeonRun = DungeonRun
 -- Deaths this close together are a wipe when no pull says so: at a boss,
 -- or to trash on the way (MAP-17).
 local WIPE_WINDOW = 60
+-- Loot found on the way worth a mark and a strip (4 Nov 2026, the user):
+-- an epic (quality `anyone`) for anyone in the run, a rare (`mine`) or
+-- better for the user. Only what no boss's table holds; Capture/
+-- Instances.lua keeps blue and better from anywhere, so nothing new is
+-- saved.
+local WAY_LOOT = { anyone = 4, mine = 3 }
+DungeonRun.WAY_LOOT = WAY_LOOT
 -- A near wipe (from deaths alone): a boss killed in a pull that cost the
 -- group at least half of it less one (`less`), and never fewer than
 -- `least`; or deaths to trash within WIPE_WINDOW that came as near
@@ -191,6 +204,18 @@ end
 local function Killer(visit, death)
     local k = death.killer
     return k and k.name and ns.Dungeons.Boss(visit.instanceID, k.name) or nil
+end
+
+-- When an item found on the way fell, for its place: a loot line comes
+-- after the fight (the corpse looted, a roll's minute), and the time
+-- between would read as getting on. Where it came in one of the user's
+-- pauses (visit.pauses), the pause's start, when the fight ended; else
+-- its own time.
+local function WayLootTime(visit, t)
+    for _, p in ipairs(type(visit.pauses) == "table" and visit.pauses or {}) do
+        if p.from and p.to and p.from <= t and t <= p.to then return p.from end
+    end
+    return t
 end
 
 function DungeonRun.Notes(visit)
@@ -383,6 +408,22 @@ function DungeonRun.Notes(visit)
         out.levels[#out.levels + 1] = { guid = up.guid, level = up.level, time = up.time, after = after,
             before = before, frac = frac, open = open, dt = dt, known = known }
     end
+
+    -- Loot found on the way, worth a mark (WAY_LOOT): of what no boss's
+    -- table holds, an epic for anyone, a rare or better for the user.
+    out.wayLoot = {}
+    local me = visit.me or ns.ownGUID
+    for _, entry in ipairs(out.unplaced.loot) do
+        local q = ns.Timeline and ns.Timeline.Quality(entry.item) or nil
+        local mine = entry.guid == me or entry.guid == ns.ownGUID
+        if q and (q >= WAY_LOOT.anyone or (mine and q >= WAY_LOOT.mine)) then
+            local t = WayLootTime(visit, entry.time or visit.startedAt or 0)
+            local after, before, frac, open, dt, known = Between(visit, kills, t)
+            out.wayLoot[#out.wayLoot + 1] = { entry = entry, quality = q, mine = mine or nil, time = t,
+                after = after, before = before, frac = frac, open = open, dt = dt, known = known }
+        end
+    end
+    table.sort(out.wayLoot, function(a, b) return a.time < b.time end)
 
     -- Ghost runs (MAP-12): out as a ghost, and back in after.
     local spans = visit.spans or {}

@@ -935,6 +935,61 @@ for i = 1, pools.hit.used do
     if tip[1][1] == "Level 22" then levelTip = tip end
 end
 Check(levelTip and levelTip[2][1] == "Reached by Tester", "the level-up's tooltip")
+Eq(#(flavour.find or {}), 0, "a find on the way on a run with none")
+-- Finds on the way (FIND): a stranger's epic and your blue on the way get
+-- a ringed pip each; a stranger's blue on the way, and your epic off
+-- Jargba's table, none.
+do
+    local FINDER = "Player-4620-00F1F1F1"
+    local function Link(id, name, q)
+        return ("|cnIQ%d:|Hitem:%d::::::::22:1491::::::::|h[%s]|h|r"):format(q, id, name)
+    end
+    local pulls = {}
+    for i, name in ipairs({ "Roogug", "Aggem Thorncurse", "Death Speaker Jargba", "Overlord Ramtusk" }) do
+        local start = mock.now - 3000 + i * 400
+        pulls[#pulls + 1] = { name = name, start = start, stop = start + 60, killed = true }
+    end
+    local at = mock.now - 3000
+    local v = Visit({ instanceID = 47, name = "Razorfen Kraul",
+        bossesKilled = { "Roogug", "Aggem Thorncurse", "Death Speaker Jargba", "Overlord Ramtusk" }, pulls = pulls,
+        loot = {
+            { guid = FINDER, item = Link(900101, "Invented Epic Glaive", 4), itemID = 900101, time = at + 600 },
+            { guid = ns.ownGUID, item = Link(900102, "Invented Blue Band", 3), itemID = 900102, time = at + 1000 },
+            { guid = FINDER, item = Link(900103, "Invented Blue Cloak", 3), itemID = 900103, time = at + 1050 },
+            { guid = ns.ownGUID, item = Link(6685, "Spiteful Death Charm", 4), itemID = 6685, time = at + 1300 },
+        } })
+    ns.UI.OpenVisit(v.id, G)
+    local plan = view.plan
+    Eq(#(plan.notes.wayLoot or {}), 2, "the finds worth a mark")
+    local finds = {}
+    for _, f in ipairs(plan.flavour) do
+        if f.kind == "find" then finds[f.find] = f end
+    end
+    local n = 0
+    for _ in pairs(finds) do n = n + 1 end
+    Eq(n, 2, "a mark for each find, and none for the rest")
+    Eq(finds[1] and finds[1].tier, "theirs", "a stranger's epic drawn as someone else's")
+    Eq(finds[2] and finds[2].tier, "rare", "your blue drawn as a blue")
+    Eq(Page.FindTier({ quality = 4, mine = true }), "epic", "your epic")
+    Eq(Page.FindTier({ quality = 5 }), "theirs", "someone else's legendary")
+    for i, f in pairs(finds) do
+        local t = plan.targets["loot:" .. i]
+        Check(t and Near(t.x, f.x) and Near(t.y, f.y), "the find's target not where its mark is: " .. i)
+        Check(t and t.r > Page.FIND.radius and t.r < f.r, "the find's target not its loops' reach: " .. i)
+        for _, mark in ipairs(plan.marks) do
+            local b = plan.targets[mark.name]
+            Check((f.x - b.x) ^ 2 + (f.y - b.y) ^ 2 >= (b.r + f.r - 1) ^ 2, "a find over a face: " .. mark.name)
+        end
+    end
+    Check(finds[1].r > finds[2].r, "the epic's loops no bigger than the blue's")
+    local _, titled = Tips(view)
+    local tip = titled[Link(900101, "Invented Epic Glaive", 4)]
+    Check(tip and tip[2][1]:find("for ") ~= nil, "the find's tooltip")
+    Check(titled[Link(900103, "Invented Blue Cloak", 3)] == nil, "a tooltip for a stranger's blue")
+    StripsSound(view, "Razorfen Kraul, with finds on the way")
+    ns.UI.OpenVisit(v.id, G)
+    ns.UI.OpenVisit(RFK.id, G)
+end
 -- Age: last night's map as it was; a few months on, yellowed and grimier;
 -- never older past that.
 Eq(Page.Age(0), 0, "a fresh map aged")
