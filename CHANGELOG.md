@@ -5,6 +5,8 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+## [2.2.0]
+
 ### Shiny new Things
 
 - Occasional hints point out features you may have missed
@@ -13,15 +15,16 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ### Changes
 
-- Removed a few rarely used chat commands; sightings switch in _Settings_
-- _Dungeon View_ tries to place Ragefire, Deadmines, Stockade and Razorfen deaths and wipes at the pack that killed them
+- A few rarely used chat commands are gone
+  - The sightings switch now lives in _Settings_
+- _Dungeon View_ places deaths and wipes at the pack that killed you
+  - In Ragefire, the Deadmines, the Stockade and both Razorfens so far
 - _Dungeon View_ keeps a wipe's marks and its note together in one spot
 - _Dungeon View_ marks no longer drift ahead after idle time
 
 ### Fixes
 
-- _Dungeon View_ spreads deaths and wipes along the way to the next boss
-  instead of piling them up at the entrance when no boss has fallen yet
+- _Dungeon View_ spreads deaths along the way before the first boss falls
 
 ## [2.1.0]
 
