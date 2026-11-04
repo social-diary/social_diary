@@ -40,8 +40,7 @@ Eq(comments.box:GetText(), COMMENTS, "the CurseForge comments address")
 Eq(issues.parent, P.panes.feedback, "the issues slip is not on the Feedback page")
 Eq(comments.parent, P.panes.feedback, "the comments slip is not on the Feedback page")
 Eq(issues.box.frameType, "EditBox", "the address is not in a box to copy from")
-Check(P.feedbackCopyHint:GetText():find("Ctrl+C", 1, true)
-    and P.feedbackCopyHint:GetText():find("Cmd+C", 1, true), "the hint does not say how to copy")
+Eq(P.feedbackCopyHint:GetText(), "Copy and Paste this link", "the hint under the addresses")
 
 -- Selected whole on the cursor and on a click, for Ctrl+C.
 local function Highlights(box)
@@ -85,6 +84,6 @@ comments.box.scripts.OnTextChanged(comments.box, true)
 Eq(comments.box:GetText(), COMMENTS, "the comments address was not put back")
 Eq(issues.box:GetText(), ISSUES, "the issues address changed with the other")
 
--- The version the bug form asks for, and /sd debug's extra messages.
+-- The version, and the advice on what to write down.
 Check(P.feedbackVersion:GetText():find(ns.version, 1, true), "the version is not shown")
-Check(P.feedbackDebug:GetText():find("/sd debug", 1, true), "/sd debug is not mentioned")
+Check(P.feedbackDebug:GetText():find("write down", 1, true), "the advice on reporting is not shown")

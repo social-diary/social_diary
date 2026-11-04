@@ -24,7 +24,7 @@ local COPY_HINT = "Copy and Paste this link"
 
 -- The version the bug form asks for, and the extra chat messages that help.
 local function VersionText()
-    return ("You are on version |cff%s%s|r.."):format(Style.HEX.strong, ns.version)
+    return ("You are on version |cff%s%s|r."):format(Style.HEX.strong, ns.version)
 end
 local DEBUG_TEXT = ("If something breaks, try to write down what happened as precisely as possible!"):format(Style.HEX.strong)
 
