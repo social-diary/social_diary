@@ -78,14 +78,17 @@ local PULL = { radius = 15 }
 -- What killed a death on the way (the death recap's NPC ID, Features/
 -- Deaths/Capture.lua) is the strongest thing known of where it was: only
 -- the leg's pulls holding that creature (or the one that summons it, the
--- data's `summons`) may be where it died, the time choosing among them. A
--- group's pace is known far worse than its killer (two level 60s in a
--- level 15 group: 3 Nov 2026), so the time is weighed with a pace spread
--- of `spread` (the model's own is 0.35). Where the time gives none of them
--- any weight, the one nearest the time's own place. No such pull on the
--- leg (a patrol, a creature not in the data, a killer from another leg):
--- the time alone.
-local KILLER = { spread = 1.0 }
+-- data's `summons`) may be where it died, the time choosing among them.
+-- The time weighs each (Weights: exactly, with a pace spread of `spread`)
+-- and, going along the way, the one where the weight passes half of all of
+-- theirs is it: a later time never puts it on an earlier pull (4 Nov 2026,
+-- the pace explainer: taking the heaviest flickered between Trogg pulls
+-- 300 yd apart from one second to the next, the model's sampling grid and
+-- a near flat spread of 1.0 between them; 0.35, the model's own, follows
+-- the time best). Where the time gives none of them any weight, the one
+-- nearest the time's own place. No such pull on the leg (a patrol, a
+-- creature not in the data, a killer from another leg): the time alone.
+local KILLER = { spread = 0.35 }
 DungeonPace.FIT, DungeonPace.PULL, DungeonPace.KILLER = FIT, PULL, KILLER
 
 local function Norm(name) return ns.Dungeons.Norm(name) end
@@ -313,15 +316,59 @@ local function Holding(course, leg, npc)
     return #out > 0 and out or nil
 end
 
+-- The normal distribution's cumulative function (Abramowitz and Stegun
+-- 7.1.26, off by less than 1.5e-7).
+local function Phi(z)
+    local x = math.abs(z) / math.sqrt(2)
+    local t = 1 / (1 + 0.3275911 * x)
+    local y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t
+        + 0.254829592) * t * math.exp(-x * x)
+    return z >= 0 and 0.5 * (1 + y) or 0.5 * (1 - y)
+end
+
+-- How much the time weighs each pull of `leg` for a moment `dt` seconds
+-- into it, at the pace spread KILLER.spread: { [pull index] = weight }, the
+-- pulls it gives none left out. Worked out exactly, not on the model's grid
+-- of pace factors (PlaceDeath's samples: a pull a few seconds long caught
+-- two of them or three as dt moved, its weight jumping by a quarter): the
+-- pace factors that put the group inside pull i (seconds a to b of the
+-- model's profile) are one stretch of z, ln(dt / b) / spread to ln(dt / a)
+-- / spread, kept within the model's -3 to 3; the weight is the pull's
+-- danger (danger x elites) times the normal's mass over it. Not
+-- normalised: only how the pulls weigh against each other counts.
+function DungeonPace.Weights(leg, dt)
+    local Model = ns.PaceModel
+    local P = Model.DEFAULTS
+    local spread = KILLER.spread
+    local w = {}
+    local function Z(z) return math.max(-3, math.min(3, z)) end
+    for _, st in ipairs(Model.Profile(leg).steps) do
+        if st.kind == "pull" then
+            local mass
+            if dt <= 0 then
+                mass = st.t0 <= 0 and 1 or 0
+            else
+                local hi = st.t0 > 0 and math.log(dt / st.t0) / spread or 3
+                mass = math.max(0, Phi(Z(hi)) - Phi(Z(math.log(dt / st.t1) / spread)))
+            end
+            if mass > 0 then
+                w[st.pull] = P.danger * math.max(1, leg.pulls[st.pull].elites or 1) * mass
+            end
+        end
+    end
+    return w
+end
+
 -- Yards along the way (from its start) for moments on the leg from point
 -- i0 to the boss at point i1 that happened together (one death, or the
 -- deaths of a wipe: one pull, 3 Nov 2026), the leg `known` seconds long
 -- when its boss fell (nil while it stands). `items` are { dt (seconds into
 -- the leg), npc (what killed it, or nil) }, the first the earliest. Where
 -- any of them has a killer the leg holds (KILLER): at the pull holding one
--- that the time weighs most, summed over all of them (with the wide
--- spread); where the time weighs none (or the leg is known, and the time
--- is one place), the one nearest where the time puts them, on average.
+-- where, going along the way, the time's weight on them (Weights, summed
+-- over all of them) passes half; where the time weighs none (or the leg
+-- is known, and the time is one place), the one nearest where the time
+-- puts them, on average.
 -- Else where the time puts the first. From `start` yards along the way
 -- where given (an anchor: the seconds are then from it, and so is
 -- `known`). Then the model's answer for the first (Core/Pace/Model.lua's
@@ -340,12 +387,7 @@ function DungeonPace.PlaceGroup(course, i0, i1, items, known, start)
         if candidates then
             local dt = math.max(0, it.dt)
             sum, n = sum + Model.PlaceDeath(leg, dt, nil, { knownKill = known }).yd, n + 1
-            local by = {}
-            if not known then
-                for _, smp in ipairs(Model.PlaceDeath(leg, dt, { spread = KILLER.spread }).samples) do
-                    if smp.kind == "pull" then by[smp.pull] = (by[smp.pull] or 0) + smp.w end
-                end
-            end
+            local by = known and {} or DungeonPace.Weights(leg, dt)
             for _, i in ipairs(candidates) do
                 held[i] = true
                 score[i] = (score[i] or 0) + (by[i] or 0)
@@ -353,10 +395,24 @@ function DungeonPace.PlaceGroup(course, i0, i1, items, known, start)
         end
     end
     if n == 0 then return leg.from + r.yd, r, leg, "time" end
-    local best, bestW
+    -- Along the way (the leg's pulls are in order), the one where the
+    -- weight passes half of all of theirs.
+    local order, total = {}, 0
     for i in pairs(held) do
-        local w = score[i]
-        if w > 0 and (not bestW or w > bestW or (w == bestW and i < best)) then best, bestW = i, w end
+        order[#order + 1] = i
+        total = total + score[i]
+    end
+    table.sort(order)
+    local best, bestW
+    if total > 0 then
+        local acc = 0
+        for _, i in ipairs(order) do
+            acc = acc + score[i]
+            if acc >= total / 2 then
+                best = i
+                break
+            end
+        end
     end
     if not best then
         local mean = sum / n

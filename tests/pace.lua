@@ -610,6 +610,41 @@ for dt = 0, 3000, 150 do
     end
     Check(ok, "a death to an Elemental not at an Elemental at " .. dt .. " s")
 end
+do
+-- An open leg, a Trogg's: the later the death, never an earlier pull, and
+-- never past the next Trogg pull at once (4 Nov 2026: taking the heaviest
+-- on the model's sampled grid went 173 times between Trogg pulls in 1100
+-- s, 75 of them back, once 300 yd).
+local trogg = {}
+for i, p in ipairs(leg1.pulls) do if Holds(p, 11318) then trogg[#trogg + 1] = i end end
+local rank = {}
+for r, i in ipairs(trogg) do rank[leg1.from + leg1.pulls[i].at] = r end
+local tprev, moves = nil, 0
+for dt = 0, 1100 do
+    local yd, _, _, h = Pace.Place(course, 1, i1, dt, nil, 11318)
+    Eq(h, "killer", "a Trogg's death not placed by it at " .. dt .. " s")
+    local r = rank[yd]
+    Check(r, ("a Trogg's death at %.1f yd, no Trogg pull, at %d s"):format(yd, dt))
+    if tprev and r ~= tprev then
+        moves = moves + 1
+        Check(r == tprev + 1, ("a Trogg's death went from Trogg pull %d to %d at %d s"):format(tprev, r, dt))
+    end
+    tprev = r
+end
+Check(moves >= 4 and moves < #trogg, "a Trogg's death moved " .. moves .. " times along the leg")
+-- The weights: exact, so a second more moves each pull's by little (at
+-- most 4% where it counts; on the sampled grid, a quarter).
+for dt = 200, 700 do
+    local a, b = Pace.Weights(leg1, dt), Pace.Weights(leg1, dt + 1)
+    local top = 0
+    for _, w in pairs(a) do top = math.max(top, w) end
+    for _, i in ipairs(trogg) do
+        local wa, wb = a[i] or 0, b[i] or 0
+        Check(wa < 0.05 * top or math.abs(wb - wa) <= 0.08 * wa,
+            ("pull %d's weight jumped from %.4f to %.4f at %d s"):format(i, wa, wb, dt))
+    end
+end
+end
 -- A known leg: the pull holding it nearest where the time says.
 local kyd, kr, kleg = Pace.Place(rpath.course, 1, i1, 170, 739, 11318)
 local nearest
@@ -649,9 +684,9 @@ local tplan = Page.Plan({ visit = twice, floor = floor, box = { x = 0, y = 0, w 
 local tpath = tplan.path
 local function YdAt(x, y) return (Pace.Project(tpath.course, fit.ToGame(x / W, y / H))) end
 -- The second wipe: placed from the last sure place before it (the lone
--- Earthborer death at 2:05, an anchor), at the Trogg pull its two Trogg
--- deaths weigh most together (their seconds since that anchor, the wide
--- spread).
+-- Earthborer death at 2:05, an anchor), at the Trogg pull where, along the
+-- way, its two Trogg deaths' weight together (their seconds since that
+-- anchor, Pace.Weights) passes half.
 local w2x, w2y, w2how, w2info = Page.LegPoint(tpath, tn.wipes[2])
 Check(w2info and w2info.anchor, "the second wipe not placed from an anchor")
 Eq(w2info.anchor.dt, 125, "the second wipe's anchor not the last sure death before it")
@@ -659,19 +694,27 @@ local anchorPull = NearestPull(w2info.anchor.yd)
 Check(Near(anchorPull.at, w2info.anchor.yd, 0.5) and Holds(anchorPull, 11320),
     "the anchor not at an Earthborer pull: " .. w2info.anchor.yd)
 local leg1t = Pace.Leg(tpath.course, 1, i1, w2info.anchor.yd)
-local sum = {}
+local want2
+do
+local sum, total = {}, 0
 for _, dt in ipairs({ 296 - 125, 333 - 125 }) do
-    for _, smp in ipairs(Model.PlaceDeath(leg1t, dt, { spread = Pace.KILLER.spread }).samples) do
-        if smp.kind == "pull" and Holds(leg1t.pulls[smp.pull], 11318) then
-            sum[smp.pull] = (sum[smp.pull] or 0) + smp.w
+    for i, w in pairs(Pace.Weights(leg1t, dt)) do
+        if Holds(leg1t.pulls[i], 11318) then
+            sum[i] = (sum[i] or 0) + w
+            total = total + w
         end
     end
 end
-local want2
-for i, w in pairs(sum) do if not want2 or w > sum[want2] or (w == sum[want2] and i < want2) then want2 = i end end
+local acc = 0
+for i = 1, #leg1t.pulls do
+    acc = acc + (sum[i] or 0)
+    if not want2 and total > 0 and acc >= total / 2 then want2 = i end
+end
+end
+Check(want2, "no Trogg pull weighed for the second wipe")
 Eq(w2how, "killer", "the second wipe not placed by its killers")
 Check(Near(YdAt(w2x, w2y), leg1t.from + leg1t.pulls[want2].at, 0.5),
-    ("the second wipe not at the pull its deaths weigh most: %.0f, want %.0f"):format(YdAt(w2x, w2y),
+    ("the second wipe not at the middle of its deaths' weight: %.0f, want %.0f"):format(YdAt(w2x, w2y),
         leg1t.from + leg1t.pulls[want2].at))
 -- Its first death, alone, has no killer; the wipe is not where that alone
 -- puts it, nor where its first Trogg death alone does, necessarily: one

@@ -34,7 +34,7 @@ Ragefire Chasm on the dev machine.
 | The packs laid on the way | `DungeonPace.Course` | each pack a pull on the first stretch passing within `PULL.radius` (15 yd); a boss's guard (`boss`) at that boss's stop |
 | A leg as the model takes it | `DungeonPace.Leg` | from point i0 (or an anchor's yards) to the boss at i1; nil backwards, across a broken stretch, to a point that is no boss |
 | Time → yards | `Core/Pace/Model.lua` (the handover's, unchanged) | effort profile (walk 5 yd/s, pull 20 s + 12 s an elite, boss 60 s), pace spread, deaths weighted to pulls; never past the boss |
-| The killer | `DungeonPace.PlaceGroup` | candidates: the leg's pulls holding the killer's NPC (or its summoner, `summons`); the time weighs them with spread `KILLER.spread` (1.0), summed over a wipe's deaths; none weighted: nearest the time's place |
+| The killer | `DungeonPace.PlaceGroup` | candidates: the leg's pulls holding the killer's NPC (or its summoner, `summons`); the time weighs them exactly (`Weights`, spread `KILLER.spread` 0.35), summed over a wipe's deaths; along the way, the one where the weight passes half wins; none weighted: nearest the time's place |
 | Sure places | `UI/Dungeon/Print.lua` `Anchors` | each moment placed by its killer is an anchor; later moments on that leg go from the last one before them, on the rest of the leg |
 | After an anchor | `Print.lua` `PacePoint` | after a wipe the clock starts again where the pause after it ends (`AFTER_WIPE` 60 s); else, if the group went out between, the walk back (anchor yards ÷ 5 yd/s) comes off |
 | On the sheet | `Print.lua` `LegPoint` | the spot kept `PACE_CLEAR` (12 yd) off both bosses; a wipe's crosses all at the wipe's spot (`Deaths`), its strip's target the same |
@@ -65,6 +65,15 @@ Ragefire Chasm on the dev machine.
   the time useless; the death recap's NPC ID is readable inside instances
   on Forever (8 of 10 deaths in run 1). The time only chooses among pulls
   holding the killer.
+- **The middle of the weight, not the heaviest** (4 Nov 2026). Taking the
+  heaviest candidate on the model's sampled grid flickered: on Ragefire's
+  first leg a Trogg death moved 173 times in 1100 s, 75 of them back, once
+  300 yd (a pull a few seconds long caught two grid samples or three as
+  the time moved; with spread 1.0 the weights were near flat). Now the
+  weights are exact (the normal's mass over each pull's stretch of pace
+  factors) and the pick is where, along the way, they pass half: 12 moves,
+  none back, one Trogg pull at a time. Spread 0.35 (the model's own), not
+  1.0: tried in the explainer, 1.0 ran ahead of the time.
 - **No kill counts.** `PARTY_KILL` inside an instance comes with the victim
   and the killer secret (probe, 3 Nov: 30 of 31 hidden). Counting kills
   along the way was dropped; the dev probe (`/sd pace`) still counts them.
