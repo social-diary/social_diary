@@ -187,8 +187,11 @@ local function Report()
         return
     end
     if fit.method == "bounds" then
-        Say("  fit: floor %d by its art bounds; DCF's pins against the spawns: worst %s, %.1f yd (%d compared; a note on the map's icons, not the fit)",
-            fit.floor, tostring(fit.worstName or "-"), fit.worst, fit.anchors)
+        local floors = {}
+        for _, f in ipairs(fit.order or { fit.floor }) do floors[#floors + 1] = tostring(f) end
+        Say("  fit: floor %s by %s art bounds; DCF's pins against the spawns: worst %s, %.1f yd (%d compared; a note on the map's icons, not the fit)",
+            table.concat(floors, ", "), #floors > 1 and "their" or "its", tostring(fit.worstName or "-"), fit.worst,
+            fit.anchors)
     else
         Say("  fit: floor %d through %d pins (no art bounds), worst %.1f yd off", fit.floor, fit.anchors, fit.worst)
     end
@@ -221,9 +224,10 @@ local function Report()
         end
     end
 
-    -- Each moment on the way, as the map places it.
+    -- Each moment on the way, as the map places it (any fitted floor's
+    -- points pass as they are: the line says which floor).
     local notes = ns.DungeonRun.Notes(visit)
-    local At = function(f, x, y) if tonumber(f) == fit.floor then return x, y end end
+    local At = function(f, x, y) if fit.floors[tonumber(f)] then return x, y end end
     local floor = D.Floor(visit.instanceID, fit.floor)
     local plan = floor and Page.Plan({ visit = visit, floor = floor, box = { x = 0, y = 0, w = 1, h = 1 },
         At = At, notes = notes, route = true })
@@ -243,8 +247,9 @@ local function Report()
         local to = leg.before and leg.before.name or (leg.open and "the next boss standing") or "?"
         local where = "nowhere"
         if x then
-            local yd, off = ns.DungeonPace.Project(course, fit.ToGame(x, y))
-            where = ("%.0f yd along (%.0f off), floor %.3f, %.3f"):format(yd or -1, off or -1, x, y)
+            local f = info and info.floor or fit.floor
+            local yd, off = ns.DungeonPace.Project(course, fit.ToGame(x, y, f))
+            where = ("%.0f yd along (%.0f off), floor %d %.3f, %.3f"):format(yd or -1, off or -1, f, x, y)
         end
         Say("  %s %s%s: %s -> %s, %s into the leg (of %s): %s at %s", Clock((time or 0) - (visit.startedAt or 0)),
             kind, who and (" " .. who) or "", leg.after and leg.after.name or "the way in", to, Clock(leg.dt),
@@ -285,8 +290,9 @@ local function Overlay(plan, P)
         onWay[pull.pack] = pull
     end
     for n, pack in ipairs(data.packs) do
-        local fx, fy = fit.ToFloor(pack.x, pack.y)
-        local x, y = plan.At(fit.floor, fx, fy)
+        local fx, fy, f = fit.ToFloor(pack.x, pack.y, pack.floor)
+        local x, y
+        if fx then x, y = plan.At(f, fx, fy) end
         if x then
             local pull = onWay[n]
             local size = 4 + 2 * math.min(pack.elites or 1, 5)
@@ -299,11 +305,15 @@ local function Overlay(plan, P)
     end
     -- The way in and the bosses where the data has them (a ring): how far
     -- the fit puts them off the map's own.
-    local anchors = { data.entrance }
-    for _, b in ipairs(data.bosses) do anchors[#anchors + 1] = b end
+    local anchors = { data.entrance and { x = data.entrance.x, y = data.entrance.y, floor = fit.floor } }
+    for _, b in ipairs(data.bosses) do
+        local m = ns.Dungeons.Boss(visit.instanceID, b.name)
+        anchors[#anchors + 1] = { x = b.x, y = b.y, floor = m and tonumber(m.floor) }
+    end
     for _, a in ipairs(anchors) do
-        local fx, fy = fit.ToFloor(a.x, a.y)
-        local x, y = plan.At(fit.floor, fx, fy)
+        local fx, fy, f = fit.ToFloor(a.x, a.y, a.floor)
+        local x, y
+        if fx then x, y = plan.At(f, fx, fy) end
         if x then P.Dot(P.pools.crossHalo, x, y, 14, { 0.1, 0.3, 0.7 }, 0.5) end
     end
 end
@@ -316,8 +326,8 @@ local function Where(visit, gx, gy, label)
     local route = Way(visit)
     local course = Pace.Course(visit, route)
     local yd, off = Pace.Project(course, gx, gy)
-    local fx, fy = fit.ToFloor(gx, gy)
-    Say("pace: %s: game %.1f, %.1f; floor %.3f, %.3f; %s", label, gx, gy, fx, fy,
+    local fx, fy, f = fit.ToFloor(gx, gy)
+    Say("pace: %s: game %.1f, %.1f; floor %d %.3f, %.3f; %s", label, gx, gy, f or fit.floor, fx or -1, fy or -1,
         yd and ("%.0f yd along the way, %.0f off it"):format(yd, off) or "not near the way")
     Say("  %s into the run", Clock(ns.Now() - (visit.startedAt or ns.Now())))
 end
@@ -328,18 +338,22 @@ local function Here()
     if not visit then return Say("pace: no run in a dungeon with pace data") end
     local fit = ns.DungeonPace.Fit(visit.instanceID)
     if not fit then return Say("pace: no fit for %s", visit.name or "?") end
+    -- The floor the client says you are on, where it is one fitted; else
+    -- the first.
+    local f = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    if not (f and fit.floors[f]) then f = fit.floor end
     local ok, pos = pcall(function()
-        return C_Map.GetPlayerMapPosition(fit.floor, "player")
+        return C_Map.GetPlayerMapPosition(f, "player")
     end)
     if not ok or not pos or not pos.GetXY then
-        return Say("pace: the client gives no position on floor %d here (%s): try /sd pace at X Y", fit.floor,
+        return Say("pace: the client gives no position on floor %d here (%s): try /sd pace at X Y", f,
             ok and "none" or tostring(pos))
     end
     local x, y = pos:GetXY()
     if issecretvalue and (issecretvalue(x) or issecretvalue(y)) then
         return Say("pace: your position is secret here: try /sd pace at X Y")
     end
-    local gx, gy = fit.ToGame(x, y)
+    local gx, gy = fit.ToGame(x, y, f)
     Where(visit, gx, gy, "you")
 end
 

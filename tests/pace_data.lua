@@ -10,8 +10,9 @@
 -- reaches a player's map.
 
 -- At least this share of a dungeon's packs within PULL.radius of the usual
--- way (4 Nov 2026: Ragefire 74%, Stockade 54%, Razorfen Kraul 54%,
--- Razorfen Downs 86%; Zul'Farrak 27%, its way through the spread pins).
+-- way, on their own floor (4 Nov 2026: Ragefire 74%, Stockade 54%,
+-- Razorfen Kraul 54%, Razorfen Downs 86%; Zul'Farrak 27%, its way through
+-- the spread pins).
 local ON_WAY = 0.4
 
 local T = ...
@@ -60,6 +61,7 @@ for _, id in ipairs(ids) do
         Check(#(p.names or {}) >= 1 and #(p.npcs or {}) >= 1, tag .. ": who is in it")
         for _, npc in ipairs(p.npcs) do npcs[npc] = true end
         if p.boss then Check(D.Boss(id, p.boss), tag .. ": guards a boss the map does not know") end
+        if p.floor then Check(D.Floor(id, p.floor), tag .. ": drawn on a floor the map does not know") end
     end
     for npc, by in pairs(data.summons or {}) do
         Check(npcs[by], ("%s: summon %d's summoner %d in no pack"):format(name, npc, by))
@@ -69,18 +71,27 @@ for _, id in ipairs(ids) do
     -- The fit, and the usual way laid on it.
     local fit = Pace.Fit(id)
     Check(fit, name .. ": no fit (no art bounds, and the pins refused: FIT.most " .. Pace.FIT.most .. " yd)")
+    for k, p in ipairs(data.packs) do
+        if p.floor then Check(fit.floors[p.floor], name .. " pack " .. k .. ": on a floor not fitted") end
+    end
+    -- On several floors, every pack says which; on one, none does.
+    local several = fit.order and #fit.order > 1
+    for k, p in ipairs(data.packs) do
+        Check((p.floor ~= nil) == (several == true), name .. " pack " .. k .. (several and ": no floor" or ": a floor on a one-floor map"))
+    end
     local route = D.Route(id)
     Check(route, name .. ": no usual way through")
     local course = Pace.Course({ instanceID = id }, route)
     Check(course, name .. ": no course on the usual way")
     Check(#course.pulls >= 1, name .. ": no pull on the usual way")
-    -- How near the way drawn each pack lies, in yards.
+    -- How near the way drawn (on the pack's own floor) each pack lies, in yards.
     local near, dists = 0, {}
     for _, p in ipairs(data.packs) do
         local best = math.huge
         for k = 1, #course.cum - 1 do
             local a, b = course.game[k], course.game[k + 1]
-            if a and b and not course.broken[k] then
+            local mine = not p.floor or p.floor == course.floors[k] or p.floor == course.floors[k + 1]
+            if mine and a and b and not course.broken[k] then
                 local dx, dy = b[1] - a[1], b[2] - a[2]
                 local l2 = dx * dx + dy * dy
                 local t = l2 > 0 and math.max(0, math.min(1, ((p.x - a[1]) * dx + (p.y - a[2]) * dy) / l2)) or 0
@@ -107,8 +118,10 @@ for _, id in ipairs(ids) do
     end
     Check(legs >= 1, name .. ": no leg the model takes")
     if os.getenv("PACE_SHOW") then  -- PACE_SHOW=1: the numbers to report
-        print(("%s: fit floor %d by %s; DCF's pins: worst %s %.1f yd (%d compared); usual way %.0f yd, %d of %d packs as pulls, %d near it (median %.1f yd), %d legs")
-            :format(name, fit.floor, fit.method, tostring(fit.worstName or "-"), fit.worst, fit.anchors,
+        local floors = {}
+        for _, f in ipairs(fit.order or { fit.floor }) do floors[#floors + 1] = tostring(f) end
+        print(("%s: fit floor %s by %s; DCF's pins: worst %s %.1f yd (%d compared); usual way %.0f yd, %d of %d packs as pulls, %d near it (median %.1f yd), %d legs")
+            :format(name, table.concat(floors, ", "), fit.method, tostring(fit.worstName or "-"), fit.worst, fit.anchors,
                 course.cum[#course.cum], #course.pulls, #data.packs, near, median, legs))
         prev = 1
         for i, p in ipairs(route) do

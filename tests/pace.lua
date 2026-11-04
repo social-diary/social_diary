@@ -223,6 +223,162 @@ Eq(Pace.Leg(oc, 1, 2).to, "Bazzalan", "... its boss")
 Eq(Pace.Course({ instanceID = RFC }, { { boss = "Oggleflint" } }), nil, "a way of one point")
 
 --------------------------------------------------------------------------
+Section("two floors: the Deadmines")
+
+do
+-- The mines (291) and Ironclad Cove (292), both with art bounds, in one
+-- frame of game yards. The foundry is a spiral drawn on both: its upper
+-- ledge on 291, Gilnid's floor 30 yd under it on 292, at the same x and y.
+local DM = 36
+Check(ns.PaceData and ns.PaceData[DM], "no pace data for the Deadmines")
+local dfit = Pace.Fit(DM)
+Check(dfit, "the Deadmines' data does not fit the map")
+Eq(dfit.method, "bounds", "not fitted by the floors' art bounds")
+Eq(dfit.floor, 291, "the first floor: the way in's")
+Eq(#dfit.order, 2, "two floors fitted")
+Check(dfit.floors[291] and dfit.floors[292], "a floor without its transforms")
+Eq(dfit.anchors, 9, "the pins compared: the way in and eight bosses")
+-- DCF draws Cookie's pin some 43 yd from his spawn (a note, never a
+-- reason to refuse); every other pin lies within 30 yd of its boss.
+Eq(dfit.worstName, "Cookie", "the pin furthest off")
+Check(dfit.worst > 35 and dfit.worst < 50, ("DCF's worst pin: %s %.1f yd"):format(tostring(dfit.worstName), dfit.worst))
+-- Each boss back from its own floor's pin lands near its spawn.
+for _, b in ipairs(ns.PaceData[DM].bosses) do
+    local m = D.Boss(DM, b.name)
+    local gx, gy = dfit.ToGame(m.x, m.y, tonumber(m.floor))
+    local off = math.sqrt((gx - b.x) ^ 2 + (gy - b.y) ^ 2)
+    Check(off < (b.name == "Cookie" and 50 or 30), ("%s %.1f yd off its pin"):format(b.name, off))
+    local fx, fy, f = dfit.ToFloor(gx, gy, tonumber(m.floor))
+    Check(Near(fx, m.x, 1e-9) and Near(fy, m.y, 1e-9) and f == tonumber(m.floor), "there and back on its floor")
+end
+-- Without a floor named, ToFloor picks the first floor whose bounds hold
+-- the point: the ship lies on the cove's picture only.
+local _, _, shipFloor = dfit.ToFloor(-87, -820)
+Eq(shipFloor, 292, "the ship on the mines' floor")
+local _, _, mineFloor = dfit.ToFloor(-60, -390)
+Eq(mineFloor, 291, "the way in on the cove's floor")
+Eq(dfit.ToGame(0.5, 0.5, 999), nil, "a floor not fitted")
+-- One floor without bounds among several: no fit.
+local floor292 = D.Floor(DM, 292)
+local bb292 = floor292.bounds
+floor292.bounds = nil
+Pace.Reset()
+Eq(Pace.Fit(DM), nil, "a fit with a floor's bounds missing")
+floor292.bounds = bb292
+Pace.Reset()
+dfit = Pace.Fit(DM)
+Check(dfit and dfit.floors[292], "the bounds back")
+
+-- The usual way: down from the mines to the cove in one course.
+local droute = D.Route(DM)
+local dcourse = Pace.Course({ instanceID = DM }, droute)
+Check(dcourse, "no course on the Deadmines' usual way")
+local down
+for i, p in ipairs(droute) do
+    if p.kind == "down" then down = i end
+end
+Check(down and droute[down + 1] and droute[down + 1].f == 292, "the way's step down to the cove")
+for k = 1, #droute - 1 do Check(not dcourse.broken[k], "a stretch of the usual way broken") end
+Eq(dcourse.floors[down], 291, "the step down on the mines' floor")
+Eq(dcourse.floors[down + 1], 292, "the step down's far end on the cove's floor")
+local ramp = dcourse.cum[down + 1] - dcourse.cum[down]
+Check(ramp > 30 and ramp < 80, ("the walk down between the floors: %.0f yd"):format(ramp))
+-- Seven stops, each a leg the model takes.
+local dprev, dlegs = 1, {}
+for i, p in ipairs(droute) do
+    if p.boss then
+        local leg = Pace.Leg(dcourse, dprev, i)
+        Check(leg, "no leg to " .. p.boss)
+        dlegs[p.boss] = leg
+        dprev = i
+    end
+end
+Eq(dlegs["Gilnid"] and dlegs["Gilnid"].from, dcourse.cum[(function()
+    for i, p in ipairs(droute) do if p.boss == "Sneed" then return i end end
+end)()], "the leg to Gilnid from Sneed's stop")
+-- Every pull lies on a stretch of its own floor.
+local byFloor = { [291] = 0, [292] = 0 }
+for _, pull in ipairs(dcourse.pulls) do
+    local k = Pace.Along(dcourse, pull.at)
+    local pack = ns.PaceData[DM].packs[pull.pack]
+    Check(pull.floor == pack.floor, "a pull not carrying its pack's floor")
+    if not pack.boss then
+        Check(k and (dcourse.floors[k] == pack.floor or dcourse.floors[k + 1] == pack.floor),
+            ("pack %d (floor %d) laid on a stretch of the other floor"):format(pull.pack, pack.floor))
+    end
+    byFloor[pack.floor] = byFloor[pack.floor] + 1
+end
+Check(byFloor[291] >= 10 and byFloor[292] >= 10, ("pulls on each floor: %d and %d"):format(byFloor[291], byFloor[292]))
+-- Gilnid's Craftsmen (292) stand under the ledge the mines' way loops
+-- round (291), within a yard or two in x and y: they are pulls on the
+-- cove's stretches, after the step down, not on the ledge.
+local stepYd = dcourse.cum[down]
+for _, pull in ipairs(dcourse.pulls) do
+    local pack = ns.PaceData[DM].packs[pull.pack]
+    if pack.floor == 292 and not pack.boss then
+        Check(pull.at >= stepYd - 1e-6, ("a cove pack (%s at %.0f, %.0f) pulled before the step down, at %.0f yd of %.0f")
+            :format(pack.names[1], pack.x, pack.y, pull.at, stepYd))
+    end
+end
+-- And the ledge's own Craftsmen (291) are pulled before it.
+local ledge
+for n, pack in ipairs(ns.PaceData[DM].packs) do
+    if pack.floor == 291 and pack.names[1] == "Goblin Craftsman" then ledge = n end
+end
+Check(ledge, "the ledge's Craftsmen not in the data")
+local ledgePull
+for _, pull in ipairs(dcourse.pulls) do
+    if pull.pack == ledge then ledgePull = pull end
+end
+Check(ledgePull and ledgePull.at < stepYd, "the ledge's Craftsmen not pulled on the mines' floor")
+
+-- On the sheet: a death on the leg to Gilnid, killed by a Goblin
+-- Craftsman late in the leg, is drawn on the cove's sheet and on no other;
+-- one killed at once on the mines' floor (a Defias Miner, no pull of
+-- those: the time alone, at the leg's start) on the mines' sheet only.
+local sneedAt, gilnidAt = 2000, 2000 + 1500
+local W, H = 800, 520
+local drun = {
+    id = 9036, instanceID = DM, name = "Deadmines", startedAt = 1000, me = "Player-1-Me",
+    members = { { guid = "Player-1-Me" }, { guid = "Player-1-A" }, { guid = "Player-1-B" } },
+    spans = { { from = 1000 } },
+    bossesKilled = { "Rhahk'Zor", "Sneed" },
+    pulls = { { id = 2741, name = "Rhahk'Zor", start = 1500, stop = 1540, killed = true },
+        { id = 2742, name = "Sneed", start = sneedAt - 40, stop = sneedAt, killed = true } },
+    deathLog = {
+        { guid = "Player-1-A", time = gilnidAt - 60, killer = { name = "Goblin Craftsman", npcID = 1731 } },
+        { guid = "Player-1-B", time = sneedAt + 5, killer = { name = "Defias Taskmaster", npcID = 4417 } },
+    },
+}
+local dnotes = Run.Notes(drun)
+local function Sheet(floorID)
+    local fl = D.Floor(DM, floorID)
+    local function DAt(f, x, y)
+        if tonumber(f) == floorID and x and y then return x * W, y * H end
+    end
+    local p = Page.Plan({ visit = drun, floor = fl, box = { x = 0, y = 0, w = W, h = H }, At = DAt,
+        notes = dnotes, route = true })
+    return p.path
+end
+local mines, cove = Sheet(291), Sheet(292)
+Check(mines.course and cove.course, "a sheet without the course")
+local dlegsByGuid = {}
+for _, l in ipairs(dnotes.legs) do dlegsByGuid[l.death.guid] = l end
+local late, early = dlegsByGuid["Player-1-A"], dlegsByGuid["Player-1-B"]
+Eq(late.after.name, "Sneed", "the late death's leg from Sneed")
+local cx, cy, chow, cinfo = Page.LegPoint(cove, late)
+Check(cx, "the Craftsman death not on the cove's sheet")
+Eq(chow, "killer", "the Craftsman death not placed by its killer")
+Eq(cinfo and cinfo.floor, 292, "its floor")
+Check(cinfo.yd > stepYd, "placed before the step down")
+Eq(Page.LegPoint(mines, late), nil, "the Craftsman death drawn on the mines' sheet too")
+local mx, my, mhow, minfo = Page.LegPoint(mines, early)
+Check(mx, "the early death not on the mines' sheet")
+Eq(minfo and minfo.floor, 291, "its floor")
+Eq(Page.LegPoint(cove, early), nil, "the early death drawn on the cove's sheet too")
+end
+
+--------------------------------------------------------------------------
 Section("time inside: the way out and back not counted")
 
 local away = { instanceID = RFC, startedAt = 1000, spans = { { from = 1000, to = 1300, ghost = true }, { from = 1500 } } }

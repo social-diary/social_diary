@@ -33,27 +33,34 @@
 --   DungeonPace.Project(course, gx, gy) the way's point nearest game yards gx, gy:
 --                                      yards along it, yards off it
 --
--- Flat: the fit and the packs are in x and y only. A pack on a level
--- under or over the way (a ledge, a lower cave) that lies within
--- PULL.radius of it in x and y is a pull on it (3 Nov 2026, Ragefire
--- Chasm: a death to a Shaman below the corridor went to the corridor's
--- Shaman pack). The data has each spawn's height; the way has none yet.
--- One floor: a dungeon is fitted on the one floor all its bosses stand on
--- (Fit), so one of several floors, or a combined map of several levels
--- (pieces at their own scales), has no fit and keeps the map's own guess.
+-- Flat within a floor: the fit and the packs are in x and y only. A pack
+-- on a level under or over the way (a ledge, a lower cave) that lies
+-- within PULL.radius of it in x and y is a pull on it (3 Nov 2026,
+-- Ragefire Chasm: a death to a Shaman below the corridor went to the
+-- corridor's Shaman pack). The data has each spawn's height; the way has
+-- none yet. Floors: a dungeon drawn on several floors (the Deadmines: the
+-- mines, then Ironclad Cove) is fitted on every floor its bosses stand on,
+-- each by its own art bounds (Fit); all of them are in one game-yard
+-- frame, so the way runs on in yards where it goes down a floor. Each pack
+-- carries the floor it is drawn on (`floor`, from the build), and is a
+-- pull only on a stretch of that floor: the foundry's upper ledge is drawn
+-- on the mines' floor and Gilnid's floor 30 yd under it on the cove's, at
+-- the same x and y. A combined map of several levels (pieces at their own
+-- scales) has no fit and keeps the map's own guess.
 --
--- A course: { instanceID, route, floor, cum (yards to each point), game
--- (each point in game yards, false off the floor fitted), broken (segment
--- k is off the floor fitted), pulls ({ at (yards from the way's
--- start), elites, size, names, npcs (its NPC IDs), boss (a guard's), pack
--- (its index) }, in order along the way) }.
+-- A course: { instanceID, route, floor (the first), cum (yards to each
+-- point), game (each point in game yards, false off the floors fitted),
+-- floors (each point's floor), broken (segment k is off the floors
+-- fitted), pulls ({ at (yards from the way's start), elites, size, names,
+-- npcs (its NPC IDs), boss (a guard's), pack (its index), floor }, in order
+-- along the way) }.
 
 local addonName, ns = ...
 
 local DungeonPace = {}
 ns.DungeonPace = DungeonPace
 
--- The data's yards on the map's floor. First the floor's art bounds
+-- The data's yards on the map's floors. First each floor's art bounds
 -- (Dungeon Crawler Forever's Art data, `bounds` = { x1, y1, x2, y2 }: the
 -- rectangle of game yards the picture covers, Blizzard's own map rectangle):
 -- the picture's x runs from game y2 down to y1, its y from game x2 down to
@@ -62,13 +69,14 @@ ns.DungeonPace = DungeonPace
 -- 23 to 64 yd off, Roogug's 160, Glutton's 95; fitted through them, the
 -- maps came out stretched by up to a fifth and three dungeons were
 -- refused). The pins' distances are kept (`worst`) as a note on how DCF
--- drew them, never a reason to refuse. Where a floor has no bounds, the
--- old fit: an affine, least squares over the entrance and the bosses, at
--- least `least` anchors on one floor, none off by more than `most` yards,
--- else no fit and the dungeon keeps the map's own guess. DCF's data can be
--- wrong too (bounds, pins, the usual way): tests/pace_data.lua holds each
--- dungeon to its packs lying near the way drawn, a check that leans on
--- none of the pins.
+-- drew them, never a reason to refuse. Bosses on several floors: every one
+-- of those floors needs bounds, else no fit. Where the one floor has no
+-- bounds, the old fit: an affine, least squares over the entrance and the
+-- bosses, at least `least` anchors on one floor, none off by more than
+-- `most` yards, else no fit and the dungeon keeps the map's own guess.
+-- DCF's data can be wrong too (bounds, pins, the usual way):
+-- tests/pace_data.lua holds each dungeon to its packs lying near the way
+-- drawn, a check that leans on none of the pins.
 local FIT = { least = 4, most = 12 }
 -- A pack is a pull on the way where the way passes within `radius` yards
 -- of it, on the first stretch that does (the pipeline's PULL_RADIUS); a
@@ -126,44 +134,95 @@ end
 
 local fits = {}
 
--- The data's yards on the map's floor for `instanceID`: { floor, ToFloor
--- (game x, y -> the floor's x, y), ToGame (back), method ("bounds" or
--- "anchors"), worst (the pin or anchor furthest off, yards, and `worstName`),
--- anchors (how many pins and way in were compared) }, or nil (no data, the
--- bosses on several floors or none on the map, or, without bounds, too few
--- anchors or one too far off: FIT). Worked out once.
+-- A floor's transforms from its art bounds { x1, y1, x2, y2 }.
+local function ByBounds(b)
+    if not (b and b[1] and b[2] and b[3] and b[4] and b[3] > b[1] and b[4] > b[2]) then return nil end
+    local x1, y1, x2, y2 = b[1], b[2], b[3], b[4]
+    return {
+        ToFloor = function(gx, gy) return (y2 - gy) / (y2 - y1), (x2 - gx) / (x2 - x1) end,
+        ToGame = function(fx, fy) return x2 - fy * (x2 - x1), y2 - fx * (y2 - y1) end,
+        bounds = b,
+    }
+end
+
+-- A fit over `floors` ({ [uiMapID] = { ToFloor, ToGame, bounds } }), the
+-- floors in `order` (the first the way in's): ToGame(fx, fy, floor) takes
+-- a floor's point to game yards (the first floor where none is named);
+-- ToFloor(gx, gy, floor) the way back, and, where no floor is named, on the
+-- first floor whose bounds hold the point (else the first), returning the
+-- floor third.
+local function Make(order, floors, method, worst, worstName, anchors)
+    local first = order[1]
+    return {
+        floor = first, order = order, floors = floors, method = method, worst = worst, worstName = worstName,
+        anchors = anchors,
+        ToGame = function(fx, fy, f)
+            local t = floors[f or first]
+            if t then return t.ToGame(fx, fy) end
+        end,
+        ToFloor = function(gx, gy, f)
+            if not f then
+                f = first
+                for _, id in ipairs(order) do
+                    local b = floors[id].bounds
+                    if b and gx >= b[1] and gx <= b[3] and gy >= b[2] and gy <= b[4] then
+                        f = id
+                        break
+                    end
+                end
+            end
+            local t = floors[f]
+            if not t then return nil end
+            local fx, fy = t.ToFloor(gx, gy)
+            return fx, fy, f
+        end,
+    }
+end
+
+-- The data's yards on the map's floors for `instanceID`: { floor (the
+-- first floor, the way in's), order (the floors, the first first), floors
+-- ({ [uiMapID] = { ToFloor, ToGame, bounds } }), ToFloor (game x, y, and a
+-- floor -> that floor's x, y, and the floor), ToGame (back), method
+-- ("bounds" or "anchors"), worst (the pin or anchor furthest off, yards,
+-- and `worstName`), anchors (how many pins and way in were compared) }, or
+-- nil (no data, no boss on the map, a floor without bounds among several
+-- or, without bounds, too few anchors or one too far off: FIT). Worked out
+-- once.
 function DungeonPace.Fit(instanceID)
     if fits[instanceID] ~= nil then return fits[instanceID] or nil end
     local data = ns.PaceData and ns.PaceData[instanceID]
     local fit
     if data then
-        local D, pairs_, floor = ns.Dungeons, {}, nil
+        local D, pairs_, order, seen = ns.Dungeons, {}, {}, {}
         for _, b in ipairs(data.bosses or {}) do
             local m = D.Boss(instanceID, b.name)
             if m and m.floor and m.x then
-                floor = floor or tonumber(m.floor)
-                if tonumber(m.floor) ~= floor then floor = false end
-                pairs_[#pairs_ + 1] = { b.x, b.y, m.x, m.y, b.name }
+                local f = tonumber(m.floor)
+                if not seen[f] then
+                    seen[f] = true
+                    order[#order + 1] = f
+                end
+                pairs_[#pairs_ + 1] = { b.x, b.y, m.x, m.y, b.name, f }
             end
         end
-        local door = floor and data.entrance and D.Entrance(instanceID, floor)
-        if door then pairs_[#pairs_ + 1] = { data.entrance.x, data.entrance.y, door.x, door.y, "the way in" } end
-        local fl = floor and D.Floor(instanceID, floor)
-        local b = fl and fl.bounds
-        if b and b[1] and b[2] and b[3] and b[4] and b[3] > b[1] and b[4] > b[2] then
-            local x1, y1, x2, y2 = b[1], b[2], b[3], b[4]
-            local function ToFloor(gx, gy) return (y2 - gy) / (y2 - y1), (x2 - gx) / (x2 - x1) end
-            local function ToGame(fx, fy) return x2 - fy * (x2 - x1), y2 - fx * (y2 - y1) end
+        local first = order[1]
+        local door = first and data.entrance and D.Entrance(instanceID, first)
+        if door then pairs_[#pairs_ + 1] = { data.entrance.x, data.entrance.y, door.x, door.y, "the way in", first } end
+        local floors, all = {}, first ~= nil
+        for _, f in ipairs(order) do
+            local fl = D.Floor(instanceID, f)
+            floors[f] = ByBounds(fl and fl.bounds)
+            if not floors[f] then all = false end
+        end
+        if all then
             local worst, worstName = 0, nil
             for _, p in ipairs(pairs_) do
-                local gx, gy = ToGame(p[3], p[4])
+                local gx, gy = floors[p[6]].ToGame(p[3], p[4])
                 local off = math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2)
                 if off > worst then worst, worstName = off, p[5] end
             end
-            fit = { floor = floor, ToFloor = ToFloor, ToGame = ToGame, method = "bounds", worst = worst,
-                worstName = worstName, anchors = #pairs_ }
-        end
-        if not fit and floor and #pairs_ >= FIT.least then
+            fit = Make(order, floors, "bounds", worst, worstName, #pairs_)
+        elseif #order == 1 and #pairs_ >= FIT.least then
             local rx, ry = {}, {}
             for i, p in ipairs(pairs_) do
                 rx[i], ry[i] = { p[1], p[2], p[3] }, { p[1], p[2], p[4] }
@@ -182,8 +241,8 @@ function DungeonPace.Fit(instanceID)
                     worst = math.max(worst, math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2))
                 end
                 if worst <= FIT.most then
-                    fit = { floor = floor, ToFloor = ToFloor, ToGame = ToGame, method = "anchors", worst = worst,
-                        anchors = #pairs_ }
+                    fit = Make(order, { [first] = { ToFloor = ToFloor, ToGame = ToGame } }, "anchors", worst, nil,
+                        #pairs_)
                 end
             end
         end
@@ -212,17 +271,24 @@ end
 -- `visit`'s way `route` (Core/DungeonWay.lua's points) in yards, with the
 -- packs it passes as its pulls; nil without pace data or a fit, or a way
 -- of fewer than two points. A jump to a linked step's far end (`pair`)
--- is no way at all; a stretch with an end off the fitted floor is
--- `broken` (nothing is placed on a leg across it).
+-- is no way at all; a stretch with an end off the fitted floors is
+-- `broken` (nothing is placed on a leg across it). A stretch from one
+-- fitted floor to another (the Deadmines' way down to the cove) is a walk
+-- of its length in game yards, and packs of either floor lie on it.
 function DungeonPace.Course(visit, route)
     local id = visit and visit.instanceID
     local data = id and ns.PaceData and ns.PaceData[id]
     local fit = data and DungeonPace.Fit(id)
     if not fit or type(route) ~= "table" or #route < 2 then return nil end
-    local game = {}
+    local game, floors = {}, {}
     for i, p in ipairs(route) do
         local f, x, y = ns.DungeonWay.Where(id, p)
-        if f == fit.floor and x and y then game[i] = { fit.ToGame(x, y) } else game[i] = false end
+        local on = f and fit.floors[f]
+        if on and x and y then
+            game[i], floors[i] = { on.ToGame(x, y) }, f
+        else
+            game[i] = false
+        end
     end
     local cum, broken = { 0 }, {}
     for i = 2, #route do
@@ -234,8 +300,8 @@ function DungeonPace.Course(visit, route)
         end
         cum[i] = cum[i - 1] + len
     end
-    -- Each pack on the first stretch that passes it; a guard where its
-    -- boss's first stop is.
+    -- Each pack on the first stretch of its floor that passes it; a guard
+    -- where its boss's first stop is.
     local stops = {}
     for i, p in ipairs(route) do
         if p.boss and not stops[Norm(p.boss)] then stops[Norm(p.boss)] = i end
@@ -248,7 +314,8 @@ function DungeonPace.Course(visit, route)
             at = i and game[i] and cum[i]
         else
             for k = 1, #route - 1 do
-                if not broken[k] and cum[k + 1] > cum[k] then
+                local onFloor = not pack.floor or pack.floor == floors[k] or pack.floor == floors[k + 1]
+                if onFloor and not broken[k] and cum[k + 1] > cum[k] then
                     local along, off = Nearest(game[k], game[k + 1], pack.x, pack.y)
                     if off <= PULL.radius then
                         at = cum[k] + along
@@ -259,7 +326,7 @@ function DungeonPace.Course(visit, route)
         end
         if at then
             pulls[#pulls + 1] = { at = at, elites = math.max(1, pack.elites or 1), size = pack.size,
-                names = pack.names, npcs = pack.npcs, boss = pack.boss, pack = n }
+                names = pack.names, npcs = pack.npcs, boss = pack.boss, pack = n, floor = pack.floor }
         end
     end
     table.sort(pulls, function(a, b)
@@ -267,7 +334,7 @@ function DungeonPace.Course(visit, route)
         return a.pack < b.pack
     end)
     return { instanceID = id, route = route, floor = fit.floor, cum = cum, broken = broken, pulls = pulls,
-        game = game }
+        game = game, floors = floors }
 end
 
 -- The leg from point i0 to the boss at point i1, as the model takes it: {

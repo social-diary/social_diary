@@ -30,14 +30,14 @@ Ragefire Chasm on the dev machine.
 | The clock | `DungeonRun.Active` | time inside (`spans`) less, for each pause between fights (`visit.pauses`), what lies beyond `IDLE.most` (120 s) |
 | The fights | `Core/Instances.lua` `Combat`, `Capture/Instances.lua` | `PLAYER_REGEN_*` inside a run; only pauses of `PAUSE.least` (30 s) or more are saved, `PAUSE.most` (200) a run |
 | Wipes and near wipes | `DungeonRun.Notes` | half the group (near: half less one) dead to trash within `WIPE_WINDOW` (60 s) of the first death |
-| The data on the map | `Core/DungeonPace.lua` `Fit` | the floor's **art bounds** (DCF `Art.lua` `bounds = {x1, y1, x2, y2}`: picture x from game y2→y1, picture y from game x2→x1); DCF's pins only compared (`worst`, `worstName`). Without bounds: least squares through the pins and entrance, refused past `FIT.most` (12 yd) or under `FIT.least` (4); bosses on several floors: no fit |
-| The packs laid on the way | `DungeonPace.Course` | each pack a pull on the first stretch passing within `PULL.radius` (15 yd); a boss's guard (`boss`) at that boss's stop |
+| The data on the map | `Core/DungeonPace.lua` `Fit` | each floor the bosses stand on by its **art bounds** (DCF `Art.lua` `bounds = {x1, y1, x2, y2}`: picture x from game y2→y1, picture y from game x2→x1), all in one frame of game yards (`fit.floors[uiMapID]`, `fit.order`, `fit.floor` the first); DCF's pins only compared (`worst`, `worstName`). Several floors with one lacking bounds: no fit. One floor without bounds: least squares through the pins and entrance, refused past `FIT.most` (12 yd) or under `FIT.least` (4) |
+| The packs laid on the way | `DungeonPace.Course` | each pack a pull on the first stretch of its own floor (`pack.floor`, from the build; a stretch from one floor to the next takes either) passing within `PULL.radius` (15 yd); a boss's guard (`boss`) at that boss's stop |
 | A leg as the model takes it | `DungeonPace.Leg` | from point i0 (or an anchor's yards) to the boss at i1; nil backwards, across a broken stretch, to a point that is no boss |
 | Time → yards | `Core/Pace/Model.lua` (the handover's, unchanged) | effort profile (walk 5 yd/s, pull 20 s + 12 s an elite, boss 60 s), pace spread, deaths weighted to pulls; never past the boss |
 | The killer | `DungeonPace.PlaceGroup` | candidates: the leg's pulls holding the killer's NPC (or its summoner, `summons`); the time weighs them exactly (`Weights`, spread `KILLER.spread` 0.35), summed over a wipe's deaths; along the way, the one where the weight passes half wins; none weighted: nearest the time's place |
 | Sure places | `UI/Dungeon/Print.lua` `Anchors` | each moment placed by its killer is an anchor; later moments on that leg go from the last one before them, on the rest of the leg |
 | After an anchor | `Print.lua` `PacePoint` | after a wipe the clock starts again where the pause after it ends (`AFTER_WIPE` 60 s); else, if the group went out between, the walk back (anchor yards ÷ 5 yd/s) comes off |
-| On the sheet | `Print.lua` `LegPoint` | the spot kept `PACE_CLEAR` (12 yd) off both bosses; a wipe's crosses all at the wipe's spot (`Deaths`), its strip's target the same |
+| On the sheet | `Print.lua` `LegPoint` | the spot kept `PACE_CLEAR` (12 yd) off both bosses; a wipe's crosses all at the wipe's spot (`Deaths`), its strip's target the same; a moment the model put on another floor is left off this floor's sheet (no Plan A for it), one on the stretch between floors goes with the nearer end |
 | No pace data, or the model does not apply | `LegPoint` | Plan A: `frac` of the way between kills; on an open leg eased (`1 - 2^(-dt/240)`, `DungeonRun.OPEN`) toward the next boss still standing, at most `OPEN_MOST` (0.9) |
 
 `LegPoint` returns x, y, how (`"killer"`, `"pace"`, `"eased"`, `"share"`,
@@ -74,6 +74,19 @@ Ragefire Chasm on the dev machine.
   factors) and the pick is where, along the way, they pass half: 12 moves,
   none back, one Trogg pull at a time. Spread 0.35 (the model's own), not
   1.0: tried in the explainer, 1.0 ran ahead of the time.
+- **A fit per floor, one frame of yards** (4 Nov 2026, the Deadmines). A
+  dungeon drawn on several floors is fitted on each by its own bounds; the
+  bounds of one instance all give the same game yards, so the way stays one
+  course and the step down to the cove is a 50 yd walk on it. Which floor a
+  pack is drawn on is decided at build time (`Dev/pace_build.py`): the
+  floor whose bounds hold it, and where the pictures overlap, the config's
+  `heights` by its z. Spawns link into packs on one floor only: the
+  Deadmines' foundry is a spiral, its upper ledge on the mines' floor and
+  Gilnid 30 yd under it on the cove's at the same x and y; linked flat,
+  the two would have been one pack and the ledge's Craftsmen a guard of
+  Gilnid's. Heights are not enough on their own (the ship's deck lies at
+  the mines' height), nor are bounds (the pictures overlap for 280 yd):
+  bounds first, then height.
 - **No kill counts.** `PARTY_KILL` inside an instance comes with the victim
   and the killer secret (probe, 3 Nov: 30 of 31 hidden). Counting kills
   along the way was dropped; the dev probe (`/sd pace`) still counts them.
@@ -88,14 +101,15 @@ Ragefire Chasm on the dev machine.
 
 ## Limits (known, accepted for now)
 
-- **Flat.** Fit and packs ignore height: a pack on a level below the way
-  counts as on it (a Shaman under Ragefire's east corridor took a wipe
-  there). The spawn table has `z`; the way has none.
-- **One floor.** The bosses' floor is the one fitted; bosses on several
-  floors, no fit. Each floor has its own bounds, so several floors need only
-  packs assigned to floors (by height) and a course per floor; combined
-  maps (pieces at their own scales) need the bounds per piece. Until then
-  they keep Plan A (`.claude/pace-plan.md`, local).
+- **Flat within a floor.** Fit and packs ignore height on one floor: a pack
+  on a level below the way counts as on it (a Shaman under Ragefire's east
+  corridor took a wipe there). The spawn table has `z`; the way has none.
+  Across floors the build's `heights` cure it where the floors are drawn
+  apart.
+- **Drawn floors only.** Combined maps (pieces at their own scales, floor
+  IDs 80xxxx) need the bounds per piece; until then they keep Plan A
+  (`.claude/pace-plan.md`, local). A moment on the walk between two floors
+  is drawn at the nearer end.
 - **The way through the pins.** A route stop is the boss's pin: where a pin
   is drawn away from the boss, the way bends to it, and packs by the real
   room may fall outside `PULL.radius` (Razorfen Downs' Glutton leg ends at
@@ -116,8 +130,8 @@ is their time inside. Anything else here is worked out when the map is drawn.
 ## Data and licence
 
 `Core/Pace/<Name>.lua` is generated (`Dev/pace_build.py`, config in
-`Dev/pace/<slug>.json`): entrance, bosses (DCF's names), packs with names
-and NPC IDs, summons. Spawns: TrinityCore TDB + VMaNGOS via
+`Dev/pace/<slug>.json`): entrance, bosses (DCF's names), packs with names,
+NPC IDs and, on several floors, the floor each is drawn on; summons. Spawns: TrinityCore TDB + VMaNGOS via
 advocaite/TrinityCore `forever` (release forever-tdb-2026-10-14),
 GPL-2.0-or-later, credited in README and Settings → About. Never run that
 server or point a client at it; only its database release is used.
@@ -127,7 +141,9 @@ Adding a dungeon: `.claude/skills/pace-data/`.
 
 - `tests/pace_model.lua`: the model against the handover's 800 recorded answers.
 - `tests/pace.lua`: fit, course, legs, the killer, wipes, pauses, the clock,
-  anchors, the real sheet, `/sd pace`; real runs replayed with invented names.
+  anchors, the real sheet, `/sd pace`; real runs replayed with invented
+  names; the Deadmines' two floors (the course down, pulls on their own
+  floor, a death drawn on one floor's sheet only).
 - `tests/pace_data.lua`: every `ns.PaceData` file (`PACE_EXTRA`, `PACE_ONLY`,
   `PACE_SHOW` env vars): a fit, the bosses DCF's, packs whole, legs with
   pulls, and at least `ON_WAY` (40%) of the packs within 15 yd of the way.

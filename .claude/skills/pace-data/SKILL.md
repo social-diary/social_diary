@@ -16,15 +16,17 @@ workflow. A dungeon touches only:
 
 ## 0. Which dungeons can have it
 
-The runtime places the data with **the floor's art bounds** (DCF's
-`Art.lua`), on the one floor the bosses stand on. Check Dungeon Crawler
-Forever's bosses by floor (`Vendor/DungeonCrawlerForever/Data/Dungeons.lua`,
-the `floor =` of each boss) and that the floor has `bounds` before starting:
+The runtime places the data with **the floors' art bounds** (DCF's
+`Art.lua`), one fit per floor the bosses stand on, all in one frame of game
+yards (the way runs on in yards where it goes down a floor). Check Dungeon
+Crawler Forever's bosses by floor (`Vendor/DungeonCrawlerForever/Data/Dungeons.lua`,
+the `floor =` of each boss) and that every such floor has `bounds` before
+starting:
 
 | Group | Dungeons | Pace data now? |
 |---|---|---|
 | One floor with bounds | Ragefire Chasm, Stormwind Stockade, Razorfen Kraul, Razorfen Downs (all shipped 4 Nov 2026); Zul'Farrak (held: its packs lie off DCF's way) | config only |
-| Several floors | Deadmines, Blackfathom Deeps, Uldaman, Stratholme, Maraudon, Blackrock Depths, Scholomance, Scarlet Monastery | not yet: needs a fit per floor |
+| Several floors, each with bounds | Deadmines (shipped 4 Nov 2026), Blackfathom Deeps, Uldaman, Stratholme, Maraudon, Blackrock Depths, Scholomance, Scarlet Monastery | config, plus `heights` where the floors' pictures overlap |
 | Combined maps (floor IDs 80xxxx) | Shadowfang Keep, Wailing Caverns, Gnomeregan, Sunken Temple, Blackrock Spire | not yet: needs a fit per piece |
 | No public spawns | the seven new Forever dungeons | no |
 
@@ -63,6 +65,7 @@ Start from `Dev/pace/ragefire_chasm.json`.
 | `no_pull` | elite creatures that are not a pull of their own (a swarm, a pet that stands in a pack) |
 | `normal_pulls` | non-elite creatures that are a real pull (by default a pack of non-elites only, mostly critters, is left out) |
 | `summons` | `{ "npc": { "by": npc, "name", "note" } }`: an NPC in no pack (a pet, a summoned add) to the NPC that brings it, so a death to it goes to its summoner's pull |
+| `heights` | several floors only: `{ "<uiMapID>": [zmin, zmax] }`. Each spawn goes on the floor whose art bounds hold it; where two floors' pictures overlap, the floor whose height range holds its `z` (zmin inclusive, zmax not). A spawn no rule settles stops the build and is listed: widen or add a range. Spawns link into packs only on one floor, and a guard is only a guard on its boss's floor (Deadmines: the foundry is a spiral, its ledge on the mines' floor and Gilnid 30 yd under it on the cove's, at the same x and y) |
 | `notes` | what was decided and checked, with the date |
 
 To look at a dungeon's spawns: `awk -F, '$1==<map_id>' <csv> | cut -d, -f4-7 | sort | uniq -c -f1` (npc,
@@ -70,6 +73,13 @@ name, classification), or read the rows near a boss. Things to look for:
 creatures that only appear by event or script (not in the table: their
 deaths fall back to time; add a `summons` entry if a known pack brings
 them), friendly NPCs (exclude), and non-elite trash that is a real pull.
+
+Several floors: find the heights first. Sort the spawns by `z` and, for the
+ones inside both floors' bounds, look for the gap (Deadmines: nothing between
+41 and 47 yd; the ship's deck at 40 lies on the cove's picture only, so the
+bounds settle it, not the height). A pack's floor is written into the data
+(`floor = <uiMapID>`); in the client, `/sd pace map` draws each pack on its
+own floor's sheet.
 
 ## 3. Build and check
 
@@ -81,14 +91,15 @@ PACE_EXTRA=Core/Pace/<LuaName>.lua PACE_ONLY=<map_id> PACE_SHOW=1 luajit tests/r
 `PACE_EXTRA` loads the file before it is in the TOC. What to read in the
 output, and what is wrong when it fails:
 
-- **fit … by bounds**: the floor's art bounds were used. "by anchors" means
-  the floor has none (the pins decide, 12 yd limit).
+- **fit … by bounds**: the floors' art bounds were used (several floors
+  are listed). "by anchors" means the one floor has none (the pins decide,
+  12 yd limit); several floors with one lacking bounds: no fit.
 - **DCF's pins: worst …**: how far DCF drew each pin from its boss's
   spawn. Only a note (Roogug 160 yd, Glutton 106): a large one says the way
   bends to a drawn pin there; it never fails the check.
 - **packs near it / median**: the check that leans on no pin. At least 40%
-  of the packs within 15 yd of the usual way (Ragefire 50 of 68, median
-  5 yd). Failing it means the bounds, the spawns or DCF's way are off: look
+  of the packs within 15 yd of the usual way, on their own floor (Ragefire
+  50 of 68, median 5 yd; Deadmines 42 of 64, median 7.6). Failing it means the bounds, the spawns or DCF's way are off: look
   before shipping (Zul'Farrak: 30 of 107, median 38 yd: its way runs
   through spread pins). Any of DCF's data can be wrong.
 - **each leg**: yards and pulls plausible; the model's time for the whole
@@ -101,7 +112,9 @@ Then add the TOC line (after `Core/Pace/RagefireChasm.lua`, before
 
 1. `/reload` in and outside the dungeon: no Lua errors.
 2. Open a run's map, `/sd pace map`: red packs in the drawn corridors,
-   blue rings (the data's way in and bosses) on the map's own.
+   blue rings (the data's way in and bosses) on the map's own. Several
+   floors: turn the sheet to each floor; a pack shows on its own floor only,
+   and a death the model placed is drawn on one floor's sheet, not both.
 3. Die to trash a few times (killers recorded), wipe once: `/sd pace` shows
    `killer` for them, the crosses at a pack of that creature.
 4. A spot that looks wrong: stand there, `.gps`, `/sd pace at X Y`; it gives

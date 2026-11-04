@@ -646,11 +646,14 @@ end
 -- (a rez, a run back, drinking). Else, where the group went out between that place and
 -- the moment (a release, a run back in), the walk back to it from the way
 -- in, at the model's pace, is not time spent getting on. nil where the
--- dungeon has no pace data or the
--- leg is not one the model takes, or it lies off the floor shown. x, y,
--- how ("killer": at a pull of what killed it; or "pace") and { yd, key
--- (the leg's), anchor (the place it went from, or nil), shift (seconds
--- taken off: the anchor's and the walk back) }.
+-- dungeon has no pace data or the leg is not one the model takes; false
+-- where the model placed it, but on a floor this sheet does not show (a
+-- dungeon on several floors: it is drawn on that floor's sheet, and
+-- nowhere else; a moment on the stretch from one floor to the next goes
+-- with the nearer end). x, y, how ("killer": at a pull of what killed it;
+-- or "pace") and { yd, key (the leg's), anchor (the place it went from, or
+-- nil), shift (seconds taken off: the anchor's and the walk back), floor
+-- (the one it lies on) }.
 local PACE_CLEAR, AFTER_WIPE = 12, 60
 local function PacePoint(path, leg, i0, i1, open)
     local Pace, course = ns.DungeonPace, path.course
@@ -688,10 +691,20 @@ local function PacePoint(path, leg, i0, i1, open)
     local clear = math.min(PACE_CLEAR, (to - from) / 2)
     yd = math.max(from + clear, math.min(to - clear, yd))
     local k, t = Pace.Along(course, yd)
-    local a, b = k and path.pts[k], k and path.pts[k + 1]
-    if not (a and b) then return nil end
-    return a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, by == "killer" and "killer" or "pace",
-        { yd = yd, key = key, anchor = anchor, shift = shift }
+    if not k then return nil end
+    local a, b = path.pts[k], path.pts[k + 1]
+    local x, y, floor
+    if a and b then
+        x, y, floor = a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, course.floors[k]
+    elseif a and t < 0.5 then
+        x, y, floor = a[1], a[2], course.floors[k]
+    elseif b and t >= 0.5 then
+        x, y, floor = b[1], b[2], course.floors[k + 1]
+    else
+        return false
+    end
+    return x, y, by == "killer" and "killer" or "pace",
+        { yd = yd, key = key, anchor = anchor, shift = shift, floor = floor }
 end
 
 -- Where a death on the way lies (MAP-9): where the route model puts it
@@ -701,7 +714,8 @@ end
 -- the next stop whose boss still stands, at most OPEN_MOST of the way, so
 -- it never lies on that boss nor past it; just past `after` where nothing
 -- says how far. nil where the way through does not say (no route, a stop
--- off this floor). x, y and how it was placed: "killer" or "pace" (the
+-- off this floor), or the route model put it on another floor's sheet. x,
+-- y and how it was placed: "killer" or "pace" (the
 -- route model, PacePoint, with what it says of it), "eased" (an open leg),
 -- "share" (between kills) or "past" (just past `after`).
 local OPEN_MOST = 0.9
@@ -715,6 +729,7 @@ function LegPoint(path, leg)
     if open then i1 = NextStop(path, i0) end
     local px, py, phow, pinfo = PacePoint(path, leg, i0, i1, open)
     if px then return px, py, phow, pinfo end
+    if px == false then return nil end
     local how = not i1 and "past" or open and "eased" or "share"
     local pts = {}
     if i1 then
