@@ -21,6 +21,7 @@ local TESTERS = { "Tabi Lorang", "Gunther Guntherino", "Mooguy Mooperson", "Koko
 local LICENCE = {
     "Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License.",
     "Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later.",
+    "Creature positions along dungeon routes: TrinityCore and VMaNGOS, via advocaite/TrinityCore, GPL v2 or later.",
 }
 local FONTS = "The Neuton Italic font: SIL Open Font License 1.1."
 -- Read while the game runs, never shipped: a credit under the thanks.

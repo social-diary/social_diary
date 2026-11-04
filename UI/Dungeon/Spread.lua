@@ -430,11 +430,74 @@ local function Fit(w, h)
     back:LayAt(DungeonPage.BookmarkAt(dx, dy, w, h, back.w))
 end
 
+--------------------------------------------------------------------------
+-- Laid once, shown again
+--------------------------------------------------------------------------
+
+-- Opened again on the run it lies laid for, with nothing it is laid from
+-- moved since, the sheet is shown as it lies, not laid again (4 Nov 2026:
+-- the minimap button pressed again and again inside a dungeon froze the
+-- client for seconds, every opening laying the whole map afresh, some
+-- 33,000 calls into the client, most of them the strips finding their
+-- place). What a sheet is laid from (Laid): the run itself, all of it
+-- (Fingerprint: the user's own way, its kills, pauses and spans, whatever
+-- is added to it later), the diary's data and the journey's (ns.dataVersion,
+-- Journey.version: deaths, names, level-ups), the settings it heeds, how
+-- worn it is, the floor chosen, whose it is read as, and where the book
+-- lies on the screen (Fit). Anything that lays it in the meantime (another
+-- floor, the pen, the settings, the screen) lays it from what is there
+-- then, and that is what it lies laid from.
+
+-- A number for everything in `v`, down to `depth` tables in: the same for
+-- the same contents (a table's keys walked as pairs gives them, so a
+-- table grown and shrunk back may come out otherwise: then it is only laid
+-- again).
+local FINGER = { mod = 2147483647, depth = 8 }
+local function Fingerprint(v, h, depth)
+    local M = FINGER.mod
+    local t = type(v)
+    if t == "number" then return (h * 31 + v % M) % M end
+    if t == "string" then
+        h = (h * 31 + #v) % M
+        for i = 1, #v do h = (h * 31 + v:byte(i)) % M end
+        return h
+    end
+    if t == "boolean" then return (h * 31 + (v and 1 or 2)) % M end
+    if t ~= "table" then return (h * 31 + 3) % M end
+    if depth >= FINGER.depth then return (h * 31 + 5) % M end
+    h = (h * 31 + 7) % M
+    for k, x in pairs(v) do
+        h = Fingerprint(x, Fingerprint(k, h, depth + 1), depth + 1)
+    end
+    return (h * 31 + 11) % M
+end
+
+-- What the sheet laid for `visit`, read as `guid`'s (from Your Diary where
+-- `from` is "journey"), is laid from, as one string.
+local function Laid(visit, guid, from)
+    local book = J.journal
+    local bx, by = book:GetCenter()
+    local map = spread.map
+    local journey = ns.Journey and ns.Journey.version
+    return table.concat({ tostring(visit.id), tostring(guid), tostring(from), tostring(ns.dataVersion),
+        tostring(journey), tostring(ns.Setting("flatSheets")), tostring(ns.Setting("dungeonRoute")),
+        tostring(map.chosen[visit.id]), ("%.2f"):format(DungeonPage.Age(ns.Now() - (visit.startedAt or ns.Now()))),
+        tostring(book:GetScale()), tostring(bx), tostring(by), tostring(UIParent:GetWidth()),
+        tostring(UIParent:GetHeight()), tostring(Fingerprint(visit, 0, 0)) }, "|")
+end
+
 -- However the spread went (put away, Escape, the book shut): the run is
 -- X
 local function Gone()
     local open = J.visit ~= nil
     J.visit = nil
+    -- The pen out: what it drew is kept as it is put down, and the sheet
+    -- is laid again next time.
+    local way = spread.map.way
+    if way and way.drawing then spread.laid = nil end
+    -- Put away while it was still being laid: given up, laid afresh next
+    -- time.
+    spread.map:StopLaying()
     DungeonPage.TutorialGone()
     -- The pen put down, what it drew kept (WAY-11).
     DungeonPage.WayPutDown(spread.map)
@@ -465,6 +528,9 @@ local function Build()
         if button ~= "RightButton" then DungeonPage.Close() end
     end
     host.map.onMeasure = Fit
+    host.map.onLaid = function(visit, guid)
+        spread.laid = J.visit and Laid(visit, guid, J.visit.from) or nil
+    end
     -- The wheel stops at the table: the book under it, put aside, keeps
     -- its timeline where it was.
     host.map:EnableMouseWheel(true)
@@ -512,9 +578,20 @@ local function Open(visit, guid, from)
     Above(spread)
     spread:Show()
     spread:Raise()
-    spread.map:Open(visit, guid)
-    spread.map:Show()
-    DungeonPage.Tutorial(spread)
+    -- The sheet put down on the table, and the first run's note with it.
+    local function Down()
+        if not (spread:IsShown() and J.visit and J.visit.id == visit.id) then return end
+        spread.map:Show()
+        DungeonPage.Tutorial(spread)
+    end
+    -- Laid again only where something it is laid from moved (Laid); then
+    -- a slice a frame (UI/Dungeon/Sheet.lua's STAGE), so the client is
+    -- never held, and put down once it is all laid: nothing of it shows
+    -- half laid. Another run's sheet still out is taken up first.
+    if spread.laid and spread.laid == Laid(visit, guid, from) and not spread.map:Laying() then return Down() end
+    spread.laid = nil
+    if spread.map:IsShown() then spread.map:Hide(true) end
+    spread.map:OpenStaged(visit, guid, Down)
 end
 
 -- Opens visit `visitId` from `guid`'s page (the selected person's by

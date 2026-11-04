@@ -12,7 +12,8 @@
 -- Chosen, not dumped (MAP-15): wipes first, then near wipes, then loot
 -- for you and the diary's people, then tries, then the runs back; at most NOTES.most, the
 -- rest counted ("and 2 more", in pencil by the floors' label; told in
--- the bosses' tooltips too). A stranger's loot is never a note. Only notes
+-- the bosses' tooltips too). A stranger's loot is never a note, but for
+-- an epic found on the way (wayLoot, 4 Nov 2026). Only notes
 -- about something on the floor shown appear; another floor lays its own.
 --
 -- Each is laid in the order chosen, the first free place taken (PLACE):
@@ -121,8 +122,8 @@ end
 
 -- The notes worth a strip, in the order they are chosen: { rank, kind
 -- ("wipe", "wayWipe", "near", "wayNear", "snagged", "finally", "loot",
--- "bad", "tries", "ranBack"), boss (or door = true,
--- or wipe = its index in notes.wipes), name, what, guid (a diary entry to
+-- "wayLoot", "bad", "tries", "ranBack"), boss (or door = true,
+-- or wipe = its index in notes.wipes, or wayLoot = its in notes.wayLoot), name, what, guid (a diary entry to
 -- open, not the page's own person), items, seed }. A boss's loot for you
 -- and the diary's people is one note, its items in its heading (MAP-13:
 -- one leader a boss): `items` = { { item, guid (theirs to open, or nil),
@@ -218,6 +219,23 @@ function DungeonPage.Choose(visit, notes, guid)
                 Add({ rank = 3, order = i, kind = "tries", boss = e.boss, name = name,
                     what = not e.killed and Words.STANDING or nil })
             end
+        end
+    end
+    -- Loot found on the way (Core/DungeonRun.lua's WAY_LOOT): an epic for
+    -- anyone, a rare for you; a strip each, at its mark, ranked as a
+    -- boss's loot. A stranger's epic too (4 Nov 2026, the user: an epic
+    -- is memorable whoever's it is; a boss's stranger loot stays only
+    -- counted). Not an item a pair already tells of.
+    for i, f in ipairs(notes.wayLoot or {}) do
+        local entry = f.entry
+        if not paired[entry.itemID or -1] then
+            local diary = entry.guid ~= guid and ns.Diary.IsDiary(entry.guid)
+            local it = { item = entry.item, guid = diary and entry.guid or nil, mine = f.mine,
+                line = Words.Capital(Words.FoundFor(visit, entry.guid)), quality = f.quality,
+                from = "", text = Style.Inkify(entry.item or "?") }
+            Add({ rank = 2, order = f.time or 0, kind = "wayLoot", wayLoot = i, items = { it }, name = it.text,
+                what = Words.FoundFor(visit, entry.guid), guid = diary and entry.guid or nil,
+                tier = DungeonPage.Tier({ it }) })
         end
     end
     for i, w in ipairs(notes.wipes or {}) do
@@ -553,6 +571,24 @@ local function OnPaper(b, tape, W, H, K, screen, lie)
     return true
 end
 
+-- A stretch of the inked way from a to c, as OverInk reads it: its points
+-- every 4 px or so ({ x1, y1, x2, y2, ... }) and the box round them.
+-- Worked out once a sheet, not once for each place a strip is tried (4 Nov
+-- 2026: walking every stretch again for each of the few hundred places
+-- tried for each strip was a third of all the work of laying the map).
+local function Sampled(a, c)
+    local len = math.sqrt((c[1] - a[1]) ^ 2 + (c[2] - a[2]) ^ 2)
+    local steps = math.max(1, math.floor(len / 4))
+    local pts = {}
+    local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+    for k = 0, steps do
+        local x, y = a[1] + (c[1] - a[1]) * k / steps, a[2] + (c[2] - a[2]) * k / steps
+        pts[#pts + 1], pts[#pts + 2] = x, y
+        x0, y0, x1, y1 = math.min(x0, x), math.min(y0, y), math.max(x1, x), math.max(y1, y)
+    end
+    return { pts = pts, box = { x0, y0, x1, y1 } }
+end
+
 -- The marks a strip keeps off (`spots`, { x, y, r }: the faces, their
 -- numbers, the crosses, the way in, each with its halo, and the moments
 -- drawn round them), the faces a
@@ -577,24 +613,26 @@ local function Keep(plan)
     local path = plan.route and plan.path
     if path then
         for k = 2, path.reached or 0 do
-            if path.pts[k - 1] and path.pts[k] and not path.route[k].pair then ink[#ink + 1] = { path.pts[k - 1], path.pts[k] } end
+            if path.pts[k - 1] and path.pts[k] and not path.route[k].pair then ink[#ink + 1] = Sampled(path.pts[k - 1], path.pts[k]) end
         end
     end
     return spots, faces, ink
 end
 
--- How many stretches of the inked way pass over box b.
+-- How many stretches of the inked way (Sampled) pass over box b: a point of
+-- one inside it. A stretch whose box misses it has none there.
 local function OverInk(b, ink)
     local n = 0
     for _, seg in ipairs(ink) do
-        local a, c = seg[1], seg[2]
-        local len = math.sqrt((c[1] - a[1]) ^ 2 + (c[2] - a[2]) ^ 2)
-        local steps = math.max(1, math.floor(len / 4))
-        for k = 0, steps do
-            local x, y = a[1] + (c[1] - a[1]) * k / steps, a[2] + (c[2] - a[2]) * k / steps
-            if x > b[1] and x < b[3] and y > b[2] and y < b[4] then
-                n = n + 1
-                break
+        local s = seg.box
+        if s[3] > b[1] and s[1] < b[3] and s[4] > b[2] and s[2] < b[4] then
+            local pts = seg.pts
+            for k = 1, #pts, 2 do
+                local x, y = pts[k], pts[k + 1]
+                if x > b[1] and x < b[3] and y > b[2] and y < b[4] then
+                    n = n + 1
+                    break
+                end
             end
         end
     end
@@ -705,6 +743,7 @@ local function Target(plan, note)
     if note.when and not note.boss then return DungeonPage.Anchor(plan, note.when) end
     local t = plan.targets
     return (note.door and t.door) or (note.wipe and t["wipe:" .. note.wipe]) or (note.near and t["near:" .. note.near])
+        or (note.wayLoot and t["loot:" .. note.wayLoot])
         or (note.boss and t[note.boss.name]) or nil
 end
 
@@ -850,6 +889,9 @@ function DungeonPage.LayNotes(view, plan, P, K)
                 view.notes.used = view.notes.used - 1
             end
         end
+        -- Where laying the sheet may wait for the next frame (UI/Dungeon/
+        -- Sheet.lua's STAGE): after each strip.
+        DungeonPage.Step()
     end
     view.notes:Finish()
     view.leaders:Finish()

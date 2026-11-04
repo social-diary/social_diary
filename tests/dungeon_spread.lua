@@ -467,5 +467,178 @@ Check(Near(map.pools.number[1].recorded.calls.SetRotation[1], math.rad(Page.SHEE
 Page.Close()
 ns.SetSetting("flatSheets", false)
 
+--------------------------------------------------------------------------
+Section("opened again with nothing moved: shown as it lies, not laid again")
+
+-- 4 Nov 2026: the minimap button pressed again and again in a dungeon laid
+-- the whole map each time, and the client froze.
+local lays = 0
+local Ink = Page.Ink
+Page.Ink = function(...)
+    lays = lays + 1
+    return Ink(...)
+end
+local function Again(what, want)
+    Page.Close()
+    lays = 0
+    ns.UI.OpenVisit(RFK.id, G)
+    Check(host:IsShown() and map:IsShown(), "the run did not come out " .. what)
+    Eq(lays, want, "laid again or not, " .. what)
+end
+ns.UI.OpenVisit(RFK.id, G)
+local plan = map.plan
+Again("with nothing moved", 0)
+Check(map.plan == plan and #map.noteStrips > 0, "the sheet shown again is not as it lay")
+for _ = 1, 5 do Again("pressed again and again", 0) end
+-- Shut with the book and opened with it: as it lay too.
+ns.UI.CloseJournal()
+lays = 0
+ns.UI.OpenVisit(RFK.id, G)
+Eq(lays, 0, "laid again after the book was shut and opened")
+
+-- Each thing it is laid from, moved: laid again, once.
+ns.Touch()
+Again("after the diary's data moved", 1)
+Again("after that, with nothing moved", 0)
+ns.Journey.Touch()
+Again("after the journey moved", 1)
+RFK.pauses = RFK.pauses or {}
+RFK.pauses[#RFK.pauses + 1] = { from = 1, to = 2 }
+Again("after the run itself changed (no Touch)", 1)
+table.remove(RFK.pauses)
+Again("after the run changed back", 1)
+ns.SetSetting("dungeonRoute", not ns.Setting("dungeonRoute"))
+Again("after the usual way was turned", 1)
+ns.SetSetting("dungeonRoute", not ns.Setting("dungeonRoute"))
+Again("after it was turned back", 1)
+bookAt = { 900, 500 }
+Again("after the book moved", 1)
+bookAt = { 960, 540 }
+Again("after it moved back", 1)
+UIParent.width = 1600
+Again("on another screen", 1)
+UIParent.width = 1920
+Again("on the first screen again", 1)
+local was = mock.now
+mock.now = mock.now + 400 * 86400
+Again("when it has aged", 1)
+mock.now = was
+Again("when it is young again", 1)
+-- Read from Your Diary rather than their page: the bookmark says otherwise.
+Page.Close()
+lays = 0
+ns.UI.OpenVisit(RFK.id, "journey")
+Eq(lays, 1, "not laid again read from Your Diary")
+Page.Close()
+-- Laid by something else in between (the settings' Refresh): from that.
+ns.UI.OpenVisit(RFK.id, G)
+ns.Touch()
+Page.Refresh()
+Again("after a Refresh laid it from what is there now", 0)
+-- The pen out as it is put away: laid again.
+map.way = map.way or {}
+local drawing = map.way.drawing
+map.way.drawing = true
+Page.Close()
+map.way.drawing = drawing
+lays = 0
+ns.UI.OpenVisit(RFK.id, G)
+Eq(lays, 1, "not laid again after the pen was out")
+Page.Close()
+
+--------------------------------------------------------------------------
+Section("laid a slice a frame, put down once it is all laid")
+
+-- What the sheet came out as: its strips' boxes and its marks.
+local function Laidout()
+    local out = {}
+    for _, e in ipairs(map.noteStrips) do
+        out[#out + 1] = ("%.3f,%.3f,%.3f,%.3f"):format(e.box[1], e.box[2], e.box[3], e.box[4])
+    end
+    for name, t in pairs(map.plan.targets) do out[#out + 1] = ("%s@%.3f,%.3f"):format(name, t.x, t.y) end
+    table.sort(out)
+    return table.concat(out, ";")
+end
+local function Frame()
+    local f = map.driver.scripts.OnUpdate
+    if f then f(map.driver, 0.016) end
+end
+-- Laid at once, as the tests' still clock lays it: what it should come to.
+ns.Touch()
+ns.UI.OpenVisit(RFK.id, G)
+local whole = Laidout()
+Page.Close()
+
+-- Every read of the clock 1 ms on: each slice spent after a few steps.
+mock.clock, mock.clockStep = 0, 1
+ns.Touch()
+lays = 0
+ns.UI.OpenVisit(RFK.id, G)
+Check(host:IsShown(), "the table not out at once")
+Check(map:Laying(), "laid all at once with the slice spent")
+Check(not map:IsShown(), "the sheet down before it was all laid")
+Check(map.driver:IsShown() and map.driver.scripts.OnUpdate, "nothing to lay the rest the next frames")
+local frames = 0
+while map:Laying() and frames < 500 do
+    Frame()
+    frames = frames + 1
+end
+Check(frames > 1, "laid in one frame after the first: " .. frames)
+Check(not map:Laying() and map:IsShown(), "the sheet not down once laid")
+Check(not map.driver:IsShown() and map.driver.scripts.OnUpdate == nil, "the driver still running once laid")
+Eq(lays, 1, "the ink not laid once")
+Eq(Laidout(), whole, "laid a slice a frame, it came out otherwise")
+-- And now it is laid: opened again, down at once.
+Page.Close()
+lays = 0
+ns.UI.OpenVisit(RFK.id, G)
+Check(map:IsShown() and not map:Laying() and lays == 0, "not down at once when laid already")
+Page.Close()
+
+-- Put away while it is being laid: given up, laid afresh next time.
+ns.Touch()
+ns.UI.OpenVisit(RFK.id, G)
+Frame()
+Check(map:Laying(), "laid too soon for the test")
+Page.Close()
+Check(not map:Laying() and not map.driver:IsShown(), "still laying after it was put away")
+Frame()
+Check(not map:IsShown(), "the sheet came down after it was put away")
+ns.UI.OpenVisit(RFK.id, G)
+Check(map:Laying(), "a half laid sheet taken as laid")
+while map:Laying() do Frame() end
+Eq(Laidout(), whole, "laid afresh after being given up, it came out otherwise")
+Page.Close()
+
+-- Laid all at once in the meantime (the settings' Refresh, the screen
+-- changed): that finishes it, and the sheet comes down.
+ns.Touch()
+ns.UI.OpenVisit(RFK.id, G)
+Check(map:Laying(), "laid too soon for the test")
+mock.clockStep = 0
+Page.Refresh()
+Check(not map:Laying() and map:IsShown(), "a Refresh did not finish it and put it down")
+Eq(Laidout(), whole, "finished by a Refresh, it came out otherwise")
+Page.Close()
+
+-- A fault inside goes to the client's error handler; the lay given up.
+mock.clockStep = 1
+local caught
+local handler = _G.geterrorhandler
+_G.geterrorhandler = function() return function(err) caught = err end end
+Page.Ink = function() error("the ink ran out") end
+ns.Touch()
+ns.UI.OpenVisit(RFK.id, G)
+while map:Laying() do Frame() end
+Check(caught and caught:find("the ink ran out"), "the fault did not reach the error handler")
+Check(not map:IsShown() and not map.driver:IsShown(), "the sheet came down after a fault")
+_G.geterrorhandler = handler
+Page.Ink = Ink
+Page.Close()
+mock.clock, mock.clockStep = 0, 0
+ns.UI.OpenVisit(RFK.id, G)
+Eq(Laidout(), whole, "laid after a fault, it came out otherwise")
+Page.Close()
+
 SlashCmdList.SOCIALDIARY("testdata remove")
 ns.UI.CloseJournal()

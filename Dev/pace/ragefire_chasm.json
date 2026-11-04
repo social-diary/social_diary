@@ -1,0 +1,14 @@
+{
+  "map_id": 389,
+  "slug": "ragefire_chasm",
+  "lua_name": "RagefireChasm",
+  "entrance": [3.81, -14.82],
+  "exclude": ["Maur Grimtotem"],
+  "no_pull": [],
+  "normal_pulls": [],
+  "boss_names": {},
+  "summons": {
+    "8996": { "by": 11324, "name": "Voidwalker Minion", "note": "a Searing Blade Warlock's pet (Ragefire Chasm run, 3 Nov 2026)" }
+  },
+  "notes": "Entrance from the route-model handover's config. Maur Grimtotem: an event NPC (handover). Checked in the client on 3 Nov 2026: fit 5.3 yd, packs on the corridors."
+}

@@ -94,8 +94,8 @@ local CHALK = { colour = { 0.93, 0.89, 0.76 }, under = { offset = 0.9, alpha = 0
 -- the more the hand shows. In order of what gives way to what, when two
 -- would clash (the lesser drawn smaller or moved off): a good drop for you
 -- (LOOT), a wipe's scribble (SCRIBBLE), the pen at rest where the group
--- stayed long (REST), the blood where people died (SPLAT), a level-up's
--- star (LEVEL).
+-- stayed long (REST), the blood where people died (SPLAT), a find on
+-- the way (FIND), a level-up's star (LEVEL).
 --   LOOT      round a boss's face, for the best drop there for you: a rare
 --             (blue) one ink loop by hand, `pad` px out from the face,
 --             over its start by `overshoot` of a turn, uneven by `wobble`;
@@ -122,6 +122,17 @@ local CHALK = { colour = { 0.93, 0.89, 0.76 }, under = { offset = 0.9, alpha = 0
 --             `size` px, on a dot of paper `halo` across, the new level
 --             scrawled `text.dx`, `text.dy` px off it, `text.size` pt in the
 --             hand, in chalk
+--   FIND      something good found on the way (Core/DungeonRun.lua's
+--             WAY_LOOT), with no face to circle: LOOT's loop drawn round
+--             the spot instead, the way a hand rings a place on a map. A
+--             pip of ink `pip` px where it fell, ringed `radius` px out,
+--             on a dot of paper reaching `pad` px past the loops (at
+--             `haloAlpha`). Your rare one loop (`rare`); someone else's
+--             epic two, `apart` px apart, as light (`theirs`); your epic
+--             two heavier (`epic`) and `glint.n` short strokes flashing
+--             off its upper right in chalk (`glint.at` degrees, y down,
+--             `glint.spread` apart, from `glint.from` to `glint.to` px past
+--             the loops). Never a star (LEVEL's) nor crossed (DEATH's)
 local LOOT = { pad = 4, overshoot = 0.14, wobble = 0.05, steps = 30,
     rare = { width = 1.5, alpha = 0.9, loops = 1 }, epic = { width = 2.1, alpha = 0.95, loops = 2, apart = 3.5 },
     star = { size = 9, out = 8, width = 1.3 } }
@@ -134,6 +145,10 @@ local SPLAT = { cluster = 18, drops = 5, per = 3, spread = 2.5, grow = 1.4,
     ink = { { 0.42, 0.11, 0.06, 0.62 }, { 0.30, 0.065, 0.04, 0.55 } }, rim = 0.8, rimInk = { 0.25, 0.05, 0.03, 0.5 },
     step = 0.8, warp = { 0.6, 8 }, cap = 360 }
 local LEVEL = { size = 9, halo = 13, haloAlpha = 0.8, width = 1.2, text = { size = 14, dx = 10, dy = -6 } }
+local FIND = { pip = 2.4, radius = 3.5, apart = 2, pad = 1.5, haloAlpha = 0.8,
+    rare = { width = 1.4, alpha = 0.9, loops = 1 }, theirs = { width = 1.4, alpha = 0.85, loops = 2 },
+    epic = { width = 1.9, alpha = 0.95, loops = 2 },
+    glint = { n = 3, at = -45, spread = 30, from = 1.5, to = 5, width = 1 } }
 local APART = { clear = 25, step = 9, tries = 3, tether = { 1, 0.7 }, gap = 12, inset = 6,
     spots = { { 13, -11 }, { -13, -11 }, { 13, 11 }, { -13, 11 }, { 0, -16 }, { 0, 16 }, { 16, 0 }, { -16, 0 } } }
 
@@ -142,6 +157,7 @@ DungeonPage.APART, DungeonPage.MEDAL, DungeonPage.DEATH, DungeonPage.HOVER = APA
 DungeonPage.CHALK = CHALK
 DungeonPage.LOOT, DungeonPage.SCRIBBLE, DungeonPage.REST, DungeonPage.SPLAT, DungeonPage.LEVEL =
     LOOT, SCRIBBLE, REST, SPLAT, LEVEL
+DungeonPage.FIND = FIND
 
 -- What the pen at rest draws for a boss the group spent `share` of the
 -- run's time inside at (REST): "knot", "circle" or nil.
@@ -256,7 +272,9 @@ end
 -- or false off the floor shown), stops (a boss's name, ns.Dungeons.Norm,
 -- to its point), reached (the furthest stop whose boss fell; the user's
 -- own way all of it, WAY-14), killed (the bosses that fell, by
--- ns.Dungeons.Norm) }, or nil without a way through. A stop is
+-- ns.Dungeons.Norm), course (the way in yards with the packs on it, where
+-- the dungeon has pace data: Core/DungeonPace.lua), visit, notes, anchors
+-- (Anchors, laid when first asked) }, or nil without a way through. A stop is
 -- its boss: where the boss stands, the way meets it.
 local function Path(visit, wing, At, notes)
     local D = ns.Dungeons
@@ -276,7 +294,8 @@ local function Path(visit, wing, At, notes)
         end
     end
     if own then reached = #route end
-    return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at }
+    return { route = route, own = own, pts = pts, stops = stops, reached = reached, killed = at,
+        course = ns.DungeonPace and ns.DungeonPace.Course(visit, route) or nil, visit = visit, notes = notes }
 end
 
 -- The first free place for a mark near x, y (APART), inside the box.
@@ -542,15 +561,165 @@ local function NextStop(path, i0)
     return i0 < #path.route and #path.route or nil
 end
 
--- Where a death on the way lies (MAP-9): `frac` of the way along the
--- route from `after`'s stop (the way in without one) to `before`'s. On an
--- open leg (`open`: no kill after it, Core/DungeonRun.lua's OPEN) to the
--- next stop whose boss still stands, at most OPEN_MOST of the way, so it
--- never lies on that boss nor past it; just past `after` where nothing
+-- What killed a death, its NPC ID; nil for a player, or nothing known.
+local function KillerOf(death)
+    local k = type(death) == "table" and death.killer
+    return type(k) == "table" and not k.player and tonumber(k.npcID) or nil
+end
+
+-- What the route model places for a moment on the way (Core/DungeonPace.lua's
+-- PlaceGroup items): a wipe's (or a near wipe's) deaths, all of them, the
+-- seconds into the leg from its first; a death alone; or a roll or a
+-- level-up, with no killer.
+local function Items(leg)
+    if leg.deaths and leg.deaths[1] then
+        local t0, items = leg.deaths[1].time or 0, {}
+        for _, d in ipairs(leg.deaths) do
+            items[#items + 1] = { dt = leg.dt + math.max(0, (d.time or t0) - t0), npc = KillerOf(d) }
+        end
+        return items
+    end
+    return { { dt = leg.dt, npc = KillerOf(leg.death) } }
+end
+
+-- When a moment on the way happened: a wipe's first death, a death, a
+-- roll's or a level-up's time.
+local function TimeOf(leg)
+    return leg.deaths and leg.deaths[1] and leg.deaths[1].time or leg.death and leg.death.time or leg.time
+end
+
+local LegPoint
+
+-- The sure places on the way (3 Nov 2026): where the route model put a
+-- moment by what killed it (PacePoint's "killer"), the group was there
+-- then. A leg is placed on from the last such place before a moment, not
+-- from its start: the time since a wipe at a pull is the time since that
+-- pull, however long the leg took to get there. path.anchors[key] (key:
+-- the leg's points, "i0:i1"), in the order they happened: { dt (seconds
+-- into the leg), yd (yards along the way), time, wipe (a wipe's: the group
+-- starts that pull again) }. Laid once a sheet, the
+-- moments taken in the order they happened (a wipe, a near wipe, a death
+-- alone), each placed from the anchors before it.
+local function Anchors(path)
+    if path.anchors then return path.anchors end
+    path.anchors = {}
+    local notes = path.notes
+    if not (notes and path.course) then return path.anchors end
+    local units, grouped, wipes = {}, {}, {}
+    for n, list in ipairs({ notes.wipes or {}, notes.near or {} }) do
+        for _, w in ipairs(list) do
+            units[#units + 1] = w
+            if n == 1 then wipes[w] = true end
+            for _, d in ipairs(w.deaths or {}) do grouped[d] = true end
+        end
+    end
+    for _, l in ipairs(notes.legs or {}) do
+        if not grouped[l.death] then units[#units + 1] = l end
+    end
+    local order = {}
+    for i, u in ipairs(units) do order[u] = i end
+    table.sort(units, function(a, b)
+        local ta, tb = TimeOf(a) or 0, TimeOf(b) or 0
+        if ta ~= tb then return ta < tb end
+        return order[a] < order[b]
+    end)
+    for _, u in ipairs(units) do
+        local _, _, how, info = LegPoint(path, u)
+        if how == "killer" and info and u.dt then
+            local list = path.anchors[info.key] or {}
+            path.anchors[info.key] = list
+            list[#list + 1] = { dt = u.dt, yd = info.yd, time = TimeOf(u), wipe = wipes[u] or nil }
+        end
+    end
+    return path.anchors
+end
+
+-- Where the route model puts a moment on the leg from point i0 to the
+-- boss at point i1 (Core/DungeonPace.lua: the packs on the way, the time
+-- into the leg, how long it took where its boss fell, and what killed it;
+-- a wipe's deaths together, at one pull), from the last sure place on the
+-- leg before it (Anchors), kept PACE_CLEAR yards off both of the leg's
+-- ends (the boss behind and the one ahead, never on them). After a wipe
+-- the group starts that pull again: the clock starts again where the
+-- user's pause after it ends (visit.pauses, the first one ending after
+-- the wipe and starting within AFTER_WIPE of it), whatever came between
+-- (a rez, a run back, drinking). Else, where the group went out between that place and
+-- the moment (a release, a run back in), the walk back to it from the way
+-- in, at the model's pace, is not time spent getting on. nil where the
+-- dungeon has no pace data or the leg is not one the model takes; false
+-- where the model placed it, but on a floor this sheet does not show (a
+-- dungeon on several floors: it is drawn on that floor's sheet, and
+-- nowhere else; a moment on the stretch from one floor to the next goes
+-- with the nearer end). x, y, how ("killer": at a pull of what killed it;
+-- or "pace") and { yd, key (the leg's), anchor (the place it went from, or
+-- nil), shift (seconds taken off: the anchor's and the walk back), floor
+-- (the one it lies on) }.
+local PACE_CLEAR, AFTER_WIPE = 12, 60
+local function PacePoint(path, leg, i0, i1, open)
+    local Pace, course = ns.DungeonPace, path.course
+    if not (Pace and course and i1 and leg.dt) then return nil end
+    local key = i0 .. ":" .. i1
+    local anchor
+    for _, a in ipairs(Anchors(path)[key] or {}) do
+        if a.dt < leg.dt then anchor = a end
+    end
+    local shift, start = 0, nil
+    if anchor then
+        shift, start = anchor.dt, anchor.yd
+        local t, visit, Run = TimeOf(leg), path.visit, ns.DungeonRun
+        local pauses = visit and visit.pauses
+        if t and anchor.time and anchor.wipe and type(pauses) == "table" then
+            local resume = anchor.time
+            for _, p in ipairs(pauses) do
+                if p.to and p.to > anchor.time and p.from and p.from <= anchor.time + AFTER_WIPE then
+                    resume = math.min(p.to, t)
+                    break
+                end
+            end
+            shift = shift + Run.Active(visit, anchor.time, resume)
+        elseif t and anchor.time and visit and Run.InsideBetween(visit, anchor.time, t) < t - anchor.time - 1 then
+            shift = shift + anchor.yd / ns.PaceModel.DEFAULTS.speed
+        end
+    end
+    local items = Items(leg)
+    for _, it in ipairs(items) do it.dt = math.max(0, it.dt - shift) end
+    local known = not open and leg.known or nil
+    if known then known = known - shift > 0 and known - shift or nil end
+    local yd, _, _, by = Pace.PlaceGroup(course, i0, i1, items, known, start)
+    if not yd then return nil end
+    local from, to = course.cum[i0], course.cum[i1]
+    local clear = math.min(PACE_CLEAR, (to - from) / 2)
+    yd = math.max(from + clear, math.min(to - clear, yd))
+    local k, t = Pace.Along(course, yd)
+    if not k then return nil end
+    local a, b = path.pts[k], path.pts[k + 1]
+    local x, y, floor
+    if a and b then
+        x, y, floor = a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, course.floors[k]
+    elseif a and t < 0.5 then
+        x, y, floor = a[1], a[2], course.floors[k]
+    elseif b and t >= 0.5 then
+        x, y, floor = b[1], b[2], course.floors[k + 1]
+    else
+        return false
+    end
+    return x, y, by == "killer" and "killer" or "pace",
+        { yd = yd, key = key, anchor = anchor, shift = shift, floor = floor }
+end
+
+-- Where a death on the way lies (MAP-9): where the route model puts it
+-- (PacePoint), for a dungeon with pace data; else `frac` of the way along
+-- the route from `after`'s stop (the way in without one) to `before`'s. On
+-- an open leg (`open`: no kill after it, Core/DungeonRun.lua's OPEN) to
+-- the next stop whose boss still stands, at most OPEN_MOST of the way, so
+-- it never lies on that boss nor past it; just past `after` where nothing
 -- says how far. nil where the way through does not say (no route, a stop
--- off this floor).
+-- off this floor), or the route model put it on another floor's sheet. x,
+-- y and how it was placed: "killer" or "pace" (the
+-- route model, PacePoint, with what it says of it), "eased" (an open leg),
+-- "share" (between kills) or "past" (just past `after`).
 local OPEN_MOST = 0.9
-local function LegPoint(path, leg)
+function LegPoint(path, leg)
     if not path then return nil end
     local Norm = ns.Dungeons.Norm
     local i0 = leg.after and path.stops[Norm(leg.after.name)] or (not leg.after and 1) or nil
@@ -558,6 +727,10 @@ local function LegPoint(path, leg)
     if not i0 then return nil end
     local open = leg.open and leg.frac and not i1
     if open then i1 = NextStop(path, i0) end
+    local px, py, phow, pinfo = PacePoint(path, leg, i0, i1, open)
+    if px then return px, py, phow, pinfo end
+    if px == false then return nil end
+    local how = not i1 and "past" or open and "eased" or "share"
     local pts = {}
     if i1 then
         local step = i1 >= i0 and 1 or -1
@@ -581,13 +754,14 @@ local function LegPoint(path, leg)
     for k = 2, #pts do
         if want <= lengths[k] or k == #pts then
             local t = lengths[k] > 0 and math.min(1, want / lengths[k]) or 0
-            return pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * t, pts[k - 1][2] + (pts[k][2] - pts[k - 1][2]) * t
+            return pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * t, pts[k - 1][2] + (pts[k][2] - pts[k - 1][2]) * t,
+                how
         end
         want = want - lengths[k]
     end
 end
 
-DungeonPage.LegPoint, DungeonPage.OPEN_MOST = LegPoint, OPEN_MOST
+DungeonPage.LegPoint, DungeonPage.OPEN_MOST, DungeonPage.PACE_CLEAR = LegPoint, OPEN_MOST, PACE_CLEAR
 
 -- Where a moment at time `t` on the way lies on the map (a drop rolled for
 -- that no boss's table holds: the rolls' strips, pass B): on the route
@@ -651,9 +825,17 @@ local function Deaths(plan, P, stock)
         onWay[#onWay + 1] = { x = x, y = y, n = 0 }
         return x, y
     end
+    -- A wipe's deaths (and a near wipe's) were one pull: each lies where
+    -- the wipe does (LegPoint of it, the place its strip points at).
+    local together = {}
+    for _, list in ipairs({ notes.wipes or {}, notes.near or {} }) do
+        for _, w in ipairs(list) do
+            for _, d in ipairs(w.deaths or {}) do together[d] = w end
+        end
+    end
     for k, leg in ipairs(notes.legs or {}) do
         local tip = Style.TipList(W.Death(visit, leg.death), { W.Leg(leg, plan.names) })
-        local x, y = LegPoint(plan.path, leg)
+        local x, y = LegPoint(plan.path, together[leg.death] or leg)
         if x then x, y = Fan(x, y) end
         if not x then
             local t = Near(leg.after) or Near(leg.before)
@@ -930,6 +1112,9 @@ local function Splats(plan, P)
             P.Quad(pools.bloodCore, SPLAT.rimInk, SPLAT.rimInk[4], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8])
         end
         plan.flavour[#plan.flavour + 1] = { kind = "blood", x = sp.x, y = sp.y, r = spread + 4, n = sp.n }
+        -- A stain is a few ms (its blot): laying the sheet may wait for the
+        -- next frame after each (UI/Dungeon/Sheet.lua's STAGE).
+        DungeonPage.Step()
     end
 end
 
@@ -966,10 +1151,57 @@ local function Levels(plan, P, busy, stock)
     end
 end
 
+-- What a find on the way is drawn as (FIND): "epic" for your epic or
+-- better, "theirs" for someone else's, "rare" for your rare.
+function DungeonPage.FindTier(f)
+    if f.quality >= 4 then return f.mine and "epic" or "theirs" end
+    return "rare"
+end
+
+-- The finds on the way (FIND): at the place Ink gave each ("loot:<n>"),
+-- moved off what is there; the place kept where it ended up, with the
+-- loops' reach, for its strip's leader.
+local function Finds(plan, P, busy, stock)
+    local pools, F = P.pools, FIND
+    for i, f in ipairs(plan.notes.wayLoot or {}) do
+        local t = plan.targets["loot:" .. i]
+        if t then
+            local tier = DungeonPage.FindTier(f)
+            local L = F[tier]
+            local apart = L.loops > 1 and F.apart or 0
+            local reach = F.radius + apart * L.loops + L.width
+            local G = F.glint
+            local outer = tier == "epic" and reach + G.to or reach
+            local x, y = t.x, t.y
+            if not Free(busy, x, y, outer) then
+                x, y = Beside(busy, x, y, outer * 2 + 2, outer, { 45, 135, -45, -135, 90, -90, 0, 180 })
+            end
+            local U = Stream(plan.visit.id .. ":find:" .. i)
+            P.Dot(pools.halo, x, y, 2 * (reach + F.pad), stock, F.haloAlpha)
+            P.Dot(pools.ink, x, y, F.pip, Style.INK_STRONG, L.alpha)
+            Hand(P, pools.loot, Loop(x, y, F.radius, L.loops, apart, U, LOOT.wobble), L.width, Style.INK_STRONG,
+                L.alpha, true, nil, 1)
+            if tier == "epic" then
+                for k = 1, G.n do
+                    local a = math.rad(G.at + (k - (G.n + 1) / 2) * G.spread + U(-6, 6))
+                    local r0, r1 = reach + G.from, reach + G.to * (k == (G.n + 1) / 2 and 1 or 0.75)
+                    Hand(P, pools.scribble, { x + r0 * math.cos(a), y + r0 * math.sin(a),
+                        x + r1 * math.cos(a), y + r1 * math.sin(a) }, G.width, CHALK.colour, 1, false,
+                        pools.scribbleUnder, 0)
+                end
+            end
+            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.FoundTip(plan.visit, f))
+            plan.flavour[#plan.flavour + 1] = { kind = "find", tier = tier, x = x, y = y, r = outer + 1, find = i }
+            busy[#busy + 1] = { x = x, y = y, r = outer }
+            t.x, t.y, t.r = x, y, reach
+        end
+    end
+end
+
 -- The moments, in order of what gives way to what (the less important
 -- drawn after, round what is there): the drops' loops, the wipes'
 -- scribbles, the pen at rest, the blood (under the crosses, where they
--- are), the level-ups. Kept on the plan: plan.flavour ({ kind, x, y, r,
+-- are), the finds on the way, the level-ups. Kept on the plan: plan.flavour ({ kind, x, y, r,
 -- ... } each), which the margin notes keep clear of too.
 local function Flavour(plan, P, stock)
     plan.flavour = {}
@@ -981,10 +1213,16 @@ local function Flavour(plan, P, stock)
     end
     for _, c in ipairs(plan.crosses) do busy[#busy + 1] = { x = c.x, y = c.y, r = DEATH.halo / 2 } end
     if plan.door then busy[#busy + 1] = { x = plan.door.x, y = plan.door.y, r = KILL.halo / 2 } end
+    local Step = DungeonPage.Step
     Circles(plan, P, busy)
+    Step()
     Scribbles(plan, P, busy)
+    Step()
     Rests(plan, P, busy)
+    Step()
     Splats(plan, P)
+    Step()
+    Finds(plan, P, busy, stock)
     Levels(plan, P, busy, stock)
 end
 
@@ -1000,6 +1238,9 @@ function DungeonPage.Ink(plan, P, stock)
     local W = DungeonPage.Words
 
     plan.routeCounts = plan.route and DrawRoute(P, plan.path) or { ink = 0, pencil = 0 }
+    -- Where laying the sheet may wait for the next frame (UI/Dungeon/
+    -- Sheet.lua's STAGE): between the passes, never inside one.
+    DungeonPage.Step()
 
     if plan.door then
         local d = plan.door
@@ -1037,7 +1278,12 @@ function DungeonPage.Ink(plan, P, stock)
         P.Hit(pools.hit, mark.x, mark.y, HOVER, Style.TipList(plan.names[mark.name] or mark.name, lines))
     end
     if plan.door then plan.targets.door = { x = plan.door.x, y = plan.door.y, r = 7 } end
+    DungeonPage.Step()
     Deaths(plan, P, stock)
+    DungeonPage.Step()
+    -- A development overlay over the marks (Dev/PaceDebug.lua's packs of
+    -- the pace data), set only by /sd pace map; a release never has it.
+    if DungeonPage.DevOverlay then DungeonPage.DevOverlay(plan, P) end
     -- Where each wipe on the way lies (MAP-17), for its strip's arrow (step
     -- 2): the leg point of its first death, else by the boss before or
     -- after it.
@@ -1057,6 +1303,17 @@ function DungeonPage.Ink(plan, P, stock)
             if t then x, y = t.x - (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
         end
         if x then plan.targets["near:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
+    end
+    -- And each find on the way worth a mark (Core/DungeonRun.lua's
+    -- WAY_LOOT, "loot:<n>"): where the route model puts its time (by time
+    -- alone, never a sure place), else by the boss before or after it.
+    for i, f in ipairs(plan.notes.wayLoot or {}) do
+        local x, y = LegPoint(plan.path, f)
+        if not x then
+            local t = (f.after and plan.targets[f.after.name]) or (f.before and plan.targets[f.before.name])
+            if t then x, y = t.x + (t.r + DEATH.ring) * 0.9, t.y + (t.r + DEATH.ring) * 0.9 end
+        end
+        if x then plan.targets["loot:" .. i] = { x = x, y = y, r = DEATH.halo / 2 } end
     end
 
     -- The best drop for you at each boss, for its loop (LOOT).

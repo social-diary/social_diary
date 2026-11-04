@@ -12,6 +12,8 @@
 --                 BOSS_KILL, for dungeon bosses, and that the id and name
 --                 may be secret. A secret value is kept as nil and the
 --                 pull says `secret`: the probe's answer, read off the save.
+--   fights        PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED: the user's
+--                 own combat, plain.
 --   loot          CHAT_MSG_LOOT, read through the client's own strings
 --                 (LOC-1), never English words. Under chat lockdown the
 --                 text is secret and the line is let go.
@@ -69,6 +71,11 @@ ns.Every(30, function() Instances.Expire() end)
 --------------------------------------------------------------------------
 -- Pulls (INS-28)
 --------------------------------------------------------------------------
+
+-- The user's fights inside (Instances.Combat): combat's start and end,
+-- never secret. For the time a run spent between fights.
+ns.On("PLAYER_REGEN_DISABLED", function() Instances.Combat(true) end)
+ns.On("PLAYER_REGEN_ENABLED", function() Instances.Combat(false) end)
 
 local function Readable(id, name)
     local secret = ns.IsSecret(id) or ns.IsSecret(name)

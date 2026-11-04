@@ -1,0 +1,18 @@
+{
+  "map_id": 36,
+  "slug": "deadmines",
+  "lua_name": "Deadmines",
+  "entrance": [-16.4, -383.07],
+  "exclude": [],
+  "no_pull": [],
+  "normal_pulls": [],
+  "boss_names": {
+    "Sneed": "Sneed's Shredder"
+  },
+  "heights": {
+    "291": [45, 90],
+    "292": [-20, 45]
+  },
+  "summons": {},
+  "notes": "4 Nov 2026 (2026-11-04), not yet checked in the client. The first dungeon on two floors: The Deadmines (uiMap 291: the mines, Rhahk'Zor, Sneed, Miner Johnson) and Ironclad Cove (292: the foundry, the ship; Gilnid, Mr. Smite, Captain Greenskin, Edwin VanCleef, Cookie), both with art bounds. The pictures overlap between game y -797 and -517 (the mast room, the foundry); there the spawns split by height with nothing between 41 and 47 yd: the mines and the foundry's upper ledge at 47 to 61 go to 291, the foundry floor (19 to 37) and the ship (2 to 41) to 292. The foundry is a spiral drawn on both floors (its top on 291, Gilnid's floor on 292, 30 yd below, the same x and y), which is why spawns are put on their floor before they are linked into packs. Entrance: the instance's start position as remembered (-16.4, -383.07, z 61.8), 22 yd from DCF's entrance marker; reported in `worst` only. Sneed: the table has Sneed's Shredder (642) at his spot and no Sneed (643, who climbs out when it falls): the Shredder is the anchor by boss_names. Miner Johnson (a rare, DCF's boss) shares his spawn point with a Defias Miner (the same point, either of them); that Miner's pack is non-elite and drops out. Mr. Smite's Defias Blackguard adds stand in the table (four, by the deck); the Captain's and VanCleef's guards likewise. No excludes: no friendly or event NPC is in the table. No summons known yet. Scripted spawns not in the table (Sneed himself, VanCleef's two Blackguards he calls, the Defias Pirate waves at the cannon door) fall back to time."
+}
