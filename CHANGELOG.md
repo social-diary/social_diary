@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- Occasional hints point out features you may have missed
+
 ### Fixes
 
 - _Dungeon View_ spreads deaths and wipes along the way to the next boss

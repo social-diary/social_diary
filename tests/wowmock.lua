@@ -296,6 +296,8 @@ local function NewWidget(frameType, name, parent, template)
         return scale and scale[1] or 1
     end
     function w:GetTop() return self.at and self.at[2] end
+    -- Its right edge on the screen: what a test says (`right`), else nil.
+    function w:GetRight() return self.right end
     -- Its alpha, as last set (SetAlpha is recorded with the no-ops).
     function w:GetAlpha()
         local alpha = rec.calls.SetAlpha
@@ -495,7 +497,7 @@ _G.SetPortraitTextureFromCreatureDisplayID = function(texture, display) texture.
 -- { id, channel }.
 _G.SOUNDKIT = { IG_QUEST_LOG_OPEN = 844, IG_QUEST_LOG_CLOSE = 845, IG_SPELLBOOK_OPEN = 829,
     IG_SPELLBOOK_CLOSE = 830, IG_CHARACTER_INFO_TAB = 841, IG_ABILITY_PAGE_TURN = 836,
-    IG_WRITE_QUEST = 3093, IG_QUEST_LIST_SELECT = 877, RAID_WARNING = 8959,
+    IG_WRITE_QUEST = 3093, IG_QUEST_LIST_OPEN = 875, IG_QUEST_LIST_SELECT = 877, RAID_WARNING = 8959,
     IG_BACKPACK_OPEN = 862 }
 M.sounds = {}
 _G.PlaySound = function(id, channel) M.sounds[#M.sounds + 1] = { id, channel } end

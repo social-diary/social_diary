@@ -95,7 +95,23 @@ local ACCOUNT_SETTINGS = {
     -- The note on the dungeon map has been shown: only ever the once
     -- (UI/Dungeon/Tutorial.lua).
     dungeonTutorialSeen = false,
+    -- HNT-10: the hints on the pages (Core/Hints.lua). About the person, as
+    -- the hints' own record is.
+    showHints = true,
     debug = false,
+}
+
+-- SocialDiaryDB.hints: when the hints on the pages may come and which have
+-- (Core/Hints.lua's header says each field). Account-wide, beside the
+-- settings rather than among them: a record, not a choice (HNT-9).
+local HINTS = {
+    seen = {},
+    retired = {},
+    again = {},
+    played = 0,
+    sittingShown = 0,
+    opens = 0,
+    remembers = 0,
 }
 
 local CHARACTER_SETTINGS = {
@@ -262,7 +278,7 @@ function ns.InitDB()
 
     Migrate(account, ACCOUNT_SCHEMA, STEPS.account)
     Migrate(character, CHARACTER_SCHEMA, STEPS.character)
-    ApplyDefaults(account, { settings = ACCOUNT_SETTINGS, own = {} })
+    ApplyDefaults(account, { settings = ACCOUNT_SETTINGS, own = {}, hints = HINTS })
     ApplyDefaults(character, { settings = CHARACTER_SETTINGS })
 
     -- Read once: the diary in use stays the same until the next load.
@@ -293,6 +309,11 @@ end
 -- realm, level, lastLogin }.
 function ns.OwnCharacters()
     return account.own
+end
+
+-- The hints' record (Core/Hints.lua), account-wide; nil before InitDB.
+function ns.HintState()
+    return account and account.hints
 end
 
 -- The user's settings, for the surfaces that read or set one by name (the

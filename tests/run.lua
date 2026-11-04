@@ -51,6 +51,8 @@ local FILES = {
     "people",
     "reunion",
     "settings",
+    "hints",
+    "hints_ui",
     "paper_grain",
     "minimap",
     "sightings",

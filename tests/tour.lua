@@ -61,13 +61,17 @@ ns.Diary.Add(F.STRANGER.guid, { unit = "target", source = "test" })
 mock.SetUnit("target", nil)
 ns.Sessions.Close(ns.Sessions.Current(), mock.now)
 
--- The saved files as they were before a tour, `introSeen` aside.
+-- The saved files as they were before a tour, `introSeen` aside, and the
+-- hints' record: the book opening is counted there (Core/Hints.lua), which
+-- is the book's doing, not the tour's.
 local before
 local function Snapshot()
     ns.db.settings.introSeen = false
+    SocialDiaryDB.hints.opens = 0
     before = { Copy(SocialDiaryDB), Copy(SocialDiaryCharDB) }
 end
 local function Unchanged(what)
+    SocialDiaryDB.hints.opens = 0
     Eq(Diff(before[1], SocialDiaryDB, "introSeen"), nil, what .. ": the account file changed")
     Eq(Diff(before[2], SocialDiaryCharDB, "introSeen"), nil, what .. ": the character's file changed")
 end

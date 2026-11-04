@@ -1,11 +1,12 @@
 -- Settings: Interface (UI/Settings/Page.lua lists the sections; the
--- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, and how
--- the book looks. Its
+-- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, how
+-- the book looks, and the hints on the pages. Its
 -- subpages are Toasts.lua, Shortcuts.lua and Dungeons.lua beside it.
 
 local addonName, ns = ...
 
 local Style = ns.Style
+local FONT = Style.FONT
 local SettingsUI = ns.UI.Settings
 local Kit = SettingsUI.Kit
 local Switch, DependsOn = Kit.Switch, Kit.DependsOn
@@ -35,10 +36,23 @@ local function BuildInterface(pane, c)
         "No folds or bends on the sheets, and a person’s name sits straight on their page.")
     page.revealMap = Switch(c, "Use fully discovered map for map sheets", "revealMap", nil, nil,
         nil)
+
+    -- HNT-10: the hints on the pages (Core/Hints.lua). About the person at
+    -- the keyboard, not the character, so an account setting, and it says so.
+    c:Heading("Hints")
+    page.showHints = Switch(c, "Show hints about things you may have missed", "showHints", nil,
+        function(on) if not on and ns.UI.HintSlip then ns.UI.HintSlip.Hide() end end,
+        "Now and then a small note on the page points something out. Applies to every character.")
+    page.hintsAgain = Style.Link(pane, FONT.body, function()
+        ns.Hints.Reset()
+        ns.Print("the hints come again, each the next time its page is open.")
+    end)
+    page.hintsAgain:SetText("Show hints again")
+    c:Place(page.hintsAgain, 18, 0, 8)
 end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = "Interface",
-    about = "Tooltips, minimap, how the book looks", build = BuildInterface })
+    about = "Tooltips, minimap, how the book looks, hints", build = BuildInterface })
 
 -- The saved grain, as soon as the saved settings are there (Core/Events.lua
 -- loads first, so its handler has run) and before anything is built with it.

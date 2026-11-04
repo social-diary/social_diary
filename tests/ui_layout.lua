@@ -80,7 +80,7 @@ local MODULES = {
     Surface = true, Light = true, LinkSheet = true, NoteSheet = true, MapSheet = true, MapArt = true,
     Pen = true, InkTrail = true, InkBlot = true, Hand = true, TimelineText = true,
     YourDiary = true, JourneyPlate = true, JourneyText = true, JourneyLook = true, JourneyMargin = true,
-    DungeonMap = true, DungeonPage = true,
+    DungeonMap = true, DungeonPage = true, Hints = true, HintSlip = true,
     PersonText = true, PersonStrips = true, PersonPlate = true, Clippings = true, PersonHeader = true,
 }
 

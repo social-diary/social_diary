@@ -17,6 +17,10 @@ local Style = ns.Style
 --                          added, a new note saved. The quill of a quest
 --                          written into the log
 --   tear                   the parcel at login torn open: a bag opened
+--   hint                   a hint's slip set down by the book (UI/Paper/HintSlip.lua):
+--                          the quest giver's page coming up, a lighter paper
+--                          sound than a sheet across the book, and not the
+--                          page turning, as the page stays where it is
 --   foeAlert               a foe in view (Core/Reunions.lua): the raid
 --                          warning, on the master channel, so it is heard
 --                          with sound effects turned down
@@ -25,6 +29,7 @@ Style.SOUNDS = {
     sheetClose = { "IG_QUEST_LOG_CLOSE", "IG_SPELLBOOK_CLOSE" },
     pageTurn = { "IG_ABILITY_PAGE_TURN", "IG_SPELLBOOK_OPEN" },
     write = { "IG_WRITE_QUEST", "IG_QUEST_LIST_SELECT" },
+    hint = { "IG_QUEST_LIST_OPEN", "IG_CHARACTER_INFO_TAB" },
     foeAlert = { "RAID_WARNING", "READY_CHECK" },
     -- The parcel at login torn open (UI/Windows/Intro/Parcel.lua): a bag opened, the
     -- wrapping coming off (chosen in-client, 9 Oct; the quest abandon's rip

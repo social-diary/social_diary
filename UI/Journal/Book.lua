@@ -375,8 +375,12 @@ end
 -- the parcel keeps offering the introduction until it has been seen.
 function ns.UI.ShowJournal(guid)
     J.journal = J.journal or Build()
-    -- A book opened afresh is leafed through from the start again.
-    if not J.journal:IsShown() then leaves, leafCount = {}, 0 end
+    -- A book opened afresh is leafed through from the start again, and
+    -- counts as an opening for the hints (Core/Hints.lua).
+    if not J.journal:IsShown() then
+        leaves, leafCount = {}, 0
+        ns.Hints.Opened()
+    end
     local unseen = false
     if guid then
         J.selected = ns.SafeGUID(guid)

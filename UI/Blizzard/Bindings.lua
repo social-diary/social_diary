@@ -21,6 +21,9 @@ BINDING_NAME_SOCIALDIARY_REMEMBER = "Remember this"
 -- gets a new note (ns.UI.QuickNote), with them linked on it. The picker is
 -- /sd remember's.
 function SocialDiary_Remember()
+    -- Only the key comes here (the macro and /sd remember open the picker):
+    -- what the "Quickly Add Notes" hints count (Core/Hints.lua).
+    ns.Hints.Remembered()
     local guid = ns.SafeGUID(UnitGUID("target"))
     if guid and UnitIsPlayer("target") and guid ~= ns.ownGUID then
         if ns.Diary.IsDiary(guid) then

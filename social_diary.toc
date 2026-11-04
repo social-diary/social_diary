@@ -59,6 +59,9 @@ Core/Custom.lua
 Core/JourneyRecap.lua
 Core/PersonPlate.lua
 Core/Events.lua
+# After Events.lua: its PLAYER_LOGIN handler runs after the one that
+# loads the saved data.
+Core/Hints.lua
 Core/Slash.lua
 
 UI/Kit/Chrome.lua
@@ -96,6 +99,7 @@ UI/Ink/HandData.lua
 UI/Journey/Plate.lua
 UI/Paper/LinkSheet.lua
 UI/Paper/NoteSheet.lua
+UI/Paper/HintSlip.lua
 UI/Words/Timeline.lua
 # The person's page's words (ns.UI.PersonText): its strips, their tooltips,
 # its plate's marks.
@@ -152,6 +156,9 @@ UI/Dungeon/Way.lua
 UI/Dungeon/Tutorial.lua
 UI/Journal/Nearby.lua
 UI/Journal/Empty.lua
+# The hints on the pages (Core/Hints.lua): which, their words and the
+# watcher; their slip is UI/Paper/HintSlip.lua's.
+UI/Journal/Hints.lua
 # The reunion toast: the card first (ns.UI.Toast), its words, the queue and
 # the entry point, then placing it.
 UI/Windows/Reunion/Toast.lua
@@ -294,6 +301,7 @@ Dev/HandTest.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
 Dev/TestData.lua
+Dev/Hints.lua
 Features/LevelUps/Dev.lua
 Features/Trade/Dev.lua
 Features/Chat/Dev.lua

@@ -281,6 +281,8 @@ function Custom.Insert(kind, fields, where)
     while at > 1 and j.custom[at - 1].t > t do at = at - 1 end
     table.insert(j.custom, at, rec)
     Journey.Touch()
+    -- What the "Something missing?" hint teaches, done (Core/Hints.lua).
+    ns.Hints.Retire("custom-events")
     return rec
 end
 
@@ -312,6 +314,7 @@ function Custom.Edit(kind, rec, fields)
         saved.custom = next(changes) ~= nil and changes or nil
     end
     Journey.Touch()
+    ns.Hints.Retire("custom-events")
     return true
 end
 
