@@ -11,8 +11,9 @@
 -- "loot" } (a kill only its loot told of), rolls = { { key, hkey, item,
 -- itemID, time, need = { [guid] = roll, or true when only the choice was
 -- said }, winner, winRoll, winNeed } } (group loot rolls, Need only),
--- combat = { { from, to } } (the user's own fights inside, `to` nil while
--- one goes on; Combat) }.
+-- pauses = { { from, to } } (the user's stretches out of combat inside,
+-- between two fights, PAUSE.least seconds or longer; Combat), fighting
+-- (true in a fight), calm (when the user's last fight ended) }.
 --
 -- Capture/Instances.lua tells this file what the client says (in, out, the
 -- group, pulls, loot), and the deaths' capture tells it who died. The open
@@ -33,11 +34,14 @@ local GAP = 30 * 60
 local KEEP_SECONDS = 10 * 60
 -- Caps, so one long night cannot grow a record without end.
 local MAX_DEATHS, MAX_LOOT, MAX_PULLS, MAX_SPANS, MAX_ROLLS = 60, 40, 60, 40, 40
--- The user's fights inside (Combat): at most `most` a run; one that starts
--- within `join` seconds of the last one's end carries it on (a chain
--- pull, a mob that ran and came back).
-local COMBAT = { most = 400, join = 5 }
-Instances.COMBAT = COMBAT
+-- The user's pauses inside (Combat): a stretch out of combat between two
+-- fights, kept when it lasted `least` seconds or more, at most `most` a
+-- run. Only these: the clock (Core/DungeonRun.lua's Active) leaves out a
+-- wait past two minutes, and a wipe's anchor starts again where the pause
+-- after it ends; the fights themselves are not needed, and a run keeps a
+-- few dozen pauses where it would keep hundreds of fights (3 Nov 2026).
+local PAUSE = { least = 30, most = 200 }
+Instances.PAUSE = PAUSE
 
 Instances.GAP = GAP
 
@@ -149,8 +153,7 @@ function Instances.Close(now)
     if span and not span.to then span.to = now end
     visit.endedAt = span and span.to or now
     visit.pull = nil
-    local fight = visit.combat and visit.combat[#visit.combat]
-    if fight and not fight.to then fight.to = visit.endedAt end
+    visit.calm, visit.fighting = nil, nil
     if not Kept(visit, now) then
         ns.db.instances[visit.id] = nil
         ns.Debug("visit %d to %s: not kept (alone, no kill, short)", visit.id, tostring(visit.name))
@@ -204,32 +207,34 @@ function Instances.Leave(now, ghost)
     span.to = now or ns.Now()
     span.ghost = ghost or nil
     visit.endedAt = span.to
-    -- A fight does not go on outside.
-    local fight = visit.combat and visit.combat[#visit.combat]
-    if fight and not fight.to then fight.to = span.to end
+    -- A fight does not go on outside: the pause starts here (the time
+    -- outside is no time inside, Core/DungeonRun.lua's Inside).
+    if visit.fighting then
+        visit.fighting, visit.calm = nil, span.to
+    end
     ns.Touch()
 end
 
--- The user went into a fight (`on`) or out of it, inside a run: kept as
--- visit.combat, so the time between fights can be told from the fights
--- (Core/DungeonRun.lua's Active: a long wait is not progress along the
--- way). Nothing outside a run.
+-- The user went into a fight (`on`) or out of it, inside a run. Out of
+-- one, the pause starts (visit.calm); into the next, it ends, and is kept
+-- (visit.pauses) when it lasted PAUSE.least or more: the time between
+-- fights, for Core/DungeonRun.lua's Active (a long wait is not progress
+-- along the way). A pause before the run's first fight is not one (no
+-- fight before it). Nothing outside a run.
 function Instances.Combat(on, now)
     local inside, visit = Instances.Inside()
     if not inside then return end
     now = now or ns.Now()
-    visit.combat = visit.combat or {}
-    local fights = visit.combat
-    local last = fights[#fights]
     if on then
-        if last and not last.to then return end
-        if last and now - last.to <= COMBAT.join then
-            last.to = nil
-        elseif #fights < COMBAT.most then
-            fights[#fights + 1] = { from = now }
+        if visit.fighting then return end
+        local calm = visit.calm
+        visit.fighting, visit.calm = true, nil
+        if calm and now - calm >= PAUSE.least then
+            visit.pauses = visit.pauses or {}
+            if #visit.pauses < PAUSE.most then visit.pauses[#visit.pauses + 1] = { from = calm, to = now } end
         end
-    elseif last and not last.to then
-        last.to = now
+    elseif visit.fighting then
+        visit.fighting, visit.calm = nil, now
     end
 end
 

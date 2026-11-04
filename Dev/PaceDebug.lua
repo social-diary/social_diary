@@ -186,11 +186,16 @@ local function Report()
         Say("  no fit: the data's bosses and way in do not match the map (FIT.most %d yd)", Pace.FIT.most)
         return
     end
-    Say("  fit: floor %d, %d anchors, worst %.1f yd off", fit.floor, fit.anchors, fit.worst)
-    local fights = type(visit.combat) == "table" and #visit.combat or 0
+    if fit.method == "bounds" then
+        Say("  fit: floor %d by its art bounds; DCF's pins against the spawns: worst %s, %.1f yd (%d compared; a note on the map's icons, not the fit)",
+            fit.floor, tostring(fit.worstName or "-"), fit.worst, fit.anchors)
+    else
+        Say("  fit: floor %d through %d pins (no art bounds), worst %.1f yd off", fit.floor, fit.anchors, fit.worst)
+    end
+    local fights = type(visit.pauses) == "table" and #visit.pauses or 0
     local inside = ns.DungeonRun.InsideBetween(visit, visit.startedAt or 0, visit.endedAt or ns.Now())
     local active = ns.DungeonRun.Active(visit, visit.startedAt or 0, visit.endedAt or ns.Now())
-    Say("  your fights kept: %d; inside %s, of it getting on %s (waits past %s left out)", fights, Clock(inside),
+    Say("  your pauses kept: %d; inside %s, of it getting on %s (waits past %s left out)", fights, Clock(inside),
         Clock(active), Clock(ns.DungeonRun.IDLE.most))
     local route, own = Way(visit)
     local course = Pace.Course(visit, route)

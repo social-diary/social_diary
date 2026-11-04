@@ -21,8 +21,17 @@ Check(ns.PaceData and ns.PaceData[RFC], "no pace data for Ragefire Chasm")
 local fit = Pace.Fit(RFC)
 Check(fit, "Ragefire Chasm's data does not fit the map")
 Eq(fit.floor, 213, "the floor fitted")
-Eq(fit.anchors, 5, "the anchors: the way in and four bosses")
-Check(fit.worst < 6, "an anchor off by more than 6 yd: " .. fit.worst)
+Eq(fit.method, "bounds", "not fitted by the floor's art bounds")
+Eq(fit.anchors, 5, "the pins compared: the way in and four bosses")
+-- The art bounds: the picture's corners are the rectangle's.
+local floor213 = D.Floor(RFC, 213)
+local bb = floor213.bounds
+local cx, cy = fit.ToFloor(bb[3], bb[4])
+Check(Near(cx, 0) and Near(cy, 0), "the picture's top left not the rectangle's far corner")
+cx, cy = fit.ToFloor(bb[1], bb[2])
+Check(Near(cx, 1) and Near(cy, 1), "the picture's bottom right not the rectangle's near corner")
+-- Ragefire's pins are drawn where the bosses stand (within 6 yd); the way
+-- in's marker is some 15 yd from the handover's entrance.
 for _, b in ipairs(ns.PaceData[RFC].bosses) do
     local m = D.Boss(RFC, b.name)
     Check(m, "a boss of the data not in the map's: " .. b.name)
@@ -31,27 +40,43 @@ for _, b in ipairs(ns.PaceData[RFC].bosses) do
     local fx, fy = fit.ToFloor(gx, gy)
     Check(Near(fx, m.x, 1e-9) and Near(fy, m.y, 1e-9), "there and back again")
 end
+Check(fit.worst < 20 and fit.worstName == "the way in", ("the worst pin: %s %.1f yd"):format(tostring(fit.worstName), fit.worst))
 
--- A boss moved 40 yd: no fit, and nothing laid.
+-- A pin drawn 40 yd off (or a spawn): the bounds do not care; the
+-- distance is only reported.
 local boss1 = ns.PaceData[RFC].bosses[1]
 local x0 = boss1.x
 boss1.x = x0 + 40
 Pace.Reset()
-Eq(Pace.Fit(RFC), nil, "a fit with a boss 40 yd off")
+local moved = Pace.Fit(RFC)
+Check(moved and moved.method == "bounds", "the bounds refused for a pin drawn off")
+Check(moved.worst > 35 and moved.worstName == boss1.name, "a pin 40 yd off not reported")
+cx, cy = moved.ToFloor(bb[3], bb[4])
+Check(Near(cx, 0) and Near(cy, 0), "the bounds moved by a pin")
+
+-- A floor without bounds: the old fit through the pins, refused when one
+-- is off by more than FIT.most.
+floor213.bounds = nil
+Pace.Reset()
+Eq(Pace.Fit(RFC), nil, "a fit through a pin 40 yd off")
 Eq(Pace.Course({ instanceID = RFC }, D.Route(RFC)), nil, "a course without a fit")
 boss1.x = x0
 Pace.Reset()
-Check(Pace.Fit(RFC), "the fit back")
+local pinned = Pace.Fit(RFC)
+Check(pinned and pinned.method == "anchors", "no fit through the pins without bounds")
+Check(pinned.worst < 6, "the fit through the pins: " .. pinned.worst)
 -- Too few anchors on one floor.
 local bosses = ns.PaceData[RFC].bosses
 ns.PaceData[RFC].bosses = { bosses[1], bosses[2] }
 Pace.Reset()
 Eq(Pace.Fit(RFC), nil, "a fit on three anchors")
 ns.PaceData[RFC].bosses = bosses
+floor213.bounds = bb
 Pace.Reset()
+Eq(Pace.Fit(RFC).method, "bounds", "the bounds back")
 -- No data: nothing.
-Eq(Pace.Fit(47), nil, "a fit without data")
-Eq(Pace.Course({ instanceID = 47 }, D.Route(47)), nil, "a course without data")
+Eq(Pace.Fit(43), nil, "a fit without data")
+Eq(Pace.Course({ instanceID = 43 }, D.Route(43)), nil, "a course without data")
 
 --------------------------------------------------------------------------
 Section("the packs laid on the usual way")
@@ -64,8 +89,9 @@ for i, p in ipairs(route) do
     if p.boss then stops[#stops + 1] = i; at[p.boss] = i end
 end
 Eq(#stops, 4, "the usual way's stops")
--- The legs in yards (3 Nov 2026: the usual way clears the side rooms).
-local want = { 520, 681, 195, 429 }
+-- The legs in yards (the usual way clears the side rooms; 4 Nov 2026, by
+-- the art bounds: through the pins the map was squeezed a tenth).
+local want = { 535, 705, 200, 440 }
 local prev = 1
 for n, i in ipairs(stops) do
     local len = course.cum[i] - course.cum[prev]
@@ -346,13 +372,17 @@ local vp = view.plan
 Check(vp.path and vp.path.course, "the sheet's way has no course")
 local vnotes = vp.notes
 Eq(#vnotes.wipes, 1, "half the group dead on the way")
--- Every pencil cross on the way sits where LegPoint puts its death (or
--- fanned round it), and LegPoint placed them by the model.
+-- Every pencil cross on the way sits where LegPoint puts its death, or
+-- its wipe's (a wipe is one pull), fanned round it, placed by the model.
 local pencil = 0
 for _, cr in ipairs(vp.crosses) do if cr.pencil then pencil = pencil + 1 end end
 Eq(pencil, 5, "the deaths on the way drawn")
+local together = {}
+for _, list in ipairs({ vnotes.wipes, vnotes.near or {} }) do
+    for _, w in ipairs(list) do for _, d in ipairs(w.deaths) do together[d] = w end end
+end
 for _, l in ipairs(vnotes.legs) do
-    local x, y, lhow = Page.LegPoint(vp.path, l)
+    local x, y, lhow = Page.LegPoint(vp.path, together[l.death] or l)
     Eq(lhow, "pace", "a death on the way not placed by the model")
     local hit = false
     for _, cr in ipairs(vp.crosses) do
@@ -379,21 +409,25 @@ DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said[#said + 1] = tostring(msg)
 SlashCmdList.SOCIALDIARY("pace")
 local text = table.concat(said, "\n")
 if os.getenv("PACE_SHOW") then print(text) end  -- PACE_SHOW=1: the report as written
-Check(text:find("fit: floor 213, 5 anchors", 1, true), "the report's fit: " .. text)
-Check(text:find("leg to Oggleflint: 520 yd", 1, true), "the report's legs")
+Check(text:find("fit: floor 213 by its art bounds; DCF's pins against the spawns: worst the way in", 1, true),
+    "the report's fit: " .. text)
+Check(text:find("leg to Oggleflint: 535 yd", 1, true), "the report's legs")
 Check(select(2, text:gsub(": pace[^\n]- at ", "")) >= 5, "the report's moments placed by the model")
 Check(text:find(": pace, with its wipe at ", 1, true), "the report's deaths with their wipe")
-Check(text:find("your fights kept: 0; inside ", 1, true), "the report's fights and time getting on")
+Check(text:find("your pauses kept: 0; inside ", 1, true), "the report's pauses and time getting on")
 Check(text:find("Oggleflint killed 10:00", 1, true), "the report's kills")
 -- Each moment in yards along the way.
 Check(text:find("yd along", 1, true), "the report's yards along the way")
 -- /sd pace at: Oggleflint's spawn is where his stop is.
 said = {}
 SlashCmdList.SOCIALDIARY("pace at -147.55 38.71")
-Check(said[1] and said[1]:find("52%d yd along the way, %d off it"), "pace at Oggleflint: " .. tostring(said[1]))
+Check(said[1] and said[1]:find("53%d yd along the way, %d off it"), "pace at Oggleflint: " .. tostring(said[1]))
 said = {}
 SlashCmdList.SOCIALDIARY("pace at 3.81, -14.82")
-Check(said[1] and said[1]:find(" [0-5] yd along the way"), "pace at the way in: " .. tostring(said[1]))
+-- The handover's entrance lies some 15 yd along the way from DCF's way in
+-- marker (where the way starts): two sources, a little apart.
+local inYd = said[1] and tonumber(said[1]:match("(%d+) yd along the way"))
+Check(inYd and inYd <= 20, "pace at the way in: " .. tostring(said[1]))
 -- /sd pace here: wherever the client says you are (or why it cannot).
 said = {}
 SlashCmdList.SOCIALDIARY("pace here")
@@ -521,13 +555,21 @@ if os.getenv("PACE_SHOW") then  -- PACE_SHOW=1: the replay as placed, against th
 end
 -- Each where the time alone could not: the Trogg past the Earthborers,
 -- the three Elementals together at their pulls on the way to Taragaman.
-Check(placed[1].yd >= 190 and placed[1].yd < course.cum[i1], "the Trogg not at the Troggs: " .. placed[1].yd)
+-- The pull the time alone would choose, and what stands there.
+local function NearestPull(yd)
+    local best
+    for _, p in ipairs(rpath.course.pulls) do
+        if not best or math.abs(p.at - yd) < math.abs(best.at - yd) then best = p end
+    end
+    return best
+end
+Check(placed[1].yd < course.cum[i1], "the Trogg past Oggleflint: " .. placed[1].yd)
 local tyd = Pace.Place(rpath.course, 1, i1, placed[1].l.dt, placed[1].l.known)
-Check(math.abs(tyd - placed[1].yd) > 10, "the Trogg where the time alone puts it")
+Check(not Holds(NearestPull(tyd), 11318), "the time alone already at a Trogg pull")
 Check(Near(placed[2].yd, placed[3].yd, 0.5) and Near(placed[3].yd, placed[4].yd, 0.5), "the wipe's deaths apart")
-Check(placed[2].yd > 970 and placed[2].yd < 1075, "the Elementals not at theirs: " .. placed[2].yd)
+Check(placed[2].yd > course.cum[i1] and placed[2].yd < course.cum[i2], "the Elementals off the leg to Taragaman: " .. placed[2].yd)
 local myd = Pace.Place(rpath.course, i1, i2, placed[2].l.dt, placed[2].l.known)
-Check(myd < 900, "the time alone already at the Elementals")
+Check(not Holds(NearestPull(myd), 11321), "the time alone already at an Elemental pull")
 -- The wipe's strip points at the Elementals too.
 Eq(#rn.wipes, 1, "the Elementals' wipe")
 local _, _, whow2 = Page.LegPoint(rpath, rn.wipes[1])
@@ -613,7 +655,9 @@ local function YdAt(x, y) return (Pace.Project(tpath.course, fit.ToGame(x / W, y
 local w2x, w2y, w2how, w2info = Page.LegPoint(tpath, tn.wipes[2])
 Check(w2info and w2info.anchor, "the second wipe not placed from an anchor")
 Eq(w2info.anchor.dt, 125, "the second wipe's anchor not the last sure death before it")
-Check(math.abs(w2info.anchor.yd - 45) < 1, "the anchor not at the Earthborers: " .. w2info.anchor.yd)
+local anchorPull = NearestPull(w2info.anchor.yd)
+Check(Near(anchorPull.at, w2info.anchor.yd, 0.5) and Holds(anchorPull, 11320),
+    "the anchor not at an Earthborer pull: " .. w2info.anchor.yd)
 local leg1t = Pace.Leg(tpath.course, 1, i1, w2info.anchor.yd)
 local sum = {}
 for _, dt in ipairs({ 296 - 125, 333 - 125 }) do
@@ -633,7 +677,12 @@ Check(Near(YdAt(w2x, w2y), leg1t.from + leg1t.pulls[want2].at, 0.5),
 -- puts it, nor where its first Trogg death alone does, necessarily: one
 -- place for all.
 local w1x, w1y = Page.LegPoint(tpath, tn.wipes[1])
-Check(math.abs(YdAt(w1x, w1y) - 44) < 1, "the first wipe not at the first Earthborers: " .. YdAt(w1x, w1y))
+local firstEarthborer
+for _, p in ipairs(tpath.course.pulls) do
+    if Holds(p, 11320) and (not firstEarthborer or p.at < firstEarthborer.at) then firstEarthborer = p end
+end
+Check(math.abs(YdAt(w1x, w1y) - math.max(Page.PACE_CLEAR, firstEarthborer.at)) < 1,
+    "the first wipe not at the first Earthborers: " .. YdAt(w1x, w1y))
 
 -- On the sheet: every cross of a wipe within a ring of where its strip
 -- points, whatever killed it or did not.
@@ -681,37 +730,45 @@ Check(Near(kg, kleg2.from + nearestT.at), "a known group not at the Trogg neares
 Eq(Pace.PlaceGroup(tpath.course, 1, i1, {}), nil, "a group of nothing")
 
 --------------------------------------------------------------------------
-Section("the user's fights kept on the run (Instances.Combat)")
+Section("the user's pauses kept on the run (Instances.Combat)")
 
 do
     local I = ns.Instances
+    local least = I.PAUSE.least
     local t0 = mock.now
     local v = I.Enter({ instanceID = RFC, name = "Ragefire Chasm", instanceType = "party", difficultyID = 1 }, t0)
     local function At(dt) mock.now = t0 + dt end
-    At(10) mock.fire("PLAYER_REGEN_DISABLED")
+    At(10) mock.fire("PLAYER_REGEN_DISABLED")      -- the first fight: no pause before it
     At(40) mock.fire("PLAYER_REGEN_ENABLED")
-    At(43) mock.fire("PLAYER_REGEN_DISABLED")   -- within COMBAT.join: the same fight
-    At(60) mock.fire("PLAYER_REGEN_ENABLED")
-    At(200) mock.fire("PLAYER_REGEN_DISABLED")
-    I.Leave(t0 + 250, true)                       -- out as a ghost mid-fight
-    At(255) mock.fire("PLAYER_REGEN_ENABLED")      -- outside: nothing
-    At(270) mock.fire("PLAYER_REGEN_DISABLED")     -- outside: nothing
+    At(40 + least - 5) mock.fire("PLAYER_REGEN_DISABLED")   -- a short break: no pause
+    At(80) mock.fire("PLAYER_REGEN_ENABLED")
+    At(80) mock.fire("PLAYER_REGEN_ENABLED")       -- twice: nothing more
+    At(200) mock.fire("PLAYER_REGEN_DISABLED")     -- a pause of 120 s
+    At(200) mock.fire("PLAYER_REGEN_DISABLED")     -- twice: nothing more
+    I.Leave(t0 + 250, true)                         -- out as a ghost mid-fight: the pause starts
+    At(255) mock.fire("PLAYER_REGEN_ENABLED")       -- outside: nothing
+    At(270) mock.fire("PLAYER_REGEN_DISABLED")      -- outside: nothing
     I.Enter({ instanceID = RFC, name = "Ragefire Chasm", instanceType = "party", difficultyID = 1 }, t0 + 300)
-    Eq(#v.combat, 2, "the fights kept")
-    Eq(v.combat[1].from, t0 + 10, "the first fight's start")
-    Eq(v.combat[1].to, t0 + 60, "a fight carried on across a short break")
-    Eq(v.combat[2].from, t0 + 200, "the second fight's start")
-    Eq(v.combat[2].to, t0 + 250, "a fight not ended at going out")
-    At(310) mock.fire("PLAYER_REGEN_DISABLED")
-    I.Close(t0 + 320)
-    Eq(v.combat[3].to, t0 + 320, "a fight not ended with the run")
-    -- At most COMBAT.most a run.
+    At(340) mock.fire("PLAYER_REGEN_DISABLED")      -- the pause across the time outside ends
+    Check(type(v.pauses) == "table", "no pauses kept")
+    Eq(#v.pauses, 2, "the pauses kept")
+    Eq(v.pauses[1].from, t0 + 80, "the first pause's start")
+    Eq(v.pauses[1].to, t0 + 200, "the first pause's end")
+    Eq(v.pauses[2].from, t0 + 250, "a pause not started at going out")
+    Eq(v.pauses[2].to, t0 + 340, "a pause across the time outside not ended at the next fight")
+    Eq(v.fighting, true, "in a fight")
+    At(360) mock.fire("PLAYER_REGEN_ENABLED")
+    I.Close(t0 + 380)
+    Eq(v.calm, nil, "a pause left open at the run's end")
+    Eq(v.fighting, nil, "a fight left open at the run's end")
+    Eq(#v.pauses, 2, "a pause kept at the run's end")
+    -- At most PAUSE.most a run.
     local full = I.Enter({ instanceID = 43, name = "Wailing Caverns", instanceType = "party", difficultyID = 1 }, t0 + 400)
-    for k = 1, I.COMBAT.most + 5 do
-        At(400 + k * 20) mock.fire("PLAYER_REGEN_DISABLED")
-        At(400 + k * 20 + 10) mock.fire("PLAYER_REGEN_ENABLED")
+    for k = 1, I.PAUSE.most + 5 do
+        At(400 + k * 100) mock.fire("PLAYER_REGEN_DISABLED")
+        At(400 + k * 100 + 10) mock.fire("PLAYER_REGEN_ENABLED")
     end
-    Eq(#full.combat, I.COMBAT.most, "the fights past the cap")
+    Eq(#full.pauses, I.PAUSE.most, "the pauses past the cap")
     I.Close(mock.now)
     ns.db.instances[v.id], ns.db.instances[full.id] = nil, nil
     mock.now = t0
@@ -722,25 +779,18 @@ Section("the time spent getting on: long waits left out (IDLE)")
 
 do
     local most = Run.IDLE.most
-    -- Fights at 10-40 and 300-330: the wait of 260 s between counts `most`.
-    local v = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 10, to = 40 }, { from = 300, to = 330 } } }
+    -- A pause of 260 s (40 to 300) counts `most`.
+    local v = { startedAt = 0, spans = { { from = 0 } }, pauses = { { from = 40, to = 300 } } }
     Eq(Run.Active(v, 0, 400), 400 - (260 - most), "a long wait not left out")
-    Eq(Run.Active(v, 0, 250), 250 - (210 - most), "a wait still going on not left out")
-    Eq(Run.Active(v, 0, 100), 100, "a short wait left out")
-    Eq(Run.Active(v, 320, 400), 80, "from inside a fight")
-    -- Before the first fight kept, everything counts (fights kept from
-    -- part way into a run).
-    local late = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 600, to = 620 } } }
-    Eq(Run.Active(late, 0, 600), 600, "the time before the first fight kept left out")
+    Eq(Run.Active(v, 0, 250), 250 - (210 - most), "the part of a wait before the moment not left out")
+    Eq(Run.Active(v, 0, 100), 100, "a short part of a wait left out")
+    Eq(Run.Active(v, 320, 400), 80, "after the wait")
+    Eq(Run.Active(v, 200, 400), 200, "from part way into a wait: the rest of it short")
     -- Time outside is not left out twice.
-    local away2 = { startedAt = 0, spans = { { from = 0, to = 200 }, { from = 260 } },
-        combat = { { from = 10, to = 40 }, { from = 300, to = 330 } } }
+    local away2 = { startedAt = 0, spans = { { from = 0, to = 200 }, { from = 260 } }, pauses = { { from = 40, to = 300 } } }
     Eq(Run.Active(away2, 0, 400), 340 - (200 - most), "time outside left out twice")
-    -- A fight still going on.
-    local open = { startedAt = 0, spans = { { from = 0 } }, combat = { { from = 10, to = 40 }, { from = 300 } } }
-    Eq(Run.Active(open, 0, 400), 400 - (260 - most), "a fight still going on")
-    -- Without fights kept: the time inside.
-    Eq(Run.Active({ startedAt = 0, spans = { { from = 0 } } }, 0, 900), 900, "a run without fights kept")
+    -- Without pauses kept: the time inside.
+    Eq(Run.Active({ startedAt = 0, spans = { { from = 0 } } }, 0, 900), 900, "a run without pauses kept")
     -- The notes go by it.
     local w = Run.When(v, { bosses = {} }, 400)
     Eq(w.dt, 400 - (260 - most), "a moment's seconds into its leg not by the time getting on")
@@ -764,8 +814,8 @@ local again = {
     members = { { guid = G }, { guid = "Player-1-A" }, { guid = "Player-1-B" }, { guid = "Player-1-C" },
         { guid = "Player-1-D" } },
     spans = { { from = S3 } }, bossesKilled = {}, pulls = {}, deathLog = {},
-    combat = { { from = S3 + 20, to = S3 + 60 }, { from = S3 + 100, to = S3 + 140 }, { from = S3 + 200, to = S3 + 290 },
-        { from = S3 + 950, to = S3 + 1000 } },
+    -- The user's pauses between fights (20-60, 100-140, 200-290, 950-1000).
+    pauses = { { from = S3 + 60, to = S3 + 100 }, { from = S3 + 140, to = S3 + 200 }, { from = S3 + 290, to = S3 + 950 } },
 }
 for _, d in ipairs(Wipe(280, { "Player-1-A", "Player-1-B", "Player-1-C" })) do again.deathLog[#again.deathLog + 1] = d end
 for _, d in ipairs(Wipe(990, { "Player-1-A", "Player-1-B", "Player-1-D" })) do again.deathLog[#again.deathLog + 1] = d end
@@ -786,12 +836,12 @@ Eq(p[1].how, "killer", "the first wipe not by its killers")
 Eq(p[2].how, "killer", "the second wipe not by its killers")
 Check(p[2].info.anchor, "the second wipe not placed from the first")
 Check(Near(p[1].yd, p[2].yd, 0.5), ("the second wipe not at the first's pull: %.0f, then %.0f"):format(p[1].yd, p[2].yd))
--- The wait taken out by the fights: without them, the second goes on.
+-- The wait taken out by the pauses: without them, the second goes on.
 local bare = {}
 for k, v in pairs(again) do bare[k] = v end
-bare.id, bare.combat = 9393, nil
+bare.id, bare.pauses = 9393, nil
 local q = Placed(bare)
-Check(q[2].yd > q[1].yd + 30, ("without the fights kept the second wipe stays: %.0f, then %.0f"):format(q[1].yd, q[2].yd))
+Check(q[2].yd > q[1].yd + 30, ("without the pauses kept the second wipe stays: %.0f, then %.0f"):format(q[1].yd, q[2].yd))
 -- Nothing placed from an anchor lies behind it: moments after the first
 -- wipe, at any time (a roll found on the way, as Anchor asks).
 local _, _, aplan = Placed(again)
@@ -809,19 +859,19 @@ for later = 10, 1500, 50 do
 end
 Check(behind > 20, "moments after the wipe not placed from it: " .. behind)
 
--- After a wipe, with the fights kept: the clock starts again at the
--- first fight after it.
+-- After a wipe, with the pauses kept: the clock starts again where the
+-- pause after it ends (the next fight).
 local ra = p[2].info.anchor
 Eq(ra.wipe, true, "the first wipe's anchor not a wipe's")
 Check(Near(p[2].info.shift, ra.dt + Run.Active(again, ra.time, S3 + 950), 1e-6),
     "the clock not started again at the first fight after the wipe")
 
--- Out and back in between (a release, a run back), no fights kept: the
+-- Out and back in between (a release, a run back), no pauses kept: the
 -- walk back from the way in to the anchor is not time getting on.
 local out = {}
 for k, v in pairs(again) do out[k] = v end
 out.id = 9394
-out.combat = nil
+out.pauses = nil
 out.spans = { { from = S3, to = S3 + 400, ghost = true }, { from = S3 + 700 } }
 local r, rn2 = Placed(out)
 local a = r[2].info.anchor
@@ -849,6 +899,6 @@ DEFAULT_CHAT_FRAME.AddMessage = function(_, msg) said2[#said2 + 1] = tostring(ms
 SlashCmdList.SOCIALDIARY("pace")
 DEFAULT_CHAT_FRAME.AddMessage = add2
 local text2 = table.concat(said2, "\n")
-Check(text2:find("your fights kept: 4", 1, true), "the report's fights: " .. text2)
+Check(text2:find("your pauses kept: 3", 1, true), "the report's pauses: " .. text2)
 Check(text2:find("placed on from the sure place at %d+ yd %(a wipe"), "the report's anchor: " .. text2)
 ns.db.instances[again.id] = nil

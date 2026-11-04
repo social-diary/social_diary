@@ -51,6 +51,9 @@ Core/DungeonWay.lua
 # headers), laid on the map's own way by Core/DungeonPace.lua.
 Core/Pace/Model.lua
 Core/Pace/RagefireChasm.lua
+Core/Pace/RazorfenKraul.lua
+Core/Pace/RazorfenDowns.lua
+Core/Pace/StormwindStockade.lua
 Core/DungeonPace.lua
 Core/RunPage.lua
 Core/Roster.lua

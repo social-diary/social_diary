@@ -624,9 +624,10 @@ end
 -- a wipe's deaths together, at one pull), from the last sure place on the
 -- leg before it (Anchors), kept PACE_CLEAR yards off both of the leg's
 -- ends (the boss behind and the one ahead, never on them). After a wipe
--- the group starts that pull again: the clock starts again at the user's
--- first fight after it (visit.combat), whatever came between (a rez, a run
--- back, drinking). Else, where the group went out between that place and
+-- the group starts that pull again: the clock starts again where the
+-- user's pause after it ends (visit.pauses, the first one ending after
+-- the wipe and starting within AFTER_WIPE of it), whatever came between
+-- (a rez, a run back, drinking). Else, where the group went out between that place and
 -- the moment (a release, a run back in), the walk back to it from the way
 -- in, at the model's pace, is not time spent getting on. nil where the
 -- dungeon has no pace data or the
@@ -634,7 +635,7 @@ end
 -- how ("killer": at a pull of what killed it; or "pace") and { yd, key
 -- (the leg's), anchor (the place it went from, or nil), shift (seconds
 -- taken off: the anchor's and the walk back) }.
-local PACE_CLEAR = 12
+local PACE_CLEAR, AFTER_WIPE = 12, 60
 local function PacePoint(path, leg, i0, i1, open)
     local Pace, course = ns.DungeonPace, path.course
     if not (Pace and course and i1 and leg.dt) then return nil end
@@ -647,12 +648,12 @@ local function PacePoint(path, leg, i0, i1, open)
     if anchor then
         shift, start = anchor.dt, anchor.yd
         local t, visit, Run = TimeOf(leg), path.visit, ns.DungeonRun
-        local fights = visit and visit.combat
-        if t and anchor.time and anchor.wipe and type(fights) == "table" and fights[1] then
-            local resume = t
-            for _, f in ipairs(fights) do
-                if f.from and f.from > anchor.time then
-                    resume = math.min(f.from, t)
+        local pauses = visit and visit.pauses
+        if t and anchor.time and anchor.wipe and type(pauses) == "table" then
+            local resume = anchor.time
+            for _, p in ipairs(pauses) do
+                if p.to and p.to > anchor.time and p.from and p.from <= anchor.time + AFTER_WIPE then
+                    resume = math.min(p.to, t)
                     break
                 end
             end

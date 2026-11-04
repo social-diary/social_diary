@@ -33,6 +33,15 @@
 --   DungeonPace.Project(course, gx, gy) the way's point nearest game yards gx, gy:
 --                                      yards along it, yards off it
 --
+-- Flat: the fit and the packs are in x and y only. A pack on a level
+-- under or over the way (a ledge, a lower cave) that lies within
+-- PULL.radius of it in x and y is a pull on it (3 Nov 2026, Ragefire
+-- Chasm: a death to a Shaman below the corridor went to the corridor's
+-- Shaman pack). The data has each spawn's height; the way has none yet.
+-- One floor: a dungeon is fitted on the one floor all its bosses stand on
+-- (Fit), so one of several floors, or a combined map of several levels
+-- (pieces at their own scales), has no fit and keeps the map's own guess.
+--
 -- A course: { instanceID, route, floor, cum (yards to each point), game
 -- (each point in game yards, false off the floor fitted), broken (segment
 -- k is off the floor fitted), pulls ({ at (yards from the way's
@@ -44,11 +53,22 @@ local addonName, ns = ...
 local DungeonPace = {}
 ns.DungeonPace = DungeonPace
 
--- The fit of the data's yards onto the map's floor (an affine, least
--- squares over the entrance and the bosses): at least `least` anchors, all
--- on one floor, none off by more than `most` yards, else no fit, and the
--- dungeon keeps the map's own guess. (3 Nov 2026: Ragefire Chasm's five
--- anchors fit to within 5.3 yd.)
+-- The data's yards on the map's floor. First the floor's art bounds
+-- (Dungeon Crawler Forever's Art data, `bounds` = { x1, y1, x2, y2 }: the
+-- rectangle of game yards the picture covers, Blizzard's own map rectangle):
+-- the picture's x runs from game y2 down to y1, its y from game x2 down to
+-- x1. Exact, and blind to the boss pins, which DCF draws where they read
+-- well, not always where the bosses stand (4 Nov 2026: Zul'Farrak's pins
+-- 23 to 64 yd off, Roogug's 160, Glutton's 95; fitted through them, the
+-- maps came out stretched by up to a fifth and three dungeons were
+-- refused). The pins' distances are kept (`worst`) as a note on how DCF
+-- drew them, never a reason to refuse. Where a floor has no bounds, the
+-- old fit: an affine, least squares over the entrance and the bosses, at
+-- least `least` anchors on one floor, none off by more than `most` yards,
+-- else no fit and the dungeon keeps the map's own guess. DCF's data can be
+-- wrong too (bounds, pins, the usual way): tests/pace_data.lua holds each
+-- dungeon to its packs lying near the way drawn, a check that leans on
+-- none of the pins.
 local FIT = { least = 4, most = 12 }
 -- A pack is a pull on the way where the way passes within `radius` yards
 -- of it, on the first stretch that does (the pipeline's PULL_RADIUS); a
@@ -104,9 +124,11 @@ end
 local fits = {}
 
 -- The data's yards on the map's floor for `instanceID`: { floor, ToFloor
--- (game x, y -> the floor's x, y), ToGame (back), worst (the anchor
--- furthest off, yards), anchors (how many) }, or nil (no data, too few
--- anchors on one floor, or one too far off: FIT). Worked out once.
+-- (game x, y -> the floor's x, y), ToGame (back), method ("bounds" or
+-- "anchors"), worst (the pin or anchor furthest off, yards, and `worstName`),
+-- anchors (how many pins and way in were compared) }, or nil (no data, the
+-- bosses on several floors or none on the map, or, without bounds, too few
+-- anchors or one too far off: FIT). Worked out once.
 function DungeonPace.Fit(instanceID)
     if fits[instanceID] ~= nil then return fits[instanceID] or nil end
     local data = ns.PaceData and ns.PaceData[instanceID]
@@ -118,12 +140,27 @@ function DungeonPace.Fit(instanceID)
             if m and m.floor and m.x then
                 floor = floor or tonumber(m.floor)
                 if tonumber(m.floor) ~= floor then floor = false end
-                pairs_[#pairs_ + 1] = { b.x, b.y, m.x, m.y }
+                pairs_[#pairs_ + 1] = { b.x, b.y, m.x, m.y, b.name }
             end
         end
         local door = floor and data.entrance and D.Entrance(instanceID, floor)
-        if door then pairs_[#pairs_ + 1] = { data.entrance.x, data.entrance.y, door.x, door.y } end
-        if floor and #pairs_ >= FIT.least then
+        if door then pairs_[#pairs_ + 1] = { data.entrance.x, data.entrance.y, door.x, door.y, "the way in" } end
+        local fl = floor and D.Floor(instanceID, floor)
+        local b = fl and fl.bounds
+        if b and b[1] and b[2] and b[3] and b[4] and b[3] > b[1] and b[4] > b[2] then
+            local x1, y1, x2, y2 = b[1], b[2], b[3], b[4]
+            local function ToFloor(gx, gy) return (y2 - gy) / (y2 - y1), (x2 - gx) / (x2 - x1) end
+            local function ToGame(fx, fy) return x2 - fy * (x2 - x1), y2 - fx * (y2 - y1) end
+            local worst, worstName = 0, nil
+            for _, p in ipairs(pairs_) do
+                local gx, gy = ToGame(p[3], p[4])
+                local off = math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2)
+                if off > worst then worst, worstName = off, p[5] end
+            end
+            fit = { floor = floor, ToFloor = ToFloor, ToGame = ToGame, method = "bounds", worst = worst,
+                worstName = worstName, anchors = #pairs_ }
+        end
+        if not fit and floor and #pairs_ >= FIT.least then
             local rx, ry = {}, {}
             for i, p in ipairs(pairs_) do
                 rx[i], ry[i] = { p[1], p[2], p[3] }, { p[1], p[2], p[4] }
@@ -142,7 +179,8 @@ function DungeonPace.Fit(instanceID)
                     worst = math.max(worst, math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2))
                 end
                 if worst <= FIT.most then
-                    fit = { floor = floor, ToFloor = ToFloor, ToGame = ToGame, worst = worst, anchors = #pairs_ }
+                    fit = { floor = floor, ToFloor = ToFloor, ToGame = ToGame, method = "anchors", worst = worst,
+                        anchors = #pairs_ }
                 end
             end
         end

@@ -1,0 +1,23 @@
+{
+  "map_id": 209,
+  "slug": "zul_farrak",
+  "lua_name": "ZulFarrak",
+  "entrance": [
+    1213.52,
+    841.59
+  ],
+  "exclude": [
+    "Sergeant Bly",
+    "Weegli Blastfuse",
+    "Oro Eyegouge",
+    "Murta Grimgut",
+    "Raven"
+  ],
+  "no_pull": [
+    "Scarab"
+  ],
+  "normal_pulls": [],
+  "boss_names": {},
+  "summons": {},
+  "notes": "3 Nov 2026 (2026-11-03), NOT SHIPPABLE YET: the fit is refused. Entrance, Scarab (68 non-elite, no_pull) and Bly's crew (exclude: Bly, Weegli, Oro, Murta, Raven; prisoners of the pyramid event) from the route-model handover. Sandfury Executioner (7274) kept as a pull against the handover: a hostile elite on the pyramid top, killed for the cage key. Names in the table match DCF's; Gahz'rilla, Nekrum, Sezz'ziz, Dustwraith have no spawn (event spawns / rare not in table), so no anchor. 8 anchors (Velratha, Antu'sul, Theka, Zum'rah, Ukorz, Ruuzlu, Sandarr, Zerillis) + entrance: least-squares worst 143 yd (Sandarr, a wandering rare); without Sandarr still 38 yd. Cause: DCF's boss pins for floor 219 are not at the spawns. DCF's own art bounds for 219 ({1129.2,241.7,2052.1,1625}) put the entrance and the pyramid trigger within 8 yd of the table, but the pins off by 23-64 yd (Zum'rah 23, Ukorz 26, Ruuzlu 30, Velratha 40, Zerillis 40, Theka 44, Antu'sul 64, Sandarr 151). No honest subset of anchors fits; needs a code change (fit from the art bounds, or per-dungeon map anchors). 2026-11-04: with the art bounds the fit is no longer refused; held back still: only 29 of 107 packs lie near DCF's usual way (median about 38 yd), the way running through the spread pins. Needs the way checked (or our own usual way) before it ships."
+}

@@ -1,0 +1,11 @@
+{
+  "map_id": 34,
+  "slug": "stormwind_stockade",
+  "lua_name": "StormwindStockade",
+  "exclude": [],
+  "no_pull": [],
+  "normal_pulls": [],
+  "boss_names": {},
+  "summons": {},
+  "notes": "3 Nov 2026 (2026-11-03): spawn table has 95 rows for map 34, all VMaNGOS (verified_build 0). DCF's six boss names match the table's, one spawn each. Bruegal Ironknuckle (rare elite, a sometimes spawn) is written with his guard pack but has no floor in DCF, so the fit uses the five on floor 225. No entrance: none sourced reliably. Nothing excluded: all trash (Defias Prisoner, Captive, Inmate, Convict, Insurgent) is hostile, no friendly or event NPCs in the table. No non-elites in the table, so no normal_pulls. No summons: no pets or summoned adds known in classic Stockade. Checked offline: fit 5.4 yd, 23 of 39 packs as pulls, 616 yd way. Not yet checked in the client."
+}

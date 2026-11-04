@@ -7,7 +7,9 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ### Changes
 
-- _Dungeon View_ places deaths and wipes in Ragefire Chasm by the trash between bosses
+- _Dungeon View_ tries to place Ragefire, Stockade and Razorfen deaths and wipes at the pack that killed them
+- _Dungeon View_ keeps a wipe's marks and its note together in one spot
+- _Dungeon View_ marks no longer drift ahead after idle time
 
 ### Fixes
 

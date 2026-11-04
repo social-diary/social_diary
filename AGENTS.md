@@ -41,6 +41,10 @@ Work on Your Diary's plates (layouts, captions, margin notes and cards, marks, t
 
 If you work on more text a player reads, give it to the /copywriter skill (`.claude/skills/copywriter/`) using a subagent.
 
+Dungeon pace data (`Core/Pace/`, where the Dungeon View places deaths
+between bosses) goes through /pace-data (`.claude/skills/pace-data/`); the
+design and its decisions are in `.claude/rules/pace.md`.
+
 New detections (`Features/<Name>/`) go through /new-feature (`.claude/skills/new-feature/`), from the first idea to the in-client rounds. It is the reference for what a feature touches; when a run teaches something new, update the skill.
 
 Releases go through /release-version (`.claude/skills/release-version/`).

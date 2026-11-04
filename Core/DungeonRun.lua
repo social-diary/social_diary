@@ -108,37 +108,28 @@ end
 -- (Not DungeonRun.Inside: that is the run's whole time inside, for its page.)
 DungeonRun.InsideBetween = Inside
 
--- Time between fights (the user's, visit.combat: Core/Instances.lua's
--- Combat) counts up to `most` seconds at a stretch: walking to the next
--- pull is progress along the way, a long wait (drinking, rebuffing, a rez,
--- someone away) is not, and only its first `most` seconds count. (3 Nov
--- 2026: a second wipe at one pull, minutes after the first, was put by
--- the time near the boss.) Judged only from the first fight kept: a run
--- whose fights were kept from part way (an older build) counts its time
--- before that whole.
+-- Time between fights (the user's pauses, visit.pauses: Core/
+-- Instances.lua's Combat) counts up to `most` seconds at a stretch:
+-- walking to the next pull is progress along the way, a long wait
+-- (drinking, rebuffing, a rez, someone away) is not, and only its first
+-- `most` seconds count. (3 Nov 2026: a second wipe at one pull, minutes
+-- after the first, was put by the time near the boss.) A run without
+-- pauses kept (an older one) counts its time inside.
 local IDLE = { most = 120 }
 DungeonRun.IDLE = IDLE
 
 -- Seconds spent getting on from `a` to `b`: inside (Inside), less what
--- each stretch out of combat, from the first fight kept, held beyond
--- IDLE.most. Without fights kept, the time inside.
+-- each pause, as much of it as lies between them, held beyond IDLE.most.
 local function Active(visit, a, b)
     local inside = Inside(visit, a, b)
-    local fights = visit.combat
-    if inside <= 0 or type(fights) ~= "table" or not fights[1] or not fights[1].from then return inside end
-    local idle, at = 0, math.max(a, fights[1].from)
-    local function Gap(g0, g1)
-        if g1 > g0 then idle = idle + math.max(0, Inside(visit, g0, g1) - IDLE.most) end
-    end
-    for _, f in ipairs(fights) do
-        if f.from and f.from >= b then break end
-        if f.from then
-            Gap(at, math.min(f.from, b))
-            at = math.max(at, f.to or b)
+    if inside <= 0 or type(visit.pauses) ~= "table" then return inside end
+    local idle = 0
+    for _, p in ipairs(visit.pauses) do
+        if p.from and p.to then
+            local g0, g1 = math.max(p.from, a), math.min(p.to, b)
+            if g1 > g0 then idle = idle + math.max(0, Inside(visit, g0, g1) - IDLE.most) end
         end
-        if at >= b then break end
     end
-    Gap(at, b)
     return math.max(0, inside - idle)
 end
 DungeonRun.Active = Active

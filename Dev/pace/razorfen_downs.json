@@ -1,0 +1,21 @@
+{
+  "map_id": 129,
+  "slug": "razorfen_downs",
+  "lua_name": "RazorfenDowns",
+  "entrance": [
+    2593.5,
+    1112.3
+  ],
+  "exclude": [
+    "Belnistrasz",
+    "Henry Stern",
+    "Idol Oven Fire Target"
+  ],
+  "no_pull": [],
+  "normal_pulls": [
+    "Splinterbone Skeleton"
+  ],
+  "boss_names": {},
+  "summons": {},
+  "notes": "3 Nov 2026 (2026-11-03), not yet checked in the client. Anchors: Mordresh Fire Eye, Amnennar the Coldbringer, Plaguemaw the Rotting and the entrance; fit worst 2.6 yd. Entrance: DCF's entrance marker (0.2364, 0.1884) taken back to game yards through DCF's art bounds for uiMap 300 (Art.lua: 2209.9, 570.9, 2682.6, 1279.9); those bounds put DCF's usual way within a few yards of nearly every pack on it, and the result agrees within 5 yd with the instance's entrance teleport target as remembered (about 2592.6, 1107.5). Plaguemaw the Rotting has no static spawn (the last wave of Belnistrasz's idol event); DCF pins it at the idol, so it is anchored on the Idol Oven Fire Target (one spawn, 7 yd from DCF's pin) via boss_names. Tuten'kash: no spawn (the gong event), no anchor. Glutton and Ragglesnout: DCF's pins lie about 95 yd from their spawns (the spawns sit on DCF's way near route points 105 and 120; DCF marks Ragglesnout approx, a rare), so with them the fit is refused (worst 109 yd); they are no anchors (boss_names to a name the table lacks) and excluded so they are no trash pull either. DCF's 7th entry is 'Trash' (its trash loot, no floor), not a boss. Excluded: Belnistrasz, Henry Stern (friendly), Idol Oven Fire Target (a trigger). Sah'rhee (8767, non-elite, alone near Henry Stern) drops out by itself. normal_pulls: Splinterbone Skeleton, for the 24 skeletons before Mordresh (no elites; Warriors and Centurions only stand in elite packs, boars likewise: listing them changes nothing). Gong waves (Tomb Fiend, Tomb Reaver), the idol event's waves, and Amnennar's Frozen Spectres are scripted, not in the table: deaths to them fall back to time. No summons: none confirmed with an NPC ID whose summoner stands in a pack. 2026-11-04: the fit is now the floor's art bounds; the workarounds are undone: Glutton and Ragglesnout are bosses again (not excluded, no fake boss_names), and Plaguemaw is no longer anchored on the Idol Oven Fire Target (still excluded: a trigger). Their pins are only reported."
+}

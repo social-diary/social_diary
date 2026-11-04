@@ -1,0 +1,14 @@
+{
+  "map_id": 47,
+  "slug": "razorfen_kraul",
+  "lua_name": "RazorfenKraul",
+  "exclude": [
+    "Willix the Importer",
+    "Heralath Fallowbrook"
+  ],
+  "no_pull": [],
+  "normal_pulls": [],
+  "boss_names": {},
+  "summons": {},
+  "notes": "Built 2026-11-03 from the spawn table (map 47, 195 rows) and DCF's [47]. DCF's six bosses all stand on floor 301; its seventh entry is the 'Trash' pseudo-boss (no floor, no spawn: no anchor). All names match the table, one spawn each. Fit with all six refused (worst 124 yd): Roogug is the outlier. DCF draws him beside Jargba (map 0.864, 0.385, about 18 yd from Jargba once fitted) but the table has him 160 yd away, at (2142.99, 1581.57), standing with a Death's Head Adept and a Razorfen Defender. He is a rare in DCF and no stop on its usual way, so he is no anchor here and stays a pull. With the other five, worst 13.1 yd at Overlord Ramtusk (Charlga 10.4), refused (FIT.most 12). So Ramtusk is no anchor either: the fit is on four (Aggem, Jargba, Agathelos, Charlga), worst 6.7 yd. Held out, Ramtusk's spawn lands 22 yd from DCF's dot. Side effect: Ramtusk is in the pack table, with his two Spearhides, as a pull of his own and not as a boss's guard. Both are dropped by boss_names pointing at a name the table does not have. No entrance: none sourced (DCF's marker is at 0.7162, 0.8352; the four-anchor fit puts it near game 1917, 1526, unconfirmed). Excluded: Willix the Importer (the caged escort-quest prisoner, 'elite' in the table) and Heralath Fallowbrook (a quest NPC beside him). Kept: the two non-elite Death's Head Ward Keepers, inside the Ward Guardians' pack, and the rares (Blind Hunter, Earthcaller Halmgar, the two Razorfen Spearhides). No normal_pulls needed: no pack is made of non-elites only. No summons: the Handlers', Beast Trainers' and Beastmasters' pets (Tamed Hyena, Tamed Battleboar), the Totemics' totems and Aggem's boar spirits are not in the table and their NPC IDs are unconfirmed, so deaths to them fall back to time. Not yet checked in the client. 2026-11-04: the fit is now the floor's art bounds; the workaround that dropped Roogug and Overlord Ramtusk as anchors (boss_names pointing at names the table lacks) is undone: both are bosses again, their pins only reported."
+}
