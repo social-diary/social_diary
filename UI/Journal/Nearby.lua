@@ -407,7 +407,7 @@ end
 local function EmptyText()
     local text = "Nobody yet."
     if not ns.Setting("detectSightings") then
-        return text .. "\n\nSightings are switched off: |cffffd100/sd sightings on|r."
+        return text .. "\n\nSightings are switched off. Turn them back on in the settings, under Recording: |cffffd100Notice who passes you in the open world|r."
     end
     text = text .. "\n\nSightings pause in cities and dungeons."
     local get = C_CVar and C_CVar.GetCVar or GetCVar

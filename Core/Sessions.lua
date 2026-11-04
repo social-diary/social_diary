@@ -124,7 +124,7 @@ function Sessions.For(guid)
     return list
 end
 
--- Every session on record, newest first: /sd sessions without a name.
+-- Every session on record, newest first: /sd sessions without a name (Dev/).
 function Sessions.All()
     local list = {}
     for _, session in pairs(ns.db.sessions) do list[#list + 1] = session end

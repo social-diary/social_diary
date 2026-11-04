@@ -35,8 +35,8 @@ local function BuildRecording(pane, c)
     DependsOn(page.chatUnlimited, "storeChat")
     c:Hint("Lines can still be lost if they exceed file size limits.")
 
-    -- SIG-1 and SIG-5, through the same calls as /sd sightings on|off and
-    -- /sd sightings city, so they take effect at once.
+    -- SIG-1 and SIG-5, through the same calls as /sd sightings on|off (Dev/)
+    -- and /sd sightings city, so they take effect at once.
     c:Heading("Sightings")
     local Capture = ns.SightingCapture
     page.detectSightings = Switch(c, "Notice who passes you in the open world", "detectSightings", nil,

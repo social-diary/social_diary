@@ -1,7 +1,8 @@
 -- Development tooling for sightings (M2): is the radar listening, what can
 -- it see, why does a tooltip line show or not, and what seen around (SES-9)
--- holds. The user's own sighting commands -- recent, of, city, on/off,
--- rollup, reset -- are in Core/Slash.lua.
+-- holds, and the switch, the rollup and the counters' reset (out of
+-- Core/Slash.lua before launch: the switch is Settings' Recording page). The
+-- user's own sighting commands -- recent, of, city -- are in Core/Slash.lua.
 --
 -- Registered under /sd sightings, listed in its help only while debug is on.
 -- Not part of a release: the TOC's Dev/ block goes.
@@ -178,6 +179,31 @@ local function SightingAround(text)
         #ns.Sessions.AroundFor(guid))
 end
 
+-- SIG-1's switch, answered with the status report.
+local function SightingSwitch(_, name)
+    ns.SightingCapture.SetEnabled(name == "on")
+    SightingStatus()
+end
+
+local function SightingRollup(rest)
+    local word, sure = (rest or ""):match("^(%S*)%s*(%S*)")
+    local days = tonumber(word)
+    -- Rolled rows do not come back: under a day is refused, and sooner than
+    -- the retention setting has to be meant.
+    if days and days < 1 then
+        ns.Print("nothing rolled up: that would take even today's sightings. Use 1 day or more.")
+        return
+    end
+    if days and days < ns.BufferDays() and sure ~= "confirm" then
+        ns.Print("sightings stay in full for %d days. Rolling them up sooner cannot be undone. To go ahead: |cffffd100/sd sightings rollup %s confirm|r",
+            ns.BufferDays(), word)
+        return
+    end
+    local rolled, touched = ns.Sightings.Rollup(nil, days)
+    ns.Print("rolled %d row(s) of %d character(s) into summaries.", rolled, touched)
+end
+
+
 local function Sub(name, fn, help, usage, alias)
     ns.Slash.Register(name, fn, help, { under = "sightings", dev = true, usage = usage, alias = alias })
 end
@@ -188,3 +214,9 @@ Sub("scan", SightingScan, "the player nameplates around you right now")
 Sub("around", SightingAround, "seen-around stretches for a diary entry, or your target (SES-9)",
     "around [name]")
 Sub("tooltip", SightingTooltip, "why your target does or does not get the \"Seen N times\" line")
+Sub("on", SightingSwitch, "switch passive detection", "on | off", { "off" })
+Sub("rollup", SightingRollup, "roll sightings older than [days] into summaries now", "rollup [days] [confirm]")
+Sub("reset", function()
+    ns.SightingCapture.ResetStats()
+    ns.Print("sighting counters reset.")
+end, "reset the counters")

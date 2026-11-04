@@ -228,6 +228,48 @@ local function ShowToast(rest)
     end
 end
 
+-- SES-1 to SES-5's in-game check (out of Core/Slash.lua before launch: the
+-- journal shows sessions). With a
+-- name, only that character's sessions.
+local function CommandSessions(text)
+    local list
+    if text and text ~= "" then
+        local guid = ns.Slash.ResolveArgument(text, false)
+        if not guid then return end
+        list = ns.Sessions.For(guid)
+    else
+        list = ns.Sessions.All()
+    end
+
+    for i = 1, math.min(#list, 10) do
+        local s = list[i]
+
+        local names = {}
+        for guid, p in pairs(s.participants) do
+            local quests = p.quests and #p.quests or 0
+            local rares = p.rares and #p.rares or 0
+            names[#names + 1] = ("%s (%d min, lvl %s-%s%s%s)"):format(
+                ns.Characters.FullName(guid) or guid,
+                math.floor(p.seconds / 60),
+                tostring(p.levelStart), tostring(p.levelEnd),
+                quests > 0 and (", " .. quests .. " quests") or "",
+                rares > 0 and (", " .. rares .. " rares") or "")
+        end
+
+        DEFAULT_CHAT_FRAME:AddMessage(("   |cffffd100#%d|r %s  %d min  %s%s  |cff808080%s|r"):format(
+            s.id, date("%d %b %H:%M", s.startedAt),
+            math.floor(ns.Sessions.Duration(s) / 60),
+            s.source, s.endedAt and "" or " |cff40c040open|r",
+            table.concat(ns.Timeline.Unique(s.zones), " > ")))
+        DEFAULT_CHAT_FRAME:AddMessage(("      %s; +%d others, %d death(s), %d highlight(s), you lvl %s-%s"):format(
+            table.concat(names, ", "), s.others, ns.Sessions.DeathCount(s), #ns.Sessions.Highlights(s),
+            tostring(s.myLevelStart), tostring(s.myLevelEnd)))
+    end
+
+    ns.Print("%d session%s%s.", #list, #list == 1 and "" or "s",
+        #list > 10 and " (newest 10 shown)" or "")
+end
+
 local Register = ns.Slash.Register
 local DEV = { dev = true }
 
@@ -236,4 +278,5 @@ Register("who", ReportWho, "what every name API returns for the units around you
 Register("observe", ReportObserve, "store your target or mouseover and show the record", DEV)
 Register("chars", ReportCharacters, "list observed characters", DEV)
 Register("db", ReportDB, "what the database currently holds", DEV)
+Register("sessions", CommandSessions, "together sessions, or |cffffd100/sd sessions <name>|r", DEV)
 Register("toast", ShowToast, "a reunion toast now: |cffffd100/sd toast [group] [name]|r, else your target", DEV)

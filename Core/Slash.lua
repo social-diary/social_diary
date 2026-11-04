@@ -160,47 +160,6 @@ local function CommandList()
     ns.Print("%d diary entr%s.", #entries, #entries == 1 and "y" or "ies")
 end
 
--- SES-1 to SES-5's in-game check, until the journal can show sessions. With a
--- name, only that character's sessions.
-local function CommandSessions(text)
-    local list
-    if text and text ~= "" then
-        local guid = ResolveArgument(text, false)
-        if not guid then return end
-        list = ns.Sessions.For(guid)
-    else
-        list = ns.Sessions.All()
-    end
-
-    for i = 1, math.min(#list, 10) do
-        local s = list[i]
-
-        local names = {}
-        for guid, p in pairs(s.participants) do
-            local quests = p.quests and #p.quests or 0
-            local rares = p.rares and #p.rares or 0
-            names[#names + 1] = ("%s (%d min, lvl %s-%s%s%s)"):format(
-                ns.Characters.FullName(guid) or guid,
-                math.floor(p.seconds / 60),
-                tostring(p.levelStart), tostring(p.levelEnd),
-                quests > 0 and (", " .. quests .. " quests") or "",
-                rares > 0 and (", " .. rares .. " rares") or "")
-        end
-
-        DEFAULT_CHAT_FRAME:AddMessage(("   |cffffd100#%d|r %s  %d min  %s%s  |cff808080%s|r"):format(
-            s.id, date("%d %b %H:%M", s.startedAt),
-            math.floor(ns.Sessions.Duration(s) / 60),
-            s.source, s.endedAt and "" or " |cff40c040open|r",
-            table.concat(ns.Timeline.Unique(s.zones), " > ")))
-        DEFAULT_CHAT_FRAME:AddMessage(("      %s; +%d others, %d death(s), %d highlight(s), you lvl %s-%s"):format(
-            table.concat(names, ", "), s.others, ns.Sessions.DeathCount(s), #ns.Sessions.Highlights(s),
-            tostring(s.myLevelStart), tostring(s.myLevelEnd)))
-    end
-
-    ns.Print("%d session%s%s.", #list, #list == 1 and "" or "s",
-        #list > 10 and " (newest 10 shown)" or "")
-end
-
 -- PRV-3: any character, in the diary or not. Name only: forgetting whoever
 -- happens to be targeted is too easy to do by accident.
 local function CommandForget(text)
@@ -337,16 +296,6 @@ local function SightingCity(text)
 end
 
 -- The switch answers with the status report when Dev/ is loaded.
-local function SightingSwitch(_, name)
-    ns.SightingCapture.SetEnabled(name == "on")
-    local status = groups.sightings.byName.status
-    if status then
-        status.fn("", "status")
-    else
-        ns.Print("sightings %s.", name)
-    end
-end
-
 --------------------------------------------------------------------------
 -- The list, in /sd help's order
 --------------------------------------------------------------------------
@@ -360,18 +309,17 @@ Register("add", CommandAdd, "add your target to the diary, or |cffffd100/sd add 
 Register("remember", function() ns.UI.TogglePicker() end, "open the Remember this picker")
 Register("list", CommandList, "list diary entries")
 Register("remove", CommandRemove, "remove <name> from the diary")
-Register("sessions", CommandSessions, "together sessions, or |cffffd100/sd sessions <name>|r")
 Register("sightings", function(rest) Dispatch(groups.sightings, rest) end,
     "sighting capture; |cffffd100/sd sightings help|r for more")
 Register("settings", function() ns.UI.ShowSettings() end, "open the settings")
 Register("about", function() ns.UI.ShowIntro() end, "show the introduction again")
 Register("forget", CommandForget, "delete everything about <name>, in the diary or not")
--- Not a dev command, though it is the one that shows them: listed only
--- while debug is on, it could never be found to turn debug on.
+-- Not a dev command: the extra chat messages (ns.Debug) a bug report
+-- wants, in a release too. In development it also lists the dev commands.
 Register("debug", function()
     ns.db.settings.debug = not ns.db.settings.debug
     ns.Print("debug %s.", ns.db.settings.debug and "on" or "off")
-end, "toggle debug output and the development commands in this list")
+end, "turn extra chat messages on or off, for reporting a bug")
 
 local function Sub(name, fn, help, opts)
     opts = opts or {}
@@ -384,29 +332,6 @@ Sub("of", SightingsOf, "one character's sightings, or your target's", { usage = 
 -- No "add|remove": |r is the client's colour reset and would eat the r.
 Sub("city", SightingCity, "the city list; without an id, the map you are on",
     { usage = "city [add or remove] [mapID]" })
-Sub("on", SightingSwitch, "switch passive detection", { alias = { "off" }, usage = "on | off" })
-Sub("rollup", function(rest)
-    local word, sure = (rest or ""):match("^(%S*)%s*(%S*)")
-    local days = tonumber(word)
-    -- Rolled rows do not come back: under a day is refused, and sooner than
-    -- the retention setting has to be meant.
-    if days and days < 1 then
-        ns.Print("nothing rolled up: that would take even today's sightings. Use 1 day or more.")
-        return
-    end
-    if days and days < ns.BufferDays() and sure ~= "confirm" then
-        ns.Print("sightings stay in full for %d days. Rolling them up sooner cannot be undone. To go ahead: |cffffd100/sd sightings rollup %s confirm|r",
-            ns.BufferDays(), word)
-        return
-    end
-    local rolled, touched = ns.Sightings.Rollup(nil, days)
-    ns.Print("rolled %d row(s) of %d character(s) into summaries.", rolled, touched)
-end, "roll sightings older than [days] into summaries now", { usage = "rollup [days] [confirm]" })
-Sub("reset", function()
-    ns.SightingCapture.ResetStats()
-    ns.Print("sighting counters reset.")
-end, "reset the counters")
-
 SLASH_SOCIALDIARY1 = "/sd"
 SLASH_SOCIALDIARY2 = "/socialdiary"
 

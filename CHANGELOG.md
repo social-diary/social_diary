@@ -9,6 +9,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 - Occasional hints point out features you may have missed
 
+### Changes
+
+- Removed a few rarely used chat commands; sightings switch in _Settings_
+
 ### Fixes
 
 - _Dungeon View_ spreads deaths and wipes along the way to the next boss

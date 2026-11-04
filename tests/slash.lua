@@ -40,18 +40,18 @@ end
 --------------------------------------------------------------------------
 Section("one list per level, dev commands marked")
 
-Eq(Names(nil, false), "journal,add,remember,list,remove,sessions,sightings,settings,about,forget,debug",
+Eq(Names(nil, false), "journal,add,remember,list,remove,sightings,settings,about,forget,debug",
     "the user's commands, in help order")
-Eq(Names(nil, true), "art,env,who,observe,chars,db,toast,probe,handtest,journey,pen,testdata,hint", "the development commands")
-Eq(Names("sightings", false), "recent,of,city,on,rollup,reset", "the user's sighting commands")
-Eq(Names("sightings", true), "status,scan,around,tooltip", "the sighting diagnostics")
+Eq(Names(nil, true), "art,env,who,observe,chars,db,sessions,toast,probe,handtest,journey,pen,testdata,hint", "the development commands")
+Eq(Names("sightings", false), "recent,of,city", "the user's sighting commands")
+Eq(Names("sightings", true), "status,scan,around,tooltip,on,rollup,reset", "the sighting diagnostics")
 
 Check(not pcall(ns.Slash.Register, "add", function() end, "again"), "a name registered twice")
 Check(not pcall(ns.Slash.Register, "x", function() end, "x", { alias = { "" } }),
     "an alias that is taken was accepted")
 Check(not pcall(ns.Slash.Register, "x", function() end, "x", { under = "nowhere" }),
     "a subcommand of a level that does not exist")
-Eq(Names(nil, false), "journal,add,remember,list,remove,sessions,sightings,settings,about,forget,debug",
+Eq(Names(nil, false), "journal,add,remember,list,remove,sightings,settings,about,forget,debug",
     "a refused registration was listed anyway")
 
 --------------------------------------------------------------------------
@@ -91,7 +91,7 @@ Section("/sd help lists dev commands only while debug is on")
 
 ns.db.settings.debug = false
 local help = Said(function() Slash("help") end)
-Eq(#help, 1 + 11, "help without debug: the header and the user's commands")
+Eq(#help, 1 + 10, "help without debug: the header and the user's commands")
 Check(help[1]:find("commands:", 1, true), "the header")
 Eq(help[2], "   |cffffd100/sd journal|r  -- open the journal (also plain |cffffd100/sd|r)", "the first line")
 Check(Has(help, "/sd forget|r"), "a user command is missing")
@@ -111,13 +111,14 @@ Check(Has(help, "/sd forget|r") < Has(help, "/sd art|r"), "the dev commands are 
 
 local sub = Said(function() Slash("sightings help") end)
 Eq(#sub, 10, "sightings help with debug")
-Eq(sub[#sub - 3], "   |cffffd100/sd sightings |r  -- status: listening or paused, nameplate settings,"
+Eq(sub[#sub - 6], "   |cffffd100/sd sightings |r  -- status: listening or paused, nameplate settings,"
     .. " counters, frame cost", "the bare status line")
 
 ns.db.settings.debug = false
 sub = Said(function() Slash("sightings help") end)
-Eq(#sub, 6, "sightings help without debug: no header, the user's six")
-Eq(sub[4], "   |cffffd100/sd sightings on | off|r  -- switch passive detection", "the switch's line")
+Eq(#sub, 3, "sightings help without debug: no header, the user's three")
+Check(not Has(sub, "on | off|r") and not Has(sub, "rollup") and not Has(sub, "reset|r"),
+    "the switch, the rollup or the reset listed without debug: they are Dev's")
 Check(not Has(sub, "scan|r"), "a sighting diagnostic listed without debug")
 Eq(table.concat(Said(function() Slash("sightings what") end), "\n"), table.concat(sub, "\n"),
     "an unknown sighting command")

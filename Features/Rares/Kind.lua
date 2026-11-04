@@ -22,7 +22,7 @@
 --     episode's rare items) and its words and icon ("killed Humar the
 --     Pridelord"; UI/Words/Timeline.lua), keyed by activity, not by kind;
 --   - the "rare" art (UI/Style/Art.lua);
---   - /sd sessions' count of a session's rares (Core/Slash.lua).
+--   - /sd sessions' count of a session's rares (Dev/Diagnostics.lua).
 
 local addonName, ns = ...
 

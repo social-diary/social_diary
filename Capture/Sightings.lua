@@ -351,7 +351,7 @@ function Capture.State()
     return state, detail, active
 end
 
--- SIG-1's switch (/sd sightings on|off). Takes effect at once.
+-- SIG-1's switch (Settings' Recording page; /sd sightings on|off in Dev/). Takes effect at once.
 function Capture.SetEnabled(on)
     ns.db.settings.detectSightings = on and true or false
     return Capture.Evaluate()
