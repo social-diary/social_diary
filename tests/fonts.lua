@@ -99,11 +99,41 @@ Eq(Member(fam.FONT.personName, "russian"), "Fonts\\FRIZQT___CYR.TTF", "Goodmount
 --------------------------------------------------------------------------
 Section("what can't be a family stays plain")
 
--- A client on another alphabet would read our Latin through its member.
+-- A client on another alphabet would read our Latin through its member: no
+-- family there, and the four fonts are the client's own files for its
+-- alphabet, Morpheus its book face and the other three its text face. Our
+-- Latin-only files would show its names and places as boxes.
+local OWN = {
+    ruRU = { "Fonts\\FRIZQT___CYR.TTF", "Fonts\\MORPHEUS_CYR.TTF" },
+    koKR = { "Fonts\\2002.TTF", "Fonts\\K_Pagetext.TTF" },
+    zhCN = { "Fonts\\ARKai_T.ttf", "Fonts\\ARKai_T.ttf" },
+    zhTW = { "Fonts\\blei00d.TTF", "Fonts\\blei00d.TTF" },
+}
 for _, locale in ipairs({ "koKR", "zhCN", "zhTW", "ruRU" }) do
-    local style = Run({ family = RealFamily, locale = function() return locale end })
-    Check(style.FONT.body.members == nil, "a family on a " .. locale .. " client")
-    Eq(style.FONT.body.file, FRIZ, "the plain font on a " .. locale .. " client")
+    local text, book = OWN[locale][1], OWN[locale][2]
+    for _, env in ipairs({ { family = RealFamily }, {} }) do
+        env.locale = function() return locale end
+        local style = Run(env)
+        local how = env.family and " with families" or " without families"
+        Check(style.FONT.body.members == nil, "a family on a " .. locale .. " client" .. how)
+        Eq(style.FONT.body.file, text, "Friz on a " .. locale .. " client" .. how)
+        Eq(style.FONT.title.file, book, "Morpheus on a " .. locale .. " client" .. how)
+        Eq(style.FONT.noteWritten.file, text, "the hand on a " .. locale .. " client" .. how)
+        Eq(style.FONT.personName.file, text, "Goodmountain on a " .. locale .. " client" .. how)
+        Eq(style.FONT.cover.file, book, "the cover on a " .. locale .. " client" .. how)
+        Eq(style.FRIZ, text, "Style.FRIZ on a " .. locale .. " client" .. how)
+        Eq(style.MORPHEUS, book, "Style.MORPHEUS on a " .. locale .. " client" .. how)
+        Eq(style.NEUTON_ITALIC, text, "Style.NEUTON_ITALIC on a " .. locale .. " client" .. how)
+        Eq(style.GOODMOUNTAIN, text, "Style.GOODMOUNTAIN on a " .. locale .. " client" .. how)
+    end
+end
+-- Every Latin client, with or without families, keeps our own files.
+for _, locale in ipairs({ "enUS", "deDE", "frFR", "esMX", "ptBR", "itIT" }) do
+    local style = Run({ locale = function() return locale end })
+    Eq(style.FRIZ, FRIZ, "Friz on a " .. locale .. " client")
+    Eq(style.MORPHEUS, MORPHEUS, "Morpheus on a " .. locale .. " client")
+    Eq(style.NEUTON_ITALIC, "Interface\\AddOns\\social_diary\\Fonts\\Neuton-Italic.ttf", "the hand on a " .. locale .. " client")
+    Eq(style.GOODMOUNTAIN, "Interface\\AddOns\\social_diary\\Fonts\\Goodmountain.otf", "Goodmountain on a " .. locale .. " client")
 end
 local failing = Run({ family = function() error("no") end, locale = English })
 Eq(failing.FONT.note.file, FRIZ, "a family that errors leaves no plain font")

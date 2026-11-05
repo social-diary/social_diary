@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Fixes
+
+- Russian, Korean and Chinese clients: names and places now show in the journal instead of boxes
+
 ## [2.2.1]
 
 ### Fixes

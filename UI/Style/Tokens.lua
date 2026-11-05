@@ -121,12 +121,6 @@ local NEUTON_ITALIC = "Interface\\AddOns\\" .. addonName .. "\\Fonts\\Neuton-Ita
 -- title. The user's client loads it (20 Oct: SetFont on it returns true).
 local GOODMOUNTAIN = "Interface\\AddOns\\" .. addonName .. "\\Fonts\\Goodmountain.otf"
 
--- The files by name, for what sets a font by hand at a size of its own
--- (the margin cards' hand, the plates' heading, the parcel's fonts): the
--- same path every time, never a copy of the string.
-Style.MORPHEUS, Style.FRIZ, Style.NEUTON_ITALIC = MORPHEUS, FRIZ, NEUTON_ITALIC
-Style.GOODMOUNTAIN = GOODMOUNTAIN
-
 -- All four are Latin only, and a name can be in any alphabet. Where the client
 -- has font families, each font here is one: its own file as the roman member,
 -- and for the other alphabets the client's own files, as its Fonts.xml pairs
@@ -139,10 +133,30 @@ local OTHER_ALPHABETS = {
     { "russian", "Fonts\\FRIZQT___CYR.TTF", "Fonts\\MORPHEUS_CYR.TTF" },
 }
 
--- A client in one of these reads a family through that alphabet's member,
--- Latin too, so our Latin would change face there: those clients keep the
--- plain fonts, boxes for other alphabets' names and all, as they always had.
-local NOT_ROMAN = { koKR = true, zhCN = true, zhTW = true, ruRU = true }
+-- A client in one of these alphabets reads a family through that alphabet's
+-- member, Latin too, so our Latin would change face there: no families on
+-- those clients. Instead the four fonts become the client's own files for
+-- the alphabet, which hold its letters and Latin both: Morpheus its book
+-- face, and Friz, the hand and Goodmountain its text face, as no client has
+-- an italic or a display face in Cyrillic, Hangul or Han. Before this, a
+-- Russian client set its names and zones in the Latin files and read boxes.
+local NOT_ROMAN = { koKR = "korean", zhCN = "simplifiedchinese", zhTW = "traditionalchinese", ruRU = "russian" }
+
+do
+    local alphabet = GetLocale and NOT_ROMAN[GetLocale()]
+    for _, other in ipairs(OTHER_ALPHABETS) do
+        if other[1] == alphabet then
+            FRIZ, MORPHEUS = other[2], other[3]
+            NEUTON_ITALIC, GOODMOUNTAIN = other[2], other[2]
+        end
+    end
+end
+
+-- The files by name, for what sets a font by hand at a size of its own
+-- (the margin cards' hand, the plates' heading, the parcel's fonts): the
+-- same path every time, never a copy of the string.
+Style.MORPHEUS, Style.FRIZ, Style.NEUTON_ITALIC = MORPHEUS, FRIZ, NEUTON_ITALIC
+Style.GOODMOUNTAIN = GOODMOUNTAIN
 
 local function SamePath(a, b)
     return type(a) == "string" and a:gsub("/", "\\"):lower() == b:lower()
