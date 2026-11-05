@@ -68,6 +68,7 @@ Core/CreatureNames.lua
 Core/Custom.lua
 Core/JourneyRecap.lua
 Core/PersonPlate.lua
+Core/Glimpse.lua
 Core/Events.lua
 # After Events.lua: its PLAYER_LOGIN handler runs after the one that
 # loads the saved data.
@@ -166,6 +167,7 @@ UI/Dungeon/Way.lua
 UI/Dungeon/Tutorial.lua
 UI/Journal/Nearby.lua
 UI/Journal/Empty.lua
+UI/Journal/Glimpse.lua
 # The hints on the pages (Core/Hints.lua): which, their words and the
 # watcher; their slip is UI/Paper/HintSlip.lua's.
 UI/Journal/Hints.lua

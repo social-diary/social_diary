@@ -38,7 +38,18 @@ local SLOT = { x = 4, y = 8, w = 262, h = 178, t = -1.4, pad = 7, pc = 18, corne
 -- A dungeon's door is the route's own dungeon segment's entrance where the
 -- run began within `door` seconds of it.
 local LOOK = { door = 10 * 60, leaders = 18 }
-PersonPlate.SLOT, PersonPlate.LOOK = SLOT, LOOK
+-- A stranger's glimpse (UI/Journal/Glimpse.lua; the stranger-glimpse
+-- proposal, section 4, 5 Nov 2026): the same print in the same slot, so
+-- adding them glues it where it lay, but lying loose: no photo corners and
+-- no glue (`loose`), turned 1.6 degrees with the clock (the other way from
+-- the glued -1.4, so the change on adding shows), and standing `height` px
+-- off the page all round, so its shadow falls a little further out and
+-- paler than the glued card's (UI/Journey/Plate.lua's Height and the house
+-- light's fade). Laid flat ("Flat paper only"): square, straight,
+-- unshadowed, as every plate is.
+local LOOSE = { x = SLOT.x, y = SLOT.y, w = SLOT.w, h = SLOT.h, t = 1.6, pad = SLOT.pad, pc = SLOT.pc,
+    corners = {}, loose = true, height = 2.5 }
+PersonPlate.SLOT, PersonPlate.LOOK, PersonPlate.LOOSE = SLOT, LOOK, LOOSE
 
 --------------------------------------------------------------------------
 -- What is drawn
@@ -277,7 +288,7 @@ end
 -- little toward the page's foot; `scale` the print's lean (its picture
 -- grows about the card's middle). None where the mark is off the print.
 local function Aim(link, scale)
-    local s, mark = SLOT, link.mark
+    local s, mark = link.slot or SLOT, link.mark
     local cx, cy = s.x + s.w / 2, s.y + s.h / 2
     local mx, my = cx + (mark[1] - cx) * scale, cy + (mark[2] - cy) * scale
     local function Hide()
@@ -318,6 +329,36 @@ PersonPlate.Aim = Aim
 -- The plate
 --------------------------------------------------------------------------
 
+-- A leader's ink on `parent` (the top block): its own frame over the
+-- print, under the strips, with the pen's strokes and the dot it stops at,
+-- for Aim to draw. { frame, strokes, dot, slot } (`slot`, the print's).
+local function NewLink(parent, slot)
+    local ink = CreateFrame("Frame", nil, parent)
+    ink:SetAllPoints(parent)
+    ink:SetFrameLevel(parent:GetFrameLevel() + LOOK.leaders)
+    local link = { frame = parent, strokes = {}, dot = ink:CreateTexture(nil, "ARTWORK", nil, 2), slot = slot }
+    for i = 1, LEADER.pen.most do
+        local stroke = ink:CreateTexture(nil, "ARTWORK", nil, 1)
+        if stroke.SetSnapToPixelGrid then
+            stroke:SetSnapToPixelGrid(false)
+            stroke:SetTexelSnappingBias(0)
+        end
+        stroke:Hide()
+        link.strokes[i] = stroke
+    end
+    link.dot:Hide()
+    return link
+end
+PersonPlate.NewLink = NewLink
+
+-- A link's leader put away.
+local function Unlead(link)
+    link.mark, link.strip = nil, nil
+    for _, stroke in ipairs(link.strokes) do stroke:Hide() end
+    link.dot:Hide()
+    link.drawn = 0
+end
+
 -- The plate on `parent` (the top block: its slot is measured there);
 -- `open()` is what a click on it does (the map sheet).
 function PersonPlate.New(parent, open)
@@ -332,20 +373,7 @@ function PersonPlate.New(parent, open)
         "ANCHOR_RIGHT", function() view:Lean() end)
 
     -- The leader's ink: over the print, under the strips.
-    local ink = CreateFrame("Frame", nil, parent)
-    ink:SetAllPoints(parent)
-    ink:SetFrameLevel(parent:GetFrameLevel() + LOOK.leaders)
-    local link = { frame = parent, strokes = {}, dot = ink:CreateTexture(nil, "ARTWORK", nil, 2) }
-    for i = 1, LEADER.pen.most do
-        local stroke = ink:CreateTexture(nil, "ARTWORK", nil, 1)
-        if stroke.SetSnapToPixelGrid then
-            stroke:SetSnapToPixelGrid(false)
-            stroke:SetTexelSnappingBias(0)
-        end
-        stroke:Hide()
-        link.strokes[i] = stroke
-    end
-    link.dot:Hide()
+    local link = NewLink(parent, SLOT)
     view.link = link
     view.onZoom = function(_, scale)
         if link.mark then Aim(link, scale) end
@@ -385,6 +413,100 @@ function PersonPlate.New(parent, open)
         link.mark, link.strip = mark, strip
         if mark then Aim(link, self.scale or 1) end
         return mark ~= nil
+    end
+
+    return view
+end
+
+--------------------------------------------------------------------------
+-- A stranger's glimpse: the print lying loose
+--------------------------------------------------------------------------
+--
+-- The stranger-glimpse proposal (5 Nov 2026): on their page pencilled in
+-- (UI/Journal/Glimpse.lua), where they were first seen (the first
+-- sighting's hollow lozenge, as Your Diary draws it), the hinge's own mark
+-- where it lies on the same map (a group's ring, else a dot for a trade or
+-- a word, as the person page's own marks are), the road between the two,
+-- and where they were last seen when that is on it. It opens nothing (there
+-- is no map sheet for a stranger), so it never leans in under the mouse;
+-- its marks still say what they are.
+
+-- The moments of a glimpse's `pick` (ns.PersonPlate.Glimpse's) for the
+-- glimpse `g`: each tagged `glimpse` "first" or "hinge" for its note's
+-- leader, the last-seen X untagged.
+function PersonPlate.GlimpseMoments(pick, g)
+    local guid = g.guid
+    local list = { { kind = "first", mapID = pick.mapID, x = pick.x, y = pick.y, t = pick.t, guid = guid,
+        glimpse = "first", from = pick,
+        tip = function(_, now) return PersonText.FirstSeenTip(pick.t, now) end } }
+    local hinge = pick.hinge
+    if hinge then
+        local row = hinge.row
+        local spec = ns.Rows.Get(row.type)
+        list[#list + 1] = { kind = spec.fight and "fight" or row.type == "group_join" and "session" or "dot",
+            mapID = hinge.mapID, x = hinge.x, y = hinge.y, t = hinge.t, guid = guid, glimpse = "hinge", from = hinge,
+            tip = function(_, now) return PersonText.RowTip(row, guid, now) end }
+    end
+    local seen = g.record and g.record.seen
+    if seen and seen.mapID == pick.mapID and seen.x and ns.ZoneOf(seen.mapID) == seen.mapID then
+        list[#list + 1] = { kind = "seen", mapID = seen.mapID, x = seen.x, y = seen.y, t = seen.time, guid = guid,
+            tip = function(_, now) return PersonText.SeenTip(seen, now) end }
+    end
+    return list
+end
+
+-- The loose print on `parent` (the glimpse's block: its slot is measured
+-- there, as the person page's is), and a leader for each of its two notes.
+function PersonPlate.NewLoose(parent)
+    local view = Plate(parent, LOOSE)
+    view.links = { first = NewLink(parent, LOOSE), hinge = NewLink(parent, LOOSE) }
+
+    -- Draws the print for `pick` and the glimpse `g`; returns whether it is
+    -- drawn (no pick, no print).
+    function view:DrawGlimpse(pick, g, now)
+        self.pick = pick
+        for _, link in pairs(self.links) do Unlead(link) end
+        if not pick then
+            self.moments = nil
+            self:Hide()
+            return false
+        end
+        self:SetSlot(LOOSE)
+        local aw, ah = LOOSE.w - 2 * LOOSE.pad, LOOSE.h - 2 * LOOSE.pad
+        local moments = PersonPlate.GlimpseMoments(pick, g)
+        self.moments = moments
+        self:Draw(Road(pick.road, pick.mapID), nil, Plate.Window(pick.mapID, pick.x, pick.y, aw, ah),
+            { moments = moments, cap = Plate.Share(LOOSE), fights = {}, witnesses = {}, now = now })
+        self:Show()
+        return true
+    end
+
+    -- The mark of `which` ("first", "hinge") on the block, where the print
+    -- shows it, or nil (no such mark, or off the print).
+    function view:MarkOf(which)
+        for _, m in ipairs(self.moments or {}) do
+            if m.glimpse == which and self.where and self.where[m] then
+                local at = self.where[m]
+                local s = LOOSE
+                local cx, cy = s.x + s.w / 2, s.y + s.h / 2
+                if math.abs(at[1] - cx) <= s.w / 2 - s.pad and math.abs(at[2] - cy) <= s.h / 2 - s.pad then
+                    return at
+                end
+            end
+        end
+        return nil
+    end
+
+    -- The leader of `which` from `from` (anything with :Nearest(x, y), the
+    -- edge of its note) to its mark; none without one. Says whether drawn.
+    function view:Lead(which, from)
+        local link = self.links[which]
+        Unlead(link)
+        local mark = from and self:MarkOf(which)
+        if not mark then return false end
+        link.mark, link.strip = mark, from
+        Aim(link, 1)
+        return (link.drawn or 0) > 0
     end
 
     return view

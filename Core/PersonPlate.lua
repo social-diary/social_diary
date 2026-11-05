@@ -211,11 +211,65 @@ end
 -- Cached until the diary, the route or what was seen moves.
 local cache = {}
 
+local function Key()
+    return ("%d:%d:%d"):format(ns.Journey.version or 0, ns.dataVersion or 0, ns.seenVersion or 0)
+end
+
 function PersonPlate.For(guid)
-    local key = ("%d:%d:%d"):format(ns.Journey.version or 0, ns.dataVersion or 0, ns.seenVersion or 0)
+    local key = Key()
     local hit = cache[guid]
     if hit and hit.key == key then return hit.plate end
     local plate = PersonPlate.Pick(guid)
     cache[guid] = { key = key, plate = plate }
+    return plate
+end
+
+-- The print on a stranger's glimpse (the stranger-glimpse proposal, 5 Nov
+-- 2026; UI/Journal/Glimpse.lua): Met's fallback with no entry, centred on
+-- where they were first seen (the glimpse's `first`, ns.Glimpse.Of), the
+-- hinge (the row that made them matter) as a mark where it lies on the
+-- same map, and the road between the two: the first sighting's character's
+-- route from that sight to the hinge, cut to the map and the times, the
+-- ink trail the person plate draws for a session. Nil where the first
+-- sighting has no spot on a zone map (a thin glimpse has no print). `g` is
+-- the glimpse, read again where not given.
+--   mapID, x, y, t, me   the first sighting's spot (key "first")
+--   hinge                { mapID, x, y, t, me, row } on the same map, or nil
+--   road                 { me, mapID, from, to } or nil (no hinge, or a
+--                        hinge that is not after the sight)
+--   marks                {} (nothing else is weighed: a stranger has no
+--                        timeline)
+function PersonPlate.GlimpsePick(guid, g)
+    g = g or (ns.Glimpse and ns.Glimpse.Of(guid))
+    local first = g and g.first
+    if not (first and first.t) then return nil end
+    local map, x, y = Spot(first.me, first.mapID, first.x, first.y, first.t)
+    if not x then return nil end
+    local pick = { key = "first", rank = LAST, t = first.t, me = first.me, mapID = map, x = x, y = y,
+        first = first, marks = {} }
+    local row = g.hinge
+    if row then
+        local hm, hx, hy = Spot(row.me or first.me, row.mapID, row.x, row.y, row.time)
+        if hx and hm == map then
+            pick.hinge = { mapID = hm, x = hx, y = hy, t = row.time, me = row.me, row = row }
+        end
+        if row.time and row.time > first.t and first.me then
+            pick.road = { me = first.me, mapID = map, from = first.t, to = row.time }
+        end
+    end
+    return pick
+end
+
+-- Cached as For is, apart from it: the same GUID is a stranger's glimpse
+-- one moment and a diary entry's plate the next, and the key moves with
+-- the add (ns.dataVersion).
+local glimpses = {}
+
+function PersonPlate.Glimpse(guid, g)
+    local key = Key()
+    local hit = glimpses[guid]
+    if hit and hit.key == key then return hit.plate end
+    local plate = PersonPlate.GlimpsePick(guid, g)
+    glimpses[guid] = { key = key, plate = plate }
     return plate
 end

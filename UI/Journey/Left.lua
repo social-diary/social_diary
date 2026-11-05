@@ -54,9 +54,15 @@ local function FillHeader()
     page.who:SetText(table.concat(parts, " "))
 end
 
--- A name is a way to their page: People, open at them.
+-- A name is a way to their page: People, open at them; a stranger's
+-- opens their page pencilled in, the glimpse (the stranger-glimpse
+-- proposal, 5 Nov 2026). Asked first: with neither (a stale strip whose
+-- record the buffer has just forgotten), nothing happens, no page turns and
+-- no sound, rather than an empty People page. Every name on Your Diary
+-- (faces, prose, margin strips, the "met" strip, the witness card, the
+-- dungeon notes) comes here.
 local function ToPerson(guid)
-    if not guid then return end
+    if not (guid and ns.UI.Journal.Route(guid)) then return end
     GameTooltip:Hide()
     ns.UI.Journal.TurnTo("people")
     ns.UI.SelectPerson(guid)
@@ -192,9 +198,15 @@ local function EntryItems(recap, now, fights)
                     Add({ text = more, font = FONT.small, height = Measure(FONT.small, more) + ENTRY.para })
                 end
             end
+            -- The name in each is a link to them (the user's decision 5 on
+            -- the stranger-glimpse proposal, 5 Nov 2026): their page, or a
+            -- stranger's glimpse, through ToPerson as every name here.
             for _, f in ipairs(e.hindsight or {}) do
                 local line = Text.Hindsight(f)
-                Add({ text = line, font = FONT.noteWritten, later = f,
+                local short = Text.Short(f.guid)
+                -- (`text` the words as read, `linked` as written on the row.)
+                Add({ text = line, linked = short and Linked(line, { { name = short, guid = f.guid } }) or nil,
+                    font = FONT.noteWritten, later = f,
                     height = Measure(FONT.noteWritten, line) + ENTRY.later })
             end
             if #(e.places or {}) > 0 then Add({ height = ENTRY.ledger }) end
@@ -310,6 +322,18 @@ local function BuildEntryRow(list)
         local guid = type(link) == "string" and link:match("^sdperson:(.+)$")
         if guid then ToPerson(guid) end
     end)
+    -- A stranger's name (a hindsight line's) says where it leads, as their
+    -- margin strip does; a diary person's says nothing, as before.
+    row:SetScript("OnHyperlinkEnter", function(self, link)
+        local guid = type(link) == "string" and link:match("^sdperson:(.+)$")
+        if not guid or ns.Diary.IsDiary(guid) then return end
+        local list = ns.UI.PersonText.GlimpseTip(ns.Characters.FullName(guid) or ns.Characters.Name(guid))
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+        GameTooltip:SetText(unpack(list[1]))
+        for i = 2, #list do GameTooltip:AddLine(unpack(list[i])) end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnHyperlinkLeave", function() GameTooltip:Hide() end)
 
     -- The rubric: paraph, red capitals, "so far", a red rule fading out to
     -- the faces.
@@ -548,7 +572,7 @@ local function UpdateEntryRow(row, item)
         Marked(row, item)
     elseif item.text then
         row.text:SetFontObject(item.font or FONT.body)
-        row.text:SetText(item.text)
+        row.text:SetText(item.linked or item.text)
     end
 end
 

@@ -243,3 +243,167 @@ end
 function PersonText.ItemTip(words, t, now)
     return words or "Together", { When(t, now) }
 end
+
+--------------------------------------------------------------------------
+-- A stranger's glimpse (the stranger-glimpse proposal; the copywriter's
+-- words, .claude/proposals/stranger-glimpse-copy.md, 5 Nov 2026)
+--------------------------------------------------------------------------
+--
+-- Their page pencilled in (UI/Journal/Glimpse.lua), the strip that leads
+-- to it, and the hindsight line's link. Book ledger throughout: figures,
+-- days from Format, no full stops but on the seen line (a sentence, as the
+-- profile's). Headings are written in sentence case here and set in
+-- capitals by the page. Every string the page writes is in this one table,
+-- so a word changes in one place:
+--   notYet     the strip's tooltip, its second line (Nearby's "In your
+--              diary", mirrored)
+--   click      its third line, the click hint: names what the click opens
+--              (and the witness card's line for a stranger)
+--   first      note 1's heading
+--   after      the ledger's heading
+--   moments    note 2's heading where the hinge came within a minute
+--   nextDay    ... on the next calendar day, 12 h or more after
+--   dayBefore  ... the calendar day before (the hinge came first)
+--   later, earlier, daysLater, daysEarlier   ... "{duration} later", "{n}
+--              days later" and their mirrors, as format strings
+--   levels     note 2's sub line, both levels known; `mine` only yours
+--   beside     a hinge off the print where they were beside you (a trade,
+--              a /say); `stood` where only you are placed (a group join, a
+--              whisper: the diary keeps your position, never theirs)
+--   joinLevels how the levels join a place on one line
+--   more       the ledger's count past its lines
+--   seenDays   the seen line's day count, before Format.SeenText
+--   until      the foot strip's name; `words` under it; `add` its link
+PersonText.GLIMPSE = {
+    notYet = "Not in your diary yet",
+    click = "Click to see their page, pencilled in",
+    first = "First seen",
+    after = "After that",
+    moments = "Moments later",
+    nextDay = "The next day",
+    dayBefore = "The day before",
+    later = "%s later", earlier = "%s earlier",
+    daysLater = "%d days later", daysEarlier = "%d days earlier",
+    levels = "you at level %d, they at %d", mine = "at level %d",
+    beside = "in %s", stood = "you were in %s",
+    joinLevels = "%s  \194\183  %s",
+    more = "and %d more",
+    seenDays = "Seen on %d days since %s. ",
+    ["until"] = "Pencilled in until %s",
+    words = "Strangers are forgotten after %s. Once in your diary, all of this is kept for good.",
+    add = "Add %s to your diary",
+}
+local GW = PersonText.GLIMPSE
+
+-- A time with its first letter up: "Yesterday at 14:05", "On 3 Nov at
+-- 14:05" (Format.At, as a line of its own starts).
+local function AtCapital(t, now)
+    return (Format.At(t, now):gsub("^%l", string.upper))
+end
+
+-- The tooltip of a stranger's name that opens their glimpse (a margin
+-- strip, a "met" strip, the hindsight line): their full name, that they are
+-- not in the diary, and the click hint in its grey. A list for
+-- Style.Tooltip.
+function PersonText.GlimpseTip(full)
+    return { { full or "" }, { GW.notYet, 1, 1, 1 }, { GW.click, 0.6, 0.6, 0.6, true } }
+end
+
+-- Note 1, where they were first seen (`first`, ns.Glimpse.Of's): its
+-- heading, its line (the place as every place is written, "Red Rocks,
+-- Mulgore"; with no place, the time) and its sub line (the time; with no
+-- place, your level, or nil).
+function PersonText.GlimpseFirst(first, now)
+    now = now or ns.Now()
+    local zone = first.mapID and ns.MapName(first.mapID) or nil
+    local place = zone
+    if zone and first.subZone and first.subZone ~= zone then place = first.subZone .. ", " .. zone end
+    if place then return GW.first, place, Format.At(first.t, now) end
+    return GW.first, AtCapital(first.t, now), first.level and GW.mine:format(first.level) or nil
+end
+
+-- How long after the first sighting (at `from`) the hinge came (at `t`),
+-- as note 2's heading: within a minute, under 12 hours by the clock, then
+-- by calendar days; mirrored where the hinge came first. No first
+-- sighting: the hinge's time is the heading's clock.
+local function After(from, t, now)
+    if not from then return AtCapital(t, now) end
+    local d = t - from
+    local gap = math.abs(d)
+    if gap < 60 then return GW.moments end
+    local days = math.floor((ns.DayStart(math.max(t, from)) - ns.DayStart(math.min(t, from))) / ns.DAY + 0.5)
+    if gap < 12 * 60 * 60 or days == 0 then
+        return (d > 0 and GW.later or GW.earlier):format(Format.Duration(gap))
+    end
+    if days == 1 then return d > 0 and GW.nextDay or GW.dayBefore end
+    return (d > 0 and GW.daysLater or GW.daysEarlier):format(days)
+end
+PersonText.GlimpseAfter = After
+
+-- Note 2, the hinge (`row`, the first that made them matter): its heading
+-- (After), its line (the row's own timeline words, as they are) and its sub
+-- lines. `onPrint`: its mark is on the print, so the leader says where and
+-- the sub line is the levels; else the place, by whose it is ("in
+-- Durotar" where they were beside you, "you were in Durotar" where only
+-- you are placed). Returns heading, line, sub, and `long`, the place with
+-- the levels joined on, for the page to take where it fits one line.
+function PersonText.GlimpseHinge(row, first, onPrint, now, guid)
+    now = now or ns.Now()
+    local spec = ns.Rows.Get(row.type)
+    local line = spec.text and spec.text(row, guid) or row.type
+    local levels
+    if row.myLevel and row.theirLevel then
+        levels = GW.levels:format(row.myLevel, row.theirLevel)
+    elseif row.myLevel then
+        levels = GW.mine:format(row.myLevel)
+    end
+    local heading = After(first and first.t, row.time, now)
+    if onPrint then return heading, line, levels, nil end
+    local zone = ns.RowZone(row)
+    if not zone then return heading, line, levels, nil end
+    local place = (spec.proximity and GW.beside or GW.stood):format(zone)
+    return heading, line, place, levels and GW.joinLevels:format(place, levels) or nil
+end
+
+-- A ledger line's day, short ("today", "yesterday", "3 Nov"), for its
+-- 76 px column (Format.DayLabel is three times that); the page sets it in
+-- capitals.
+function PersonText.GlimpseDay(t, now)
+    return Day(t, now or ns.Now(), true)
+end
+
+-- A ledger line's words: the row's own timeline words.
+function PersonText.GlimpseRow(row, guid)
+    local spec = ns.Rows.Get(row.type)
+    return spec.text and spec.text(row, guid) or row.type
+end
+
+function PersonText.GlimpseMore(n)
+    return GW.more:format(n)
+end
+
+-- The seen line: Recently nearby's tooltip written on the page. The day
+-- count only past one day; "Last seen ..." always; never sighted, Format's
+-- own "Not seen nearby yet.".
+function PersonText.GlimpseSeen(g, now)
+    now = now or ns.Now()
+    local seen = g.record and g.record.seen
+    local text = Format.SeenText(seen, now)
+    if seen and not text:find("%.$") then text = text .. "." end
+    if g.seen and (g.seen.days or 0) > 1 and g.seen.since then
+        text = GW.seenDays:format(g.seen.days, Format.DayMonth(g.seen.since, now)) .. text
+    end
+    return text
+end
+
+-- The foot strip: its name ("Pencilled in until 5 December", the year
+-- only across New Year), the same short where that differs (or nil: "4 Jan
+-- 2027"), its words with the buffer's days (`days`, "30 days"), and its
+-- link with their short name.
+function PersonText.GlimpseFoot(g, short, days, now)
+    now = now or ns.Now()
+    local t = g["until"] or now
+    local long = GW["until"]:format(Format.DayMonth(t, now))
+    local brief = GW["until"]:format(Day(t, now, true))
+    return long, brief ~= long and brief or nil, GW.words:format(days), GW.add:format(short or g.name or "")
+end

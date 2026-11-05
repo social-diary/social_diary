@@ -82,9 +82,34 @@ function J.EditNote(note)
     if note then OpenNote(note) end
 end
 
+-- A stranger's glimpse (the stranger-glimpse proposal, 5 Nov 2026;
+-- UI/Journal/Glimpse.lua) where nobody's page is open: shown for J.glimpse
+-- while ns.Glimpse.Of still has one (read afresh every time: the buffer
+-- may have forgotten them), else put away and J.glimpse cleared, so the
+-- page is "Choose someone" as before. Says whether it shows.
+local function ShowGlimpse()
+    local glimpse = J.journal.glimpse
+    local g = J.glimpse and ns.Glimpse.Of(J.glimpse)
+    if not g then J.glimpse = nil end
+    if g then glimpse:Fill(g) elseif glimpse then glimpse:Hide() end
+    -- The welcome's right strip gives way to it (UI/Journal/Empty.lua).
+    J.RefreshWelcomeRight()
+    return g ~= nil
+end
+
 function RefreshProfile()
     if not J.journal then return end
     local p = J.journal.profile
+
+    -- A glimpse whose stranger is in the diary now (its own link, the entry
+    -- sheet's Done, the key, the menu, /sd add: every way in while the book
+    -- is open ends here) is their page: selected, the list marking them,
+    -- the stack turned to their leaf. Nothing else moves.
+    if J.glimpse and ns.Diary.Get(J.glimpse) then
+        J.selected, J.glimpse = J.glimpse, nil
+        J.journal.people:Refresh()
+        J.TurnStack()
+    end
 
     local s = J.selected and ns.People.Stats(J.selected)
     -- A run out on the table is someone's: nobody's page, anyone else's or
@@ -94,14 +119,22 @@ function RefreshProfile()
         ns.UI.DungeonPage.Close(true)
     end
     if not s then
+        -- Someone taken out of the diary with their history kept falls
+        -- back to their glimpse: they are a stranger again until the
+        -- buffer forgets them, and the page is its own undo (the user's
+        -- decision 3, 5 Nov 2026). Deleted outright, there is none.
+        if J.selected then J.glimpse = J.selected end
         J.selected = nil
         p:Hide()
         p.map:Hide()
+        local glimpsed = ShowGlimpse()
         -- An empty diary's right page is the page drawn in pencil
         -- (UI/Journal/Empty.lua).
-        J.journal.emptyProfile:SetShown(ns.Diary.Count() > 0)
+        J.journal.emptyProfile:SetShown(not glimpsed and ns.Diary.Count() > 0)
         return
     end
+    J.glimpse = nil
+    ShowGlimpse()
     J.journal.emptyProfile:Hide()
     p:Show()
 

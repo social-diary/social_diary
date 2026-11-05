@@ -249,8 +249,22 @@ local function MarginNote(plate, e, it, named)
             if not (cut or strip.quoteCut) then return nil end
             return { { "Your note" }, { whole, 1, 1, 1, true } }
         end
+        -- A stranger's name (a first sighting in hindsight) is a link in
+        -- the plainer ink, to their glimpse, and its tooltip says so: who,
+        -- not in the diary yet, and where the click goes (the
+        -- stranger-glimpse proposal, section 5, 5 Nov 2026). A quoted note
+        -- cannot be on a stranger's strip, so the quote's tooltip stays
+        -- the diary people's. Ink and tooltip only: the strip lays out as
+        -- it did.
+        local stranger = guid ~= nil and not ns.Diary.IsDiary(guid)
+        local tip = quote and Tip or nil
+        if stranger then
+            tip = function()
+                return ns.UI.PersonText.GlimpseTip(ns.Characters.FullName(guid) or ns.Characters.Name(guid))
+            end
+        end
         strip:SetNote({ name = Text.MarginWho(guid), what = Text.MarginWhat(g.moments, e.level), quote = quote,
-            quoteLines = quoteMost, guid = guid, rival = Rival(guid), onClick = ToPerson, tip = quote and Tip or nil,
+            quoteLines = quoteMost, guid = guid, plain = stranger, rival = Rival(guid), onClick = ToPerson, tip = tip,
             seed = table.concat({ guid or ("someone" .. it.index), plate.mapID or 0, level }, ":") })
         return strip
     end

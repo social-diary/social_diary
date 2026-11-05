@@ -582,7 +582,11 @@ end
 -- `parent` is the frame the slots are measured on (the right page), `slot`
 -- one of the page's LAYOUT entries: x, y (its top left), w, h, t (its turn
 -- in degrees, clockwise), pad (the card's margin round the art), pc (the
--- corners' size), corners ({ "tl", ... }) and lift ("br", "bl" or nil).
+-- corners' size), corners ({ "tl", ... }) and lift ("br", "bl" or nil);
+-- and for a print lying loose on the page rather than glued (a stranger's
+-- glimpse, UI/Journal/PersonPlate.lua's LOOSE; 5 Nov 2026): loose (no glue)
+-- and height (px it stands off the page all round, its shadow further out
+-- and paler for it).
 local function New(parent, slot)
     -- The words, from UI/Journey/Text/, which loads after this file.
     local Text = ns.UI.JourneyText
@@ -974,12 +978,15 @@ local function New(parent, slot)
 
     -- How high the card stands at a point of its edge: a lifted corner's
     -- LIFT.height, falling to nothing over LIFT.reach along either edge
-    -- that meets there; 0 where it is glued.
+    -- that meets there; 0 where it is glued. A print lying loose (the
+    -- slot's `height`, a stranger's glimpse: UI/Journal/PersonPlate.lua's
+    -- LOOSE) stands that high all round, under any lifted corner.
     local function Height(x, y)
         local s = plate.slot
-        if not s.lift then return 0 end
+        local base = s.height or 0
+        if not s.lift then return base end
         local d = math.max(math.abs(x - (s.lift == "br" and s.w or 0)), math.abs(y - s.h))
-        return LIFT.height * math.max(0, 1 - d / LIFT.reach)
+        return base + LIFT.height * math.max(0, 1 - d / LIFT.reach)
     end
 
     -- How far out the shadow falls at a height, and how far it blurs.
@@ -1007,6 +1014,10 @@ local function New(parent, slot)
         local lift, I, C = plate.slot.lift, INK, SHADOW.core
         local c = C.out
         local lifted = 0
+        -- A print lying loose (the slot's `height`) is paler for standing
+        -- higher, by the house light's own fade (UI/Paper/Light.lua's
+        -- LIFT.fade); a glued card's (height nil) is SHADOW.alpha as tuned.
+        local softAlpha = SHADOW.alpha / (1 + ns.UI.Light.LIFT.fade * (plate.slot.height or 0))
 
         -- A point of an edge's soft band, from a station: its inner end
         -- (under the card) and its outer end, out and blurred.
@@ -1024,7 +1035,7 @@ local function New(parent, slot)
         end
         -- The core where the card touches: as dark as it touches.
         local function Touch(x, y)
-            return C.alpha * (1 - Height(x, y) / LIFT.height)
+            return C.alpha * math.max(0, 1 - Height(x, y) / LIFT.height)
         end
         local function BottomCore(x, first, last)
             if last then return W - 1, H - 1, W + c, H + c end
@@ -1045,7 +1056,7 @@ local function New(parent, slot)
             local ix2, iy2, ox2, oy2, r2 = BottomSoft(xs[k + 1], false, last)
             local soft = shadowPool:Next()
             -- VERTICAL runs from the bottom up: clear outside, dark inside.
-            Style.Shade(soft, "VERTICAL", I[1], I[2], I[3], 0, SHADOW.alpha)
+            Style.Shade(soft, "VERTICAL", I[1], I[2], I[3], 0, softAlpha)
             QuadOr(soft, ix1, iy1, ix2, iy2, ox2, oy2, ox1, oy1,
                 ox1, H - 1, (last and ox2 or ix2) - ox1, math.max(r1, r2) + 1)
             local a1, a2 = Touch(xs[k], H), Touch(xs[k + 1], H)
@@ -1064,7 +1075,7 @@ local function New(parent, slot)
             local ix1, iy1, ox1, oy1, r1 = RightSoft(ys[k], first, false)
             local ix2, iy2, ox2, oy2, r2 = RightSoft(ys[k + 1], false, last)
             local soft = shadowPool:Next()
-            Style.Shade(soft, "HORIZONTAL", I[1], I[2], I[3], SHADOW.alpha, 0)
+            Style.Shade(soft, "HORIZONTAL", I[1], I[2], I[3], softAlpha, 0)
             QuadOr(soft, ix1, iy1, ox1, oy1, ox2, oy2, ix2, iy2,
                 W - 1, oy1, math.max(r1, r2) + 1, (last and H - 1 or oy2) - oy1)
             local a1, a2 = Touch(W, ys[k]), Touch(W, ys[k + 1])
@@ -1269,7 +1280,9 @@ local function New(parent, slot)
         if not flat then
             lifted = CastShadow(W, H)
             Edges(W, H)
-            Glue(W, H, seed)
+            -- A print lying loose (`loose`: a stranger's glimpse, nothing
+            -- glued yet) has no glue squeezed out from under it.
+            if not s.loose then Glue(W, H, seed) end
             if s.lift then LiftShade(s.lift, W, H) end
         end
         for i, which in ipairs(s.corners or {}) do Corner(which, W, H, s.pc or 24, flat, seed + i * 3.7) end

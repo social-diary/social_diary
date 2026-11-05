@@ -1727,6 +1727,23 @@ Eq(R.Matters(lateSummary, hs), nil, "a summary's second day past midnight made t
 Eq(R.Matters(lateSeen, hs), nil, "a last sighting past midnight made them matter")
 Eq(R.Matters(morning, hs), nil, "seen again the next morning made them matter")
 
+-- What made them matter (Recap.Hinge, the stranger-glimpse proposal, 5 Nov
+-- 2026): the row itself, or the diary entry where the add came first; the
+-- time Matters gives; nothing where nothing did.
+local hingeRow, hingeAt, hingeHow = R.Hinge(grouped, hs)
+Eq(hingeRow, hs.interactions[grouped][2], "the hinge is not the group join (a level-up is not)")
+Eq(hingeAt, d0 + 2 * DAY + 60, "the hinge's time")
+Eq(hingeHow, "row", "a row's hinge is not a row")
+local hingeEntry, addedAt, addedHow = R.Hinge(diaryP, hs)
+Eq(hingeEntry, hs.diary[diaryP], "the hinge is not the diary's add")
+Eq(addedAt, d0 + DAY + 600, "the add's time")
+Eq(addedHow, "added", "the add's hinge is not an add")
+Eq(R.Hinge(later, hs), nil, "being seen again was a hinge")
+Eq(R.Hinge(observed, hs), nil, "an observed row was a hinge")
+for _, who in ipairs({ diaryP, grouped, later, passing, observed, folded, whisper }) do
+    Eq(select(2, R.Hinge(who, hs)), R.Matters(who, hs), "Matters and Hinge disagree")
+end
+
 local firsts = R.FirstSightings(j, hs)
 local byGuid = {}
 for _, f in ipairs(firsts) do byGuid[f.guid] = f end

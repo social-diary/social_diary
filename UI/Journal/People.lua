@@ -269,7 +269,11 @@ J.RefreshList = RefreshList
 -- (UI/Journal/Profile.lua), and an empty diary's welcome over both
 -- (UI/Journal/Empty.lua). It opens on the selected person's own leaf, and
 -- is built before every other page. The book refreshes it itself
--- (ns.UI.SetJournalView), so it has no `refresh`.
+-- (ns.UI.SetJournalView), so it has no `refresh`. A stranger's glimpse
+-- (J.glimpse) takes no leaf of its own: the stack stays People's own while
+-- it lies open, and adding them gives them the next leaf as any page read
+-- for the first time is given (the user's decision 1 on the stranger-glimpse
+-- proposal, 5 Nov 2026: whatever is simplest and breaks nothing).
 J.RegisterPage("people", {
     order = 20, ribbon = { colour = "red", label = "People" }, leaf = 2, buildOrder = 10,
     leaves = function() return J.EntryLeaf(J.selected) end,
@@ -284,5 +288,10 @@ J.RegisterPage("people", {
         -- An empty diary's People page: how someone gets in, and what their
         -- page will be (UI/Journal/Empty.lua).
         J.BuildWelcome(panel, people)
+
+        -- A stranger's glimpse, their page pencilled in, in place of
+        -- "Choose someone" (UI/Journal/Glimpse.lua). Over the welcome's
+        -- right page, whose strip gives way to it.
+        J.BuildGlimpse(panel, people)
     end,
 })

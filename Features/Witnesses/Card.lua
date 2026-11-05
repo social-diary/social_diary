@@ -393,7 +393,13 @@ function WitnessCard.New(parent)
             onClick = onClick, tip = function()
                 local title, lines = Witnesses.Tip(w, now)
                 local list = Style.TipList(title, lines)
-                if guid then list[#list + 1] = { "Click to open their page in the diary", 0.6, 0.6, 0.6, true } end
+                -- A stranger's opens their page pencilled in, the glimpse (the
+                -- stranger-glimpse proposal, 5 Nov 2026), and says so.
+                if guid then
+                    local click = ns.Diary.IsDiary(guid) and "Click to open their page in the diary"
+                        or ns.UI.PersonText.GLIMPSE.click
+                    list[#list + 1] = { click, 0.6, 0.6, 0.6, true }
+                end
                 return list
             end })
     end

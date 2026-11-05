@@ -30,13 +30,20 @@ ns.UI.JourneyMargin.Register("met", {
         local rec = it.rec
         local guid = Met.Guid(rec)
         local what = rec.what or ""
-        strip:SetNote({ name = Met.Who(rec), what = what, guid = guid, rival = YourDiary.Rival(guid),
-            onClick = c.ToPerson,
+        -- Someone the diary only has pencilled in: the plainer ink, a link to
+        -- their glimpse all the same (ToPerson routes it), as an automatic
+        -- stranger's strip (the stranger-glimpse proposal, 5 Nov 2026).
+        local stranger = guid ~= nil and not ns.Diary.IsDiary(guid)
+        strip:SetNote({ name = Met.Who(rec), what = what, guid = guid, plain = stranger,
+            rival = YourDiary.Rival(guid), onClick = c.ToPerson,
             -- A line longer than the strip's three lines keeps the rest here, as
-            -- a quote cut short does.
+            -- a quote cut short does; a stranger's says where the click goes.
             tip = function()
-                if strip:What() == what then return nil end
-                return { { what, 1, 1, 1, true } }
+                local cut = strip:What() ~= what
+                if not stranger then return cut and { { what, 1, 1, 1, true } } or nil end
+                local list = ns.UI.PersonText.GlimpseTip(ns.Characters.FullName(guid) or Met.Name(rec))
+                if cut then table.insert(list, 2, { what, 1, 1, 1, true }) end
+                return list
             end,
             seed = c.Seed(guid or Met.Name(rec) or "someone", rec.t) })
     end,

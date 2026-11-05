@@ -25,9 +25,15 @@
 -- mouse cannot turn either; it stays square under the whole strip, and
 -- under it the tape's free end lifts (TAPE.hover) and the name underlines.
 --
--- A stranger ("someone") is the same slip in plainer ink, opens nothing
--- and has no hover. A rival (a diary entry tagged "foe") has its foot inked in
--- rubric, a thin line, never a bar.
+-- A stranger is the same slip in plainer ink (INK, not INK_STRONG). A
+-- nameless one ("someone") opens nothing and has no hover. A named one
+-- (`guid` given with `plain`) still opens: their glimpse, their page
+-- pencilled in on the People page (UI/Journal/Glimpse.lua), so it keeps
+-- what says "this opens" in this house, the tape's free end lifting and
+-- the name underlining, and gives up only the strong ink, which is the
+-- diary's (the stranger-glimpse proposal, section 5; 5 Nov 2026). A rival
+-- (a diary entry tagged "foe") has its foot inked in rubric, a thin line,
+-- never a bar.
 --
 -- A slip may keep room for a picture over the name (`picture`: the killer
 -- card, a feature's, draws a creature there): the slip says where it
@@ -575,7 +581,8 @@ function ns.UI.PaperStrip(parent, card)
     -- `note`: { name, what, quote (their note's words, as JourneyText's
     -- Written gives them: no escape codes), quoteLines (the most lines the
     -- quote may take, STRIP.quote.lines at most), guid (a link to their page when
-    -- given), rival, seed, onClick(guid), and for a slip that is not a
+    -- given), plain (with a guid: a stranger's link, the name in INK, not
+    -- INK_STRONG), rival, seed, onClick(guid), and for a slip that is not a
     -- person's: tack (fastened with a brass tack, TACK, instead of tape), strong
     -- (the name in INK_STRONG without a page to open), tip (a tooltip's
     -- lines, as Style.Tooltip takes them), picture ({ w, h, gap }: room over
@@ -610,7 +617,7 @@ function ns.UI.PaperStrip(parent, card)
         self.onClick = note.onClick
         self.tip = note.tip
         self.name:SetText(note.name or "")
-        local S = (note.guid or note.strong) and Style.INK_STRONG or Style.INK
+        local S = ((note.guid and not note.plain) or note.strong) and Style.INK_STRONG or Style.INK
         self.name:SetTextColor(S[1], S[2], S[3])
         self.link:EnableMouse(note.guid ~= nil or note.tip ~= nil or self.onRight ~= nil)
         self.rival:SetShown(note.rival == true)

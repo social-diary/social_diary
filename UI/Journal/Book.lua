@@ -81,6 +81,15 @@ end
 J.journal = nil
 J.selected = nil
 
+-- A stranger's glimpse lying open on the People page's right page (the
+-- stranger-glimpse proposal, 5 Nov 2026; UI/Journal/Glimpse.lua): their
+-- GUID, or nil. The open page's state, never saved and not kept past
+-- turning to another page, choosing someone from the list or closing the
+-- book (as J.visit is not). It and J.selected are never both set: the
+-- profile promotes a glimpse to the selection once they are in the diary
+-- (UI/Journal/Profile.lua).
+J.glimpse = nil
+
 -- "map" while the map sheet lies on the book, else "timeline".
 J.tab = "timeline"
 
@@ -235,6 +244,9 @@ local function Build()
     panel:HookScript("OnHide", function()
         J.EndEdit()
         ns.UI.Tour.Closed()
+        -- A glimpse is the open page's, not the book's: a book opened
+        -- again opens as it would have before.
+        J.glimpse = nil
     end)
 
     ns.On("SD_PAPER_CHANGED", function()
@@ -285,6 +297,7 @@ end
 function J.Edit(guid, focusNote)
     if not J.journal or not J.journal:IsShown() then return false end
     J.selected = ns.SafeGUID(guid)
+    J.glimpse = nil
     J.editing = true
     J.view = "people"
     ShowView()
@@ -302,13 +315,45 @@ function J.EndEdit()
     J.RefreshProfile()
 end
 
+-- What a name opens (the stranger-glimpse proposal, 5 Nov 2026): "page"
+-- for a diary entry, "glimpse" for someone the diary has pencilled in
+-- (ns.Glimpse.Of: a record, not one of the user's own), else nil, and
+-- nothing to turn to. Asked before a page is turned (Your Diary's
+-- ToPerson), so a stale name never turns the book to an empty People page.
+function J.Route(guid)
+    guid = ns.SafeGUID(guid)
+    if not guid then return nil end
+    if ns.Diary.Get(guid) then return "page" end
+    if ns.Glimpse.Of(guid) then return "glimpse" end
+    return nil
+end
+
+-- Sets whose page the People page shows for `guid`, as J.Route says: their
+-- page (the glimpse put away), their glimpse (nobody selected), or nobody.
+-- Returns which.
+local function Choose(guid)
+    local route = J.Route(guid)
+    guid = ns.SafeGUID(guid)
+    if route == "page" then
+        J.selected, J.glimpse = guid, nil
+    elseif route == "glimpse" then
+        J.selected, J.glimpse = nil, guid
+    else
+        J.selected, J.glimpse = nil, nil
+    end
+    return route
+end
+
+-- Opens `guid` on the People page's right page: their page, or their
+-- glimpse, or nobody (returns "page", "glimpse" or nil).
 function ns.UI.SelectPerson(guid)
     if J.editing then J.EndEdit() end
-    J.selected = ns.SafeGUID(guid)
-    if not J.journal then return end
+    local route = Choose(guid)
+    if not J.journal then return route end
     TurnStack()
     J.journal.people:Refresh()
     J.RefreshProfile()
+    return route
 end
 
 -- Turns to one of the journal's pages: "journey", "people", "nearby" or
@@ -316,6 +361,8 @@ end
 function ns.UI.SetJournalView(key)
     if not J.Page(key) then return end
     if key ~= "people" and J.editing then J.EndEdit() end
+    -- A glimpse is put away with its page.
+    if key ~= "people" then J.glimpse = nil end
     J.view = key
     if not J.journal then return end
     ShowView()
@@ -383,7 +430,8 @@ function ns.UI.ShowJournal(guid)
     end
     local unseen = false
     if guid then
-        J.selected = ns.SafeGUID(guid)
+        -- Their page, or their glimpse (SelectPerson's routing).
+        Choose(guid)
         J.view = "people"
     elseif not ns.Setting("introSeen") then
         J.view = "journey"

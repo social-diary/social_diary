@@ -797,31 +797,44 @@ function Recap.WhereAt(j, t)
     return map, x, y, best
 end
 
--- When `guid` first mattered (D6 amended), or nil: the earlier of being
--- added to the diary and an interaction row of grouping, trading,
--- whispering or saying something (`matters`). Only something done with
--- them: being seen again is not (11 Oct: passers-by seen on both sides of
--- midnight, never spoken to, took a plate's margin). `ctx` carries the
--- stores, read only: diary, interactions, characters.
-function Recap.Matters(guid, ctx)
+-- What first made `guid` matter (D6 amended), and when, or nil: the
+-- earlier of being added to the diary and an interaction row of grouping,
+-- trading, whispering or saying something (`matters`). Only something done
+-- with them: being seen again is not (11 Oct: passers-by seen on both sides
+-- of midnight, never spoken to, took a plate's margin). `ctx` carries the
+-- stores, read only: diary, interactions, characters. Returns the hinge
+-- itself (the interaction row, or the diary entry where the add came first,
+-- the add winning a tie as it always has), its time, and which it was
+-- ("row" or "added").
+-- (5 Nov 2026: split out of Matters for the stranger-glimpse proposal: the
+-- glimpse writes the hinge's own words and adds them at its place, so it
+-- needs the row, not only its time. Matters reads through this, so the
+-- plate's first sighting and the glimpse can never disagree about it.)
+function Recap.Hinge(guid, ctx)
     local record = ctx.characters and ctx.characters[guid]
     if not (record and record.firstSeen) then return nil end
-    local best
-    local function Take(t)
-        if t and (not best or t < best) then best = t end
+    local best, at, how
+    local function Take(what, t, kind)
+        if t and (not at or t < at) then best, at, how = what, t, kind end
     end
 
     local entry = ctx.diary and ctx.diary[guid]
-    if entry then Take(entry.addedAt or record.firstSeen) end
+    if entry then Take(entry, entry.addedAt or record.firstSeen, "added") end
 
     for _, row in ipairs(ctx.interactions and ctx.interactions[guid] or {}) do
         if ns.Rows.Get(row.type).matters then
-            Take(row.time)
+            Take(row, row.time, "row")
             break
         end
     end
 
-    return best
+    return best, at, how
+end
+
+-- When `guid` first mattered, or nil: the hinge's time (Recap.Hinge).
+function Recap.Matters(guid, ctx)
+    local _, t = Recap.Hinge(guid, ctx)
+    return t
 end
 
 -- JRN-23: the first sightings worth showing on `j`, oldest first: each
@@ -856,6 +869,23 @@ function Recap.FirstSightings(j, ctx)
     return list
 end
 
+-- Which of the user's characters' roads was somewhere at `t`, and where:
+-- me (its GUID), j (its route), mapID, x, y, the segment; nil where no road
+-- was there (each road read from its start, Recap.WhereAt's slack and all).
+-- (5 Nov 2026: split out of FirstSightingOf for the stranger-glimpse
+-- proposal, whose page places a first sighting the hindsight gate does not
+-- pass the same way; neither returns anything different for it.)
+function Recap.OnRoads(t)
+    if not t then return nil end
+    for me, j in pairs(ns.db.journey or {}) do
+        if (j.startedAt or math.huge) <= t then
+            local map, x, y, seg = Recap.WhereAt(j, t)
+            if x then return me, j, map, x, y, seg end
+        end
+    end
+    return nil
+end
+
 -- JRN-23 on a People page: where `guid` was first seen, on whichever of
 -- the user's characters' roads it happened, once they mattered. Nil when
 -- the gate is not passed or no road was there.
@@ -867,17 +897,11 @@ function Recap.FirstSightingOf(guid, now)
     local t = record.firstSeen
     local mattered = Recap.Matters(guid, ctx)
     if not (mattered and mattered - t > HINDSIGHT.encounter) then return nil end
-    for me, j in pairs(ns.db.journey or {}) do
-        if (j.startedAt or math.huge) <= t then
-            local map, x, y, seg = Recap.WhereAt(j, t)
-            if x then
-                return { guid = guid, me = me, t = t, mapID = map, x = x, y = y,
-                    subZone = seg.kind == "stop" and seg.subZone or nil, level = Recap.LevelAt(j, t),
-                    metLevel = Recap.LevelAt(j, mattered), mattered = mattered }
-            end
-        end
-    end
-    return nil
+    local me, j, map, x, y, seg = Recap.OnRoads(t)
+    if not me then return nil end
+    return { guid = guid, me = me, t = t, mapID = map, x = x, y = y,
+        subZone = seg.kind == "stop" and seg.subZone or nil, level = Recap.LevelAt(j, t),
+        metLevel = Recap.LevelAt(j, mattered), mattered = mattered }
 end
 
 --------------------------------------------------------------------------

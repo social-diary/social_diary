@@ -60,6 +60,7 @@ local FILES = {
     "timeline",
     "person_plate",
     "person_page",
+    "glimpse",
     "instances",
     "dungeons",
     "dungeon_run",

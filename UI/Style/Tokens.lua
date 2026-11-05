@@ -234,7 +234,15 @@ Style.FONT = {
     pencilSmall = Font("SocialDiaryFontPencilSmall", FRIZ, 11, Style.GRAPHITE),
     -- The first line of a note in pencil: the parcel's (UI/Windows/Intro/Torn.lua).
     pencilLede = Font("SocialDiaryFontPencilLede", FRIZ, 15, Style.GRAPHITE),
-    margin = Font("SocialDiaryFontMargin", FRIZ, 12, Style.ACCENT),
+    -- A stranger's page pencilled in (UI/Journal/Glimpse.lua; the
+    -- stranger-glimpse proposal, 5 Nov 2026): their name in the hand, in
+    -- pencil and straight (22; a long name a size down, 18), not
+    -- Goodmountain, whose display face in grey reads as type gone pale, not
+    -- as something written; and the notes' lines in the same hand (16).
+    pencilName = Font("SocialDiaryFontPencilName", NEUTON_ITALIC, 22, Style.GRAPHITE),
+    pencilNameSmall = Font("SocialDiaryFontPencilNameSmall", NEUTON_ITALIC, 18, Style.GRAPHITE),
+    pencilHand = Font("SocialDiaryFontPencilHand", NEUTON_ITALIC, 16, Style.GRAPHITE),
+    margin =Font("SocialDiaryFontMargin", FRIZ, 12, Style.ACCENT),
     -- The person's page in Goodmountain (GOODMOUNTAIN, above), mixed case:
     -- their name on their page (27; a long
     -- name steps down to `personNameSmall`, and a very long one to

@@ -150,7 +150,7 @@ local function Refresh()
     local already = n == 0 and "" or (n == 1 and " One is there already." or (" %d are there already."):format(n))
     w.laterText:SetText(("Everyone you cross paths with is saved for %s.%s"):format(days, already))
     w.key:Refresh()
-    LayRight(w)
+    J.RefreshWelcomeRight()
 end
 
 function J.BuildWelcome(panel, parent)
@@ -168,6 +168,20 @@ function J.BuildWelcome(panel, parent)
     w:SetScript("OnHide", function(self) self.key:Stop() end)
     panel:HookScript("OnHide", function() w.key:Stop() end)
     return w
+end
+
+-- The right page's strip, laid, unless a stranger's glimpse lies open
+-- there: a stranger can be on a plate before anyone is in the diary, and
+-- their pencilled page takes the right page while the left keeps the three
+-- ways in (the stranger-glimpse proposal, 5 Nov 2026). Called by the
+-- profile as the glimpse comes and goes (UI/Journal/Profile.lua).
+function J.RefreshWelcomeRight()
+    if not (welcome and welcome:IsShown()) then return end
+    if J.glimpse then
+        welcome.strip:Hide()
+    else
+        LayRight(welcome)
+    end
 end
 
 -- Shown while the diary is `empty`, hidden once someone is in it. The
