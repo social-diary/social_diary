@@ -5,6 +5,8 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+## [2.2.1]
+
 ### Fixes
 
 - The journal's close button now works in combat
