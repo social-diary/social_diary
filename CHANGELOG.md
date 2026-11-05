@@ -5,6 +5,12 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+This Update adds Language Support for non-latin Languages and Preview Pages for Strangers.
+
+### Shiny New Things
+
+- Strangers get a Preview Diary Page
+
 ### Fixes
 
 - Russian, Korean and Chinese clients: names and places now show in the journal instead of boxes
