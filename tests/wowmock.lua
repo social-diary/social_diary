@@ -258,6 +258,7 @@ local function NewWidget(frameType, name, parent, template)
         if self.scripts.OnHide then self.scripts.OnHide(self) end
     end
     function w:IsShown() return self.shown end
+    function w:GetParent() return self.parent end
     -- Whether the mouse is over it: what a test says (`mouseOver`).
     function w:IsMouseOver() return self.mouseOver == true end
     -- Whether it hears clicks: EnableMouse, then SetMouseClickEnabled.
@@ -477,6 +478,9 @@ _G.CreateFrame = function(frameType, name, parent, template)
         parent.children[#parent.children + 1] = w
     end
     if name then _G[name], named[#named + 1] = w, name end
+    if type(template) == "string" and template:find("UIPanelCloseButton") then
+        w.scripts.OnClick = function(self) _G.HideUIPanel(self:GetParent()) end
+    end
     return w
 end
 
@@ -540,6 +544,21 @@ function M.EditMode(open)
     _G.EventRegistry:TriggerEvent(open and "EditMode.Enter" or "EditMode.Exit")
 end
 _G.UISpecialFrames = {}
+
+-- Blizzard's panel manager, as far as closing goes: an addon's call in
+-- combat is refused (and the "action blocked" message shown), out of combat
+-- a window that is no UI panel is simply hidden. The close button template
+-- clicks through it, as in the client.
+M.blocked = 0
+_G.DisplayInterfaceActionBlockedMessage = function() M.blocked = M.blocked + 1 end
+_G.HideUIPanel = function(frame)
+    if not frame or not frame:IsShown() then return end
+    if M.inCombat then
+        _G.DisplayInterfaceActionBlockedMessage()
+        return
+    end
+    frame:Hide()
+end
 
 _G.C_AddOns = {
     GetAddOnMetadata = function(_, k) return k == "Version" and "1.0.0" or nil end,

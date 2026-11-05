@@ -56,6 +56,11 @@ function Chrome.Panel(globalName, width, height, title, opts)
     else
         close:SetPoint("TOPRIGHT", -4, -4)
     end
+    -- The template's own click goes through HideUIPanel, which Blizzard
+    -- refuses to addons in combat (it returns before the plain Hide it
+    -- would otherwise do for a window that is no UI panel). Hiding the
+    -- window directly is allowed in combat, as the minimap button does.
+    close:SetScript("OnClick", function(self) self:GetParent():Hide() end)
     panel.close = close
 
     if not bare then

@@ -933,3 +933,21 @@ timelineData = J.profile.timeline.data
 ns.UI.RefreshTimeline()
 Eq(J.profile.timeline.data, timelineData, "the timeline was rebuilt with the journal closed")
 ns.UI.SelectPerson(nil)
+
+--------------------------------------------------------------------------
+Section("the close button in combat")
+
+-- The "x" must not go through HideUIPanel: Blizzard refuses that to addons
+-- in combat, and the book would stay open where the minimap button closes
+-- it. Hiding the window directly is allowed.
+ns.UI.ShowJournal()
+Check(J:IsShown(), "the journal did not open")
+mock.inCombat = true
+local blocked = mock.blocked
+J.close:Click()
+Check(not J:IsShown(), "the close button did not close the journal in combat")
+Eq(mock.blocked, blocked, "closing the journal in combat tripped the action-blocked message")
+mock.inCombat = false
+ns.UI.ShowJournal()
+J.close:Click()
+Check(not J:IsShown(), "the close button did not close the journal out of combat")
