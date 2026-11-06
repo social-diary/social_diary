@@ -394,3 +394,152 @@ do
     Eq(ns.db.around[GONE], nil, "their stretches stayed")
     Check(ns.db.around[KEPT], "a diary entry lost their stretches")
 end
+
+--------------------------------------------------------------------------
+Section("near: a member grouped from across the map shares no place")
+
+-- Grouped is together wherever each of them is (SES-1), but the session
+-- only writes down the user's zone while somebody is drawn by the client
+-- (6 Nov 2026, .claude/bugs.md: "Travelled from X to Y together" and the
+-- toast's "last ... in Thunder Bluff" for a friend who was somewhere else).
+do
+    ns.Sessions.Forget(nil)
+    ns.Roster.Update({}, true)
+    mock.ClearUnits()
+    mock.SetUnit("player", SELF)
+    if not ns.Diary.IsDiary(GUID) then ns.Diary.Add(GUID, { source = "test" }) end
+    ns._test.SettleGroup()
+    local t1 = mock.now
+    mock.zone = "Thunder Bluff"
+
+    -- Invited from across the map: a session, but no place.
+    mock.groupSize = 2
+    mock.SetUnit("party1", F.Like(STRANGER, { visible = false }))
+    mock.fire("GROUP_ROSTER_UPDATE")
+    local s = ns.Sessions.Current()
+    Check(s, "grouping from afar did not open a session")
+    local p = s.participants[GUID]
+    Eq(#s.zones, 0, "the user's zone was written down with nobody near")
+    Eq(#p.near, 0, "a member across the map counted as near")
+
+    -- The user moves about alone: the time counts, the places do not.
+    mock.now = t1 + 600
+    Tick()
+    mock.zone = "Mulgore"
+    mock.fire("ZONE_CHANGED_NEW_AREA")
+    Eq(#s.zones, 0, "a zone reached alone was written down")
+    Eq(p.seconds, 600, "grouped time across the map was not credited")
+    Eq(ns.People.Stats(GUID).lastZone, nil, "where the user was alone became where they last met")
+
+    -- They meet: the zone is the session's, and a stretch begins.
+    mock.now = t1 + 900
+    mock.SetUnit("party1", STRANGER)
+    Tick()
+    Eq(table.concat(s.zones, ","), "Mulgore", "the zone they met in was not written down")
+    Eq(#p.near, 1, "meeting did not begin a stretch")
+    Eq(p.near[1][1], t1 + 900, "the stretch's start")
+    Eq(ns.People.Stats(GUID).lastZone, "Mulgore", "where they last met")
+
+    -- The next pulse extends the stretch; a zone reached together counts.
+    mock.now = t1 + 930
+    Tick()
+    Eq(p.near[1][2], t1 + 930, "the stretch did not follow the next pulse")
+    mock.zone = "The Barrens"
+    mock.fire("ZONE_CHANGED_NEW_AREA")
+    Eq(table.concat(s.zones, ","), "Mulgore,The Barrens", "a zone reached together was not written down")
+
+    -- Apart for longer than the near gap: a zone reached meanwhile is not
+    -- the session's, and meeting again begins a second stretch.
+    mock.SetUnit("party1", F.Like(STRANGER, { visible = false }))
+    mock.now = t1 + 930 + 6 * 60
+    Tick()
+    mock.zone = "Durotar"
+    mock.fire("ZONE_CHANGED_NEW_AREA")
+    Eq(#s.zones, 2, "a zone reached apart was written down")
+    mock.SetUnit("party1", STRANGER)
+    mock.now = t1 + 930 + 7 * 60
+    Tick()
+    Eq(#p.near, 2, "meeting again after the gap did not begin a second stretch")
+    Eq(p.near[2][1], t1 + 930 + 7 * 60, "the second stretch's start")
+    Eq(ns.Sessions.NearStretches(s, p), p.near, "a participant's stretches")
+    Eq(#ns.Sessions.NearStretches(s), 2, "the session's stretches")
+
+    -- A participant from before `near` was kept reads as near throughout.
+    local OLD = "Player-4620-0000AA01"
+    s.participants[OLD] = { since = t1, last = t1, seconds = 0 }
+    Eq(ns.Sessions.NearStretches(s, s.participants[OLD]), nil, "an old participant's stretches")
+    s.participants[OLD] = nil
+
+    mock.groupSize = 0
+    mock.SetUnit("party1", nil)
+    mock.fire("GROUP_ROSTER_UPDATE")
+    mock.zone = "Mulgore"
+end
+
+-- Two diary entries in one group, one beside the user and one across the
+-- map: each has their own zones, so "where you last met" is theirs alone.
+do
+    ns.Sessions.Forget(nil)
+    ns.Characters.Observe(PUG.guid, { first = "Tullus", surname = "Pike" })
+    ns.Diary.Add(PUG.guid, { source = "test" })
+    local t2 = mock.now + 3600
+    mock.now = t2
+    mock.zone = "Mulgore"
+    mock.groupSize = 3
+    mock.SetUnit("party1", STRANGER)
+    mock.SetUnit("party2", F.Like(PUG, { visible = false }))
+    mock.fire("GROUP_ROSTER_UPDATE")
+    local s = ns.Sessions.Current()
+    Check(s, "setup: no session")
+    local a, b = s.participants[GUID], s.participants[PUG.guid]
+    Check(a and b, "setup: both entries are not participants")
+    Eq(table.concat(a.zones, ","), "Mulgore", "the near entry's zones")
+    Eq(#b.zones, 0, "the far entry was given the near one's zone")
+    Eq(table.concat(s.zones, ","), "Mulgore", "the session's zones")
+    Eq(ns.People.Stats(GUID).lastZone, "Mulgore", "where the near entry was last met")
+    Eq(ns.People.Stats(PUG.guid).lastZone, nil, "the far entry was last met where the near one was")
+
+    -- The far one arrives in the next zone: that one is theirs, not the one before.
+    mock.now = t2 + 60
+    mock.zone = "The Barrens"
+    mock.SetUnit("party2", PUG)
+    Tick()
+    Eq(table.concat(a.zones, ","), "Mulgore,The Barrens", "the near entry's zones after the move")
+    Eq(table.concat(b.zones, ","), "The Barrens", "the late entry's zones")
+    Eq(ns.People.Stats(PUG.guid).lastZone, "The Barrens", "where the late entry was last met")
+    Eq(ns.People.Stats(PUG.guid).firstZone, "The Barrens", "where the late entry was first met")
+    Eq(#ns.Sessions.NearStretches(s), 1, "everyone's stretches overlapping were not merged")
+
+    -- A participant from before `near` was kept, met by the update mid-session:
+    -- near throughout so far, with the session's zones so far.
+    b.near, b.zones = nil, nil
+    Eq(ns.Sessions.NearStretches(s, b), nil, "an old participant's stretches")
+    mock.now = t2 + 90
+    Tick()
+    Eq(b.near and #b.near, 1, "an old participant did not get a stretch")
+    Eq(b.near[1][1], b.since, "an old participant's stretch does not start when they did")
+    Eq(b.near[1][2], t2 + 90, "an old participant's stretch does not reach the pulse")
+    Eq(table.concat(b.zones, ","), "Mulgore,The Barrens", "an old participant did not get the session's zones")
+
+    -- Inside an instance a grouped member is near, drawn or not: a dungeon
+    -- party is in one place, and its GUIDs may read as secret there.
+    mock.now = t2 + 120
+    mock.SetUnit("party2", F.Like(PUG, { visible = false }))
+    ns.Instances.Enter({ instanceID = 43, name = "Wailing Caverns", instanceType = "party" }, mock.now)
+    mock.zone = "Wailing Caverns"
+    Tick()
+    Eq(b.near[1][2], t2 + 120, "a grouped member inside an instance was not near")
+    Eq(b.zones[#b.zones], "Wailing Caverns", "the instance was not a far member's place")
+    ns.Instances.Leave(mock.now)
+    mock.zone = "The Barrens"
+    mock.now = t2 + 120 + 6 * 60
+    Tick()
+    Eq(b.near[1][2], t2 + 120, "a far member outside the instance was still near")
+
+    mock.groupSize = 0
+    mock.SetUnit("party1", nil)
+    mock.SetUnit("party2", nil)
+    mock.fire("GROUP_ROSTER_UPDATE")
+    ns.Diary.Remove(PUG.guid)
+    mock.zone = "Mulgore"
+end

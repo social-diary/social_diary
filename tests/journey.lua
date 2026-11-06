@@ -1864,6 +1864,36 @@ do
     Check(math.abs(found.seconds - 2700) < 1, "the session's time is not this level's share: " .. found.seconds)
 end
 
+-- Each face is settled over the stretches that person was near the user
+-- (Sessions' `near`, 6 Nov 2026): one grouped from across the map has no
+-- face on the user's own road. Over the whole session the second stop on
+-- the hillside wins; P1 was only near at the far stop, P2 never, P3 is
+-- from before `near` was kept.
+do
+    local P3 = G(32)
+    local three = { startedAt = d0 + 100, endedAt = d0 + 2700, participants = {
+        [P1] = { seconds = 2600, near = { { d0 + 2150, d0 + 2650 } }, zones = { "Mulgore" } },
+        [P2] = { seconds = 2600, near = {}, zones = {} },
+        [P3] = { seconds = 2600 } } }
+    local ctx3 = { now = d0 + 11000, level = 4, maxLevel = 60, diary = ctxP.diary, sessions = { three } }
+    local faces = {}
+    for _, m in ipairs(R.Moments(j, R.Build(j, ctx3).entries[1], ctx3)) do
+        if m.kind == "session" then faces[m.guid] = m end
+    end
+    Check(faces[P1] and faces[P1].x == 0.60 and faces[P1].y == 0.30, "P1's face is not where P1 was near")
+    Check(faces[P1] and faces[P1].t >= d0 + 2150 and faces[P1].t <= d0 + 2650, "P1's face is not in P1's stretch")
+    Eq(faces[P2], nil, "someone never near has a face")
+    Check(faces[P3] and faces[P3].x == 0.24, "a face from before `near` was kept is not settled over the span")
+    Check(math.abs(faces[P1].seconds - 2600) < 1, "P1's time together is not the session's")
+    -- Near only in another level's part of the session: no face here.
+    three.participants[P1].near = { { d0 + 20000, d0 + 20100 } }
+    local none
+    for _, m in ipairs(R.Moments(j, R.Build(j, ctx3).entries[1], ctx3)) do
+        if m.kind == "session" and m.guid == P1 then none = m end
+    end
+    Eq(none, nil, "a stretch outside the entry gave a face")
+end
+
 -- A level's pin opens no plate of its own: it joins the plate of what
 -- happened where the level was reached, and the next level's page shows
 -- that spot (11 Oct: one level-up was an empty plate under two levels).

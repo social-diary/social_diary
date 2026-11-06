@@ -22,6 +22,8 @@ ns.Group = Group
 -- Seconds after entering the world before the roster is trusted.
 local SETTLE_DELAY = 3
 
+local VISIBLE = { visible = true }
+
 local settled = false
 
 local function Expected()
@@ -39,11 +41,14 @@ function Group.Scan()
     -- whose raidN tokens include them.
     ns.Units.Each(ns.Units.Group(), function(unit)
         -- Not `visible`: a member across the map is still in the group.
+        -- Whether they are drawn is read beside it, for the session's
+        -- places (Sessions' `near`).
         local guid = ns.PlayerGUIDFromUnit(unit)
         if guid then
             ns.Characters.ObserveUnit(unit)
             local guild = (UnitIsInMyGuild and ns.Plain(UnitIsInMyGuild(unit))) or nil
-            current[guid] = { guild = guild }
+            local near = ns.PlayerGUIDFromUnit(unit, VISIBLE) ~= nil
+            current[guid] = { guild = guild, near = near }
             readable = readable + 1
         end
     end)
@@ -87,7 +92,7 @@ ns.On("UNIT_LEVEL", function(_, unit)
 
     local record = ns.Characters.ObserveUnit(unit)
     if record and ns.Roster.Has(record.guid) then
-        ns.Sessions.Together(record.guid, "group")
+        ns.Sessions.Together(record.guid, "group", nil, ns.PlayerGUIDFromUnit(unit, VISIBLE) ~= nil)
     end
 end)
 

@@ -11,7 +11,11 @@
 -- they first met, and with no spot for that either, there is no plate.
 --
 -- The plate names no place, and draws the route of the together session
--- the event happened in, nothing else of the road.
+-- the event happened in, nothing else of the road: only the stretch of it
+-- they were near the user (Sessions' `near`, 6 Nov 2026, .claude/bugs.md:
+-- a friend grouped from across the map was shown the user's own road as
+-- a journey made together). A session they were never near has no place
+-- and no road; one from before `near` was kept reads as near throughout.
 --
 -- Ranks follow Your Diary's (Core/JourneyRecap.lua's RANK, lower first)
 -- where the kinds meet: fights and notes first, a dungeon's door below a
@@ -64,12 +68,46 @@ local function SessionEnd(session)
     return session.endedAt or ns.Sessions.LastTogether(session)
 end
 
--- Everything on the timeline that can count, each { key, rank, t, me,
--- mapID, x, y, item } where it can be placed; nested lines included.
-local function Gather(items, me, into)
+-- The stretches of `session` while `guid` was near the user
+-- (Sessions.NearStretches): nil for one from before `near` was kept
+-- (near throughout), {} for someone who never was.
+local function Near(session, guid)
+    local p = guid and session.participants and session.participants[guid]
+    if not p then return nil end
+    return ns.Sessions.NearStretches(session, p)
+end
+
+-- Where `me`'s route spent most of the stretches `near` (Recap.SettleNear):
+-- mapID, x, y and the stretch that won, or nil.
+local function StretchNear(me, near)
+    local j = me and ns.Journey.For(me)
+    if not j then return nil end
+    local map, x, y, _, _, won = ns.JourneyRecap.SettleNear(j, near)
+    if x then return map, x, y, won end
+    return nil
+end
+
+-- Of the stretches `near`, the one holding `t`, else the nearest to it in
+-- time: a thing done in a session (a trade, a rare) draws the road round
+-- it, and a stretch far from it in time lies far from it on the map, cut
+-- off by the print. Nil for no stretches.
+local function Nearest(near, t)
+    local best, dist
+    for _, s in ipairs(near) do
+        local d = t < s[1] and s[1] - t or t > s[2] and t - s[2] or 0
+        if not best or d < dist then best, dist = s, d end
+    end
+    return best
+end
+
+-- Everything on `guid`'s timeline that can count, each { key, rank, t, me,
+-- mapID, x, y, item } where it can be placed (a session: `near`, the
+-- stretch its spot settled on, where it kept stretches); nested lines
+-- included.
+local function Gather(items, me, into, guid)
     for _, item in ipairs(items or {}) do
         local kind = item.kind
-        local key, rank, t, map, x, y, who
+        local key, rank, t, map, x, y, who, near
         if kind == "row" then
             local row = item.row
             local spec = ns.Rows.Get(row.type)
@@ -85,7 +123,12 @@ local function Gather(items, me, into)
             local session = item.session
             key = session.source == "group" and "group" or "session"
             rank, t, who = RANK[key], session.startedAt, session.me
-            map, x, y = Stretch(who, session.startedAt, SessionEnd(session))
+            local stretches = Near(session, guid)
+            if stretches then
+                map, x, y, near = StretchNear(who, stretches)
+            else
+                map, x, y = Stretch(who, session.startedAt, SessionEnd(session))
+            end
         elseif kind == "visit" then
             local visit = item.visit
             key, rank, t, who = "visit", RANK.visit, visit.startedAt, visit.me
@@ -103,17 +146,18 @@ local function Gather(items, me, into)
             map, x, y = first.mapID, first.x, first.y
         end
         if key and map and x then
-            into[#into + 1] = { key = key, rank = rank, t = t, me = who, mapID = map, x = x, y = y, item = item }
+            into[#into + 1] = { key = key, rank = rank, t = t, me = who, mapID = map, x = x, y = y, item = item,
+                near = near }
         end
 
         -- What happened inside: a session's or a visit's lines and notes, a
         -- climb's level-ups, an exchange's rows.
         local inner = kind == "session" and item.session.me or kind == "visit" and item.visit.me or me
-        Gather(item.all, inner, into)
-        Gather(item.ups, inner, into)
-        Gather(item.deaths, inner, into)
+        Gather(item.all, inner, into, guid)
+        Gather(item.ups, inner, into, guid)
+        Gather(item.deaths, inner, into, guid)
         for _, note in ipairs(item.notes or {}) do
-            Gather({ { kind = "note", time = note.time, note = note } }, inner, into)
+            Gather({ { kind = "note", time = note.time, note = note } }, inner, into, guid)
         end
     end
     return into
@@ -165,7 +209,11 @@ end
 --   fallback     true when it is where they first met, nothing else placed
 --   road         { me, mapID, from, to }: the together session's stretch of
 --                `me`'s route to draw (the ink trail, clipped to the map
---                and the times), or nil when it was in no session
+--                and the times), or nil when it was in no session. Only
+--                while they were near: one stretch of the session's `near`
+--                (the UI draws one span), the one the session's own spot
+--                settled on, or the one nearest in time to a thing done in
+--                it; none where they never were (6 Nov 2026)
 --   marks        the other weighed things on the same map, newest first
 --                (each as the event), for the UI to keep those that fall
 --                inside the print
@@ -174,7 +222,7 @@ function PersonPlate.Pick(guid)
     local entry = guid and ns.Diary.Get(guid)
     if not entry then return nil end
 
-    local placed = Gather(ns.Timeline.For(guid), nil, {})
+    local placed = Gather(ns.Timeline.For(guid), nil, {}, guid)
     table.sort(placed, function(a, b) return a.t > b.t end)
     for i = #placed, LOOK + 1, -1 do placed[i] = nil end
 
@@ -203,7 +251,15 @@ function PersonPlate.Pick(guid)
         session = SessionAt(guid, pick.t, pick.key == "visit" and pick.item.visit or nil)
     end
     if session then
-        pick.road = { me = session.me, mapID = pick.mapID, from = session.startedAt, to = SessionEnd(session) }
+        local from, to = session.startedAt, SessionEnd(session)
+        local near = Near(session, guid)
+        if near then
+            local s = pick.near or Nearest(near, pick.t)
+            from, to = s and s[1], s and s[2]
+        end
+        if from then
+            pick.road = { me = session.me, mapID = pick.mapID, from = from, to = to }
+        end
     end
     return pick
 end

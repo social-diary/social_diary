@@ -57,10 +57,11 @@ function Roster.ForgetStale(now)
     end
 end
 
--- One scan's result. `current` is { [guid] = { guild = true|nil } } for every
--- member whose GUID could be read, already observed (Characters.ObserveUnit);
--- `complete` says every member could be, so anyone missing really left;
--- `raid` marks the join rows of a raid.
+-- One scan's result. `current` is { [guid] = { guild = true|nil, near =
+-- true|false } } for every member whose GUID could be read, already observed
+-- (Characters.ObserveUnit), `near` saying whether the client is drawing
+-- them; `complete` says every member could be, so anyone missing really
+-- left; `raid` marks the join rows of a raid.
 --
 -- An incomplete scan records joins and no leaves: a member whose GUID reads
 -- as secret (instanced maps, the feasibility report's B1) is not the same as
@@ -87,7 +88,7 @@ function Roster.Update(current, complete, raid)
     -- they opened (SES-5).
     local set = {}
     for guid in pairs(current) do set[guid] = true end
-    ns.Sessions.Roster(set)
+    ns.Sessions.Roster(set, function(guid) return current[guid].near == true end)
     -- The open dungeon run's members, with when they joined and left (INS-12).
     ns.Instances.Roster(set, complete)
 

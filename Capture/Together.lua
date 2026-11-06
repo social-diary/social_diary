@@ -20,9 +20,12 @@ local function Grouped(guid)
 end
 
 -- "Seen nearby": the unit tokens that can name a player, read live rather
--- than from the sightings store (M2). Built once per tick, and only when a
--- participant is actually out of the group. Drawn by the client, too: a
--- party frame's mouseover across the map is not "nearby" (Capture/Nearby.lua).
+-- than from the sightings store (M2). Built once per tick, on first use.
+-- Drawn by the client, too: a party frame's mouseover across the map is not
+-- "nearby" (Capture/Nearby.lua). The group's own tokens are in it as well,
+-- which is how a grouped member counts as near (Sessions' `near`): grouped
+-- is together wherever they are, but only a member the client is drawing
+-- shares the user's place.
 local POINTED = { "target", "focus", "mouseover" }
 
 local VISIBLE = { visible = true }
@@ -33,6 +36,7 @@ local function VisibleSet()
         local guid = ns.PlayerGUIDFromUnit(unit, VISIBLE)
         if guid then set[guid] = true end
     end
+    ns.Units.Each(ns.Units.Group(), Add)
     ns.Units.Each(POINTED, Add)
     ns.Units.Each(ns.Units.Plates, Add)
     return set
@@ -55,8 +59,9 @@ local function Tick()
 
     -- A diary entry can be in the group without a roster change announcing
     -- it: added to the diary mid-group, or resumed after a reload.
-    ns.Sessions.Roster(ns.Roster.Members())
-    ns.Sessions.Tick(Grouped, NearbyTest())
+    local nearby = NearbyTest()
+    ns.Sessions.Roster(ns.Roster.Members(), nearby)
+    ns.Sessions.Tick(Grouped, nearby)
     ns.Roster.Touch()
 end
 
@@ -68,7 +73,7 @@ ns.On("PLAYER_LOGIN", function()
 end)
 
 ns.On("PLAYER_LOGOUT", function()
-    ns.Sessions.Flush(Grouped)
+    ns.Sessions.Flush(Grouped, NearbyTest())
     ns.Roster.Touch()
 end)
 

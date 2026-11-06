@@ -245,7 +245,7 @@ end
 -- (Timeline.Zones): { top, share, sub, subShare, names (at most two),
 -- journey, city }.
 local function Where(episode)
-    local z = ns.Timeline.Zones(episode.session, episode.zones)
+    local z = ns.Timeline.Zones(episode.session, episode.zones, episode.participant)
     local where = { zones = z, names = {} }
     local list = z.zones
     if #list == 0 then return where end

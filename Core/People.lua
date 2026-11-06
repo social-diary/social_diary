@@ -143,10 +143,13 @@ local function NewStats(guid, entry)
     }
 end
 
+-- Their own zones, the user's while they were near (Sessions' `near`);
+-- the session's for a participant from before those were kept.
 local function AddSession(s, session, p)
-    Meet(s, p.since, p.last, p.levelStart, session.zones[#session.zones], session.zones[1])
+    local zones = p.zones or session.zones
+    Meet(s, p.since, p.last, p.levelStart, zones[#zones], zones[1])
     s.seconds = s.seconds + p.seconds
-    for i = 1, #session.zones do AddZone(s, session.zones[i]) end
+    for i = 1, #zones do AddZone(s, zones[i]) end
 end
 
 -- The rows not already counted by a session, and the fallback level.

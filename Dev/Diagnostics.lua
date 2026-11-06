@@ -248,12 +248,13 @@ local function CommandSessions(text)
         for guid, p in pairs(s.participants) do
             local quests = p.quests and #p.quests or 0
             local rares = p.rares and #p.rares or 0
-            names[#names + 1] = ("%s (%d min, lvl %s-%s%s%s)"):format(
+            names[#names + 1] = ("%s (%d min, lvl %s-%s%s%s%s)"):format(
                 ns.Characters.FullName(guid) or guid,
                 math.floor(p.seconds / 60),
                 tostring(p.levelStart), tostring(p.levelEnd),
                 quests > 0 and (", " .. quests .. " quests") or "",
-                rares > 0 and (", " .. rares .. " rares") or "")
+                rares > 0 and (", " .. rares .. " rares") or "",
+                p.near and (", near " .. #p.near .. "x: " .. table.concat(p.zones or {}, " > ")) or "")
         end
 
         DEFAULT_CHAT_FRAME:AddMessage(("   |cffffd100#%d|r %s  %d min  %s%s  |cff808080%s|r"):format(

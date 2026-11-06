@@ -699,6 +699,17 @@ Eq(text, "Went from Westfall to Duskwood together over 1 h 6 min", "a journey")
 journey[4].to = journey[4].from + 100
 text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 } }) }, journey)
 Check(not text:find("^Went from"), "a journey into a zone barely reached: " .. text)
+journey[4].to = journey[4].from + 1400
+
+-- Only the road while they were near the user counts (Sessions' `near`,
+-- 6 Nov 2026): grouped from across the map, the user's road is no journey
+-- made together, and never near, the session has no place at all.
+text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 }, near = { { t0 + 1000, t0 + 2000 } } }) }, journey)
+Eq(text, "Quested together in Westfall for 1 h 6 min", "near only before the road")
+text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 }, near = { { t0 + 1000, t0 + 1000 } } }) }, journey)
+Eq(text, "Quested together in Duskwood for 1 h 6 min", "near at one pulse: the session's own zones")
+text = Said({ Session(512, t0 + 1000, 4000, { quests = { 1 }, near = {} }) }, journey)
+Eq(text, "Quested together for 1 h 6 min", "never near")
 
 -- Rough patches: the user's deaths, theirs, or both; three, or two close.
 local function Deaths(...)

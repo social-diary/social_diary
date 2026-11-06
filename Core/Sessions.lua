@@ -39,6 +39,12 @@ ns.Sessions = Sessions
 
 local MAX_ZONES = 40
 local MAX_QUESTS = 200
+-- Near: a participant the client is drawing (UnitIsVisible on their unit,
+-- read in Capture/) at two pulses this close apart was near for the time
+-- between. A flight taken seconds apart or a cave does not break a stretch;
+-- a trip across the map does. At most MAX_NEAR stretches per participant.
+local NEAR_GAP = 5 * 60
+local MAX_NEAR = 50
 local MAX_RARES = 100
 local MAX_DEATHS = 100
 
@@ -163,21 +169,114 @@ local function Live(p)
 end
 
 --------------------------------------------------------------------------
+-- Near
+--------------------------------------------------------------------------
+--
+-- Grouped is together (SES-1) wherever each of them is, but a place is
+-- only theirs to share when they were actually near each other (6 Nov
+-- 2026, .claude/bugs.md: a friend grouped from across the map had the
+-- user's own road told as a journey made together, and the toast named
+-- where the user had been as where they had last met). So each participant
+-- keeps `near`, the stretches they were drawn by the client, as { { from,
+-- to }, ... } in time order, and `zones`, the user's zones while they
+-- were; a session only writes down a zone while somebody is near.
+-- Participants from before `near` was kept have neither and read as they
+-- always did: near throughout, the session's zones theirs.
+
+-- Returns whether `p` counts as near now: not once MAX_NEAR stretches are
+-- full. A participant from before `near` was kept was near throughout so
+-- far, so their first stretch starts when they did, with the session's
+-- zones so far (an open session carried across the update).
+local function MarkNear(session, p, now)
+    local list = p.near
+    if not list then
+        list = { { p.since or now, now } }
+        p.near = list
+        p.zones = {}
+        for i = 1, #session.zones do p.zones[i] = session.zones[i] end
+        return true
+    end
+    local last = list[#list]
+    if last and now - last[2] <= NEAR_GAP then
+        if now > last[2] then last[2] = now end
+        return true
+    elseif #list < MAX_NEAR then
+        list[#list + 1] = { now, now }
+        return true
+    end
+    return false
+end
+
+local function NearAt(p, now)
+    local list = p.near
+    if not list then return true end
+    local last = list[#list]
+    return last ~= nil and now - last[2] <= NEAR_GAP
+end
+
+-- Whether anyone still present is near the user at `now`.
+function Sessions.AnyNear(session, now)
+    now = now or ns.Now()
+    for _, p in pairs(session.participants) do
+        if Live(p) and NearAt(p, now) then return true end
+    end
+    return false
+end
+
+-- The stretches a participant was near the user, or with no participant
+-- everyone's, merged where they overlap, in time order. nil for a session
+-- from before `near` was kept, which counts as near throughout; an empty
+-- list for a participant who never was.
+function Sessions.NearStretches(session, p)
+    if p then return p.near end
+    local all
+    for _, other in pairs(session.participants) do
+        if other.near then
+            all = all or {}
+            for i = 1, #other.near do all[#all + 1] = other.near[i] end
+        end
+    end
+    if not all then return nil end
+    table.sort(all, function(a, b) return a[1] < b[1] end)
+    local list = {}
+    for _, s in ipairs(all) do
+        local last = list[#list]
+        if last and s[1] <= last[2] then
+            if s[2] > last[2] then last[2] = s[2] end
+        else
+            list[#list + 1] = { s[1], s[2] }
+        end
+    end
+    return list
+end
+
+--------------------------------------------------------------------------
 -- Writing
 --------------------------------------------------------------------------
 
-local function TrackZone(session)
-    local zone = ns.Where().zone
-    if not zone or #session.zones >= MAX_ZONES then return end
-    -- Each zone once: walking to and fro across a border (Stormwind City
-    -- and the Deeprun Tram) is not another place (21 Oct, in the client).
-    for i = 1, #session.zones do
-        if session.zones[i] == zone then return end
+-- Each zone once: walking to and fro across a border (Stormwind City
+-- and the Deeprun Tram) is not another place (21 Oct, in the client).
+local function AddZone(list, zone)
+    if #list >= MAX_ZONES then return false end
+    for i = 1, #list do
+        if list[i] == zone then return false end
     end
-    session.zones[#session.zones + 1] = zone
+    list[#list + 1] = zone
+    return true
+end
+
+-- The user's zone, written down for the session and for every
+-- participant near right now. Called while somebody is near.
+local function TrackZone(session, now)
+    local zone = ns.Where().zone
+    if not zone then return end
+    local moved = AddZone(session.zones, zone)
+    for _, p in pairs(session.participants) do
+        if p.zones and Live(p) and NearAt(p, now) and AddZone(p.zones, zone) then moved = true end
+    end
     -- The People index reads the zones ("met in"), and Sessions.Zone
     -- gets here without going through Together's own check.
-    ns.Touch()
+    if moved then ns.Touch() end
 end
 
 -- A session record under the next id. `opts` may carry any of the record's
@@ -235,14 +334,21 @@ end
 
 -- The one way a diary entry becomes, or stays, present. `how` is "group" or
 -- "nearby"; `mayOpen` says whether this signal is allowed to start a session
--- (SES-2 step 1) or only to keep one going (step 2).
+-- (SES-2 step 1) or only to keep one going (step 2); `near` whether the
+-- client is drawing them right now. Seen nearby is near by definition; a
+-- grouped member's caller says (Capture/), and left unsaid is not near.
+-- Inside an instance a grouped member is near regardless: a dungeon party
+-- is in one place, and its GUIDs may read as secret there, so the client
+-- cannot be asked whether it draws them (Capture/Group.lua).
 --
 -- Time between two signals counts as together as long as it is within the
 -- gap: that is what "stays open while together" means when the evidence
 -- arrives in pulses.
-function Sessions.Together(guid, how, mayOpen)
+function Sessions.Together(guid, how, mayOpen, near)
     guid = ns.SafeGUID(guid)
     if not guid or guid == ns.ownGUID or not ns.Diary.IsDiary(guid) then return nil end
+    if how == "nearby" then near = true end
+    if not near and ns.Instances and ns.Instances.Inside() then near = true end
 
     local now = ns.Now()
     local session = Sessions.Current()
@@ -259,7 +365,7 @@ function Sessions.Together(guid, how, mayOpen)
     local p = session.participants[guid]
     local last, seconds, zones = p and p.last, p and p.seconds, #session.zones
     if not p then
-        p = { since = now, last = now, seconds = 0, levelStart = level }
+        p = { since = now, last = now, seconds = 0, levelStart = level, near = {}, zones = {} }
         session.participants[guid] = p
         Indexed(guid, session.id)
     elseif p.done or p.noCredit then
@@ -277,7 +383,7 @@ function Sessions.Together(guid, how, mayOpen)
 
     p.levelEnd = level or p.levelEnd
     session.myLevelEnd = ns.Plain(UnitLevel("player")) or session.myLevelEnd
-    TrackZone(session)
+    if near and MarkNear(session, p, now) then TrackZone(session, now) end
 
     -- What the People index reads of a session (AddSession): the
     -- participant's since/last/seconds/levelStart, and the zones. Two pulses
@@ -308,11 +414,12 @@ end
 
 -- The group as a whole: every diary entry in it is together with the user,
 -- and everyone else is counted (prd.md section 7: "other group members are
--- counted"). `members` is a set of GUIDs.
-function Sessions.Roster(members)
+-- counted"). `members` is a set of GUIDs; `near(guid)` says whether the
+-- client is drawing that member (Capture/ supplies it).
+function Sessions.Roster(members, near)
     local others = 0
     for guid in pairs(members) do
-        if not Sessions.Together(guid, "group", true) then
+        if not Sessions.Together(guid, "group", true, near and near(guid) or false) then
             others = others + 1
         end
     end
@@ -329,7 +436,8 @@ end
 
 -- SES-2 step 3, run on a timer. `grouped(guid)` and `nearby(guid)` are the
 -- two presence tests; Capture/ supplies them so this file stays free of unit
--- tokens.
+-- tokens. `nearby` is also what makes a grouped member near: drawn by the
+-- client, through any token.
 function Sessions.Tick(grouped, nearby, now)
     local session = Sessions.Current()
     if not session then return end
@@ -340,7 +448,7 @@ function Sessions.Tick(grouped, nearby, now)
 
     for guid, p in pairs(session.participants) do
         if grouped(guid) then
-            Sessions.Together(guid, "group")
+            Sessions.Together(guid, "group", nil, nearby(guid))
         elseif nearby(guid) then
             Sessions.Together(guid, "nearby")
         elseif not p.done and now - p.last > gap then
@@ -383,9 +491,11 @@ end
 -- What happens inside a session (SES-4)
 --------------------------------------------------------------------------
 
+-- A zone reached is the session's only while somebody is near.
 function Sessions.Zone()
     local session = Sessions.Current()
-    if session then TrackZone(session) end
+    local now = ns.Now()
+    if session and Sessions.AnyNear(session, now) then TrackZone(session, now) end
 end
 
 -- Quests and kills count as together only for participants who are grouped
@@ -641,11 +751,13 @@ ns.RegisterStore("sessions", Sessions.Forget)
 
 -- PLAYER_LOGOUT: credit the time up to now for everyone still grouped, so a
 -- real logout closes at the right moment when Resume settles it.
-function Sessions.Flush(grouped)
+function Sessions.Flush(grouped, near)
     local session = Sessions.Current()
     if not session then return end
 
     for guid, p in pairs(session.participants) do
-        if Live(p) and grouped(guid) then Sessions.Together(guid, "group") end
+        if Live(p) and grouped(guid) then
+            Sessions.Together(guid, "group", nil, near and near(guid) or false)
+        end
     end
 end

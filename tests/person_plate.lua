@@ -131,3 +131,69 @@ Eq(PP.For("Player-0000-NOBODY"), nil, "a plate for someone not in the diary")
 -- A feature ranks its own rows; a kind that says nothing ranks last.
 Eq(ns.Rows.Get("trade").plate, 7, "a trade's rank")
 Eq(ns.Rows.Get("level_up").plate, nil, "a level-up ranks")
+
+--------------------------------------------------------------------------
+Section("the person's plate: the road only while they were near (6 Nov 2026)")
+
+-- A session kept on the hillside's morning: its spot and road are the
+-- stretch they were near, not the session's span (a friend grouped from
+-- across the map used to inherit the user's whole road, .claude/bugs.md).
+Fresh()
+P = Person()
+local sN = { id = "n1", me = SELF, source = "group", startedAt = d0 + 600, endedAt = d0 + 6000,
+    zones = { "Mulgore" }, participants = { [P] = { since = d0 + 600, last = d0 + 6000, seconds = 5400,
+        near = { { d0 + 2000, d0 + 2600 } }, zones = { "Mulgore" } } } }
+ns.db.sessions = { n1 = sN }
+ns.Touch()
+plate = PP.Pick(P)
+Eq(plate and plate.key, "group", "the session is not the plate")
+Eq(plate.mapID, MULGORE, "the session's spot is off the route")
+Check(plate.road and plate.road.from == d0 + 2000 and plate.road.to == d0 + 2600,
+    "the road is not the stretch they were near: " .. tostring(plate.road and plate.road.from - d0))
+
+-- Something done in the session draws the road round it: the stretch
+-- holding its time, else the nearest in time.
+sN.participants[P].near = { { d0 + 700, d0 + 1200 }, { d0 + 3000, d0 + 3300 } }
+sN.participants[P].rares = { { name = "Rocklance", time = d0 + 3100 } }
+ns.Touch()
+plate = PP.Pick(P)
+Eq(plate.key, "rare", "the rare in the session is not the plate")
+Check(plate.road and plate.road.from == d0 + 3000 and plate.road.to == d0 + 3300,
+    "the road is not the stretch the rare fell in")
+sN.participants[P].rares[1].time = d0 + 1300
+ns.Touch()
+plate = PP.Pick(P)
+Check(plate.road and plate.road.from == d0 + 700, "the road is not the stretch nearest the rare in time")
+
+-- Never near: the session has no place of its own, and the rare no road.
+sN.participants[P].near = {}
+ns.Touch()
+plate = PP.Pick(P)
+Eq(plate.key, "rare", "the rare lost its place with the session's")
+Eq(plate.road, nil, "a session they were never near drew a road")
+sN.participants[P].rares = nil
+ns.Touch()
+-- (nothing else of them was placed, and nothing says where they met)
+Eq(PP.Pick(P), nil, "a session they were never near was placed")
+
+-- Several stretches: the spot settles where the route overlapped one
+-- longest, and the road is that stretch alone (the print draws one span).
+-- Over the whole session the two hours on the hillside would have won.
+sN.endedAt = d0 + DAY + h
+sN.participants[P].last = d0 + DAY + h
+sN.participants[P].near = { { d0 + 600, d0 + 1200 }, { d0 + DAY + 600, d0 + DAY + 3600 } }
+ns.Touch()
+plate = PP.Pick(P)
+Eq(plate.key, "group", "the session is not the plate")
+Eq(plate.mapID, BARRENS, "the spot is not where they were near longest")
+Check(plate.road and plate.road.from == d0 + DAY + 600 and plate.road.to == d0 + DAY + 3600,
+    "the road is not the stretch the spot settled on")
+Eq(plate.road.mapID, BARRENS, "the road's map")
+
+-- A session from before `near` was kept reads as before: the whole span.
+sN.participants[P].near, sN.participants[P].zones = nil, nil
+ns.Touch()
+plate = PP.Pick(P)
+Eq(plate.mapID, MULGORE, "an old session is not settled over its span")
+Check(plate.road and plate.road.from == sN.startedAt and plate.road.to == sN.endedAt,
+    "an old session's road is not its span")

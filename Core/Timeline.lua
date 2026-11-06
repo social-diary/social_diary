@@ -113,24 +113,40 @@ end
 
 local TRAVEL = { road = true, flight = true }
 
+-- How much of [a, b] falls inside the stretches, { { from, to }, ... }.
+local function Within(stretches, a, b)
+    local total = 0
+    for i = 1, #stretches do
+        local s = stretches[i]
+        local lo, hi = math.max(a, s[1]), math.min(b, s[2])
+        if hi > lo then total = total + hi - lo end
+    end
+    return total
+end
+
 -- Where a session's time went, from the user's own road (Core/Journey.lua)
 -- over its stretch: { zones = { { name, seconds, sub = { [subZone] =
 -- seconds } } } in the order first reached, total, travel (seconds on the
--- road or in the air), first, last (names), timed = true }. Without a road
--- for that stretch, the session's own zones (or `zones`, read the same
--- way) in order and timed = false. Nothing is saved.
-function Timeline.Zones(session, zones)
+-- road or in the air), first, last (names), timed = true }. Only the road
+-- while `participant` (or, without one, anybody) was near the user counts
+-- (Sessions.NearStretches): grouped from across the map, the user's road
+-- is theirs alone. Without a road for that stretch, the session's own
+-- zones (or `zones`, read the same way) in order and timed = false; never
+-- near, nothing at all. Nothing is saved.
+function Timeline.Zones(session, zones, participant)
     local from, to = session.startedAt or 0, session.endedAt or ns.Now()
     local j = ns.db.journey and session.me and ns.db.journey[session.me]
     local out = { zones = {}, total = 0, travel = 0, timed = false }
     local byName = {}
+    local near = ns.Sessions.NearStretches(session, participant)
+    if near and #near == 0 then return out end
 
     if j and ns.Journey and ns.Journey.All then
         for _, seg in ipairs(ns.Journey.All(j)) do
             local a, b = math.max(seg.from or 0, from), math.min(seg.to or seg.from or 0, to)
             local name = seg.kind ~= "dungeon" and ns.MapName(seg.mapID)
-            if b > a and name then
-                local seconds = b - a
+            local seconds = b > a and name and (near and Within(near, a, b) or b - a) or 0
+            if seconds > 0 then
                 local zone = byName[name]
                 if not zone then
                     zone = { name = name, seconds = 0, sub = {} }
@@ -314,7 +330,7 @@ end
 local function NewSession(session, guid)
     local p = session.participants[guid]
     local episode = { kind = "session", time = session.startedAt, session = session,
-        participant = p, seconds = p and p.seconds or 0, zones = Timeline.Unique(session.zones), rows = {}, all = {},
+        participant = p, seconds = p and p.seconds or 0, zones = Timeline.Unique(p and p.zones or session.zones), rows = {}, all = {},
         key = session }
 
     local present = {}

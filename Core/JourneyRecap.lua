@@ -671,7 +671,8 @@ end
 -- Where a stretch a..b happened: the segment (not a flight) it overlapped
 -- most, on `mapID` when given, and that segment's point at the middle of
 -- the overlap: a stop's centre, a road's point nearest in time, a
--- dungeon's door. Returns mapID, x, y and that middle's time, or nil.
+-- dungeon's door. Returns mapID, x, y, that middle's time and the seconds
+-- of the overlap (what SettleNear weighs its stretches by), or nil.
 function Recap.Settle(j, a, b, mapID)
     local best, most = nil, -1
     for _, seg in ipairs(Journey.All(j)) do
@@ -684,7 +685,32 @@ function Recap.Settle(j, a, b, mapID)
     local t = math.max(best.from, a) + math.max(most, 0) / 2
     local map, x, y = Journey.PointIn(best, t)
     if not x then return nil end
-    return map, x, y, t
+    return map, x, y, t, math.max(most, 0)
+end
+
+-- Settle, over the stretches somebody was near the user (a participant's
+-- `near`, Sessions.NearStretches: { { from, to }, ... } in time order)
+-- instead of the whole session: a friend grouped from across the map
+-- was placed on the user's own road, and told as there (6 Nov 2026,
+-- .claude/bugs.md). Each stretch is cut to a..b (either may be nil) and
+-- settled on its own; the one whose segment it overlapped longest wins,
+-- the earlier on a tie, as Settle keeps the earlier segment. Returns
+-- what Settle does and then the stretch that won (the span a road is
+-- drawn over), or nil where no stretch lands on the route in a..b; an
+-- empty list settles nowhere.
+function Recap.SettleNear(j, near, a, b, mapID)
+    local best, most, won
+    for _, s in ipairs(near) do
+        local lo, hi = math.max(s[1], a or s[1]), math.min(s[2], b or s[2])
+        if hi >= lo then
+            local map, x, y, t, span = Recap.Settle(j, lo, hi, mapID)
+            if x and (not best or span > most) then
+                best, most, won = { map, x, y, t }, span, s
+            end
+        end
+    end
+    if not best then return nil end
+    return best[1], best[2], best[3], best[4], most, won
 end
 
 -- Where on `mapID` the route was at `t`, if it was on that map then.
@@ -975,11 +1001,19 @@ function Recap.Moments(j, e, ctx)
             -- people have it (Gather), not the whole session's: a session
             -- over three levels is not three times as long (11 Oct, in the
             -- client: "2 h 41 min together" under levels 8, 9 and 10).
+            -- Each face where that person was near the user (SettleNear
+            -- over their `near`, 6 Nov 2026): one who was grouped from
+            -- across the map has no face on the user's own road; one from
+            -- before `near` was kept is near throughout, settled as the
+            -- session is.
             local map, x, y, t = Recap.Settle(j, a, math.max(a, b))
             local share = Overlap(s1, s2, e.from, e.to) / math.max(s2 - s1, 1)
             for guid, p in pairs(session.participants or {}) do
-                Add({ kind = "session", guid = guid, t = t or a, session = session,
-                    seconds = (p.seconds or 0) * share }, map, x, y)
+                local near = ns.Sessions.NearStretches(session, p)
+                local pm, px, py, pt = map, x, y, t
+                if near then pm, px, py, pt = Recap.SettleNear(j, near, a, math.max(a, b)) end
+                Add({ kind = "session", guid = guid, t = pt or a, session = session,
+                    seconds = (p.seconds or 0) * share }, pm, px, py)
             end
         end
     end
