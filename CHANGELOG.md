@@ -10,6 +10,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 - `Hunts` (Notes in _Your Diary_ about bad quest drop luck) now look for their exact item ID so it's not confused by crafting anymore
 - Nearby Toasts and "last seen in" text strings now ignore being grouped up but not actually nearby
 - Items on the Dungeon View's loot strips and on a run's keepsake page work on a shift-click (link into chat) and a ctrl-click (try it on).
+- A rare killed again after a respawn in the same session is named just once on the timeline
 
 ## [2.3.0]
 

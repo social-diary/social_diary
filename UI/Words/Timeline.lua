@@ -118,8 +118,22 @@ local function RareNames(rares, max)
     return Format.List(names, max and { max = max }) or ""
 end
 
+-- The participant's rare kills, one per rare: a respawn killed again in the
+-- same session (Sessions.Rare keeps every kill) is named once, by its npc
+-- id, or by its name where an older kill has none. The moment lines stay
+-- one per kill.
 local function Rares(episode)
-    return episode.participant and episode.participant.rares or {}
+    local kills = episode.participant and episode.participant.rares or {}
+    local rares, seen = {}, {}
+    for i = 1, #kills do
+        local kill = kills[i]
+        local key = kill.npcID or kill.name or i
+        if not seen[key] then
+            seen[key] = true
+            rares[#rares + 1] = kill
+        end
+    end
+    return rares
 end
 
 -- TLN-2's activities in words: how one opens a headline, and how it is

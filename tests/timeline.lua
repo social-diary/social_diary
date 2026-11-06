@@ -195,6 +195,22 @@ _, text, _, icon = ns.UI.DescribeItem(short.lines[1], PAL)
 Eq(text, "Killed Mor'Ladim", "rare moment line")
 Eq(icon, "rare", "rare moment icon")
 
+-- The same rare killed again after a respawn is one name on the headline,
+-- by npc id, and still a moment line per kill.
+local TWICE = 303
+Fresh(t0, {
+    Session(TWICE, t0 + 1000, 20 * 60, { rares = {
+        { name = "Mor'Ladim", npcID = 522, time = t0 + 1100 },
+        { name = "Rakk", npcID = 523, time = t0 + 1500 },
+        { name = "Mor'Ladim", npcID = 522, time = t0 + 1900 } } }),
+})
+tl = ns.Timeline.For(PAL)
+_, text = ns.UI.DescribeItem(tl[1], PAL)
+Eq(text, "Hunted Mor\226\128\153Ladim and Rakk together in Duskwood over 20 min", "a rare killed twice is named twice")
+local kills = 0
+for _, item in ipairs(tl[1].all) do if item.kind == "rare" then kills = kills + 1 end end
+Eq(kills, 3, "a kill lost its moment")
+
 -- Three hours names three activities; what they name is summed up on the
 -- details line, not repeated as lines (TLN-6).
 Eq(#long.lines, 0, "named moments repeated as lines")
