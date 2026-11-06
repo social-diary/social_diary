@@ -159,6 +159,16 @@ function Style.Tooltip(frame, lines, anchor, hover)
     end)
 end
 
+-- A modified click on an item (shift to paste its link into the chat box,
+-- ctrl to try it on) handed to the game, as a bag slot's is: true where
+-- the game took it, nil where it was a plain click or `link` is no item
+-- link (a bare name from an old record), so the piece's own click goes on.
+function Style.ItemClick(link)
+    if type(link) ~= "string" or not link:find("item:%d+") then return nil end
+    if not (IsModifiedClick and IsModifiedClick()) then return nil end
+    return HandleModifiedItemClick and HandleModifiedItemClick(link) or nil
+end
+
 -- A tooltip's list as Style.Tooltip takes it, for what has a title and
 -- lines under it (a card's, a mark's): the title in the tooltip's own
 -- colour, each line in white and wrapped. With `into`, the title and lines

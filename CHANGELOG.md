@@ -8,7 +8,8 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 ### Fixes
 
 - `Hunts` (Notes in _Your Diary_ about bad quest drop luck) now look for their exact item ID so it's not confused by crafting anymore
-- A group member who was somewhere else on the map no longer shares your travels: "Travelled from X to Y together" and the toast's "last ... in Thunder Bluff" only name places you were actually together in
+- Nearby Toasts and "last seen in" text strings now ignore being grouped up but not actually nearby
+- Items on the Dungeon View's loot strips and on a run's keepsake page work on a shift-click (link into chat) and a ctrl-click (try it on).
 
 ## [2.3.0]
 

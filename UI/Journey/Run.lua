@@ -717,6 +717,12 @@ local function ItemTip(self)
     GameTooltip:Show()
 end
 
+-- A click on a keepsake: shift pastes its link into the chat box, ctrl
+-- tries it on; a plain click does nothing.
+local function ItemClick(self)
+    if self.item then Style.ItemClick(self.item.item) end
+end
+
 -- Draws run `visit` of entry `e` across the right page. Returns how many
 -- plates it shows (none).
 function YourDiary.DrawRun(e, visit)
@@ -846,7 +852,7 @@ function YourDiary.DrawRun(e, visit)
         local s = Strip(run, "keepsake" .. i, L.level.card)
         local b = plan.cards[i]
         Keepsake(run, s, b, it, wrapped[i], Text.RunWhose(it, NameOf(visit, it.guid)), "run:" .. visit.id .. ":k" .. i)
-        local hit = Hit(run, b, ItemTip)
+        local hit = Hit(run, b, ItemTip, ItemClick)
         hit.item = it
     end
     if plan.slip then

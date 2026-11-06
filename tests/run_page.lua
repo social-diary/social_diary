@@ -284,6 +284,23 @@ for i = 1, hits.n do
     end
 end
 Eq(items, #kept.shown, "every keepsake shown has the item tooltip")
+-- A shift-click (or ctrl) on a keepsake goes to the game, as a bag slot's:
+-- its link into the chat box, or the dressing room; a plain click, nowhere.
+local handed = {}
+_G.IsModifiedClick = function() return mock.modifiers.shift == true end
+_G.HandleModifiedItemClick = function(link) handed[#handed + 1] = link return true end
+for i = 1, hits.n do
+    local h = hits[i]
+    if h.item then
+        h.scripts.OnClick(h)
+        mock.modifiers.shift = true
+        h.scripts.OnClick(h)
+        mock.modifiers.shift = nil
+        Eq(handed[#handed], h.item.item, "a shift-click does not hand the keepsake's link to the game")
+    end
+end
+Eq(#handed, #kept.shown, "a plain click on a keepsake went to the game")
+_G.IsModifiedClick, _G.HandleModifiedItemClick = nil, nil
 local Spiteful
 for _, it in ipairs(kept.shown) do
     if it.item:find("Spiteful Death Charm") then Spiteful = it end

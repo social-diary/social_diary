@@ -718,6 +718,32 @@ hover.scripts.OnEnter(hover)
 Eq(GameTooltip.link, lootSlot.note.items[1].item, "no item tooltip on a loot strip")
 Check(GameTooltip.lines[1][1]:find("^Dropped for "), "the item's tooltip does not say for whom")
 hover.scripts.OnLeave(hover)
+-- A shift-click (or ctrl) on the item goes to the game, as a bag slot's:
+-- its link into the chat box, or the dressing room; a plain click opens
+-- the looter's page as before. A bare name (an old record) is nobody's.
+do
+local handed, opened = {}, {}
+local toPerson = ns.UI.YourDiary.ToPerson
+ns.UI.YourDiary.ToPerson = function(guid) opened[#opened + 1] = guid end
+_G.IsModifiedClick = function() return mock.modifiers.shift == true end
+_G.HandleModifiedItemClick = function(link) handed[#handed + 1] = link return true end
+hover.item.guid = hover.item.guid or G
+hover.scripts.OnClick(hover)
+Eq(#handed, 0, "a plain click on a loot strip's item went to the game")
+Eq(opened[1], hover.item.guid, "a plain click does not open the looter's page")
+mock.modifiers.shift = true
+hover.scripts.OnClick(hover)
+Eq(handed[1], lootSlot.note.items[1].item, "a shift-click does not hand the item's link to the game")
+Eq(#opened, 1, "a shift-click opened the looter's page too")
+local bare = hover.item.item
+hover.item.item = "Thornspike"
+hover.scripts.OnClick(hover)
+Eq(#handed, 1, "a bare name was handed to the game")
+hover.item.item = bare
+mock.modifiers.shift = nil
+_G.IsModifiedClick, _G.HandleModifiedItemClick = nil, nil
+ns.UI.YourDiary.ToPerson = toPerson
+end
 
 -- The cap: the rest counted in pencil by the label.
 local most = Page.NOTES.most

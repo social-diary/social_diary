@@ -290,7 +290,11 @@ function DungeonPage.NewNote(host)
             strip:Hover(false)
             GameTooltip:Hide()
         end)
-        hover:SetScript("OnClick", function(self) ToPerson(self.item and self.item.guid) end)
+        hover:SetScript("OnClick", function(self)
+            local it = self.item
+            if it and Style.ItemClick(it.item) then return end
+            ToPerson(it and it.guid)
+        end)
         return hover
     end)
     -- Its heading's underlines (RULE), on the strip, laid as it lies.
