@@ -362,6 +362,49 @@ mock.fire("PARTY_KILL", SELF.guid, WOLF)
 mock.fire("QUEST_TURNED_IN", 790)
 Eq(#ns.Hunts.List(j), 2, "a hunt with no source kept")
 
+-- A crafted item whose name holds its raw material's: the hides looted
+-- off the beasts are not the cured hides, so the beasts are no source,
+-- and the crafting that met the want keeps nothing (6 Nov, in the client:
+-- 43 Plainstriders and Zhevra for 2 Cured Light Hides).
+local CURED = { questID = 791, title = "Beasts of Thunder Ridge", objectives = {
+    { text = "Cured Light Hides: 0/2", type = "item", numFulfilled = 0, numRequired = 2, finished = false } } }
+mock.quests = { CURED }
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+local cured = ns.Hunts.Hunting(j, 791, 1)
+Check(cured, "setup: the cured hides not counted")
+mock.loot = { { link = "|Hitem:783|h[Light Hide]|h", sources = { STRIDER1, 1 } } }
+mock.fire("PARTY_KILL", SELF.guid, STRIDER1)
+mock.fire("LOOT_OPENED")
+Eq(cured.from[2955], nil, "a raw material's name inside the objective's made its creature a source")
+mock.loot = { { link = "|Hitem:4231|h[Cured Light Hide]|h", sources = { WOLF, 1 } } }
+mock.fire("PARTY_KILL", SELF.guid, WOLF)
+mock.fire("LOOT_OPENED")
+Eq(cured.from[2958], true, "the objective's plural did not match the item's name")
+Eq(cured.itemID, nil, "a plural match took the item's id")
+cured.from[2958] = nil
+CURED.objectives[1].numFulfilled, CURED.objectives[1].finished = 2, true
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+Eq(ns.Hunts.Hunting(j, 791, 1), nil, "the met want did not end the hunt")
+Eq(#ns.Hunts.List(j), 2, "a crafted want kept a hunt")
+mock.quests = {}
+mock.fire("QUEST_REMOVED", 791)
+mock.RunTimers()
+
+-- By id where both are known: a hunt that knows its item (QuestieDB) takes
+-- no other item by name, and takes its own under any name.
+do
+    local hunt = ns.Hunts.Begin(j, { questID = 792, index = 1, title = "Ids", item = "Cured Light Hides",
+        need = 2, t = mock.now, itemID = 4231 })
+    Eq(ns.Hunts.Same(hunt, "Cured Light Hide", 783), false, "another id matched by name")
+    Eq(ns.Hunts.Same(hunt, "Cured Leather", 4231), true, "the hunt's id did not match under another name")
+    Eq(ns.Hunts.Same(hunt, "Cured Light Hide", nil), true, "a link with no id did not match by name")
+    Eq(ns.Hunts.Same(hunt, "Hides", nil), false, "a fragment at the end matched")
+    Eq(ns.Hunts.Same(hunt, "Cured Light Hides", nil), true, "the same name did not match")
+    ns.Hunts.Gone(j, 792)
+end
+
 -- A hunt open too long is given up at login.
 mock.quests = { PELTS }
 mock.fire("QUEST_LOG_UPDATE")

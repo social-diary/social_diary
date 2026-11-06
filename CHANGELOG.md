@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Fixes
+
+- `Hunts` (Notes in _Your Diary_ about bad quest drop luck) now look for their exact item ID so it's not confused by crafting anymore
+
 ## [2.3.0]
 
 This Update adds Language Support for non-latin Languages and Preview Pages for Strangers.

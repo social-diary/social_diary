@@ -171,6 +171,22 @@ function Hunts.Kill(j, npcID, name)
     ns.CreatureNames.Note(npcID, name)
 end
 
+-- Whether a looted item (`item` its name, `itemID` where the link says)
+-- is the one `hunt` counts. By id where both are known (the hunt's from
+-- QuestieDB); else by name: the same, or the objective's plural of it
+-- ("Cured Light Hides: 0/2" wants Cured Light Hide), and no looser. A
+-- name the objective's merely contains is another item (6 Nov, in the
+-- client: the Light Hides looted off Greater Plainstriders and Zhevra
+-- Runners made them the sources of a quest's Cured Light Hides, which
+-- were crafted, and its card counted 43 kills for 2).
+local function Same(hunt, item, itemID)
+    if hunt.itemID and itemID then return hunt.itemID == itemID end
+    if hunt.item == item then return true end
+    local rest = hunt.item:sub(1, #item) == item and hunt.item:sub(#item + 1) or nil
+    return rest == "s" or rest == "es"
+end
+Hunts.Same = Same
+
 -- Item `item` (its name, `itemID` where the link says) seen in the loot
 -- of a creature of kind `npcID`: that kind drops it, for every hunt after
 -- it. Whether any was.
@@ -178,7 +194,7 @@ function Hunts.Drop(j, item, npcID, name, itemID)
     if not (j and j.hunting and npcID and item) then return false end
     local any = false
     for _, hunt in pairs(j.hunting) do
-        if hunt.item == item or hunt.item:find(item, 1, true) then
+        if Same(hunt, item, itemID) then
             hunt.from[npcID] = true
             if name and not hunt.names[npcID] then hunt.names[npcID] = name end
             if not hunt.itemID and hunt.item == item then hunt.itemID = itemID end
