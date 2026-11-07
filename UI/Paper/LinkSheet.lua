@@ -200,6 +200,9 @@ function ns.UI.LinkSheet.New(parent)
         view.empty:SetShown(#data == 0)
         view.count:SetText(linked > 0 and (linked .. " linked") or "")
         K.PlaceText(view.count, M, SHEET.footer)
+        -- The pad's rows were handed round (UI/Journal/NotePad.lua); with
+        -- the pad down this does nothing.
+        ns.UI.Pad.Refresh()
     end
 
     local function Lay()

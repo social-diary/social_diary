@@ -11,9 +11,9 @@
 --   Pad.Input.OnChange(fn) fn(active) each time Active changes
 --   Pad.Input.Force(mode)  "on", "off" or nil (auto): for Dev's /sd pad
 --
--- In hand: the game says so (GAME_PAD_ACTIVE_CHANGED), and so does a pad
--- button held or the mouse moved by hand, looked at a few times a second
--- while a pad is available. A click made by the pad (its cursor control, or
+-- In hand: the game says so (GAME_PAD_ACTIVE_CHANGED, IsUsingGamepad read
+-- live), and so does a pad button held or the mouse moved by hand, looked
+-- at five times a second. A click made by the pad (its cursor control, or
 -- a pad button held) does not count as the mouse's.
 --
 -- The first file of UI/Pad/, so it makes ns.UI.Pad.
@@ -94,10 +94,14 @@ local inHand        -- the pad used last; nil until first asked
 local forced        -- "on", "off" or nil
 local listeners = {}
 
+local function UsingPad()
+    return type(IsUsingGamepad) == "function" and IsUsingGamepad() and true or false
+end
+
+-- The game's own word on the pad in hand, read live: our own tracking
+-- (a pad button seen, the mouse moved by hand) only stands in between.
 local function InHand()
-    if inHand == nil then
-        inHand = type(IsUsingGamepad) == "function" and IsUsingGamepad() and true or false
-    end
+    if inHand == nil then inHand = UsingPad() end
     return inHand
 end
 
@@ -115,10 +119,10 @@ local was = nil
 local watch = CreateFrame("Frame")
 
 -- After anything that may have changed Active: tell the listeners when it
--- did, and look at the mouse only while a pad could be in hand.
+-- did. Cheap, so the look below calls it every time too: Forever does not
+-- always say when the Gamepad UI or the pad is turned on.
 local function Changed()
     local now = Input.Active()
-    watch:SetShown(forced == nil and Input.Available())
     if now == was then return end
     was = now
     for _, fn in ipairs(listeners) do fn(now) end
@@ -143,33 +147,43 @@ for _, event in ipairs({ "PLAYER_LOGIN", "GAME_PAD_ACTIVE_CHANGED", "GAME_PAD_CO
     "GAME_PAD_CONFIGS_CHANGED", "INPUT_DEVICE_INTERFACE_TRANSITION", "CVAR_UPDATE", "GLOBAL_MOUSE_DOWN" }) do
     pcall(watch.RegisterEvent, watch, event)
 end
+local lastUsing   -- IsUsingGamepad as last read
 watch:SetScript("OnEvent", function(_, event, arg)
     if event == "GAME_PAD_ACTIVE_CHANGED" then
         SetInHand(arg)
     elseif event == "GLOBAL_MOUSE_DOWN" then
         if inHand and not PadCursor() and not Input.KeyHeld() then SetInHand(false) end
-    elseif event == "CVAR_UPDATE" then
-        if arg == "GamePadEnable" or arg == "InputDeviceInterfaceStyle" then Changed() end
+    elseif event == "PLAYER_LOGIN" then
+        lastUsing = UsingPad()
+        SetInHand(lastUsing)
     else
         Changed()
     end
 end)
 
--- A look now and then, while a pad is available: a pad button held puts
--- the pad in hand, the mouse moved by hand puts it down.
+-- A look five times a second (it does next to nothing): the game's own
+-- IsUsingGamepad changed since the last look, a pad button held, or the
+-- mouse moved by hand; and whatever changed without an event (the Gamepad
+-- UI turned on in the options).
 local wait, lastX, lastY = 0, nil, nil
 watch:SetScript("OnUpdate", function(_, elapsed)
     wait = wait - elapsed
     if wait > 0 then return end
     wait = LOOK_EVERY
+    if forced ~= nil or not Input.Available() then return Changed() end
+    local using = UsingPad()
     local x, y = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale() or 1
-    if Input.KeyHeld() then
+    if using ~= lastUsing then
+        lastUsing = using
+        SetInHand(using)
+    elseif Input.KeyHeld() then
         if not inHand then SetInHand(true) end
     elseif inHand and lastX and not PadCursor()
         and math.abs(x - lastX) + math.abs(y - lastY) > MOVED * scale then
         SetInHand(false)
+    else
+        Changed()
     end
     lastX, lastY = x, y
 end)
-watch:Hide()

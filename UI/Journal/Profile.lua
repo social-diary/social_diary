@@ -56,6 +56,9 @@ end
 function J.RefreshTimelineList()
     local s = J.journal and J.selected and ns.People.Stats(J.selected)
     if s then FillTimeline(J.journal.profile, s, true) end
+    -- (its lines handed round: the pad finds its line again by key,
+    -- UI/Journal/PeoplePad.lua; with the pad down this does nothing)
+    ns.UI.Pad.Refresh()
 end
 
 --------------------------------------------------------------------------
@@ -97,8 +100,7 @@ local function ShowGlimpse()
     return g ~= nil
 end
 
-function RefreshProfile()
-    if not J.journal then return end
+local function Draw()
     local p = J.journal.profile
 
     -- A glimpse whose stranger is in the diary now (its own link, the entry
@@ -169,6 +171,15 @@ function RefreshProfile()
 
     FillTimeline(p, s)
     if onMap then p.map:SetPerson(s.guid) end
+end
+
+-- The page drawn, then the pad's things on it found again (UI/Journal/
+-- PeoplePad.lua: a person opened, the map sheet laid on or put away); with
+-- the pad down the second does nothing.
+function RefreshProfile()
+    if not J.journal then return end
+    Draw()
+    ns.UI.Pad.Refresh()
 end
 
 --------------------------------------------------------------------------

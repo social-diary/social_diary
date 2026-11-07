@@ -117,6 +117,9 @@ local function RefreshList(keepScroll)
     J.journal.sortButton:SetText(SortLabel())
     J.journal.filterButton:SetText(#filters == 0 and "All people" or Count(#filters, "filter", "filters"))
     J.journal.filters:SetText(#filters > 0 and table.concat(filters, "  ·  ") or "")
+    -- The pad's rows were handed round (UI/Journal/PeoplePad.lua); with
+    -- the pad down this does nothing.
+    ns.UI.Pad.Refresh()
 end
 
 local function BuildPersonRow(list)
@@ -178,14 +181,16 @@ end
 
 -- The sort is a preference, so it is saved and outlives the login; the
 -- search and filters are not.
+local function SetSort(key)
+    J.query.sort = key
+    ns.SetSetting("peopleSort", key)
+    RefreshList()
+end
+
 local function ShowSortMenu(owner)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle("Sort by")
-        Style.Choices(root, ns.People.SORTS, function() return J.query.sort end, function(key)
-            J.query.sort = key
-            ns.SetSetting("peopleSort", key)
-            RefreshList()
-        end)
+        Style.Choices(root, ns.People.SORTS, function() return J.query.sort end, SetSort)
     end)
 end
 
@@ -261,8 +266,9 @@ local function BuildLeftPage(panel, book)
         panel.filters, panel.people }
 end
 
--- For the book, which refreshes it (UI/Journal/Book.lua).
-J.RefreshList = RefreshList
+-- For the book, which refreshes it (UI/Journal/Book.lua); the sort as its
+-- menu sets it, for the pad's left and right on it (UI/Journal/PeoplePad.lua).
+J.RefreshList, J.SetSort = RefreshList, SetSort
 
 -- The red ribbon's page, second in the book (UI/Journal/Pages.lua): the
 -- list on the left page, the selected person's page on the right

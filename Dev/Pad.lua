@@ -22,4 +22,16 @@ ns.Slash.Register("pad", function(arg)
         YesNo(Pad.Input.GamepadUI()), YesNo(Pad.Input.Available()), YesNo(Pad.Input.Active()),
         Pad.Input.Forced() and (" (forced " .. Pad.Input.Forced() .. ")") or "",
         Pad.Glyphs.Style(), top and top.key or "none")
+    -- What each piece of the answer read, to see where it stops.
+    local get = (C_CVar and C_CVar.GetCVar) or GetCVar
+    local ok, ids = pcall(function() return C_GamePad and C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs() end)
+    local style = C_InputInterfaceStyle and C_InputInterfaceStyle.GetCurrentStyle and C_InputInterfaceStyle.GetCurrentStyle()
+    ns.Print("pad, read: InputUtil %s; style %s; C_GamePad.IsEnabled %s; pads %s; IsUsingGamepad %s; "
+        .. "CVars GamePadEnable=%s InputDeviceInterfaceStyle=%s.",
+        (InputUtil and InputUtil.IsGamepadUIEnabled) and YesNo(InputUtil.IsGamepadUIEnabled()) or "missing",
+        tostring(style),
+        (C_GamePad and C_GamePad.IsEnabled) and YesNo(C_GamePad.IsEnabled()) or "missing",
+        ok and type(ids) == "table" and #ids or "?",
+        type(IsUsingGamepad) == "function" and YesNo(IsUsingGamepad()) or "missing",
+        tostring(get and get("GamePadEnable")), tostring(get and get("InputDeviceInterfaceStyle")))
 end, "the controller's state: |cffffd100/sd pad [on | off | auto]|r", { dev = true })

@@ -107,6 +107,31 @@ function Pad.Aside(owner, on)
     Pad.Refresh()
 end
 
+-- A Blizzard menu (MenuUtil's context menu: the People page's sort and
+-- filter, the map sheet's "Show map") opened by an A press: the pad steps
+-- aside while it is open, so Forever's Gamepad UI (or the Escape stand-in)
+-- has it, and comes back as it closes. Blizzard's menu manager is only
+-- read, never called into otherwise (the plan's override rule); without it
+-- (an older client, the tests' mock) nothing steps aside.
+local function MenuOpen()
+    local menu = _G.Menu
+    local manager = menu and menu.GetManager and menu.GetManager()
+    return manager ~= nil and manager.GetOpenMenu ~= nil and manager:GetOpenMenu() ~= nil
+end
+local menuWatch
+function Pad.MenuAside()
+    if not MenuOpen() then return false end
+    menuWatch = menuWatch or CreateFrame("Frame")
+    Pad.menuWatch = menuWatch   -- (for the tests)
+    menuWatch:SetScript("OnUpdate", function(self)
+        if MenuOpen() then return end
+        self:SetScript("OnUpdate", nil)
+        Pad.Aside("menu", nil)
+    end)
+    Pad.Aside("menu", true)
+    return true
+end
+
 -- The top active scope: the highest layer, the last registered of equals.
 function Pad.Top()
     if next(aside) then return nil end

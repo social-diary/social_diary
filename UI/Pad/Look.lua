@@ -52,6 +52,8 @@
 --             shadow under it, the line over it), and no box is drawn
 --   heading   with `outline`: its heading (a FontString), red while marked
 --             (not bold: the outline carries it)
+--   plain     true: the pen boxes the frame and its words stay as they are
+--             (a tag chip filled in its own colour, where red would not read)
 -- A legend entry may say `beside = { left, right }`: a pair of keys set
 -- beside those two frames, with no words (LB / RB by the ribbons), and
 -- `main = true`: the prompt for what the pad does to the boxed words, which
@@ -505,6 +507,12 @@ function Look.Unmark(host)
     if not (p and p.marked) then return end
     local m = p.marked
     p.marked = nil
+    -- (the pen still drawing in: where it was, for Mark to go on from)
+    if p.pen:GetScript("OnUpdate") then
+        p.resume, p.resumeKey = p.pen.t, p.drawnKey
+    else
+        p.resume, p.resumeKey = nil, nil
+    end
     GiveBack(m.words)
     GiveBack(m.subhead)
     GiveBack(m.reading)
@@ -522,9 +530,14 @@ end
 function Look.Mark(host, item, drawn)
     if not (host and item) then return end
     local p = Parts(host)
+    -- (marked again while the pen is still drawing the same one in: a page
+    -- refreshed more than once by one press, the People page's list and
+    -- profile, goes on drawing, not at once and not from the start)
     Look.Unmark(host)
+    local resume = drawn and p.resumeKey == tostring(item.key or "") and p.resume or nil
+    p.resume, p.resumeKey = nil, nil
     local frame = item.frame
-    local fs = not (item.ring or item.outline) and WordsOf(item) or nil
+    local fs = not (item.ring or item.outline or item.plain) and WordsOf(item) or nil
     local anchor = fs or frame
     local spec = item.outline and item.outline()
     if not (anchor or spec) then return end
@@ -549,8 +562,9 @@ function Look.Mark(host, item, drawn)
         pen:SetFrameLevel(math.max(host:GetFrameLevel() + 40, (frame:GetFrameLevel() or 0) + 3))
         pen:ClearAllPoints()
         pen:SetPoint("TOPLEFT", frame, "CENTER", -d / 2, d / 2)
-        local drawIn = drawn and Look.DRAW_ON_PRESS and key ~= p.drawnKey or false
+        local drawIn = drawn and Look.DRAW_ON_PRESS and key ~= p.drawnKey or resume ~= nil
         PenRing(pen, d, Seed(key), drawIn)
+        if resume then pen.t = resume end
         p.drawnKey = key
     end
 
@@ -576,8 +590,9 @@ function Look.Mark(host, item, drawn)
         pen:SetFrameLevel(math.max(host:GetFrameLevel() + 40, item.level or 0))
         pen:ClearAllPoints()
         pen:SetPoint("TOPLEFT", anchor, "TOPLEFT", x - padL, -y + padY)
-        local drawIn = drawn and Look.DRAW_ON_PRESS and key ~= p.drawnKey or false
+        local drawIn = drawn and Look.DRAW_ON_PRESS and key ~= p.drawnKey or resume ~= nil
         PenBox(pen, w + padL + padX, h + 2 * padY, Seed(key), drawIn)
+        if resume then pen.t = resume end
         p.drawnKey = key
     end
 

@@ -246,6 +246,12 @@ function Entry.Form(parent, width, height)
     form.relationship:SetScript("OnTabPressed", function() form.note:SetFocus() end)
     form.note:SetScript("OnTabPressed", function() form.addTag:SetFocus() end)
 
+    -- Each line's label over it: the pad's subheading as it stands on one
+    -- (UI/Pad/Controls.lua, Pad.Look), as the settings kit stamps its rows.
+    form.addTag.group, form.relationship.group, form.noteScroll.group =
+        form.tagsLabel, form.relLabel, form.noteLabel
+    for _, chip in ipairs(form.chips) do chip.group = form.tagsLabel end
+
     ----------------------------------------------------------------------
     -- Footer: a quiet way out, and Done. The removal keeps its game pop-up;
     -- on a draft the way out just closes, and Done adds them.

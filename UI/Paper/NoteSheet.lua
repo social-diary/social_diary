@@ -261,7 +261,8 @@ function ns.UI.NoteSheet.New(parent)
         K.Fall(guid)
         self:Show()
         Refresh()
-        self.box:SetFocus()
+        -- (with the pad in hand the box waits for A: UI/Journal/NotePad.lua)
+        if not ns.UI.Pad.Input.Active() then self.box:SetFocus() end
     end
 
     -- Links one more, unless they are on it already.

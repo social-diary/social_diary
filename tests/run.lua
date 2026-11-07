@@ -34,7 +34,7 @@ local FILES = {
     "pad",
     "pad_settings",
     "pad_yourdiary",
-    "pad_plates", "pad_cards", "pad_full", "pad_run", "pad_dungeon",
+    "pad_plates", "pad_cards", "pad_full", "pad_run", "pad_dungeon", "pad_people", "pad_people_edit",
     "journey_ui",
     "killer_card",
     "combat_ui",
