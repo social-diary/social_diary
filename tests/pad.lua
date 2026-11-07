@@ -522,6 +522,7 @@ Check(Pad.Input.Active(), "put down at rest: " .. tostring(Pad.Input.reason))
 -- A mouse click puts it down; a single-frame tap picks it up again.
 mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
 Check(not Pad.Input.Active(), "a mouse click did not put it down")
+watcher.scripts.OnUpdate(watcher, 0.6)   -- (past the click's moment)
 mock.keysDown.PAD1 = true
 watcher.scripts.OnUpdate(watcher, 0.016)
 mock.keysDown.PAD1 = nil
@@ -535,26 +536,41 @@ mock.pad.using = true
 mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
 watcher.scripts.OnUpdate(watcher, 0.2)   -- (the watcher has read the game's "pad in use")
 Check(Pad.Input.Active(), "not in hand to begin with")
+-- A pad whose stick rests off centre (and triggers resting high): the click
+-- notes where it lies, and that never counts as moved.
+mock.pad.sticks = { { x = 0, y = 0.6, len = 0.6 } }
+mock.pad.axes = { 1, 1 }
+mock.pad.buttons = { true }
 mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
 Check(not Pad.Input.Active(), "the click did not put it down")
--- The game goes on saying the pad is in use: no event, no flip.
-watcher.scripts.OnUpdate(watcher, 0.2)
-Check(not Pad.Input.Active(), "picked up with nothing moved")
--- A stick resting off-centre a little: still nothing.
-mock.pad.sticks = { { x = 0.1, y = 0.1, len = 0.14 } }
+for _ = 1, 10 do watcher.scripts.OnUpdate(watcher, 0.1) end
+Check(not Pad.Input.Active(), "picked up by a stick, trigger or button at rest: " .. Pad.Input.reason)
+mock.pad.axes, mock.pad.buttons = {}, {}
+-- While a mouse button is held (a drag of the camera), nothing picks it up.
+-- (IsMouseButtonDown only here: the plates' drag tests read its absence.)
+local held = {}
+_G.IsMouseButtonDown = function(button) return held[button] == true end
+held.RightButton = true
+mock.pad.sticks = { { x = 0, y = -1, len = 1.0 } }
+mock.pad.sticks[1].len = 1.2
 watcher.scripts.OnUpdate(watcher, 0.1)
-Check(not Pad.Input.Active(), "a resting stick picked it up")
-mock.pad.sticks = { { x = 0, y = 0.8, len = 0.8 } }
+mock.keysDown.PAD1 = true
 watcher.scripts.OnUpdate(watcher, 0.1)
+mock.keysDown.PAD1 = nil
+Check(not Pad.Input.Active(), "picked up while a mouse button was held")
+held.RightButton = nil
+_G.IsMouseButtonDown = nil
+-- Within a moment of a click, nothing either.
+mock.pad.sticks = { { x = 0, y = 0.6, len = 0.6 } }
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+mock.pad.sticks = { { x = 0, y = -1, len = 1.2 } }
+watcher.scripts.OnUpdate(watcher, 0.1)
+Check(not Pad.Input.Active(), "picked up a moment after a click")
+-- Then a stick pushed well past where it lay picks it up.
+watcher.scripts.OnUpdate(watcher, 0.5)
 Check(Pad.Input.Active(), "a pushed stick did not pick it up")
 Eq(Pad.Input.reason, "picked up: a stick", "the reason recorded")
--- A trigger pulled does too.
 mock.pad.sticks = {}
-mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
-mock.pad.axes = { 0, 0.9 }
-watcher.scripts.OnUpdate(watcher, 0.1)
-Eq(Pad.Input.reason, "picked up: a trigger", "a trigger did not pick it up")
-mock.pad.axes = {}
 
 --------------------------------------------------------------------------
 Section("the input watcher sleeps while no window of ours is open")
