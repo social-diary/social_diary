@@ -107,10 +107,18 @@ end
 local where, since
 local showing   -- the hint's spec while its slip is out
 
+-- The pad told a slip came or went: it joins the page's focus, or leaves
+-- it (UI/Journal/HintPad.lua). Nothing while the pad is not in hand.
+local function Told()
+    local Pad = ns.UI.Pad
+    if Pad and Pad.Input.Active() then Pad.Refresh() end
+end
+
 local function Put()
     if showing then
         showing = nil
         ns.UI.HintSlip.Hide()
+        Told()
     end
 end
 
@@ -140,6 +148,7 @@ function HintsUI.Look(now)
     showing = spec
     Hints.Shown(spec.id)
     ns.UI.HintSlip.Show(J.journal.views[spec.page], spec.page, spec.words(), Put)
+    Told()
 end
 
 local ticker

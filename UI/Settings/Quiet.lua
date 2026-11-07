@@ -147,8 +147,16 @@ end
 -- count, the list taking what room is left, and what it says when empty.
 local function Build(pane, c)
     local page = SettingsUI.page
+    -- (the heading over it, for the pad: its rubric while the pad is on the
+    -- list, UI/Settings/Pad.lua)
+    page.quietHeading = c.group
+    -- (written in: the pad's items follow the rows, by who they are)
     page.quietSearch = Style.PageSearch(pane, 0, c.y, 236, "Search your diary",
-        Style.SearchInto(quiet, RefreshQuiet))
+        Style.SearchInto(quiet, function()
+            RefreshQuiet()
+            local Pad = ns.UI.Pad
+            if Pad and Pad.Top() and Pad.Top().key == "settings" then Pad.Refresh() end
+        end))
     page.quietCount = Style.Text(pane, FONT.small)
     page.quietCount:SetPoint("RIGHT", pane, "TOPRIGHT", 0, c.y - 12)
     page.quietCount:SetJustifyH("RIGHT")

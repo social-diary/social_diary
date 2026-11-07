@@ -28,8 +28,9 @@
 --                       cross: unlinks them. Ringed, its tooltip shown
 --   a face (Style.Portrait)  ringed, its tooltip shown; A does nothing
 --   a key (UI/Kit/Keys.lua's setter: keycap, bind)  A listens for a key on
---                       the keyboard (a pad button is never bound: a later
---                       step), A again stops
+--                       the keyboard or a pad button (step 7c: the setter
+--                       takes the pad itself while it listens, ours aside;
+--                       B cancels)
 --   a box (Style.Checkbox: tick, label)  A ticks or unticks it
 --   a link (Style.Link: line, label)  A follows it, as a click
 --   a line or a box to write in (an EditBox)  A gives it the keyboard's
@@ -54,7 +55,7 @@ local PROMPT = {
     tagOff = { "PAD1", "Take the tag off", main = true },
     tagAway = { "PAD1", "Take the tag off", main = true },
     unlink = { "PAD1", "Unlink them", main = true },
-    key = { "PAD1", "Choose a keyboard key", main = true },
+    key = { "PAD1", "Choose a button", main = true },
     listening = { "PAD1", "Stop listening", main = true },
 }
 Controls.PROMPT = PROMPT

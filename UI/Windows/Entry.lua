@@ -400,6 +400,21 @@ end
 -- Entry points
 --------------------------------------------------------------------------
 
+-- The sheet opened by the player (every way in is theirs: the key, a
+-- menu's line, /sd, the picker): it takes the pad while it is shown
+-- (UI/Windows/Pad.lua). `toNote`: the note is what they came to write, so it
+-- has the cursor; with the pad in hand it waits for A instead (there is no
+-- on-screen keyboard to rely on), and the pad lands on it.
+function Entry.Opened(toNote)
+    local Pad = ns.UI.Pad
+    sheet.padNote = toNote and true or nil
+    if toNote and not Pad.Input.Active() then sheet.form.note:SetFocus() end
+    Pad.Opened(sheet)
+end
+
+-- The loose sheet, if it was ever made (the pad's scope).
+function Entry.Sheet() return sheet end
+
 -- After an edit from anywhere: whichever form is showing follows it.
 function Entry.Refresh()
     local draft = SheetDraft()
@@ -430,7 +445,7 @@ function ns.UI.ShowEntry(guid, focusNote)
     sheet:Show()
     sheet:Raise()
     FillSheet(guid)
-    if focusNote then sheet.form.note:SetFocus() end
+    Entry.Opened(focusNote)
 
     return true
 end
@@ -450,6 +465,7 @@ function ns.UI.Remember(guid, opts)
     local open = SheetDraft()
     if open and open.guid == ns.SafeGUID(guid) then
         sheet:Raise()
+        ns.UI.Pad.Opened(sheet)
         return true
     end
 
@@ -470,6 +486,6 @@ function ns.UI.Remember(guid, opts)
     sheet:Show()
     sheet:Raise()
     FillSheet(draft.guid, draft)
-    sheet.form.note:SetFocus()
+    Entry.Opened(true)
     return true
 end

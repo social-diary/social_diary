@@ -26,6 +26,10 @@
 --                  or its link); it may call Hide itself
 --   HintSlip.Hide()   takes it away, at once and quietly; safe to call again
 --   HintSlip.Shown()  whether it is out
+--   HintSlip.PutAway()  as a click on it: put away, its onGone called
+--   HintSlip.Corners()  its four corners as it lies (turned), on its frame
+--                     from the top left, y down: for the pad's outline
+--                     (UI/Journal/HintPad.lua)
 
 local addonName, ns = ...
 
@@ -214,6 +218,21 @@ end
 
 function HintSlip.Shown()
     return host ~= nil and host:IsShown()
+end
+
+function HintSlip.PutAway()
+    if HintSlip.Shown() then Gone() end
+end
+
+function HintSlip.Corners()
+    if not host then return nil end
+    local K, w, h = host.K, SLIP.w, host.h or 0
+    local out = {}
+    for i, c in ipairs({ { 0, 0 }, { w, 0 }, { w, h }, { 0, h } }) do
+        local sx, sy = K.Screen(c[1], c[2])
+        out[i] = { w / 2 + sx, h / 2 - sy }
+    end
+    return out
 end
 
 -- The slip's frame, for the tests: nil until a hint has come.

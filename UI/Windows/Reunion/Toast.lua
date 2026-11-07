@@ -118,6 +118,20 @@ local function Remember(host)
     Anchor(host)
 end
 
+-- Moved by `dx`, `dy` px (y up) while it is being placed, without the
+-- mouse (the pad's D-pad or stick, UI/Windows/Reunion/Pad.lua): kept as a
+-- drag keeps it, and read back where the screen's edge held it.
+function Toast.Nudge(dx, dy)
+    local host = Toast.toast
+    if not (host and Toast.placing) then return end
+    local at = ns.Setting("toastAt")
+    local x, y = 0, CARD.top
+    if type(at) == "table" and type(at.x) == "number" and type(at.y) == "number" then x, y = at.x, at.y end
+    ns.db.settings.toastAt = { x = math.floor(x + dx + 0.5), y = math.floor(y + dy + 0.5) }
+    Anchor(host)
+    Remember(host)
+end
+
 local function Build()
     local host = CreateFrame("Frame", "SocialDiaryToastFrame", UIParent)
     host:SetSize(CARD.w + 60, CARD.h + 60)

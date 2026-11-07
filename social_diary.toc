@@ -179,20 +179,24 @@ UI/Dungeon/Way.lua
 UI/Dungeon/Tutorial.lua
 UI/Dungeon/Pad.lua
 UI/Journal/Nearby.lua
+UI/Journal/NearbyPad.lua
 UI/Journal/Empty.lua
 UI/Journal/Glimpse.lua
 UI/Journal/PeoplePad.lua
 UI/Journal/WritingPad.lua
 UI/Journal/NotePad.lua
+UI/Windows/Pad.lua
 # The hints on the pages (Core/Hints.lua): which, their words and the
 # watcher; their slip is UI/Paper/HintSlip.lua's.
 UI/Journal/Hints.lua
+UI/Journal/HintPad.lua
 # The reunion toast: the card first (ns.UI.Toast), its words, the queue and
 # the entry point, then placing it.
 UI/Windows/Reunion/Toast.lua
 UI/Windows/Reunion/Words.lua
 UI/Windows/Reunion/Queue.lua
 UI/Windows/Reunion/Placing.lua
+UI/Windows/Reunion/Pad.lua
 UI/Blizzard/Tooltip.lua
 # Settings: the page first (ns.UI.Settings), then its kit, the quiet list,
 # the macros, and a file per section in the order the page lists them; the
@@ -222,6 +226,7 @@ UI/Windows/Intro/Wrapped.lua
 UI/Windows/Intro/Torn.lua
 UI/Windows/Intro/Parcel.lua
 UI/Windows/Intro/Tour.lua
+UI/Windows/Intro/Pad.lua
 UI/Blizzard/SocialTab.lua
 UI/Blizzard/Bindings.lua
 UI/Blizzard/Minimap.lua

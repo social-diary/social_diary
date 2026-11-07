@@ -17,9 +17,19 @@
 --   a scale (the kit's Slider) left and right step it
 --   a number (the kit's Number) left and right count it up or down
 --   a link (Style.Link)        A follows it
--- Faded settings (DependsOn) and read-only boxes are passed over. The
--- quiet list (the Toasts section) is not reached yet: it scrolls, and
--- comes with the lists of the later steps.
+--   a key (UI/Kit/Keys.lua)    A listens; the next key or pad button binds
+--                              (the setter takes it itself, the pad aside)
+-- Faded settings (DependsOn) and read-only boxes are passed over. So are
+-- Feedback's copy fields (copying needs a keyboard) and the books to drag
+-- onto an action bar (a drag): neither is a control found here.
+--
+-- The quiet list (the Toasts section, UI/Settings/Quiet.lua) ends the
+-- Toasts settings: its search (A gives the box the keyboard's cursor; A
+-- again, B, or the pad moving off takes it back; the list narrows as it is
+-- written in), then its rows, a virtual list: down walks them, the list
+-- scrolled to the row the pad lands on (List.lua's Reveal / RowOf); A
+-- ticks or unticks one, as its click does. Rows are known by who they are,
+-- so a search or a tick keeps the pad's place.
 --
 -- After a ribbon turn the page's title holds the box until the first
 -- D-pad press (the journal's HOLD_TITLE), which lands on the sections.
@@ -37,6 +47,7 @@ local function Journal() return Pad.Scope("journal") end
 -- What a widget on a pane is, by what it is made of (lowercase fields:
 -- the widgets' own, and safe to read on any frame).
 local function Kind(w)
+    if w.keycap and w.bind and rawget(w, "Listen") then return "setter" end
     if w.slider then return "slider" end
     if w.box and w.label then return "number" end
     if w.tick and w.label then
@@ -75,8 +86,14 @@ local PROMPT = {
     link = { "PAD1", "Choose", main = true },
     step = { { "PADDLEFT", "PADDRIGHT" }, "Less · more", main = true },
     back = { "PAD2", "Back to the sections" },
+    key = { "PAD1", "Choose a button", main = true },
+    write = { "PAD1", "Write", main = true },
+    done = { "PAD1", "Done writing", main = true },
+    stop = { "PAD2", "Stop writing" },
     title = { { "PADDUP", "PADDDOWN" }, "Go to the sections", main = true },
 }
+
+local scope
 
 local function Item(pane, sectionKey, i, found)
     local w, kind = found.frame, found.kind
@@ -102,11 +119,82 @@ local function Item(pane, sectionKey, i, found)
     elseif kind == "switch" then
         -- (its tooltip and hover look are the mouse's; A clicks it)
         item.press = function() w:Click("LeftButton") end
+    elseif kind == "setter" then
+        -- (its link boxed; A listens, and the setter has the pad until a
+        -- button, B or Escape)
+        item.frame, item.words, item.subhead = w.bind, w.bind.label, w.group
+        item.available = function()
+            return pane:IsShown() and Shown(w) and not w.listening
+        end
+        item.press = function() w.bind:Click("LeftButton") end
     end
     return item
 end
 
-local scope = {
+--------------------------------------------------------------------------
+-- The quiet list
+--------------------------------------------------------------------------
+
+local function Quiet() local page = Page() return page and page.quiet end
+
+-- The search lets go of the cursor (the pad moved off it, or B).
+local function LetGo()
+    local page = Page()
+    local box = page and page.quietSearch
+    if box and box:HasFocus() then box:ClearFocus() end
+end
+
+-- Where someone is in the list as it stands, or nil.
+local function IndexOf(guid)
+    for i, e in ipairs(Quiet().data or {}) do
+        if e.guid == guid then return i end
+    end
+end
+
+-- The pad lands on a row: in view, its name boxed, the heading over it.
+local function FindRow(item)
+    if not item.guid then return end
+    local list = Quiet()
+    local index = IndexOf(item.guid)
+    if index then list:Reveal(index) end
+    local row = index and list:RowOf(index)
+    item.frame = row
+    item.words = row and row.name or nil
+end
+
+local function QuietItems(f, pane)
+    local page = Page()
+    local box = page.quietSearch
+    f:Add("pane", {
+        key = "quiet:search", kind = "search", frame = box.holder, subhead = page.quietHeading,
+        available = function() return pane:IsShown() and Shown(box) end,
+        enter = function() end, leave = function() end,
+        press = function()
+            if box:HasFocus() then box:ClearFocus() else box:SetFocus() end
+        end,
+    })
+    for _, e in ipairs(Quiet().data or {}) do
+        local guid = e.guid
+        local item
+        item = {
+            key = "quiet:" .. tostring(guid), kind = "quiet", guid = guid, subhead = page.quietHeading,
+            available = function() return pane:IsShown() and IndexOf(guid) ~= nil end,
+            press = function()
+                local row = item.frame
+                if not (row and row.item and row.item.guid == guid) then return end
+                row:Click("LeftButton")
+                -- (the row's font changes with its tick: boxed again over it)
+                local focus = scope.focus
+                if focus and focus:Current() == item then
+                    focus:Leave()
+                    focus:Enter()
+                end
+            end,
+        }
+        f:Add("pane", item)
+    end
+end
+scope = {
     layer = 20,
     parent = "journal",
     host = function() return J.journal end,
@@ -116,7 +204,8 @@ local scope = {
 function scope.build(f)
     local page = Page()
     f:Group("nav", { mode = "list", right = "pane" })
-    f:Group("pane", { mode = "list", left = "nav" })
+    -- (the quiet list's rows are found as the pad lands on them)
+    f:Group("pane", { mode = "list", left = "nav", reveal = FindRow })
     f:Group("title", { mode = "list" })
 
     -- (a ribbon just turned: the title alone, until the first D-pad press)
@@ -160,12 +249,34 @@ function scope.build(f)
         for i, found in ipairs(Collect(pane, {}, page.quiet)) do
             f:Add("pane", Item(pane, s.key, i, found))
         end
+        if page.quiet and page.quiet:GetParent() == pane then QuietItems(f, pane) end
+    end
+
+    -- (the quiet list's search lets go as the pad stands anywhere else)
+    for _, name in ipairs(f.order) do
+        for _, it in ipairs(f.groups[name].items) do
+            if it.kind ~= "search" then
+                local own = it.enter
+                it.enter = function()
+                    LetGo()
+                    if own then own() else
+                        local fn = it.frame and it.frame:GetScript("OnEnter")
+                        if fn then fn(it.frame, false) end
+                    end
+                end
+            end
+        end
     end
 end
 
 -- B on the settings comes back to the sections; on the sections it is the
 -- book's (closing it).
 function scope.back()
+    local box = Page() and Page().quietSearch
+    if box and box:HasFocus() then
+        box:ClearFocus()
+        return true
+    end
     local focus = scope.focus
     local at = focus and focus:Current()
     if at and at.group == "pane" then
@@ -201,6 +312,17 @@ function scope.legend()
     local out = {}
     if at.kind == "switch" then
         out[1] = { "PAD1", at.frame:GetChecked() and "Untick" or "Tick", main = true }
+    elseif at.kind == "quiet" then
+        out[1] = { "PAD1", ns.Diary.IsQuietNearby(at.guid) and "Untick" or "Tick", main = true }
+    elseif at.kind == "search" then
+        local box = Page().quietSearch
+        if box:HasFocus() then
+            out[1], out[2] = PROMPT.done, PROMPT.stop
+            return out
+        end
+        out[1] = PROMPT.write
+    elseif at.kind == "setter" then
+        out[1] = PROMPT.key
     elseif at.kind == "slider" or at.kind == "number" then
         out[1] = PROMPT.step
     elseif at.kind == "link" then

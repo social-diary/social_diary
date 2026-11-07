@@ -319,4 +319,6 @@ function ns.UI.QuickNote(guid)
         quick.note:Open(nil)
     end
     if guid then quick.note:Link(guid) end
+    -- (the Remember key's: the player's; the pad's, UI/Journal/NotePad.lua)
+    ns.UI.Pad.Opened(quick)
 end

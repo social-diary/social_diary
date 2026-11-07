@@ -277,6 +277,13 @@ end
 -- Escape: the host in the book's place while the sheet is out
 --------------------------------------------------------------------------
 
+-- The pad told the sheet changed (a step, laid, put away, the example):
+-- what it walks is found again (UI/Windows/Intro/Pad.lua).
+local function Told()
+    local Pad = ns.UI.Pad
+    if Pad and Pad.Input.Active() then Pad.Refresh() end
+end
+
 local function StandIn(from, to)
     for i, name in ipairs(UISpecialFrames) do
         if name == from then
@@ -1010,6 +1017,7 @@ function Go(n, enter)
     Tour.step = n
     host:Compose(n)
     if enter and not Flat() then host:Enter(n, from) end
+    Told()
 end
 Tour.Go = Go
 
@@ -1045,6 +1053,7 @@ function Tour.Lay()
     host:Compose(1)
     Tour.view:Show()
     if not Flat() then host:Enter(1, nil) end
+    Told()
 end
 
 -- The sheet's way out, any but the ending: seen, and Thex gone if he was
@@ -1062,6 +1071,7 @@ function Exit()
     -- Put away while the book lies open (a click beside it, Escape, a
     -- fight), it rustles; gone with its page or the book, it is silent.
     if Tour.container:IsVisible() then Style.PlaySound("sheetClose") end
+    Told()
 end
 Tour.Exit = Exit
 
@@ -1118,6 +1128,7 @@ function Ending()
     Style.PlaySound("pageTurn")
     ns.UI.ShowJournal(Sample.GUID)
     LayEnding()
+    Told()
 end
 Tour.Ending = function() Ending() end
 
@@ -1141,6 +1152,7 @@ local function Leave(begin)
         J.RefreshList(true)
         J.RefreshProfile()
     end
+    Told()
 end
 
 -- "Begin your own diary →".

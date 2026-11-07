@@ -53,6 +53,7 @@ local function BuildShortcuts(pane, c)
         local setter = ns.UI.Keys.Setter(row, b.action, page.keyStatus)
         setter:SetPoint("LEFT", KEY_LABEL_W, 0)
         setter:SetWidth(BOOK.RIGHT_W - KEY_LABEL_W)
+        setter.group = c.group   -- (the pad's subheading: Keys)
         -- A key bound may have been the other's: both read again.
         setter.onBound = function() ns.UI.Settings.Refresh() end
         page.keys[b.action] = setter

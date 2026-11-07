@@ -431,6 +431,8 @@ function RefreshTable(keepScroll)
     page.empty:SetText(#list == 0 and "Nobody matches." or "")
     page.filter:SetText(FilterLabel())
     PaintHeadings()
+    -- (the pad's rows were handed round: UI/Journal/NearbyPad.lua)
+    ns.UI.Pad.Refresh()
 end
 
 -- Everything: the days, and the chosen day's people rebuilt from the data.
@@ -464,6 +466,7 @@ function ns.UI.RefreshNearbyPage()
     page.right:SetShown(selectedDay ~= nil)
     if not selectedDay then
         cache = nil
+        ns.UI.Pad.Refresh()
         return
     end
 
@@ -516,23 +519,28 @@ local function BuildPage(parent)
 
     page.search = Style.PageSearch(r, 0, -40, 260, "Search names, zones, subzones",
         Style.SearchInto(query, RefreshTable))
+    -- (`padAt`: where each control lies on the right page, y down, for the
+    -- pad's left and right between them: UI/Journal/NearbyPad.lua)
+    page.search.holder.padAt = { 130, 52 }
 
     page.filter = Style.Link(r, FONT.body, function(self) ShowFilterMenu(self) end)
     page.filter:SetPoint("RIGHT", r, "TOPRIGHT", 0, -52)
+    page.filter.padAt = { BOOK.RIGHT_W - 30, 52 }
 
     -- Column headings, on the rows' own coordinates.
     page.headings = {}
-    local function Heading(key, text)
+    local function Heading(key, text, x)
         local link = Style.Link(r, FONT.heading, function() SortBy(key) end)
         link:SetText(text:upper())
+        link.padAt = { x, 86 }
         page.headings[key] = link
         return link
     end
-    Heading("level", "Lvl"):SetPoint("RIGHT", r, "TOPLEFT", LEVEL_RIGHT, -86)
+    Heading("level", "Lvl", LEVEL_RIGHT - 10):SetPoint("RIGHT", r, "TOPLEFT", LEVEL_RIGHT, -86)
     page.headings.level.alignRight = true
-    Heading("name", "Name"):SetPoint("LEFT", r, "TOPLEFT", NAME_X, -86)
-    Heading("zone", "Zone"):SetPoint("LEFT", r, "TOPLEFT", ZONE_X, -86)
-    Heading("subzone", "Subzone"):SetPoint("LEFT", r, "TOPLEFT", SUBZONE_X, -86)
+    Heading("name", "Name", NAME_X + 20):SetPoint("LEFT", r, "TOPLEFT", NAME_X, -86)
+    Heading("zone", "Zone", ZONE_X + 20):SetPoint("LEFT", r, "TOPLEFT", ZONE_X, -86)
+    Heading("subzone", "Subzone", SUBZONE_X + 20):SetPoint("LEFT", r, "TOPLEFT", SUBZONE_X, -86)
 
     page.arrow = r:CreateTexture(nil, "ARTWORK")
     page.arrow:SetSize(9, 8)
@@ -549,9 +557,23 @@ local function BuildPage(parent)
     page.empty = Style.Text(r, FONT.faded)
     page.empty:SetPoint("TOPLEFT", 4, -TABLE_TOP - 8)
 
+    -- For the pad (UI/Journal/NearbyPad.lua): the query, and how a heading
+    -- sorts at its first click.
+    page.query, page.firstDir = query, FIRST_DIR
+
     ns.UI.NearbyPage = page  -- test hook: the page, once built
     return page
 end
+
+-- For the pad (UI/Journal/NearbyPad.lua): the day shown, and showing
+-- another, as a day's click does.
+J.Nearby = {
+    Day = function() return selectedDay end,
+    ShowDay = function(start)
+        selectedDay = start
+        ns.UI.RefreshNearbyPage()
+    end,
+}
 
 -- The purple ribbon's page, second from the back (JNL-3;
 -- UI/Journal/Pages.lua). It reads live data, so it is brought up to date

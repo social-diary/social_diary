@@ -25,7 +25,9 @@
 -- and any way off the end of a group, go to the group named that way
 -- (`left`, `right`, `up`, `down`) if any. `wrap` goes round instead.
 -- `reveal(item)` is the group's scroll owner, asked to bring an item into
--- view as the pad lands on it.
+-- view as the pad lands on it. A way may also be a function(model) giving
+-- the group's name then (an aside's way back: `model.from`, the group the
+-- pad was in before the one it is in now).
 
 local addonName, ns = ...
 
@@ -131,6 +133,7 @@ function Model:Set(item)
     self:Leave()
     self.at = item
     if item then
+        if self.group and item.group ~= self.group then self.from = self.group end
         self.group = item.group
         self.remembered[item.group] = item.key
     end
@@ -259,6 +262,7 @@ function Model:Move(dir)
         return true
     end
     local to = g.opts[dir:lower()]
+    if type(to) == "function" then to = to(self) end
     if to and self:EnterGroup(to) then return true end
     return false
 end

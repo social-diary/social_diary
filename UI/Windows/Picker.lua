@@ -102,6 +102,8 @@ function ns.UI.ShowPicker()
     Refresh()
     picker:Show()
     picker:Raise()
+    -- (always the player's: /sd pick, /sd remember; the pad's, UI/Windows/Pad.lua)
+    ns.UI.Pad.Opened(picker)
 end
 
 function ns.UI.ClosePicker()

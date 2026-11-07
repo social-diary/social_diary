@@ -86,6 +86,71 @@ function Pad.RegisterScope(key, spec)
     scopes:Add(key, spec)
 end
 
+-- Something laid on a page that is not the page's own (a hint's slip, the
+-- introduction's example strip, step 7b): each join is asked, after the
+-- top scope has filled its focus and before the pad goes back where it
+-- was, whether it has something to add (Pad.JoinAside). It never moves
+-- the pad by itself: what it adds is reached by going right off the edge
+-- of the page's groups, as it lies at the book's fore-edge.
+--   Pad.RegisterJoin(key, { join = function(focus, top) end })
+local joins = ns.Registry.New({
+    what = "Pad.RegisterJoin(key, { join = function(focus, top) end })",
+    check = function(_, spec) return type(spec.join) == "function" end,
+})
+function Pad.RegisterJoin(key, spec)
+    joins:Add(key, spec)
+end
+
+-- An item of its own (`item`) in group `name` of focus `f`, joined at the
+-- right edge: every group of the page that has no way right goes right to
+-- it, and left from it (or B, unless the item says `back`) goes back to
+-- the group the pad came from. While the pad stands on it, it is the
+-- item's alone: the D-pad moves, A is its `press`, B its `back`, its
+-- prompts its `legend()`; the page's own keys and prompts wait (its
+-- parents' still count: the shoulders turn the page). The page's opts
+-- are copied, never written into.
+function Pad.JoinAside(f, name, item)
+    item.own = true
+    for _, other in ipairs(f.order) do
+        local g = f.groups[other]
+        if other ~= name and other ~= "title" and #g.items > 0 and g.opts.right == nil then
+            local opts = {}
+            for k, v in pairs(g.opts) do opts[k] = v end
+            opts.right = name
+            g.opts = opts
+        end
+    end
+    f:Group(name, { mode = "list", left = function(m) return m.from end })
+    f:Add(name, item)
+    f.asides = f.asides or {}
+    f.asides[name] = true
+    return item
+end
+
+-- The pad put on aside `name` (asked for by the player's own press, never
+-- by the aside coming): its way back the group it was in, else the
+-- page's first that has anything.
+function Pad.LandAside(f, name)
+    local from = f.group ~= name and f.group or f.from
+    if not (from and f.groups[from] and #f.groups[from].items > 0) then
+        from = nil
+        for _, other in ipairs(f.order) do
+            if other ~= name and other ~= "title" and #f.groups[other].items > 0 then
+                from = other
+                break
+            end
+        end
+    end
+    f.from = from
+    f:Within(name)
+end
+
+-- The item of its own the pad stands on in `scope`, if it does.
+local function Aside(scope)
+    local at = scope and scope.focus and scope.focus:Current()
+    return at and at.own and at or nil
+end
+
 function Pad.Scope(key) return scopes:Get(key) end
 
 local function Host(scope)
@@ -131,6 +196,40 @@ function Pad.MenuAside()
     Pad.Aside("menu", true)
     return true
 end
+
+-- A window outside the book that the player opened, or that opened from
+-- their action (the Remember key, a menu's line, /sd pick, a pick in the
+-- picker): it may take the pad while it is shown, and gives it back the
+-- moment it hides (UI/Windows/Pad.lua, step 7a). A window shown any other
+-- way (a toast, something the game or another addon did) never takes it:
+-- its scope asks Pad.Owns. Of several such windows shown, the one opened
+-- last has the pad; it put away, the one before has it again.
+--   Pad.Opened(frame)  call after showing it, from the player's path
+--   Pad.Owns(frame)    it is shown, the player opened it, and none opened
+--                      since is still shown
+local opened, openings = setmetatable({}, { __mode = "k" }), 0
+function Pad.Opened(frame)
+    if not frame then return end
+    if opened[frame] == nil then
+        frame:HookScript("OnHide", function(self) opened[self] = false end)
+    end
+    openings = openings + 1
+    opened[frame] = openings
+    Pad.Refresh()
+end
+
+function Pad.Owns(frame)
+    local n = frame and opened[frame]
+    if not (n and frame:IsShown()) then return false end
+    for other, m in pairs(opened) do
+        if other ~= frame and m and m > n and other:IsShown() then return false end
+    end
+    return true
+end
+
+-- Which opening of `frame` is shown (a number, new each time it is opened),
+-- or nil: a scope lands afresh when it changes.
+function Pad.Opening(frame) return frame and opened[frame] or nil end
 
 -- The top active scope: the highest layer, the last registered of equals.
 function Pad.Top()
@@ -194,9 +293,13 @@ end
 -- not "Close the book" as well).
 local function Legend(scope)
     local entries, named = {}, {}
-    for _, s in ipairs(Chain(scope)) do
-        if s.legend then
-            for _, e in ipairs(s.legend(s) or {}) do
+    local own = Aside(scope)
+    for i, s in ipairs(Chain(scope)) do
+        local fn = s.legend
+        -- (an item of its own speaks for the top scope)
+        if own and i == 1 then fn = own.legend and function() return own.legend() end end
+        if fn then
+            for _, e in ipairs(fn(s) or {}) do
                 local key = type(e[1]) == "table" and e[1][1] or e[1]
                 if not named[key] then
                     named[key] = true
@@ -207,6 +310,7 @@ local function Legend(scope)
     end
     return entries
 end
+Pad.Legend = Legend
 
 local function ShowLegend(scope)
     if not (scope and Input.Active()) then return end
@@ -216,8 +320,19 @@ end
 
 -- A press down: true when a scope took it.
 local function Dispatch(scope, key)
-    for _, s in ipairs(Chain(scope)) do
-        local fn = s.keys and s.keys[key]
+    local own = Aside(scope)
+    if own then
+        if DIRS[key] then
+            scope.focus:Move(DIRS[key])
+            return true
+        end
+        if key == "PAD1" then
+            scope.focus:Press()
+            return true
+        end
+    end
+    for i, s in ipairs(Chain(scope)) do
+        local fn = not (own and i == 1) and s.keys and s.keys[key]
         if fn and fn(s) ~= false then return true end
         -- (a focus with nothing on it takes nothing: the press goes on)
         local focus = s.focus and s.focus:Current() and s.focus
@@ -239,6 +354,14 @@ local function Sticky(scope)
 end
 
 local function Back(scope)
+    local own = Aside(scope)
+    if own then
+        if not (own.back and own.back()) then
+            local f = scope.focus
+            if f.from then f:EnterGroup(f.from) end
+        end
+        return true
+    end
     for _, s in ipairs(Chain(scope)) do
         if s.back and s.back(s) then return true end
     end
@@ -407,6 +530,10 @@ function Pad.Refresh()
     if focus then
         focus:Clear()
         top.build(focus, top)
+        for _, j in ipairs(joins:Ordered()) do j.join(focus, top) end
+        -- (an aside gone with the pad on it: back where it came from)
+        local g = focus.asides and focus.asides[focus.group] and focus.groups[focus.group]
+        if g and #g.items == 0 and focus.from then focus:Within(focus.from) end
         focus:Done()
     end
     for _, s in ipairs(scopes:Ordered()) do

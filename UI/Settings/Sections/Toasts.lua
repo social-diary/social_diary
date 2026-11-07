@@ -32,9 +32,11 @@ local function BuildToasts(pane, c)
     -- The book closes so the card can be seen where it lies, and opens
     -- on this page again once it is placed (UI/Windows/Reunion/Placing.lua).
     local function Back() ns.UI.ShowSettings("toasts") end
+    -- The player asked for it: with the pad in hand, the pad moves it
+    -- (UI/Windows/Reunion/Pad.lua). Edit Mode's placing never says so.
     page.moveToast = Style.Link(pane, FONT.body, function()
         ns.UI.CloseJournal()
-        if not ns.UI.PlaceToast(Back) then Back() end
+        if ns.UI.PlaceToast(Back) then ns.UI.Pad.Opened(ns.UI.Toast.toast) else Back() end
     end)
     page.moveToast:SetText("Move the toast")
     c:Place(page.moveToast, 18)
