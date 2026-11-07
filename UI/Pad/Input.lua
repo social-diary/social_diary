@@ -11,10 +11,11 @@
 --   Pad.Input.OnChange(fn) fn(active) each time Active changes
 --   Pad.Input.Force(mode)  "on", "off" or nil (auto): for Dev's /sd pad
 --
--- In hand: the game says so (GAME_PAD_ACTIVE_CHANGED, IsUsingGamepad read
--- live), and so does a pad button held or the mouse moved by hand, looked
--- at five times a second. A click made by the pad (its cursor control, or
--- a pad button held) does not count as the mouse's.
+-- In hand: a pad button pressed (looked at every frame), the game saying
+-- so (GAME_PAD_ACTIVE_CHANGED, IsUsingGamepad turning true). Put down: a
+-- mouse click the pad did not make (its cursor control, or a pad button
+-- held), or the game saying so. Never by time or the cursor's place: the
+-- Gamepad UI moves the cursor itself (found in the client, 7 Nov 2026).
 --
 -- The first file of UI/Pad/, so it makes ns.UI.Pad.
 
@@ -36,7 +37,6 @@ Pad.KEYS = {
 }
 
 local LOOK_EVERY = 0.2   -- seconds between looks
-local MOVED = 24         -- the mouse moved this far (UI units) between looks: it is in hand
 
 local function CVar(name)
     local get = (C_CVar and C_CVar.GetCVar) or GetCVar
@@ -129,8 +129,13 @@ local function Changed()
 end
 Input.Changed = Changed
 
-local function SetInHand(on)
-    inHand = on and true or false
+-- Why the pad was last picked up or put down, for /sd pad.
+Input.reason = "not yet"
+
+local function SetInHand(on, why)
+    on = on and true or false
+    if on ~= inHand then Input.reason = (on and "picked up: " or "put down: ") .. (why or "?") end
+    inHand = on
     Changed()
 end
 
@@ -150,40 +155,39 @@ end
 local lastUsing   -- IsUsingGamepad as last read
 watch:SetScript("OnEvent", function(_, event, arg)
     if event == "GAME_PAD_ACTIVE_CHANGED" then
-        SetInHand(arg)
+        SetInHand(arg, "the game said so")
     elseif event == "GLOBAL_MOUSE_DOWN" then
-        if inHand and not PadCursor() and not Input.KeyHeld() then SetInHand(false) end
+        if inHand and not PadCursor() and not Input.KeyHeld() then SetInHand(false, "a mouse click") end
     elseif event == "PLAYER_LOGIN" then
         lastUsing = UsingPad()
-        SetInHand(lastUsing)
+        SetInHand(lastUsing, "logged in")
     else
         Changed()
     end
 end)
 
--- A look five times a second (it does next to nothing): the game's own
--- IsUsingGamepad changed since the last look, a pad button held, or the
--- mouse moved by hand; and whatever changed without an event (the Gamepad
--- UI turned on in the options).
-local wait, lastX, lastY = 0, nil, nil
+-- Every frame, a pad button held picks the pad up: a tap lasts a few
+-- frames, so none is missed (the book's catcher is off while the mouse is
+-- in hand, so it never hears them). Five times a second, the game's own
+-- IsUsingGamepad turning true picks it up too, and whatever changed without
+-- an event (the Gamepad UI turned on in the options) is looked at.
+--
+-- Only the mouse used (a click the pad did not make) or the game saying so
+-- puts the pad down: never time, never the cursor's place (the Gamepad UI
+-- hides and centres the cursor itself, at rest too), never IsUsingGamepad
+-- turning false.
+local wait = 0
 watch:SetScript("OnUpdate", function(_, elapsed)
+    local available = forced == nil and Input.Available()
+    if available and not inHand and Input.KeyHeld() then SetInHand(true, "a pad button") end
     wait = wait - elapsed
     if wait > 0 then return end
     wait = LOOK_EVERY
-    if forced ~= nil or not Input.Available() then return Changed() end
+    if not available then return Changed() end
     local using = UsingPad()
-    local x, y = GetCursorPosition()
-    local scale = UIParent:GetEffectiveScale() or 1
     if using ~= lastUsing then
         lastUsing = using
-        SetInHand(using)
-    elseif Input.KeyHeld() then
-        if not inHand then SetInHand(true) end
-    elseif inHand and lastX and not PadCursor()
-        and math.abs(x - lastX) + math.abs(y - lastY) > MOVED * scale then
-        SetInHand(false)
-    else
-        Changed()
+        if using then return SetInHand(true, "IsUsingGamepad") end
     end
-    lastX, lastY = x, y
+    Changed()
 end)

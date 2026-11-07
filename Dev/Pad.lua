@@ -18,10 +18,10 @@ ns.Slash.Register("pad", function(arg)
         Pad.Input.Force(arg ~= "auto" and arg or nil)
     end
     local top = Pad.Top()
-    ns.Print("pad: Gamepad UI %s, a pad available %s, in hand %s%s; style %s; scope %s.",
+    ns.Print("pad: Gamepad UI %s, a pad available %s, in hand %s%s (last %s); style %s; scope %s.",
         YesNo(Pad.Input.GamepadUI()), YesNo(Pad.Input.Available()), YesNo(Pad.Input.Active()),
         Pad.Input.Forced() and (" (forced " .. Pad.Input.Forced() .. ")") or "",
-        Pad.Glyphs.Style(), top and top.key or "none")
+        Pad.Input.reason or "?", Pad.Glyphs.Style(), top and top.key or "none")
     -- What each piece of the answer read, to see where it stops.
     local get = (C_CVar and C_CVar.GetCVar) or GetCVar
     local ok, ids = pcall(function() return C_GamePad and C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs() end)

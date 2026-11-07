@@ -498,3 +498,32 @@ _G.KEY_PAD2_SHP = nil
 mock.pad.devices = {}
 G.Changed()
 Eq(G.Style(), "Generic", "no pad: generic")
+
+--------------------------------------------------------------------------
+Section("at rest the pad stays in hand; a tap picks it up again (found in the client)")
+
+-- The input watcher: the frame listening for GLOBAL_MOUSE_DOWN.
+local watcher
+for _, f in ipairs(mock.frames) do
+    if f.events.GLOBAL_MOUSE_DOWN and f.events.GAME_PAD_ACTIVE_CHANGED and f.scripts.OnUpdate then watcher = f end
+end
+Check(watcher ~= nil, "no input watcher")
+Pad.Input.Force(nil)
+mock.pad.ui, mock.pad.enabled, mock.pad.devices, mock.pad.using = true, true, { 1 }, true
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+Check(Pad.Input.Active(), "not in hand to begin with")
+-- At rest: the Gamepad UI moves the hidden cursor, IsUsingGamepad turns false.
+for i = 1, 30 do
+    mock.pointer = { (i % 2) * 400, (i % 3) * 300 }
+    mock.pad.using = (i < 5)
+    watcher.scripts.OnUpdate(watcher, 0.2)
+end
+Check(Pad.Input.Active(), "put down at rest: " .. tostring(Pad.Input.reason))
+-- A mouse click puts it down; a single-frame tap picks it up again.
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+Check(not Pad.Input.Active(), "a mouse click did not put it down")
+mock.keysDown.PAD1 = true
+watcher.scripts.OnUpdate(watcher, 0.016)
+mock.keysDown.PAD1 = nil
+Check(Pad.Input.Active(), "a tap did not pick it up again")
+Eq(Pad.Input.reason, "picked up: a pad button", "the reason recorded")
