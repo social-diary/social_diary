@@ -1121,7 +1121,8 @@ _G.GetCursorPosition = function() return M.pointer[1], M.pointer[2] end
 -- (M.pad.enabled), the pads plugged in (M.pad.devices, their ids), the
 -- one in use's label style (M.pad.style), whether the player used it last
 -- (M.pad.using), and the keys held down (M.keysDown, by binding key).
-M.pad = { ui = false, enabled = false, devices = {}, style = "Letters", using = false }
+M.pad = { ui = false, enabled = false, devices = {}, style = "Letters", using = false,
+    sticks = {}, axes = {}, buttons = {} }
 M.keysDown = {}
 _G.InputUtil = { IsGamepadUIEnabled = function() return M.pad.ui end }
 _G.C_GamePad = {
@@ -1129,8 +1130,10 @@ _G.C_GamePad = {
     GetAllDeviceIDs = function() return M.pad.devices end,
     GetDeviceMappedState = function()
         if #M.pad.devices == 0 then return nil end
-        return { name = "Mock pad", labelStyle = M.pad.style, buttonCount = 0, axisCount = 0, stickCount = 0,
-            buttons = {}, axes = {}, sticks = {} }
+        -- (the sticks { x, y, len }, axes and buttons a test sets in M.pad)
+        return { name = "Mock pad", labelStyle = M.pad.style, buttonCount = #M.pad.buttons,
+            axisCount = #M.pad.axes, stickCount = #M.pad.sticks,
+            buttons = M.pad.buttons, axes = M.pad.axes, sticks = M.pad.sticks }
     end,
 }
 _G.IsUsingGamepad = function() return M.pad.using end

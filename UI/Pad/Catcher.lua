@@ -519,7 +519,27 @@ local function PutDown()
     end
 end
 
+-- Whether a window of ours is open: the input watcher only runs then
+-- (Input.Watch). A host seen open is hooked once, so its closing is heard
+-- even before the pad ever made it a catcher.
+local hooked = setmetatable({}, { __mode = "k" })
+local function Watch()
+    local open = false
+    for _, s in ipairs(scopes:Ordered()) do
+        local host = Host(s)
+        if host and host:IsVisible() then
+            open = true
+            if not hooked[host] then
+                hooked[host] = true
+                host:HookScript("OnHide", function() Pad.Refresh() end)
+            end
+        end
+    end
+    Input.Watch(open)
+end
+
 function Pad.Refresh()
+    Watch()
     local active = Input.Active()
     if not active then return PutDown() end
     local top = Pad.Top()

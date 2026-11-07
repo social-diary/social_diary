@@ -527,3 +527,46 @@ watcher.scripts.OnUpdate(watcher, 0.016)
 mock.keysDown.PAD1 = nil
 Check(Pad.Input.Active(), "a tap did not pick it up again")
 Eq(Pad.Input.reason, "picked up: a pad button", "the reason recorded")
+
+--------------------------------------------------------------------------
+Section("after a click, a stick picks the pad up though the game still says pad (found in the client)")
+
+mock.pad.using = true
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+watcher.scripts.OnUpdate(watcher, 0.2)   -- (the watcher has read the game's "pad in use")
+Check(Pad.Input.Active(), "not in hand to begin with")
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+Check(not Pad.Input.Active(), "the click did not put it down")
+-- The game goes on saying the pad is in use: no event, no flip.
+watcher.scripts.OnUpdate(watcher, 0.2)
+Check(not Pad.Input.Active(), "picked up with nothing moved")
+-- A stick resting off-centre a little: still nothing.
+mock.pad.sticks = { { x = 0.1, y = 0.1, len = 0.14 } }
+watcher.scripts.OnUpdate(watcher, 0.1)
+Check(not Pad.Input.Active(), "a resting stick picked it up")
+mock.pad.sticks = { { x = 0, y = 0.8, len = 0.8 } }
+watcher.scripts.OnUpdate(watcher, 0.1)
+Check(Pad.Input.Active(), "a pushed stick did not pick it up")
+Eq(Pad.Input.reason, "picked up: a stick", "the reason recorded")
+-- A trigger pulled does too.
+mock.pad.sticks = {}
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+mock.pad.axes = { 0, 0.9 }
+watcher.scripts.OnUpdate(watcher, 0.1)
+Eq(Pad.Input.reason, "picked up: a trigger", "a trigger did not pick it up")
+mock.pad.axes = {}
+
+--------------------------------------------------------------------------
+Section("the input watcher sleeps while no window of ours is open")
+
+ns.UI.ShowJournal()
+Check(Pad.Input.Watching(), "asleep with the book open")
+ns.UI.CloseJournal()
+Check(not Pad.Input.Watching(), "awake with the book closed")
+Check(not watcher:IsShown(), "the watcher frame shown with nothing open")
+-- Asleep, the game's own word still reaches it.
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+Eq(Pad.Input.reason, "picked up: the game said so", "an event while asleep")
+ns.UI.ShowJournal()
+Check(Pad.Input.Watching(), "not awake again with the book opened")

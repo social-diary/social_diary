@@ -11,7 +11,9 @@
 --   Pad.Input.OnChange(fn) fn(active) each time Active changes
 --   Pad.Input.Force(mode)  "on", "off" or nil (auto): for Dev's /sd pad
 --
--- In hand: a pad button pressed (looked at every frame), the game saying
+-- In hand: a pad button pressed (looked at every frame), a stick pushed or
+-- a trigger pulled (the device's own state, ten times a second while the
+-- mouse has it), the game saying
 -- so (GAME_PAD_ACTIVE_CHANGED, IsUsingGamepad turning true). Put down: a
 -- mouse click the pad did not make (its cursor control, or a pad button
 -- held), or the game saying so. Never by time or the cursor's place: the
@@ -176,13 +178,56 @@ end)
 -- puts the pad down: never time, never the cursor's place (the Gamepad UI
 -- hides and centres the cursor itself, at rest too), never IsUsingGamepad
 -- turning false.
-local wait = 0
+-- The pad's own state, read straight from the device: a stick pushed or
+-- a trigger pulled (a stick is no button, so KeyHeld never sees it), or
+-- any button. Asked only while the mouse has the pad down: after a click
+-- the game may go on thinking the pad is in use, so neither its event nor
+-- IsUsingGamepad changes when a stick moves (found in the client, 7 Nov
+-- 2026: the sticks woke the pad only once the game had given up on it).
+local STICK_ON, TRIGGER_ON, PEEK_EVERY = 0.35, 0.5, 0.1
+local function Moved()
+    if not (C_GamePad and C_GamePad.GetDeviceMappedState) then return nil end
+    local ok, state = pcall(C_GamePad.GetDeviceMappedState)
+    if not (ok and type(state) == "table") then return nil end
+    for _, stick in ipairs(state.sticks or {}) do
+        if (tonumber(stick.len) or 0) > STICK_ON then return "a stick" end
+    end
+    for _, value in ipairs(state.axes or {}) do
+        if (tonumber(value) or 0) > TRIGGER_ON then return "a trigger" end
+    end
+    for _, down in ipairs(state.buttons or {}) do
+        if down then return "a pad button" end
+    end
+end
+Input.Moved = Moved
+
+-- The watcher only runs while a window of ours is open (Input.Watch, from
+-- UI/Pad/Catcher.lua): with none open it sleeps, hidden, and only the
+-- game's events above reach it (a hidden frame still hears its events).
+-- Awake, the costly answers are cached: whether a pad is available is asked
+-- five times a second, not every frame. Every frame there is only the
+-- buttons' check, and only while the mouse has the pad down; the device's
+-- state (Moved) ten times a second, likewise. With the pad in hand, a frame
+-- costs two subtractions.
+local available = false
+local wait, peek = 0, 0
 watch:SetScript("OnUpdate", function(_, elapsed)
-    local available = forced == nil and Input.Available()
-    if available and not inHand and Input.KeyHeld() then SetInHand(true, "a pad button") end
+    if available and not inHand then
+        if Input.KeyHeld() then
+            SetInHand(true, "a pad button")
+        else
+            peek = peek - elapsed
+            if peek <= 0 then
+                peek = PEEK_EVERY
+                local what = Moved()
+                if what then SetInHand(true, what) end
+            end
+        end
+    end
     wait = wait - elapsed
     if wait > 0 then return end
     wait = LOOK_EVERY
+    available = forced == nil and Input.Available()
     if not available then return Changed() end
     local using = UsingPad()
     if using ~= lastUsing then
@@ -191,3 +236,17 @@ watch:SetScript("OnUpdate", function(_, elapsed)
     end
     Changed()
 end)
+watch:Hide()
+
+-- Awake while a window of ours is open, asleep otherwise.
+function Input.Watch(on)
+    on = on and true or false
+    if on == watch:IsShown() then return end
+    if on then
+        available = forced == nil and Input.Available()
+        wait, peek = 0, 0
+    end
+    watch:SetShown(on)
+end
+
+function Input.Watching() return watch:IsShown() end
