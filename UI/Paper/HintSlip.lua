@@ -127,7 +127,7 @@ local function Build(container)
         K.Lay()
 
         K.Place(self.lozenge, M, SLIP.title - SLIP.lozenge / 2, SLIP.lozenge, SLIP.lozenge, math.pi / 4)
-        self.title:SetText((words.title or ""):upper())
+        self.title:SetText(ns.Style.Upper(words.title or ""))
         K.PlaceText(self.title, M + SLIP.lozenge + 6, SLIP.title)
         K.PlaceText(self.close, SLIP.w - SLIP.close + 4, SLIP.close, "RIGHT")
         for i, line in ipairs(lines) do

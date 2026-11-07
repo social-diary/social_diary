@@ -6,6 +6,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local category
 
 local function CloseBlizzardSettings()
@@ -24,12 +26,12 @@ local function Register()
     local title = ns.UI.Chrome.Label(sign, "Social Diary", "GameFontHighlightLarge")
     title:SetPoint("TOPLEFT", 16, -16)
 
-    local text = ns.UI.Chrome.Label(sign, "The settings live in your journal now, behind the grey"
-        .. " ribbon at the bottom of the book.", "GameFontHighlight")
+    local text = ns.UI.Chrome.Label(sign,
+        L["The settings live in your journal now, behind the grey ribbon at the bottom of the book."], "GameFontHighlight")
     text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
     text:SetPoint("RIGHT", sign, "RIGHT", -16, 0)
 
-    sign.open = ns.UI.Chrome.Button(sign, "Open the settings", 170, function()
+    sign.open = ns.UI.Chrome.Button(sign, L["Open the settings"], 170, function()
         CloseBlizzardSettings()
         ns.UI.ShowSettings()
     end)

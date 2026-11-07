@@ -39,6 +39,8 @@ local addonName, ns = ...
 local Duels = {}
 ns.Duels = Duels
 
+local L, Fmt = ns.L, ns.Fmt
+
 -- Not "duel": the tests use that for a kind nobody declared
 -- (tests/timeline.lua).
 local KIND = "duel_series"
@@ -98,7 +100,7 @@ local Place = ns.UI.TimelineText.Place
 local function Where(row)
     local sub = row.context and row.context.subZone
     if type(sub) ~= "string" or sub == "" or sub == row.zone then return Place(row) end
-    return " in " .. (row.zone and (sub .. ", " .. row.zone) or sub)
+    return Fmt(L[" in %s"], row.zone and Fmt(L["%1$s, %2$s"], sub, row.zone) or sub)
 end
 
 -- Its line, the outcome first, as the icon is the same for both: one duel
@@ -116,28 +118,37 @@ local function Line(row, guid)
     if up + down <= 1 then
         local last = c.last
         if not COUNT[last] then last = (c.theyFled or 0) > 0 and "they_fled" or (c.fled or 0) > 0 and "fled" or balance end
-        if last == "won" then return "Won a duel against " .. (them or "them") .. where end
-        if last == "they_fled" then return "Won a duel when " .. (them or "they") .. " fled" .. where end
-        if last == "fled" then return "Fled a duel with " .. (them or "them") .. where end
-        return "Lost a duel to " .. (them or "them") .. where
+        if last == "won" then return Fmt(L["Won a duel against %1$s%2$s"], them or L["them##against"], where) end
+        if last == "they_fled" then
+            if not them then return Fmt(L["Won a duel when they fled%s"], where) end
+            return Fmt(L["Won a duel when %1$s fled%2$s"], them, where)
+        end
+        if last == "fled" then return Fmt(L["Fled a duel with %1$s%2$s"], them or L["them##with"], where) end
+        return Fmt(L["Lost a duel to %1$s%2$s"], them or L["them##against"], where)
     end
     local lead, rest = up, down
     if balance == "lost" then lead, rest = down, up end
-    local text = balance == "won" and ("Won " .. lead .. " duels against " .. (them or "them"))
-        or ("Lost " .. lead .. " duels to " .. (them or "them"))
-    if rest > 0 then text = text .. (balance == "won" and " and lost " or " and won ") .. rest end
+    them = them or L["them##against"]
+    local text
+    if balance == "won" then
+        text = rest > 0 and Fmt(L["Won %1$d duels against %2$s and lost %3$d"], lead, them, rest)
+            or Fmt(L["Won %1$d duels against %2$s"], lead, them)
+    else
+        text = rest > 0 and Fmt(L["Lost %1$d duels to %2$s and won %3$d"], lead, them, rest)
+            or Fmt(L["Lost %1$d duels to %2$s"], lead, them)
+    end
     local Times = ns.UI.Format.Times
     local flights = {}
-    if (c.fled or 0) > 0 then flights[#flights + 1] = ns.UI.Format.You(row.me, "{you} fled ") .. Times(c.fled) end
-    if (c.theyFled or 0) > 0 then flights[#flights + 1] = "they fled " .. Times(c.theyFled) end
-    if #flights > 0 then where = where .. "  \194\183  " .. table.concat(flights, ", ") end
+    if (c.fled or 0) > 0 then flights[#flights + 1] = ns.UI.Format.You(row.me, Fmt(L["{you} fled %s"], Times(c.fled))) end
+    if (c.theyFled or 0) > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(c.theyFled)) end
+    if #flights > 0 then where = where .. "  \194\183  " .. table.concat(flights, L[", "]) end
     return text .. where
 end
 
 local function Always() return true end
 
 -- The picker's reason, the same whoever challenged (it isn't kept).
-ns.Rows.Register(KIND, { proximity = true, plate = 6, moment = Always, reason = "you duelled them",
+ns.Rows.Register(KIND, { proximity = true, plate = 6, moment = Always, reason = L["you duelled them"],
     text = Line, icon = KIND })
 
 -- Its icon: Challenging Shout's, a raised war cry (15 Oct, not yet seen in
@@ -219,20 +230,20 @@ end
 -- says only that there was a duel, rather than claiming a win.
 ns.JourneyRecap.RegisterMoment("duel", { order = 80, list = LIST, field = "duel", rank = 6.5, light = true,
     custom = {
-        label = "Duel",
-        heading = "A duel",
+        label = L["Duel"],
+        heading = L["A duel"],
         -- A detected duel keeps its opponent by GUID alone: their name, for the form.
         values = function(values, rec) values.name = values.name or Duels.Who(rec) end,
         group = "social",
         -- Text.lua's, read when asked: this file loads before it.
         describe = function(rec) return Duels.Describe(rec) end,
         fields = {
-            { key = "name", type = "person", guid = "guid", most = 40, label = "Opponent",
-                hint = "who it was, or leave this empty" },
-            { key = "won", type = "number", min = 0, max = 99, label = "Duels won" },
-            { key = "lost", type = "number", min = 0, max = 99, label = "Duels lost" },
-            { key = "theyFled", type = "number", min = 0, max = 99, label = "They fled" },
-            { key = "fled", type = "number", min = 0, max = 99, label = "You fled" },
+            { key = "name", type = "person", guid = "guid", most = 40, label = L["Opponent"],
+                hint = L["who it was, or leave this empty"] },
+            { key = "won", type = "number", min = 0, max = 99, label = L["Duels won"] },
+            { key = "lost", type = "number", min = 0, max = 99, label = L["Duels lost"] },
+            { key = "theyFled", type = "number", min = 0, max = 99, label = L["They fled"] },
+            { key = "fled", type = "number", min = 0, max = 99, label = L["You fled"] },
         },
     } })
 

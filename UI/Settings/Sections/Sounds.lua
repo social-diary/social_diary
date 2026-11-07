@@ -3,6 +3,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local FONT = Style.FONT
 local SettingsUI = ns.UI.Settings
@@ -15,14 +17,14 @@ local INDENT = Kit.INDENT
 local function BuildSounds(pane, c)
     local page = SettingsUI.page
 
-    c:Heading("World PvP")
-    page.foeAlert = Switch(c, "Sound a raid warning when a foe comes into view", "foeAlert", nil, nil,
-        "Tag someone foe in your diary, e.g. for World PVP.")
+    c:Heading(L["World PvP"])
+    page.foeAlert = Switch(c, L["Sound a raid warning when a foe comes into view"], "foeAlert", nil, nil,
+        L["Tag someone foe in your diary, e.g. for World PVP."])
 
     page.foeSample = Style.Link(pane, FONT.body, function() ns.UI.Toast.PlayFoeAlert() end)
-    page.foeSample:SetText("Hear it")
+    page.foeSample:SetText(L["Hear it"])
     c:Place(page.foeSample, 18, INDENT)
 end
 
-SettingsUI.RegisterSection("sounds", { order = 30, label = "Sounds",
-    about = "A warning when a foe comes into view", build = BuildSounds })
+SettingsUI.RegisterSection("sounds", { order = 30, label = L["Sounds"],
+    about = L["A warning when a foe comes into view"], build = BuildSounds })

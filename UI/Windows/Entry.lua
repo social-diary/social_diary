@@ -20,6 +20,7 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
 
 -- What the journal's pages and the note sheet build from this file: the
 -- form, its ruled note and meta line, and the loose sheet's refresh and
@@ -54,15 +55,18 @@ function Entry.Meta(guid, draft)
     local entry = (draft or ns.Diary).Get(guid)
     if not entry then return "" end
     local rows = ns.Interactions.Count(guid)
-    local count = rows == 0 and "no interactions yet" or (Format.Count(rows, "interaction", "interactions") .. " on record")
+    local count = rows == 0 and L["no interactions yet"]
+        or Fmt(rows == 1 and L["%d interaction on record"] or L["%d interactions on record"], rows)
     if draft then return "  " .. count end
     local place = entry.addedContext and entry.addedContext.zone
-    return ("Added %s%s  ·  %s"):format(Format.DayMonth(entry.addedAt, ns.Now()), place and (" in " .. place) or "", count)
+    local day = Format.DayMonth(entry.addedAt, ns.Now())
+    if place then return Fmt(L["Added %1$s in %2$s  ·  %3$s"], day, place, count) end
+    return Fmt(L["Added %1$s  ·  %2$s"], day, count)
 end
 
 local function Label(parent, text)
     local label = Style.Text(parent, FONT.heading)
-    label:SetText(text:upper())
+    label:SetText(Style.Upper(text))
     return label
 end
 
@@ -97,7 +101,7 @@ local function BuildNote(form, onCommit, hint)
         box.lines[i] = line
     end
 
-    Style.Placeholder(box, hint or "What happened? What should you remember about them?", true)
+    Style.Placeholder(box, hint or L["What happened? What should you remember about them?"], true)
         :SetPoint("TOPLEFT", 0, -2)
 
     -- Clicking anywhere on the ruled area writes there.
@@ -185,7 +189,7 @@ function Entry.Form(parent, width, height)
     ----------------------------------------------------------------------
     -- Tags
 
-    form.tagsLabel = Label(form, "Tags")
+    form.tagsLabel = Label(form, L["Tags"])
     form.tagsLabel:SetPoint("TOPLEFT")
 
     form.chips, form.presets = {}, {}
@@ -209,7 +213,7 @@ function Entry.Form(parent, width, height)
 
     -- DIA-6 allows custom tags alongside the presets. Enter adds the tag and
     -- keeps the line, for the next one.
-    form.addTag = Style.WritingLine(form, 120, FONT.body, "+ add a tag")
+    form.addTag = Style.WritingLine(form, 120, FONT.body, L["+ add a tag"])
     form.addTag:SetScript("OnEnterPressed", function(self)
         local text = self:GetText() or ""
         if form.guid and text:match("%S") then
@@ -225,12 +229,12 @@ function Entry.Form(parent, width, height)
     ----------------------------------------------------------------------
     -- Relationship, note
 
-    form.relLabel = Label(form, "Relationship")
+    form.relLabel = Label(form, L["Relationship"])
     form.relationship = Style.WritingLine(form, width, FONT.note,
-        "'leveling buddy', 'weirdo', 'Sulfuras Guy', …", Commit("SetRelationship"))
+        L["'leveling buddy', 'weirdo', 'Sulfuras Guy', …"], Commit("SetRelationship"))
     form.relationship:SetPoint("TOPLEFT", form.relLabel, "BOTTOMLEFT", 0, -6)
 
-    form.noteLabel = Label(form, "Note")
+    form.noteLabel = Label(form, L["Note"])
     form.noteLabel:SetPoint("TOPLEFT", form.relationship, "BOTTOMLEFT", 0, -18)
 
     form.count = Style.Text(form, FONT.small)
@@ -259,7 +263,7 @@ function Entry.Form(parent, width, height)
         end
         ns.UI.ConfirmRemove(form.guid)
     end)
-    form.remove:SetText("Remove from the diary")
+    form.remove:SetText(L["Remove from the diary"])
     form.remove:SetColor(Style.ACCENT[1], Style.ACCENT[2], Style.ACCENT[3])
     form.remove:SetPoint("BOTTOMLEFT", 0, 2)
 
@@ -273,7 +277,7 @@ function Entry.Form(parent, width, height)
         end
         if form.onDone then form.onDone() end
     end)
-    form.done:SetText("Done")
+    form.done:SetText(L["Done"])
     form.done:SetPoint("BOTTOMRIGHT", 0, 2)
 
     ----------------------------------------------------------------------
@@ -336,7 +340,7 @@ function Entry.Form(parent, width, height)
             self.noteScroll:SetVerticalScroll(0)
         end
         self.guid, self.store = guid, store
-        self.remove:SetText(draft and "Cancel" or "Remove from the diary")
+        self.remove:SetText(draft and L["Cancel"] or L["Remove from the diary"])
         self:Refresh()
     end
 
@@ -449,12 +453,12 @@ function ns.UI.Remember(guid, opts)
 
     local draft = ns.Diary.Draft(guid, opts)
     if not draft then
-        ns.Print("could not identify that character.")
+        ns.Print(L["could not identify that character."])
         return false
     end
 
     if ns.Diary.IsDiary(draft.guid) then
-        ns.Print("|cffffffff%s|r is already in the diary.",
+        ns.Print(L["|cffffffff%s|r is already in the diary."],
             ns.Characters.FullName(draft.guid) or draft.guid)
         ns.UI.ShowEntry(draft.guid, true)
         return true

@@ -5,6 +5,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local SettingsUI = ns.UI.Settings
 local Kit = SettingsUI.Kit
 local Switch = Kit.Switch
@@ -17,12 +19,12 @@ end
 local function BuildDungeons(pane, c)
     local page = SettingsUI.page
 
-    c:Heading("Dungeon maps")
-    page.dungeonRoute = Switch(c, "Show the usual way through on each map", "dungeonRoute", nil, Redraw,
-        "The diary can't follow you inside, so it inks the usual way up to the furthest boss you killed and pencils the rest.")
-    page.openOnRun = Switch(c, "Open the diary on the map of the run you’re in", "openOnRun", nil, nil,
-        "Only inside a dungeon or raid. Anywhere else, the diary opens where you left it.")
+    c:Heading(L["Dungeon maps"])
+    page.dungeonRoute = Switch(c, L["Show the usual way through on each map"], "dungeonRoute", nil, Redraw,
+        L["The diary can't follow you inside, so it inks the usual way up to the furthest boss you killed and pencils the rest."])
+    page.openOnRun = Switch(c, L["Open the diary on the map of the run you’re in"], "openOnRun", nil, nil,
+        L["Only inside a dungeon or raid. Anywhere else, the diary opens where you left it."])
 end
 
-SettingsUI.RegisterSection("dungeons", { order = 26, label = "Dungeons and Raids", parent = "interface",
-    about = "How a run’s map is drawn, and when it opens", build = BuildDungeons })
+SettingsUI.RegisterSection("dungeons", { order = 26, label = L["Dungeons and Raids"], parent = "interface",
+    about = L["How a run’s map is drawn, and when it opens"], build = BuildDungeons })

@@ -30,6 +30,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Style = ns.Style
 local FONT = Style.FONT
 local YourDiary = ns.UI.YourDiary
@@ -67,8 +69,8 @@ local PICKER = { edge = 8, margin = 26, title = 30, top = 54, row = 78, gap = 22
     card = { w = 176, h = 62, turn = 0.8, pad = 10, eyebrow = 17, name = 39, mark = 20 } }
 -- The types, in their order. The kinds say which by its key; the words are here
 -- alone, so a kind cannot make a fifth. One not among them is Other.
-local GROUPS = { { key = "combat", words = "Combat" }, { key = "lore", words = "Quests and Lore" },
-    { key = "social", words = "Social" }, { key = "other", words = "Other" } }
+local GROUPS = { { key = "combat", words = L["Combat"] }, { key = "lore", words = L["Quests and Lore"] },
+    { key = "social", words = L["Social"] }, { key = "other", words = L["Other"] } }
 -- The pencil ring (plate:SetRing): the leaders' pencil in colour, alpha and nib,
 -- a little lighter in hand. r: its radius, a few px past a mark's, so a card
 -- written beside one does not hide it. dashes, share: how many, and how much of
@@ -89,9 +91,10 @@ local PERSON = { most = 4, row = 18, level = 20, out = 4, foot = 2, hot = 0.12, 
 -- The words of the form and the menus, all furniture (the copywriter's §1). Add,
 -- pick and another are the user's own, word for word.
 local WORDS = {
-    add = "Add custom event...", pick = "What happened here?", another = "Choose another", which = "Which one?", hidden = "Left out of this page", save = "Save", cancel = "Cancel",
-    hide = "Leave it out", reset = "Undo my changes", remove = "Delete this card",
-    confirm = "Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone.",
+    add = L["Add custom event..."], pick = L["What happened here?"], another = L["Choose another"], which = L["Which one?"],
+    hidden = L["Left out of this page"], save = L["Save"], cancel = L["Cancel"],
+    hide = L["Leave it out"], reset = L["Undo my changes"], remove = L["Delete this card"],
+    confirm = L["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."],
 }
 
 local CardSheet = {}
@@ -160,7 +163,7 @@ end
 local function NewRow(field)
     local S = view.sheet
     local row = { field = field, label = Style.Text(S, FONT.heading) }
-    row.label:SetText(field.label:upper())
+    row.label:SetText(ns.UI.JourneyText.Upper(field.label))
     if field.type == "choice" then
         -- A box per value, always in sight, and at most one ticked: ticking one
         -- unticks the rest, unticking leaves no value. `value` may be one no box
@@ -357,7 +360,7 @@ local function FillCell(cell, x, k)
         onClick = function(kind) Open(kind, nil, view.where) end })
     strip:Layout(x, 0, C.w)
     cell.kind = k.kind
-    cell.eyebrow:SetText(k.words:upper())
+    cell.eyebrow:SetText(ns.UI.JourneyText.Upper(k.words))
     cell.title:SetText(k.spec.label)
     local w = C.w - 2 * C.pad - 2 * C.mark
     local left = -C.w / 2 + C.pad + w / 2

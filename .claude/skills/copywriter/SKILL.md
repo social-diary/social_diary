@@ -11,8 +11,11 @@ personal, timeworn; a diary, quiet, never shouts during
 play.** This skill turns that into rules per surface. The changelog has its
 own rule (`.claude/rules/changelog.md`); follow that one there.
 
-All copy is English-only, hard-coded (there is no localisation table).
-Write British English: *pencilled*, *colour*, *grey*, *levelling*.
+Every string a player reads goes through the translation table
+(`Locales/Locale.lua`, §7): the English is the key, German is in
+`Locales/deDE/`. Write British English: *pencilled*, *colour*, *grey*,
+*levelling*. A new or changed English string gets its German in the same
+change.
 
 ## 1. Find the register first
 
@@ -159,3 +162,68 @@ format), *polish*. Don't edit until the user picks what to apply.
 
 When the user settles a wording question these rules don't cover, add it
 here.
+
+## 7. Translation
+
+**The mechanics** (`Locales/Locale.lua` has the details):
+
+- Wrap every player-facing string: `L["Keep my own route"]`, and for
+  values `ns.Fmt(L["Quested together for %s"], d)` (or `ns.T(key, ...)`).
+  `local L, Fmt = ns.L, ns.Fmt` at the file's top. The key is always one
+  plain double-quoted literal, never built (`L[name]`, `L["a" .. b]` are
+  invisible to the extractor).
+- **Whole sentences, never fragments.** `"Met " .. name .. " in " .. zone`
+  can't be translated: German puts the verb elsewhere. Write one template
+  per sentence shape (`"Met %1$s in %2$s"`); where code glues optional
+  parts, give each combination its own template rather than gluing
+  translated pieces. Fragments are fine only when they are whole units
+  (a label, a list joiner).
+- **Positional placeholders** (`%1$s`, `%2$d`) whenever a template has two
+  or more values, so a translation can reorder them. In one template all
+  positional or none. `%%` for a literal percent.
+- **One English word, two meanings**: add a context, `L["May##short"]`;
+  the English shown is the part before `##`.
+- **Never translate data**: saved values, table keys, event and setting
+  names, slash-command tokens, sound/texture paths, strings matched against
+  game text (chat patterns, combat log, tooltips), creature/zone/item names
+  used to look up data. Translate the label shown for them instead.
+- Text the game supplies (zone, creature, item, class, race names) is
+  already in the client's language: leave it as it comes.
+- Grammar that differs by language (plurals, articles, ordinals, the
+  shared diary's "{you}") is a function in `ns.Locale.grammar` a locale may
+  replace (`Locales/deDE/Grammar.lua`). The English helpers in
+  `UI/Journey/Text/Grammar.lua` and `UI/Words/Format.lua` ask it first.
+- After changing keys: `luajit Dev/Locale/extract.lua` (rewrites
+  `Locales/enUS.lua`), then `luajit tests/run.lua` (tests/locale.lua checks
+  every key has German and matching placeholders) and
+  `luajit tests/run.lua --locale deDE` (the whole suite under German: no
+  addon errors).
+
+**The German voice** — the same diary, in German:
+
+- The diary says **du** (lower case), never *Sie*. Other players are *sie*
+  or by name. The diary calls itself *das Tagebuch*.
+- Prose (Your Diary, the profile, the tour) in **Präteritum**: „Erreichte
+  am 6. Oktober Stufe 12. Der Weg geht weiter.“ Ledger lines may use
+  **Perfekt** or drop the subject as the English does: „1 Std. 5 Min.
+  zusammen gequestet“, „hat dich zweimal getötet“.
+- Quiet and plain, no exclamation marks (the two English exceptions keep
+  theirs), short sentences. Natural German over word-for-word: rewrite the
+  sentence the way a German diary would say it.
+- German quotes „…“ and ’ for the apostrophe; ellipsis …; the spaced
+  middle dot stays. Dates „6. Oktober“, „6. Okt.“; times „1 Std. 5 Min.“;
+  numbers in words up to twelve in prose.
+- Game terms as the German client says them: *Stufe* (level), *Gruppe*,
+  *Schlachtzug*, *Instanz*/*Dungeon*, *Quest*, *Handel*, *flüstern*,
+  *Duell*, *Gilde*, *Freundesliste*, *Fertigkeit*, *Beruf*, *Seltener* (rare
+  mob), *Elite*, *Zähmen*, *Begleiter*, *PvP*, *Wiederbelebung*,
+  *Geisterheiler*.
+- The diary's own words: *ins Tagebuch eintragen* (add), *mit Bleistift
+  notiert* (pencilled in), *ausradiert* (rubbed out), *Weg* (road),
+  *Route* (the one setting), *Feind* (foe), *Begegnung* (a meeting),
+  *Karte* (the card), *Hinweis* (toast, in Settings: *Einblendung*).
+- Gender and case can't follow names the game supplies: write templates
+  where a bare name reads (name as subject, or after a colon), never
+  „ein/eine %s“ or „des %s“.
+- German runs about a third longer than English: where a label sits in a
+  fixed width, prefer the shorter natural phrasing.

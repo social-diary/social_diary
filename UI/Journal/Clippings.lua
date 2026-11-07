@@ -149,7 +149,7 @@ function Clippings.New(list, open)
             tilt = not (ns.Setting("flatSheets") == true) and N.tilt or nil, seed = s.guid .. ":note",
             tip = note and function()
                 if not self.note.cut then return nil end
-                return Style.TipList("Your note", { ns.UI.JourneyText.Written(note) })
+                return Style.TipList(ns.L["Your note"], { ns.UI.JourneyText.Written(note) })
             end or nil })
         -- (Under the facts where they grew down past its place.)
         local nx, ny = plated and N.x or N.aloneX, plated and math.max(N.y, y) or N.aloneY

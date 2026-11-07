@@ -1247,8 +1247,8 @@ function DungeonPage.Ink(plan, P, stock)
         Door(P, d.x, d.y, stock)
         -- And the runs back in, which a strip may have had no room for.
         local ranBack = plan.hasNotes and plan.notes.ranBack or 0
-        P.Hit(pools.hit, d.x, d.y, HOVER, Style.TipList("The way in",
-            ranBack > 0 and { W.RanBack(ranBack) .. " " .. W.GHOST } or nil))
+        P.Hit(pools.hit, d.x, d.y, HOVER, Style.TipList(ns.L["The way in"],
+            ranBack > 0 and { W.RanBackGhost(ranBack) } or nil))
     end
 
     plan.targets, plan.crosses = {}, {}
@@ -1264,13 +1264,13 @@ function DungeonPage.Ink(plan, P, stock)
             -- Numbered in the order they fell; a kill only its loot told
             -- of goes unnumbered, as when it fell is a guess.
             if mark.number then Number(P, mark.order, mark.number.x, mark.number.y, stock) end
-            local killed = mark.inferred and "Killed on this run, going by its loot" or "Killed on this run"
-            lines = mark.rare and { "Rare", killed } or { killed }
+            local killed = mark.inferred and ns.L["Killed on this run, going by its loot"] or ns.L["Killed on this run"]
+            lines = mark.rare and { ns.L["Rare##boss"], killed } or { killed }
             plan.targets[mark.name] = { x = mark.x, y = mark.y, r = mark.face and MEDAL.kill / 2 or KILL.edge / 2 + 1 }
         else
             mark.face = P.Face(pools.sketch, mark.x, mark.y, "standing", mark.boss)
             if not mark.face then Standing(P, mark.x, mark.y, plan.seed + i * 1.7, stock) end
-            lines = { "Not killed on this run" }
+            lines = { ns.L["Not killed on this run"] }
             plan.targets[mark.name] = { x = mark.x, y = mark.y,
                 r = mark.face and MEDAL.standing / 2 or STANDING.radius + 1 }
         end

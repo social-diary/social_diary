@@ -17,31 +17,32 @@ local addonName, ns = ...
 local Hunter = ns.Hunter
 local Text = ns.UI.JourneyText
 local When = Text.When
+local L, Fmt = ns.L, ns.Fmt
 
 Hunter.WORDS = {
     -- The printed line under a given name: the family, then the beast it
     -- was, as the game names them ("Wolf · Prairie Stalker"). %1$s family,
     -- %2$s beast. Single-spaced, as signed: the card is narrow.
-    kind = "%s · %s",
+    kind = L["%1$s · %2$s"],
     -- The pet's level on the printed tag, as the close call's tag says a
     -- creature's ("Lv 7"). %d the level.
-    level = "Lv %d",
+    level = L["Lv %d"],
     -- The mark's tooltip, its first line under a given name: the name and
     -- the deed ("Bristlemane, tamed here"). %s the name.
-    tipNamed = "%s, tamed here",
+    tipNamed = L["%s, tamed here"],
     -- Its first line with no given name: the beast's own name, bare as a
     -- tooltip's title ("Prairie Stalker, tamed here"). %s the beast.
-    tipBeast = "%s, tamed here",
+    tipBeast = L["%s, tamed here"],
     -- Its first line knowing neither ("A pet, tamed here").
-    tipNone = "A pet, tamed here",
+    tipNone = L["A pet, tamed here"],
     -- Its second line, under a given name: what the game calls it, the
     -- ledger's join ("Wolf  ·  Prairie Stalker"). %1$s family, %2$s beast.
-    tipKind = "%s  ·  %s",
+    tipKind = L["%1$s  ·  %2$s"],
 
     -- The custom card's picker title, heading and form labels are on the
     -- moment's spec in Kind.lua, as every feature's are (it loads first).
     -- A menu's line for one card with neither name nor beast ("A pet").
-    describeNone = "A pet",
+    describeNone = L["A pet"],
 }
 
 local W = Hunter.WORDS
@@ -54,23 +55,23 @@ end
 -- The printed line under the hand: "Wolf · Prairie Stalker" under a given
 -- name; the family alone under the beast's name; nil knowing neither.
 function Hunter.Kind(tame)
-    if tame.name and tame.family and tame.beast then return W.kind:format(tame.family, tame.beast) end
+    if tame.name and tame.family and tame.beast then return Fmt(W.kind, tame.family, tame.beast) end
     return tame.family
 end
 
 -- The level tag's words, or nil.
 function Hunter.Level(tame)
-    return tame.petLevel and W.level:format(tame.petLevel) or nil
+    return tame.petLevel and Fmt(W.level, tame.petLevel) or nil
 end
 
 -- The mark's tooltip lines: who, what it was, when.
 function Hunter.Tip(tame, now)
     local lines = {}
     if tame.name then
-        lines[#lines + 1] = W.tipNamed:format(tame.name)
-        if tame.family and tame.beast then lines[#lines + 1] = W.tipKind:format(tame.family, tame.beast) end
+        lines[#lines + 1] = Fmt(W.tipNamed, tame.name)
+        if tame.family and tame.beast then lines[#lines + 1] = Fmt(W.tipKind, tame.family, tame.beast) end
     elseif tame.beast then
-        lines[#lines + 1] = W.tipBeast:format(tame.beast)
+        lines[#lines + 1] = Fmt(W.tipBeast, tame.beast)
     else
         lines[#lines + 1] = W.tipNone
     end

@@ -41,6 +41,10 @@ local Text = {}
 ns.UI.JourneyText = Text
 
 local List = ns.UI.Format.List
+local L, Fmt = ns.L, ns.Fmt
+-- A locale's own grammar (Locales/Locale.lua): Plural, ItemWord, KillerName
+-- and Capital, where a locale has replaced them.
+local G = ns.Locale.grammar
 
 -- How a time is written in Your Diary's words: the number held to its
 -- unit by a no-break space (UTF-8 `nbsp`), so "55 min" never breaks across
@@ -55,7 +59,16 @@ local function Glue(text)
 end
 
 local function Capital(text)
+    if G.Capital then return G.Capital(text) end
     return text:sub(1, 1):upper() .. text:sub(2)
+end
+
+-- A rubric's capitals ("LEVEL 12", "WEEK OF 6 OCTOBER"): string.upper
+-- leaves UTF-8 letters alone, so a locale may give its own
+-- (G.JourneyUpper: German's umlauts).
+local function Upper(text)
+    if G.JourneyUpper then return G.JourneyUpper(text) end
+    return text:upper()
 end
 
 local function MapName(mapID)
@@ -69,7 +82,7 @@ end
 -- A place: "Lushwater Oasis, The Barrens", or the zone alone.
 local function Place(mapID, subZone)
     local zone = MapName(mapID)
-    if subZone and zone and subZone ~= zone then return subZone .. ", " .. zone end
+    if subZone and zone and subZone ~= zone then return Fmt(L["%1$s, %2$s"], subZone, zone) end
     return subZone or zone
 end
 Text.Place = Place
@@ -85,17 +98,18 @@ Text.Short = Short
 -- Counts, plurals and items (shared helpers, exported below)
 --------------------------------------------------------------------------
 
-local NUMBER = { "a", "two", "three", "four", "five" }
+local NUMBER = { L["a##one"], L["two"], L["three"], L["four"], L["five"] }
 
+-- `many` a template whose %s takes "twice", "3 times".
 local function Times(n, one, many)
     if n == 1 then return one end
-    if n == 2 then return many:format("twice") end
-    return many:format(n .. " times")
+    if n == 2 then return many:format(L["twice"]) end
+    return many:format(Fmt(L["%d times"], n))
 end
 
 -- A close call's health left (JRN-25), held together: "6% health".
 local function Health(call)
-    return Glue((call.pct or 0) .. "% health")
+    return Glue(Fmt(L["%d%% health"], call.pct or 0))
 end
 
 -- A number held to the word after it, as a time is ("31 Plainstriders"
@@ -114,6 +128,7 @@ local PLURAL = { { "ief$", "ieves" }, { "([lr])f$", "%1ves" }, { "fe$", "ves" },
     { "([^aeiouAEIOU])y$", "%1ies" }, { "([sxz])$", "%1es" }, { "([cs]h)$", "%1es" } }
 
 local function Plural(name)
+    if G.Plural then return G.Plural(name) end
     local head, tail = name:match("^(.-)( of .+)$")
     if head then return Plural(head) .. tail end
     local word = name:match("(%a+)$") or ""
@@ -143,6 +158,7 @@ local MASS = { meat = true, flesh = true, blood = true, ichor = true, silk = tru
 local MASS_ENDS = { "weed", "cloth", "meat", "silk", "dust", "moss", "wood" }
 
 local function ItemWord(n, item)
+    if G.ItemWord then return G.ItemWord(n, item) end
     if n == 1 then return item end
     local last = (item:match("(%a+)$") or ""):lower()
     local mass = MASS[last] or (last:sub(-1) == "s" and last:sub(-2) ~= "ss")
@@ -151,7 +167,7 @@ local function ItemWord(n, item)
 end
 
 local function Items(n, item)
-    if n == 1 then return Count("one", item) end
+    if n == 1 then return Count(L["one"], item) end
     return Count(n, ItemWord(n, item))
 end
 
@@ -162,6 +178,7 @@ end
 function Text.KillerName(k)
     local name = k and k.name
     if not name or name == "" then return nil end
+    if G.KillerName then return G.KillerName(k) end
     if k.bare or name:find("^[Tt]he ") or k.rank == "rare" or k.rank == "rareelite" or k.rank == "worldboss" then
         return name
     end
@@ -201,6 +218,7 @@ end
 -- by UI/Journey/Text/Time.lua, Written by UI/Journey/Text/Notes.lua, the
 -- rest here.
 Text.Glue, Text.Capital, Text.MapName, Text.Who = Glue, Capital, MapName, Who
+Text.Upper = Upper
 Text.Times, Text.NUMBER, Text.Count, Text.ItemWord, Text.Items = Times, NUMBER, Count, ItemWord, Items
 Text.Health = Health
 Text.List = List

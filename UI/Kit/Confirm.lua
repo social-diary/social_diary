@@ -8,6 +8,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Dialog = {}
 ns.UI.Dialog = Dialog
 
@@ -18,8 +20,8 @@ ns.UI.Dialog = Dialog
 
 StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"] = {
     text = "%s",
-    button1 = "Delete",
-    button2 = CANCEL or "Cancel",
+    button1 = L["Delete"],
+    button2 = CANCEL or L["Cancel"],
     OnAccept = function(self, action)
         if action then action() end
     end,
@@ -35,7 +37,7 @@ StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"] = {
 -- shown, for a caller over the dialogs' strata to raise (the dungeon map).
 function Dialog.Confirm(text, action, accept)
     local dialog = StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"]
-    dialog.button1 = accept or "Delete"
+    dialog.button1 = accept or L["Delete"]
     dialog.showAlert = accept == nil
     return StaticPopup_Show("SOCIAL_DIARY_CONFIRM", text, nil, action)
 end
@@ -48,10 +50,10 @@ end
 
 function ns.UI.ConfirmForget(guid)
     local name = ns.Characters.FullName(guid) or guid
-    Dialog.Confirm(("Delete everything Social Diary knows about %s?\n\nThis cannot be undone.")
-        :format(name), function()
+    Dialog.Confirm(Fmt(L["Delete everything Social Diary knows about %s?\n\nThis cannot be undone."], name),
+        function()
         ns.Characters.Forget(guid)
-        ns.Print("deleted everything about |cffffffff%s|r.", name)
+        ns.Print(L["deleted everything about |cffffffff%s|r."], name)
         AfterDelete()
     end)
 end
@@ -61,11 +63,10 @@ end
 --------------------------------------------------------------------------
 
 StaticPopupDialogs["SOCIAL_DIARY_REMOVE"] = {
-    text = "Remove %s from the diary?\n\nTheir history can stay as an ordinary"
-        .. " character, where the buffer's retention rules apply to it again.",
-    button1 = "Keep history",
-    button2 = CANCEL or "Cancel",
-    button3 = "Delete everything",
+    text = L["Remove %s from the diary?\n\nTheir history can stay as an ordinary character, where the buffer's retention rules apply to it again."],
+    button1 = L["Keep history"],
+    button2 = CANCEL or L["Cancel"],
+    button3 = L["Delete everything"],
     OnAccept = function(self, guid)
         ns.Diary.Remove(guid, "keep")
         ns.UI.Entry.Close()

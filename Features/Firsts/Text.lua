@@ -10,14 +10,20 @@ local addonName, ns = ...
 local Firsts = ns.Firsts
 local Text = ns.UI.JourneyText
 local Capital, MapName, Who, Day, Glue = Text.Capital, Text.MapName, Text.Who, Text.Day, Text.Glue
+local L, Fmt = ns.L, ns.Fmt
+-- A locale's own grammar (Locales/Locale.lua): FirstsHeading, where a
+-- locale has replaced it.
+local G = ns.Locale.grammar
 
 -- What each first is called: on a plate ("a first bag") and in a sentence
--- ("your first bag").
-local FIND = { bag = "bag", shoulder = "shoulders", uncommon = "green", rare = "blue", epic = "epic" }
+-- ("your first bag"), whole, as a translation's article goes with its noun.
+local PLATE = { bag = L["a first bag"], shoulder = L["first shoulders"], uncommon = L["a first green"],
+    rare = L["a first blue"], epic = L["a first epic"] }
+local YOURS = { bag = L["your first bag"], shoulder = L["your first shoulders"], uncommon = L["your first green"],
+    rare = L["your first blue"], epic = L["your first epic"] }
 
 local function Words(kind)
-    local word = FIND[kind] or "find"
-    return (kind == "shoulder" and "first " or "a first ") .. word, "your first " .. word
+    return PLATE[kind] or L["a first find"], YOURS[kind] or L["your first find"]
 end
 Firsts.Words = Words
 
@@ -39,11 +45,14 @@ Firsts.Name = Name
 -- list of them, for one item that was the first of several ("Your first
 -- bag and first green item!", a green bag), told bag, shoulders, then by
 -- quality. `short` drops "item" for a narrow margin ("Your first green!").
+-- The words below are the English grammar of it: a locale writes its own
+-- whole (ns.Locale.grammar.FirstsHeading, given the sorted kinds and `short`).
 local HEADING = { bag = "bag", shoulder = "shoulders", uncommon = "green", rare = "blue", epic = "epic" }
 local HEADING_ORDER = { bag = 1, shoulder = 2, uncommon = 3, rare = 4, epic = 5 }
 function Firsts.Heading(what, short)
     local list = type(what) == "table" and { unpack(what) } or { what }
     table.sort(list, function(a, b) return (HEADING_ORDER[a] or 9) < (HEADING_ORDER[b] or 9) end)
+    if G.FirstsHeading then return G.FirstsHeading(list, short) end
     local words = {}
     for i, kind in ipairs(list) do
         local word = HEADING[kind] or "find"
@@ -71,9 +80,9 @@ function Firsts.GiftLine(rec, named)
     if giver and named and named[giver] then return nil end
     if giver and ns.Diary.IsDiary(giver) then
         local name = Text.Short(giver)
-        if name then return "from " .. name end
+        if name then return Fmt(L["from %s"], name) end
     end
-    return "a gift"
+    return L["a gift"]
 end
 
 -- Who gave a first, while the diary still knows them.
@@ -87,24 +96,24 @@ end
 function Firsts.Sentence(kind, rec)
     local _, yours = Words(kind)
     local zone = MapName(rec.mapID)
-    local in_ = zone and (" in " .. zone) or ""
     local text
     if rec.from == "trade" then
         local giver = Giver(rec)
-        text = giver and (Who(giver) .. " gave you " .. yours) or (Capital(yours) .. " was a gift")
+        text = giver and Fmt(L["%1$s gave you %2$s"], Who(giver), yours) or Capital(Fmt(L["%s was a gift"], yours))
     elseif rec.from == "quest" then
-        text = "A quest gave you " .. yours
+        text = Fmt(L["A quest gave you %s"], yours)
     elseif rec.from == "vendor" then
-        text = "Bought " .. yours .. in_
+        text = zone and Fmt(L["Bought %1$s in %2$s"], yours, zone) or Fmt(L["Bought %s"], yours)
     elseif rec.from == "craft" then
-        text = "Made " .. yours .. in_
+        text = zone and Fmt(L["Made %1$s in %2$s"], yours, zone) or Fmt(L["Made %s"], yours)
     elseif rec.from == "mail" then
-        text = Capital(yours) .. " came by mail"
+        text = Capital(Fmt(L["%s came by mail"], yours))
     else
-        text = "Found " .. yours .. in_
+        text = zone and Fmt(L["Found %1$s in %2$s"], yours, zone) or Fmt(L["Found %s"], yours)
     end
     local name = Name(rec)
-    return text .. (name and (": " .. name) or "") .. "."
+    if name then return Fmt(L["%1$s: %2$s."], text, name) end
+    return Fmt(L["%s."], text)
 end
 
 -- The entry's firsts (e.finds, the recap's), a sentence each: its
@@ -123,19 +132,19 @@ end
 function Firsts.Tip(m, now, bare)
     local rec = m.find or m
     local _, yours = Words(m.what or m.kind)
-    local how = ({ quest = "a quest's reward", vendor = "bought", craft = "made by hand", mail = "by mail",
-        loot = "looted" })[rec.from]
+    local how = ({ quest = L["a quest's reward"], vendor = L["bought"], craft = L["made by hand"], mail = L["by mail"],
+        loot = L["looted"] })[rec.from]
     if rec.from == "trade" then
         local giver = Giver(rec)
-        how = giver and ("from " .. Who(giver)) or "a gift"
+        how = giver and Fmt(L["from %s"], Who(giver)) or L["a gift"]
     end
-    local parts = { not bare and Name(rec) or nil, how or "found",
-        (rec.level and ("at level " .. rec.level) or nil), Day(rec.t, now) }
+    local parts = { not bare and Name(rec) or nil, how or L["found"],
+        (rec.level and Fmt(L["at level %d"], rec.level) or nil), Day(rec.t, now) }
     local list = {}
     for i = 1, 4 do
         if parts[i] then list[#list + 1] = parts[i] end
     end
-    return Capital(yours), table.concat(list, ", ")
+    return Capital(yours), table.concat(list, L[", "])
 end
 
 -- A gift is its giver's moment too (Kind.lua's moment: `person`): on
@@ -147,7 +156,7 @@ Firsts.PERSON = {
     tier = 1,
     say = function(m)
         local _, yours = Words(m.what)
-        return "gave you " .. Glue(yours)
+        return Fmt(L["gave you %s"], Glue(yours))
     end,
 }
 
@@ -185,7 +194,7 @@ do
         local giver = m.gift and Giver(m.find or m)
         if m.gift and Shown(m, c) then return text, true end
         if giver and c.named[giver] then return text, true end
-        if giver and ns.Diary.IsDiary(giver) then return text .. " from " .. Short(giver), true end
+        if giver and ns.Diary.IsDiary(giver) then return Fmt(L["%1$s from %2$s"], text, Short(giver)), true end
         return text, false
     end
     Text.RegisterCaption("find", {
@@ -196,8 +205,9 @@ do
                 and Name(m.find or m)
             local words = {}
             for _, f in ipairs(finds) do words[#words + 1] = (Found(f, c)) end
-            local text = Capital(List(words)) .. (name and (": " .. name) or "")
-            if #finds == 1 and m.gift and not select(2, Found(m, c)) then text = text .. ", a gift" end
+            local text = Capital(List(words))
+            if name then text = Fmt(L["%1$s: %2$s"], text, name) end
+            if #finds == 1 and m.gift and not select(2, Found(m, c)) then text = Fmt(L["%s, a gift"], text) end
             return text
         end },
         tail = { at = 10, say = function(finds, c)

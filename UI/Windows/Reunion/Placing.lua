@@ -4,6 +4,7 @@
 -- ns.UI.Toast); the queue that waits meanwhile is Queue.lua's.
 
 local addonName, ns = ...
+local L = ns.L
 
 local Toast = ns.UI.Toast
 
@@ -32,7 +33,7 @@ end
 -- ending it holds `onDone` until the fight is over (below).
 function ns.UI.PlaceToast(onDone)
     if Toast.InCombat() then
-        ns.Print("the toast can be moved once the fight is over.")
+        ns.Print(L["the toast can be moved once the fight is over."])
         return false
     end
     Toast.toast = Toast.toast or Toast.Build()

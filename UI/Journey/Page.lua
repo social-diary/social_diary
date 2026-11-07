@@ -60,6 +60,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Style = ns.Style
 local FONT = Style.FONT
 local YourDiary = ns.UI.YourDiary
@@ -251,12 +253,12 @@ local function BuildPage(parent)
 
     -- The setting off with a road already kept: said under the plates.
     page.off = Style.Text(page.right, FONT.small)
-    page.off:SetText("Your road is not being kept just now.")
+    page.off:SetText(L["Your road is not being kept just now."])
     page.keep = Style.Link(page.right, FONT.body, function()
         ns.JourneyCapture.SetEnabled(true)
         ns.UI.RefreshJourneyPage()
     end)
-    page.keep:SetText("Keep it again")
+    page.keep:SetText(L["Keep it again"])
     PlaceOff(false)
 
     page.empty = BuildEmpty(parent)
@@ -490,7 +492,7 @@ end
 -- The green ribbon's page, the book's first (JRN-16; UI/Journal/Pages.lua).
 -- Turned to, it falls open at the newest entry.
 ns.UI.Journal.RegisterPage("journey", {
-    order = 10, ribbon = { colour = "green", label = "Your Diary" }, leaf = 1, buildOrder = 40,
+    order = 10, ribbon = { colour = "green", label = L["Your Diary"] }, leaf = 1, buildOrder = 40,
     build = function(container) BuildPage(container) end,
     refresh = function() ns.UI.RefreshJourneyPage() end,
 })

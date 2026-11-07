@@ -8,6 +8,7 @@
 local addonName, ns = ...
 
 local Text = ns.UI.JourneyText
+local L, Fmt = ns.L, ns.Fmt
 
 -- The player's words as a font string is to show them, and only them: the
 -- client's escape codes taken out (a colour, a texture; a link keeps its
@@ -50,9 +51,10 @@ function Text.Note(e)
     if #text > NOTE.most then
         text = text:sub(1, NOTE.most - 2):gsub("[\192-\255][\128-\191]*$", ""):gsub("%s+$", "") .. "\226\128\166"
     end
-    local more = #e.notes > 1 and (#e.notes == 2 and "And one more note." or ("And %d more notes."):format(#e.notes - 1))
+    local more = #e.notes > 1 and (#e.notes == 2 and L["And one more note."] or Fmt(L["And %d more notes."], #e.notes - 1))
         or nil
-    return "\226\128\156" .. text .. "\226\128\157", more
+    -- In the book's curly quotes, the reader's language's own.
+    return Fmt(L["\226\128\156%s\226\128\157"], text), more
 end
 
 -- The player's own words on a person's margin note: their latest note

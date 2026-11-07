@@ -20,6 +20,14 @@ local mock
 local checks, section = 0, nil
 local verbose = false
 
+-- `--locale deDE`: the whole run under another client's language. The
+-- checks are written against the English, so they only count (soft) and
+-- never stop a file; what the run proves is that no addon file raised an
+-- error with that locale's words (a template that takes other values, a
+-- nil where a word was). An error raised from tests/ itself is noise of the
+-- English expectations, and ends that file quietly.
+local locale, soft = nil, 0
+
 --------------------------------------------------------------------------
 -- Checks
 --------------------------------------------------------------------------
@@ -32,6 +40,7 @@ end
 -- Counted once they pass, so a failing run's count is the checks that held.
 local function Check(ok, what)
     if not ok then
+        if locale then soft = soft + 1; return end
         error(("FAILED [%s] %s"):format(section or "?", what), 2)
     end
     checks = checks + 1
@@ -39,6 +48,7 @@ end
 
 local function Eq(actual, expected, what)
     if actual ~= expected then
+        if locale then soft = soft + 1; return end
         error(("FAILED [%s] %s: expected %s, got %s")
             :format(section or "?", what, tostring(expected), tostring(actual)), 2)
     end
@@ -164,7 +174,9 @@ function H.Run(dir, files, args)
 
     local only = {}
     for i = 1, #(args or {}) do
-        if args[i] == "-v" then verbose = true else only[#only + 1] = args[i] end
+        if args[i] == "-v" then verbose = true
+        elseif args[i] == "--locale" then locale = args[i + 1]
+        elseif args[i - 1] ~= "--locale" then only[#only + 1] = args[i] end
     end
 
     mock = dofile(here .. "/wowmock.lua")
@@ -175,6 +187,7 @@ function H.Run(dir, files, args)
         if Wanted(name, only) then
             ran = ran + 1
             mock.Reset()
+            if locale then _G.GetLocale = function() return locale end end
             said, section = {}, nil
             local before = checks
 
@@ -182,6 +195,13 @@ function H.Run(dir, files, args)
             local chunk = assert(loadfile(here .. "/" .. name .. ".lua"))
             local ok, err = xpcall(function() chunk(Context()) end, debug.traceback)
             local count = checks - before
+
+            -- Under another locale an error from the test's own code is the
+            -- English expectations' (a match that found nothing), not the addon's.
+            if not ok and locale then
+                local top = tostring(err):match("^([^:\n]+%.lua):%d+:") or ""
+                if top:find("tests/") and not top:find("wowmock") then ok = true end
+            end
 
             if ok then
                 print(("  ok    %-16s %4d checks"):format(name, count))
@@ -206,6 +226,10 @@ function H.Run(dir, files, args)
         print(("\n%d OF %d FILES FAILED (%s); %d checks passed")
             :format(#failed, ran, table.concat(failed, ", "), checks))
         os.exit(1)
+    end
+    if locale then
+        print(("\nNO ADDON ERRORS UNDER %s (%d checks held, %d differ from the English)"):format(locale, checks, soft))
+        return
     end
     print(("\nALL %d CHECKS PASSED"):format(checks))
 end

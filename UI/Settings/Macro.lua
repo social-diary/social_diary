@@ -5,6 +5,7 @@
 local addonName, ns = ...
 
 local Style = ns.Style
+local L, Fmt = ns.L, ns.Fmt
 local SettingsUI = ns.UI.Settings
 
 --------------------------------------------------------------------------
@@ -20,13 +21,15 @@ local SettingsUI = ns.UI.Settings
 -- them itself (PlaceAction).
 
 -- Icons by their file name without the folder, the form the macro API
--- takes in this era of client. Unverified in this build: should a macro
+-- takes in this era of client. A macro's name is how it is found again
+-- (GetMacroIndexByName), so it stays English on every client; its label is
+-- the reader's. Unverified in this build: should a macro
 -- show a question mark, its file ID is the other form CreateMacro accepts.
 local MACROS = {
     journal = { name = "Social Diary", body = "/sd", icon = "INV_Misc_Book_09",
-        art = "book", label = "Open Social Diary" },
+        art = "book", label = L["Open Social Diary"] },
     remember = { name = "Remember This", body = "/sd remember", icon = "INV_Misc_Note_01",
-        art = "note", label = "Remember this" },
+        art = "note", label = L["Remember this"] },
 }
 local MACRO_ORDER = { "journal", "remember" }
 -- How many account macros there is room for, when the client does not say
@@ -56,8 +59,8 @@ end
 
 local MACRO_SAID = {
     combat = ns.UI.Keys.COMBAT,
-    full = "Your macros are full, so there is no room for it. %s works anywhere, typed in chat.",
-    click = "It is on your cursor: click a slot on an action bar to put it there.",
+    full = L["Your macros are full, so there is no room for it. %s works anywhere, typed in chat."],
+    click = L["It is on your cursor: click a slot on an action bar to put it there."],
 }
 
 -- A book: the macro's icon, lying on the page with a hairline
@@ -110,13 +113,13 @@ local function BookButton(parent, status, which)
         elseif why == "combat" then
             self:SetFight(true)
         else
-            status:SetText(MACRO_SAID.full:format(macro.body))
+            status:SetText(Fmt(MACRO_SAID.full, macro.body))
         end
     end
     button:SetScript("OnDragStart", function(self) Pickup(self, false) end)
     button:SetScript("OnClick", function(self) Pickup(self, true) end)
 
-    Style.Tooltip(button, { { macro.label }, { "Drag onto an action bar.", 1, 1, 1 } })
+    Style.Tooltip(button, { { macro.label }, { L["Drag onto an action bar."], 1, 1, 1 } })
     ns.On("PLAYER_REGEN_DISABLED", function() button:SetFight(true) end)
     ns.On("PLAYER_REGEN_ENABLED", function() button:SetFight(false) end)
     return button
