@@ -313,7 +313,17 @@ local function StripText(s, fs, lx, ly, centre)
 end
 
 -- A hit box over a piece of the page (the turned piece's box as laid
--- flat), above everything, with its hover and click.
+-- flat), above everything, with its hover and click. What the pad stands on
+-- (UI/Journey/Pad.lua, step 4e) is told on it after, as `hit.pad`:
+--   kind    "title", "scrap", "keepsake", "slip", "fallen", "sig", "add",
+--           "others"
+--   key     what it is, the same however often the page is drawn again
+--   words   the FontString the pen boxes (none: the box goes round the hit)
+--   strip   a pasted thing's strip: outlined, as a margin card is
+--   heading with `strip`: its words, red while it is stood on
+--   kept    a signature that opens a page
+-- and a link word's `label` and `line` (its hairline turns red, as a
+-- Style.Link's). All cleared as a hit is handed out again.
 local function Hit(run, b, onEnter, onClick)
     local hit = Next(run, "hit", function()
         local button = CreateFrame("Button", nil, run.board)
@@ -329,6 +339,7 @@ local function Hit(run, b, onEnter, onClick)
     hit:SetScript("OnClick", onClick)
     hit.box = b
     hit.item, hit.add, hit.others = nil, nil, nil
+    hit.pad, hit.label, hit.line = nil, nil, nil
     return hit
 end
 
@@ -545,6 +556,8 @@ local function FallenNote(run, visit)
     local fs = Font(Line(), Style.NEUTON_ITALIC, L.words.fell, G)
     fs:SetText(Text.RunFell(deaths))
     PlaceText(plane, turn, fs, x + 2, 8)
+    -- (its heading: the words the pad boxes)
+    run.fallenHead = fs
     -- Everyone who fell, to three lines; the rest counted ("and three
     -- others"); the tooltip has them all.
     local names = {}
@@ -604,6 +617,8 @@ local function LinkWord(run, words, size, cx, y, onEnter, onClick)
         fs:SetTextColor(G[1], G[2], G[3], 1)
         line:SetColorTexture(G[1], G[2], G[3], Style.HAIRLINE)
     end)
+    hit.label, hit.line = fs, line
+    hit.pad = { words = fs }
     return hit
 end
 
@@ -653,7 +668,7 @@ local function Signatures(run, visit, deaths)
             PlaceText(plane, turn, fs, 0, 0, "CENTER")
             if p.kept then Stroke(run, at.x, at.y + 5, at.x + at.w + 4, at.y + 3, 0.7, Style.INK, 0.5) end
             local guid = p.guid
-            Hit(run, { guid = guid, x = at.x, y = at.y - size, w = at.w, h = size + 6 }, function(self)
+            local sig = Hit(run, { guid = guid, x = at.x, y = at.y - size, w = at.w, h = size + 6 }, function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetText(ns.Characters.FullName(guid) or p.name)
                 GameTooltip:Show()
@@ -661,11 +676,14 @@ local function Signatures(run, visit, deaths)
                 Style.PlaySound("pageTurn")
                 YourDiary.ToPerson(guid)
             end or nil)
+            sig.pad = { kind = "sig", key = "sig:" .. tostring(guid), words = fs, kept = p.kept and true or nil }
             if not p.kept then
                 local below = laid.roster and R.add or S.add
-                LinkWord(run, Text.RUN.add, L.words.add, at.x + at.w / 2, at.y + below, nil, function()
+                local add = LinkWord(run, Text.RUN.add, L.words.add, at.x + at.w / 2, at.y + below, nil, function()
                     AddMember(visit, guid)
-                end).add = guid
+                end)
+                add.add = guid
+                add.pad.kind, add.pad.key, add.pad.guid = "add", "add:" .. tostring(guid), guid
             end
         else
             local fs = Next(run, "sig", function() return Style.Text(run.board, FONT.noteWritten) end)
@@ -690,7 +708,7 @@ local function Signatures(run, visit, deaths)
         end
         local words = Text.RunOthers(others)
         local w = Measure(run, words, Style.FRIZ, L.words.others)
-        LinkWord(run, words, L.words.others, here.more.x + w / 2, here.more.y - L.words.others * 0.32, function(self)
+        local more = LinkWord(run, words, L.words.others, here.more.x + w / 2, here.more.y - L.words.others * 0.32, function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(words)
             if #names > 0 then GameTooltip:AddLine(table.concat(names, ", "), 1, 1, 1, true) end
@@ -699,7 +717,9 @@ local function Signatures(run, visit, deaths)
             Style.PlaySound("pageTurn")
             run.partyPage = run.partyPage % #laid.pages + 1
             ns.UI.RedrawJourneyPage()
-        end).others = true
+        end)
+        more.others = true
+        more.pad.kind, more.pad.key = "others", "others"
     end
 end
 
@@ -826,6 +846,8 @@ function YourDiary.DrawRun(e, visit)
     local titleTop = (two and T.lines[1] or T.base) - size
     local titleHit = Hit(run, { x = tx - T.sealX - T.seal / 2, y = titleTop, w = tw + T.sealX + T.seal / 2,
         h = lastBase - titleTop + 6 }, TitleTip, Open)
+    -- (two lines: the pen boxes the whole title, seal and all, not one line)
+    titleHit.pad = { kind = "title", key = "title", words = not two and run.title[1] or nil }
     local function TitleOff()
         GameTooltip:Hide()
         for _, fs in ipairs(run.title) do
@@ -839,7 +861,9 @@ function YourDiary.DrawRun(e, visit)
     if plan.scrap then
         local s = Strip(run, "scrap", L.level.scrap)
         Scrap(run, s, plan.scrap, visit, "run:" .. visit.id .. ":scrap")
-        Hit(run, plan.scrap, TitleTip, Open):SetScript("OnLeave", TitleOff)
+        local hit = Hit(run, plan.scrap, TitleTip, Open)
+        hit:SetScript("OnLeave", TitleOff)
+        hit.pad = { kind = "scrap", key = "scrap", strip = s }
     end
     if plan.boss then
         local s = Strip(run, "boss", L.level.boss)
@@ -854,6 +878,8 @@ function YourDiary.DrawRun(e, visit)
         Keepsake(run, s, b, it, wrapped[i], Text.RunWhose(it, NameOf(visit, it.guid)), "run:" .. visit.id .. ":k" .. i)
         local hit = Hit(run, b, ItemTip, ItemClick)
         hit.item = it
+        -- (no heading turned red: the name's ink is its quality's)
+        hit.pad = { kind = "keepsake", key = "keepsake:" .. i, strip = s }
     end
     if plan.slip then
         local s = Strip(run, "slip", L.level.slip)
@@ -881,7 +907,7 @@ function YourDiary.DrawRun(e, visit)
                 shown = shown + 1
             end
             GameTooltip:Show()
-        end)
+        end).pad = { kind = "slip", key = "slip", strip = s, heading = p.words }
     end
     if plan.quiet then
         local fs = Next(run, "quiet", function() return Style.Text(run.board, FONT.noteWritten) end)
@@ -912,7 +938,7 @@ function YourDiary.DrawRun(e, visit)
                 GameTooltip:AddLine(line:sub(1, 1):upper() .. line:sub(2), 1, 1, 1)
             end
             GameTooltip:Show()
-        end)
+        end).pad = { kind = "fallen", key = "fallen", words = run.fallenHead }
     end
 
     -- Everyone on the run: a signature opens its page, "+ Add" keeps a name.
@@ -924,6 +950,23 @@ function YourDiary.DrawRun(e, visit)
 end
 
 -- The run's page hidden (another page on the right).
+-- What the pad may stand on on the run's page, as it is drawn now (the
+-- shown hits that say what they are, `hit.pad`): { frame = hit, box =
+-- hit.box, pad = hit.pad }, in the order drawn (the title first). Empty with
+-- no run's page open.
+function YourDiary.RunParts()
+    local page = YourDiary.page
+    local run = page and page.mode == "run" and page.run
+    local out = {}
+    if not (run and run.board:IsShown()) then return out end
+    local hits = run.used.hit
+    for i = 1, hits and hits.n or 0 do
+        local hit = hits[i]
+        if hit.pad and hit.pad.key then out[#out + 1] = { frame = hit, box = hit.box, pad = hit.pad } end
+    end
+    return out
+end
+
 function YourDiary.HideRun()
     local page = YourDiary.page
     if page and page.run then page.run.board:Hide() end

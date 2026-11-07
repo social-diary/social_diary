@@ -99,6 +99,14 @@ YourDiary.CardSheet = CardSheet
 
 local view, K
 
+-- The pad's Y while it is asking (CardSheet.PadRight): { plate, frame, dry,
+-- did }. Nil the rest of the time, so the mouse's right click is as it was.
+local padCall
+
+-- Who has the pad may have changed: the slip shown, its form or picker laid,
+-- or put away (UI/Journey/CardPad.lua; with the pad down this does nothing).
+local function PadRefresh() ns.UI.Pad.Refresh() end
+
 local function Capital(text)
     return (text:gsub("^%l", string.upper))
 end
@@ -179,6 +187,9 @@ local function NewRow(field)
                     Tick()
                 end)
             box.at = i - 1
+            -- (its row's label is its subheading where the pad stands on it,
+            -- as a settings group's heading is: UI/Pad/Look.lua's `group`)
+            box.group = row.label
             row.toggles[value] = box
         end
         function row:Set(value)
@@ -189,6 +200,7 @@ local function NewRow(field)
     elseif field.type == "person" then
         row.box = Style.WritingLine(S, SHEET.line, FONT.note, field.hint)
         row.box:SetMaxLetters(field.most or 60)
+        row.box.group = row.label
         local found = CreateFrame("Frame", nil, S)
         found:SetFrameLevel(S:GetFrameLevel() + PERSON.level)
         found:SetPoint("TOPLEFT", row.box, "BOTTOMLEFT", -PERSON.out, -1)
@@ -254,6 +266,7 @@ local function NewRow(field)
         row.box = Style.WritingLine(S, number and SHEET.short or SHEET.line, number and FONT.strong or FONT.note,
             not number and field.hint or nil)
         row.box:SetMaxLetters(number and 4 or (field.most or 60))
+        row.box.group = row.label
         if number and field.hint then
             row.hint = Style.Text(S, FONT.small)
             row.hint:SetText(field.hint)
@@ -457,6 +470,7 @@ local function Build()
         if view:IsShown() then view:Hide(true) end
     end)
     view:HookScript("OnHide", RingOff)
+    view:HookScript("OnHide", PadRefresh)
     view:Hide()
 end
 
@@ -476,6 +490,8 @@ local function ShowForm(on)
     view.list:SetShown(not on)
     view.title:SetShown(on)
     view.save:SetShown(on)
+    -- (on both; said, so the pad finds it shown: CardPad.lua)
+    view.cancel:Show()
     if not on then
         view.another:Hide()
         view.hide:Hide()
@@ -578,10 +594,14 @@ function Open(kind, rec, where)
     Lay(spec)
     -- A new card is to be written on at once; a card opened may be only to
     -- leave it out, and a line with the cursor would take the keys from play.
-    if where then
+    -- With the pad in hand no line takes the cursor by itself: A gives it one
+    -- (UI/Journey/CardPad.lua), and a line holding it unasked would take the
+    -- keyboard's keys from play with no sign of it under the pad's box.
+    if where and not ns.UI.Pad.Input.Active() then
         local first = view.rows[1]
         if first and first.box then first.box:SetFocus() end
     end
+    PadRefresh()
 end
 
 CardSheet.Edit = function(kind, rec) Open(kind, rec) end
@@ -610,6 +630,7 @@ function CardSheet.Pick()
     K.PlaceButton(view.list, P.margin, P.top, listW, rows * P.row)
     view.list:SetData(items)
     view.cancel:PlaceAt(W - P.margin, H - P.bottom, "RIGHT")
+    PadRefresh()
 end
 
 -- The picker for a new card at `where` on `plate`, and the ring there.
@@ -618,9 +639,14 @@ local function StartAdding(plate, where)
     view.where = where
     local L = YourDiary.LEADER
     RingOff()
-    plate:SetRing({ mapID = where.mapID, x = where.x, y = where.y, look = setmetatable({ colour = L.colour, alpha = L.alpha,
-        nib = L.pen.nib }, { __index = RING }) })
-    view.ringOn = plate
+    -- (only where the spot is on the picture: the pad's spot, where the player
+    -- stands, may be elsewhere on the zone, and a ring held at the edge would
+    -- say a place that is not it)
+    if not plate.At or plate.At(where.x, where.y) then
+        plate:SetRing({ mapID = where.mapID, x = where.x, y = where.y, look = setmetatable({ colour = L.colour,
+            alpha = L.alpha, nib = L.pen.nib }, { __index = RING }) })
+        view.ringOn = plate
+    end
     CardSheet.Pick()
 end
 function CardSheet.View() return view end
@@ -633,7 +659,38 @@ function CardSheet.View() return view end
 -- zone's map only (Recap's `Own` would put any other spot back on the route),
 -- on a page with a time of its own; and this page's hidden cards. No menu where
 -- there is neither.
+-- Where a card added with the pad goes (.claude/controller-plan.md, step 4,
+-- the user's decision 1: there is no cursor to say a spot, so where the player
+-- stands). On a page with a time of its own, on a zone's map only, as the
+-- menu's. The player not on this plate's zone (elsewhere, or in an instance,
+-- where the position is not given) has no place here to lend: then the spot of
+-- the mark Y was pressed on, which is the very spot a right click on it gives;
+-- on the plate itself, nothing (nil), and Y is not offered. Never a made-up
+-- place: the middle of the picture would be a spot the player never stood on.
+local function PadWhere(plate, frame)
+    local e, mapID = plate.entry, plate.mapID
+    if not (e and e.from and e.to and e.to > e.from and ns.ZoneOf(mapID) == mapID) then return nil end
+    local zone, x, y = ns.ZoneWhere()
+    if zone ~= mapID then
+        x, y = nil, nil
+        local at = frame and frame.padAt
+        if at and plate.MapAtCard then x, y = plate:MapAtCard(at[1], at[2]) end
+    end
+    if not x then return nil end
+    return { mapID = mapID, x = x, y = y, from = e.from, to = e.to }
+end
+
 local function PlaceMenu(plate)
+    -- (the pad: straight to the picker at its spot, no menu; the cards left
+    -- out of this page are the mouse's to bring back)
+    if padCall then
+        local where = PadWhere(plate, padCall.frame)
+        if where and Kinds()[1] ~= nil then
+            padCall.did = "add"
+            if not padCall.dry then StartAdding(plate, where) end
+        end
+        return
+    end
     local e, mapID = plate.entry, plate.mapID
     local x, y = plate:MapAtCursor()
     local where = x and e and e.from and e.to and e.to > e.from and ns.ZoneOf(mapID) == mapID
@@ -669,6 +726,13 @@ function CardSheet.Right(plate, spot)
         for _, m in ipairs(spot.list) do
             if m[field] then recs[#recs + 1] = m[field] end
         end
+        -- (the pad has no menu: a spot merging several opens the first, as the
+        -- menu lists them first)
+        if padCall and recs[1] then
+            padCall.did = "edit"
+            if not padCall.dry then Open(spot.kind, recs[1]) end
+            return
+        end
         if #recs == 1 then
             Open(spot.kind, recs[1])
             return
@@ -683,4 +747,22 @@ function CardSheet.Right(plate, spot)
         end
     end
     PlaceMenu(plate)
+end
+
+-- The pad's Y (UI/Journey/CardPad.lua): what a right click does, there being
+-- no right button. `frame` is what the pad stands on among a plate's marks (a
+-- mark's square or a pass's button, whose own right click is asked, so a
+-- print's or a slip's says its card as under the mouse), nil for the plate
+-- itself. Returns what it did, "edit" or "add", or nil for nothing; `dry`
+-- only says what it would do (the prompt's words), doing nothing.
+function CardSheet.PadRight(plate, frame, dry)
+    local call = { plate = plate, frame = frame, dry = dry }
+    padCall = call
+    local ok, err = pcall(function()
+        local up = frame and frame:GetScript("OnMouseUp")
+        if up then up(frame, "RightButton") else plate:Right() end
+    end)
+    padCall = nil
+    if not ok then error(err, 0) end
+    return call.did
 end

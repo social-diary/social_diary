@@ -35,7 +35,9 @@ local function Column(parent, x, y, width)
     end
 
     -- A heading in small capitals with a rule running on after it, as the
-    -- People list groups its rows.
+    -- People list groups its rows. The controls placed under it, up to the
+    -- next, keep it as `.group` and it keeps its rule as `.rule`: the pad
+    -- rubricates both while it stands on one of them (UI/Pad/Look.lua).
     function column:Heading(text)
         if not self.first then self.y = self.y - SECTION_GAP end
         self.first = false
@@ -49,6 +51,8 @@ local function Column(parent, x, y, width)
         rule:SetPoint("LEFT", heading, "RIGHT", 8, 0)
         rule:SetWidth(math.max(0, self.width - heading:GetStringWidth() - 8))
         rule:SetColorTexture(INK[1], INK[2], INK[3], 0.25)
+        heading.rule = rule
+        self.group = heading
         return heading
     end
 
@@ -62,6 +66,7 @@ local function Column(parent, x, y, width)
 
     function column:Checkbox(text, get, set, indent, hint)
         local box = Style.Checkbox(self.parent, self.width - (indent or 0), text, get, set, hint)
+        box.group = self.group
         return self:Place(box, box.height, indent, hint and 8)
     end
 
@@ -85,9 +90,11 @@ local function Column(parent, x, y, width)
 
         local height = math.max(18, row.label:GetStringHeight())
         row:SetSize(self.width, height)
+        row.group = self.group
 
         function row:Refresh() self.box:Refresh() end
         function row:SetAvailable(available)
+            self.unavailable = not available
             self:SetAlpha(available and 1 or 0.45)
             if available then self.box:Enable() else self.box:Disable() end
         end
@@ -113,6 +120,7 @@ local function Column(parent, x, y, width)
 
         local height = math.max(18, row.label:GetStringHeight())
         row:SetSize(self.width, height)
+        row.group = self.group
 
         function row:Refresh() self.slider:Refresh() end
         function row:SetAvailable(available) self.slider:SetAvailable(available) end

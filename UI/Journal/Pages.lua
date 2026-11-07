@@ -21,6 +21,9 @@
 --                        others; see below
 --       build    = function(container, panel),  once, as the book is made
 --       refresh  = function(),  optional: each time it is turned to
+--       title    = function() -> FontString,  optional: the page's title,
+--                        which holds the pad's box after a ribbon turn
+--                        (UI/Journal/Pad.lua); a page without one gets none
 --   })
 --
 -- Pages register as their files load, before the book is first made; the
@@ -49,7 +52,7 @@ local ribbons, byKey, buildOrder = {}, {}, {}
 
 local function Check(key, spec)
     if type(spec.build) ~= "function" then return false, "Journal.RegisterPage: " .. key .. " has no build" end
-    for _, field in ipairs({ "refresh", "leaves" }) do
+    for _, field in ipairs({ "refresh", "leaves", "title" }) do
         if spec[field] ~= nil and type(spec[field]) ~= "function" then
             return false, "Journal.RegisterPage: " .. key .. "'s " .. field .. " is not a function"
         end

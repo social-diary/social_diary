@@ -200,7 +200,7 @@ end
 -- Sections in full (the name, and what it covers in small print under it);
 -- subpages smaller, the name alone, indented under their section.
 local function BuildNav(parent)
-    page.version = ns.UI.Journal.PageHeading(parent, "Settings")
+    page.version, page.heading = ns.UI.Journal.PageHeading(parent, "Settings")
     page.nav, page.brackets = {}, {}
 
     local x, y = BOOK.LEFT_X - 6, NAV_TOP
@@ -288,6 +288,7 @@ ns.UI.Journal.RegisterPage("settings", {
     order = 40, ribbon = { colour = "gray", label = "Settings" }, leaf = -1, buildOrder = 60,
     build = function(container) BuildPage(container) end,
     refresh = function() SettingsUI.Refresh() end,
+    title = function() return page and page.heading end,
 })
 
 --------------------------------------------------------------------------

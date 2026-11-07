@@ -159,6 +159,9 @@ local function DrawRight()
     for i = shown + 1, #page.plates do page.plates[i]:Hide() end
     for _, pool in ipairs(page.rightPools) do pool:Finish() end
     PlaceOff(page.mode == "full")
+    -- (the right page drawn anew: the pad finds its plates and notes
+    -- again; with the pad down this does nothing)
+    ns.UI.Pad.Refresh()
 end
 
 --------------------------------------------------------------------------
@@ -282,8 +285,13 @@ end
 -- The left page's items for the recap as it is open now. `keep` holds the
 -- reader's place; `steady` (an entry's index) keeps that entry's rubric
 -- where it was on the page as others open and close round it.
+-- With the pad in hand the list is one level (EntryItems' Solo): the place
+-- is held on that level only, and another opens at its top.
 local function Rebuild(keep, steady)
     local page = YourDiary.page
+    local solo = YourDiary.Solo()
+    if solo and page.soloOf ~= page.open then keep, steady = false, nil end
+    page.soloOf = solo and page.open or nil
     local before = steady and page.rubrics and page.rubrics[steady]
     local offset = page.entries.offset or 0
     local items, rubrics = EntryItems(page.recap, page.now, page.fights)
@@ -293,7 +301,11 @@ local function Rebuild(keep, steady)
     if before and rubrics[steady] then
         page.entries:SetOffset(math.max(0, rubrics[steady] - (before - offset)))
     end
+    -- (the rows were handed round: the pad's box finds its words again;
+    -- with the pad down this does nothing)
+    ns.UI.Pad.Refresh()
 end
+YourDiary.Rebuild = Rebuild
 
 -- What piece `k` of entry `i` opens on: its plates; where it has none (a
 -- sitting spent inside a dungeon: a run's door alone is no plate,
@@ -493,4 +505,5 @@ ns.UI.Journal.RegisterPage("journey", {
     order = 10, ribbon = { colour = "green", label = "Your Diary" }, leaf = 1, buildOrder = 40,
     build = function(container) BuildPage(container) end,
     refresh = function() ns.UI.RefreshJourneyPage() end,
+    title = function() return YourDiary.page and YourDiary.page.name end,
 })

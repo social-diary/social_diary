@@ -220,6 +220,8 @@ local function Bookmark(map)
     -- (UI/Dungeon/Sheet.lua's levels).
     mark:SetFrameLevel(map:GetFrameLevel() + 2)
     local plane = Surface.New(mark)
+    -- (kept: the pad outlines the slip as it lies, UI/Dungeon/Pad.lua)
+    mark.plane = plane
     local Place, Quad = plane.Place, plane.Quad
     local probe = mark:CreateTexture(nil, "BACKGROUND")
     mark.canBend = probe.SetVertexOffset ~= nil
@@ -530,6 +532,10 @@ local function Build()
     host.map.onMeasure = Fit
     host.map.onLaid = function(visit, guid)
         spread.laid = J.visit and Laid(visit, guid, J.visit.from) or nil
+        -- (laid again where it lies shown, another floor: the pad's marks
+        -- found again on it, UI/Dungeon/Pad.lua; one laid a slice a frame is
+        -- hidden until Open's Down, which tells it)
+        if host.map:IsShown() then ns.UI.Pad.Refresh() end
     end
     -- The wheel stops at the table: the book under it, put aside, keeps
     -- its timeline where it was.
@@ -578,11 +584,16 @@ local function Open(visit, guid, from)
     Above(spread)
     spread:Show()
     spread:Raise()
+    -- (the pad onto the table, off the book: UI/Dungeon/Pad.lua. The host's
+    -- own OnShow does it once the pad has met it; the first time, this)
+    ns.UI.Pad.Refresh()
     -- The sheet put down on the table, and the first run's note with it.
     local function Down()
         if not (spread:IsShown() and J.visit and J.visit.id == visit.id) then return end
         spread.map:Show()
         DungeonPage.Tutorial(spread)
+        -- (the pad onto what is on it now: its marks and notes, or the note)
+        ns.UI.Pad.Refresh()
     end
     -- Laid again only where something it is laid from moved (Laid); then
     -- a slice a frame (UI/Dungeon/Sheet.lua's STAGE), so the client is

@@ -105,6 +105,8 @@ local function Build(spread)
     -- again. With the spread (its OnHide, either order), Spread.lua's Gone
     -- gives Escape back to the book.
     host:SetScript("OnHide", function()
+        -- (the pad off the note, back on the map: UI/Dungeon/Pad.lua)
+        ns.UI.Pad.Refresh()
         if not spread:IsShown() then return end
         DungeonPage.StandIn(DungeonPage.SPREAD.name)
         Style.PlaySound("sheetClose")

@@ -648,6 +648,13 @@ function Style.NumberField(parent, width, min, max, get, set)
 
     function box:Refresh() self:SetText(tostring(get())) end
 
+    -- One up or down (`delta`), clamped: the pad's left and right.
+    function box:Nudge(delta)
+        local n = math.max(min, math.min(max, math.floor((tonumber(get()) or min) + delta)))
+        if n ~= get() then set(n) end
+        self:Refresh()
+    end
+
     -- Enter commits and lets go, and letting go commits again: only a
     -- changed number reaches `set`.
     local function Commit(self)
@@ -720,6 +727,7 @@ function Style.Slider(parent, width, spec, get, set)
     slider:SetThumbTexture(thumb)
     local nib = Style.Lozenge(slider, "OVERLAY", SCALE.nib, STRONG, 1)
     nib:SetPoint("CENTER", thumb, "CENTER")
+    slider.nib = nib  -- (the pad lays its own red over it: UI/Pad/Look.lua)
 
     local line = slider:CreateTexture(nil, "ARTWORK")
     line:SetHeight(1)
@@ -756,6 +764,12 @@ function Style.Slider(parent, width, spec, get, set)
     end
 
     -- Faded and deaf while what it depends on is off.
+    -- One step along (`delta` -1 or 1), as a click on the scale would:
+    -- the pad's left and right.
+    function slider:Nudge(delta)
+        self:SetValue(Style.OnScale((self:GetValue() or min) + delta * step, min, max, step))
+    end
+
     function slider:SetAvailable(available)
         self.unavailable = not available
         self:SetAlpha(available and 1 or 0.45)

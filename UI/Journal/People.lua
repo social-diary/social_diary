@@ -228,7 +228,7 @@ end
 local function BuildLeftPage(panel, book)
     J.query.sort = SavedSort()
 
-    panel.count = J.PageHeading(book, "People")
+    panel.count, panel.peopleTitle = J.PageHeading(book, "People")
 
     panel.search = Style.PageSearch(book, LEFT_X, -48, LEFT_W, "Search names, tags, notes",
         Style.SearchInto(J.query, RefreshList))
@@ -277,6 +277,7 @@ J.RefreshList = RefreshList
 J.RegisterPage("people", {
     order = 20, ribbon = { colour = "red", label = "People" }, leaf = 2, buildOrder = 10,
     leaves = function() return J.EntryLeaf(J.selected) end,
+    title = function() return J.journal and J.journal.peopleTitle end,
     build = function(people, panel)
         BuildLeftPage(panel, people)
         panel.profile = J.BuildProfile(panel, people)

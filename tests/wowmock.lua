@@ -359,6 +359,49 @@ local function NewWidget(frameType, name, parent, template)
     function w:GetStringHeight() return self.text ~= "" and 14 or 0 end
     function w:GetUnboundedStringWidth() return #Shown(self.text) * 6 end
     function w:IsTruncated() return true end
+    -- A font string's colour and shadow, read back (the pad's look saves
+    -- and restores them, UI/Pad/Look.lua): what was set on it last, unless
+    -- a font object was given after it, whose own then counts (the mock
+    -- takes SetFontObject to copy the object's, which is what the client is
+    -- believed to do; checked in the client, see .claude/controller-plan.md),
+    -- else the client's defaults: white, a black shadow, no offset.
+    local function Last(method)
+        local own, object = rec.calls[method], rec.calls.SetFontObject
+        local font = object and object[1]
+        local inherited = type(font) == "table" and font.recorded and font.recorded.calls[method]
+        if own and not (object and object.seq > own.seq) then return own end
+        return inherited
+    end
+    function w:GetTextColor()
+        local c = Last("SetTextColor")
+        if not c then return 1, 1, 1, 1 end
+        return c[1], c[2], c[3], c[4] or 1
+    end
+    function w:GetShadowColor()
+        local c = Last("SetShadowColor")
+        if not c then return 0, 0, 0, 1 end
+        return c[1], c[2], c[3], c[4] or 1
+    end
+    -- How it is set in its box, as last set (the client's defaults else).
+    function w:GetJustifyH()
+        local j = rec.calls.SetJustifyH
+        return j and j[1] or "CENTER"
+    end
+    function w:GetJustifyV()
+        local j = rec.calls.SetJustifyV
+        return j and j[1] or "MIDDLE"
+    end
+    -- Its font file and size: SetFont's, else its font object's.
+    function w:GetFont()
+        local f = Last("SetFont")
+        if f then return f[1], f[2], f[3] end
+        return nil, nil, nil
+    end
+    function w:GetShadowOffset()
+        local o = Last("SetShadowOffset")
+        if not o then return 0, 0 end
+        return o[1], o[2]
+    end
     -- A frame's level: the one it was given, else one over its parent's,
     -- as the client gives a new frame.
     function w:GetFrameLevel()
@@ -390,6 +433,20 @@ local function NewWidget(frameType, name, parent, template)
             if M.frames[i].events[event] then return end
         end
         M.registered[event] = nil
+    end
+
+    -- The pad's input on a frame (UI/Pad/): whether it takes buttons and
+    -- sticks. In the client setting OnGamePadButtonDown / Up turns the
+    -- buttons on by itself; so here.
+    function w:EnableGamePadButton(on) self.padButtons = on and true or false end
+    function w:IsGamePadButtonEnabled() return self.padButtons == true end
+    function w:EnableGamePadStick(on) self.padSticks = on and true or false end
+    function w:IsGamePadStickEnabled() return self.padSticks == true end
+    local setScript = w.SetScript
+    function w:SetScript(key, fn)
+        setScript(self, key, fn)
+        if fn and (key == "OnGamePadButtonDown" or key == "OnGamePadButtonUp") then self.padButtons = true end
+        if fn and key == "OnGamePadStick" then self.padSticks = true end
     end
 
     function w:SetChecked(value) self.checked = value and true or false end
@@ -1059,6 +1116,49 @@ _G.IsShiftKeyDown = function() return M.modifiers.shift == true end
 -- GetEffectiveScale (its `effectiveScale`, else 1).
 M.pointer = { 0, 0 }
 _G.GetCursorPosition = function() return M.pointer[1], M.pointer[2] end
+
+-- The pad (UI/Pad/): Forever's Gamepad UI (M.pad.ui), gamepad input on
+-- (M.pad.enabled), the pads plugged in (M.pad.devices, their ids), the
+-- one in use's label style (M.pad.style), whether the player used it last
+-- (M.pad.using), and the keys held down (M.keysDown, by binding key).
+M.pad = { ui = false, enabled = false, devices = {}, style = "Letters", using = false }
+M.keysDown = {}
+_G.InputUtil = { IsGamepadUIEnabled = function() return M.pad.ui end }
+_G.C_GamePad = {
+    IsEnabled = function() return M.pad.enabled end,
+    GetAllDeviceIDs = function() return M.pad.devices end,
+    GetDeviceMappedState = function()
+        if #M.pad.devices == 0 then return nil end
+        return { name = "Mock pad", labelStyle = M.pad.style, buttonCount = 0, axisCount = 0, stickCount = 0,
+            buttons = {}, axes = {}, sticks = {} }
+    end,
+}
+_G.IsUsingGamepad = function() return M.pad.using end
+_G.IsKeyDown = function(key) return M.keysDown[key] == true end
+
+-- A pad button pressed (down true) or let go on a frame, as the client
+-- delivers it: only to a frame taking pad buttons. Returns whether it went
+-- on past the frame (the handler's propagate), true for a frame not taking
+-- them.
+function M.PadPress(frame, key, down)
+    if not frame:IsGamePadButtonEnabled() then return true end
+    local fn = frame.scripts[down and "OnGamePadButtonDown" or "OnGamePadButtonUp"]
+    if not fn then return true end
+    return fn(frame, key) == true
+end
+
+-- A pad's stick moved on a frame (stick its config name, "Right",
+-- "Camera", "Left", "Movement"; x, y in -1..1), as the client delivers it:
+-- only to a frame taking sticks. Returns whether it went on past the frame
+-- (the handler's propagate), true for a frame not taking them. The client
+-- says when a stick changes, not every frame: a test runs the frames
+-- itself (the catcher's ticker's OnUpdate).
+function M.PadStick(frame, stick, x, y)
+    if not frame:IsGamePadStickEnabled() then return true end
+    local fn = frame.scripts.OnGamePadStick
+    if not fn then return true end
+    return fn(frame, stick, x, y, math.sqrt(x * x + y * y)) == true
+end
 
 -- Macros, for the book Settings puts on an action bar: M.macros holds the
 -- account's, in order, as { name, icon, body }; the index is the position,

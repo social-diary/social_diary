@@ -16,6 +16,12 @@ ns.UI.Dialog = Dialog
 -- that reloads the interface
 --------------------------------------------------------------------------
 
+-- While one of these is up, the book's pad steps aside: the popup is
+-- Blizzard's, and Forever's Gamepad UI takes the pad to it
+-- (UI/Pad/Catcher.lua, Pad.Aside).
+local function PadAside(self) ns.UI.Pad.Aside(self, true) end
+local function PadBack(self) ns.UI.Pad.Aside(self, nil) end
+
 StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"] = {
     text = "%s",
     button1 = "Delete",
@@ -27,6 +33,8 @@ StaticPopupDialogs["SOCIAL_DIARY_CONFIRM"] = {
     whileDead = true,
     hideOnEscape = true,
     showAlert = true,
+    OnShow = PadAside,
+    OnHide = PadBack,
 }
 
 -- `accept`, if given, names the button that goes ahead in place of Delete,
@@ -78,6 +86,8 @@ StaticPopupDialogs["SOCIAL_DIARY_REMOVE"] = {
     whileDead = true,
     hideOnEscape = true,
     showAlert = true,
+    OnShow = PadAside,
+    OnHide = PadBack,
 }
 
 -- Every way out of the diary goes through this popup (the sheet's link,

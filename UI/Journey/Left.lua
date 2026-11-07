@@ -11,7 +11,9 @@
 -- run's line or a recorded run's row in the ledger its page, and a zone's
 -- row its map (YourDiary.OpenLevel, OpenPiece, OpenRun, OpenFull:
 -- Page.lua's). The run being played lays out its map instead, either row
--- (LiveRun), to trace the way through as it goes.
+-- (LiveRun), to trace the way through as it goes. With the pad in hand
+-- (Solo) the list is the open level alone, chevrons either side of its
+-- rubric (Chevrons, SOLO): UI/Journey/Pad.lua.
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -28,7 +30,7 @@ local LEFT_W = BOOK.LEFT_W
 local SCROLLBAR_WIDTH = ns.UI.SCROLLBAR_WIDTH
 
 local ENTRY, LEDGER, PARAPHS, FACES = YourDiary.ENTRY, YourDiary.LEDGER, YourDiary.PARAPHS, YourDiary.FACES
-local SITTINGS = YourDiary.SITTINGS
+local SITTINGS, SOLO = YourDiary.SITTINGS, YourDiary.SOLO
 
 --------------------------------------------------------------------------
 -- The character
@@ -143,6 +145,13 @@ local function OpenPieceOf(e)
     return pieces[k], k
 end
 
+-- One level at a time: the pad in hand (ns.UI.Pad.Input, asked as the
+-- list is built; UI/Journey/Pad.lua builds it again as the hand changes).
+local function Solo()
+    local Pad = ns.UI.Pad
+    return Pad ~= nil and Pad.Input.Active() == true
+end
+
 -- The recap as list items: the prologue, then per entry its rubric. Only
 -- the open entry says more (journey-revamp-plan §3): its sittings and
 -- their runs where it is not spliced (SITTINGS), its paragraphs, the
@@ -151,25 +160,35 @@ end
 -- list stands, the first thing under the character is a rubric, never
 -- another level's zone rows. Returns the items and the index of each
 -- entry's rubric.
+-- With the pad in hand (Solo) the open entry alone, from its rubric down:
+-- no prologue and no closed rubrics (rubrics holds the open one's only),
+-- the rubric `solo`, with whether a level lies `older` and `newer` for
+-- its chevrons (SOLO).
 local function EntryItems(recap, now, fights)
     local page = YourDiary.page
     local items, rubrics = {}, {}
+    local solo = Solo()
     local function Add(item) items[#items + 1] = item end
-    local prologue = Text.Prologue(recap.prologue)
+    local prologue = not solo and Text.Prologue(recap.prologue) or nil
     if prologue then
         Add({ text = prologue, font = FONT.faded, height = Measure(FONT.faded, prologue) + ENTRY.prologue })
     end
     for i, e in ipairs(recap.entries) do
         -- Closed rubrics close up; the open entry stands apart.
         local open = i == page.open
-        if open and (i > 1 or prologue) then
+        if solo then
+            -- (one level at a time: the others are a D-pad press away)
+        elseif open and (i > 1 or prologue) then
             Add({ height = ENTRY.open })
         elseif i > 1 and i - 1 == page.open then
             Add({ height = ENTRY.after })
         end
-        Add({ title = Text.Title(e, now), aside = Text.Current(e), paraph = i, entry = i,
-            faces = e.faces, e = e, open = open, height = open and ENTRY.title or ENTRY.closed })
-        rubrics[i] = #items
+        if open or not solo then
+            Add({ title = Text.Title(e, now), aside = Text.Current(e), paraph = i, entry = i,
+                faces = e.faces, e = e, open = open, height = open and ENTRY.title or ENTRY.closed,
+                solo = solo or nil, older = solo and i > 1 or nil, newer = solo and i < #recap.entries or nil })
+            rubrics[i] = #items
+        end
         if i == page.open then
             -- The sittings, oldest first, each one's runs under it.
             local _, at = OpenPieceOf(e)
@@ -257,6 +276,70 @@ local function SetFace(face, f, e)
     face.ring:SetShown(f.rival == true)
 end
 
+-- The chevrons either side of the level shown with the pad (SOLO): made
+-- on a rubric's row the first time it shows one, so a book read with the
+-- mouse never makes them. Each is a frame of two pen strokes, its point
+-- outward: "<" before the paraph, ">" at the line's end.
+local function Chevron(row, dir)
+    local c = CreateFrame("Frame", nil, row)
+    c:SetSize(SOLO.w, SOLO.h)
+    c.dir = dir
+    local S = Style.INK_STRONG
+    local tip, back = dir == "LEFT" and 0 or SOLO.w, dir == "LEFT" and SOLO.w or 0
+    -- (the nib a hair past the tip on the way in, as a hand makes a "<")
+    Style.Stroke(c, "ARTWORK", back, 0, tip, SOLO.h / 2 + 0.3, S, 1, SOLO.thick)
+    Style.Stroke(c, "ARTWORK", tip, SOLO.h / 2 - 0.3, back, SOLO.h, S, 1, SOLO.thick)
+    c:Hide()
+    return c
+end
+
+-- `shift` px further out than its place.
+local function PlaceChevron(c, shift)
+    local row = c:GetParent()
+    c:ClearAllPoints()
+    if c.dir == "LEFT" then
+        c:SetPoint("CENTER", row.paraph, "CENTER", -SOLO.out - shift, 0)
+    else
+        c:SetPoint("RIGHT", row, "RIGHT", -2 + shift, 0)
+    end
+end
+
+local function Nudging(c, elapsed)
+    c.t = c.t + elapsed
+    local p = math.min(c.t / SOLO.nudge, 1)
+    PlaceChevron(c, SOLO.travel * math.sin(math.pi * p))
+    if p >= 1 then c:SetScript("OnUpdate", nil) end
+end
+
+-- A D-pad press toward `dir` ("LEFT" / "RIGHT"): its chevron on the level
+-- shown gives a little outward and back, live or faded (at an end it says
+-- the press was heard, and that nothing lies that way).
+local function NudgeChevron(dir)
+    local page = YourDiary.page
+    local at = page and page.rubrics and page.rubrics[page.open]
+    local row = at and page.entries:RowOf(at)
+    local c = row and row.chevrons and row.chevrons[dir]
+    if not (c and c:IsShown()) then return end
+    c.t = 0
+    c:SetScript("OnUpdate", Nudging)
+end
+
+local function Chevrons(row, item)
+    if not row.chevrons then
+        row.chevrons = { LEFT = Chevron(row, "LEFT"), RIGHT = Chevron(row, "RIGHT") }
+    end
+    local left, right = row.chevrons.LEFT, row.chevrons.RIGHT
+    for _, c in pairs(row.chevrons) do
+        c:SetScript("OnUpdate", nil)
+        PlaceChevron(c, 0)
+    end
+    left:SetAlpha(item.older and SOLO.alpha or SOLO.dead)
+    right:SetAlpha(item.newer and SOLO.alpha or SOLO.dead)
+    left.live, right.live = item.older == true, item.newer == true
+    left:Show()
+    right:Show()
+end
+
 local Marked
 
 -- The ledger's dot leaders: as many LEDGER.dot as fit `room` px, by the
@@ -305,6 +388,47 @@ local function LiveRun(item)
     if not (current and current.id == visit.id) then return nil end
     local floors = ns.Dungeons.Floors(visit.instanceID, ns.UI.DungeonPage.Wing(visit))
     return floors and #floors > 0 and visit or nil
+end
+
+-- What a click on a row of `item` does (the pad's A too, UI/Journey/Pad.lua):
+-- the run being played lays out its map; a rubric opens its level, a
+-- sitting's line that sitting, a run's line its page; a zone's row its
+-- map. True where it did something.
+local function OpenItem(item)
+    if not item then return false end
+    local live = LiveRun(item)
+    if live then
+        Style.PlaySound("pageTurn")
+        ns.UI.OpenVisit(live.id, "journey")
+    elseif item.title then
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenLevel(item.entry)
+    elseif item.sitting then
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenPiece(item.entry, item.sitting)
+    elseif item.run then
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenRun(item.run.id, item.entry)
+    elseif item.zone and item.zone.dungeon and ns.JourneyRecap.RunWorthy(item.zone.dungeon.visit) then
+        -- A run that earned a page opens it (UI/Journey/Run.lua); any
+        -- other dungeon's row, its map as a zone's does.
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenRun(item.zone.dungeon.visit.id, item.entry)
+    elseif item.zone and item.mapID then
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenFull(item.mapID, item.entry)
+    else
+        return false
+    end
+    return true
+end
+
+-- Whether a click on `item`'s row does something (OpenItem), asked
+-- without doing it.
+local function Opens(item)
+    if not item then return false end
+    if item.title or item.sitting or item.run then return true end
+    return item.zone ~= nil and (item.mapID ~= nil or LiveRun(item) ~= nil)
 end
 
 local function BuildEntryRow(list)
@@ -402,32 +526,7 @@ local function BuildEntryRow(list)
     row.lip:SetPoint("TOPLEFT", row.underline, "BOTTOMLEFT", 0, 0)
     row.lip:SetColorTexture(M.lip[1], M.lip[2], M.lip[3], M.lipAlpha)
 
-    row:SetScript("OnClick", function(self)
-        local item = self.item
-        if not item then return end
-        local live = LiveRun(item)
-        if live then
-            Style.PlaySound("pageTurn")
-            ns.UI.OpenVisit(live.id, "journey")
-        elseif item.title then
-            Style.PlaySound("pageTurn")
-            YourDiary.OpenLevel(item.entry)
-        elseif item.sitting then
-            Style.PlaySound("pageTurn")
-            YourDiary.OpenPiece(item.entry, item.sitting)
-        elseif item.run then
-            Style.PlaySound("pageTurn")
-            YourDiary.OpenRun(item.run.id, item.entry)
-        elseif item.zone and item.zone.dungeon and ns.JourneyRecap.RunWorthy(item.zone.dungeon.visit) then
-            -- A run that earned a page opens it (UI/Journey/Run.lua); any
-            -- other dungeon's row, its map as a zone's does.
-            Style.PlaySound("pageTurn")
-            YourDiary.OpenRun(item.zone.dungeon.visit.id, item.entry)
-        elseif item.zone and item.mapID then
-            Style.PlaySound("pageTurn")
-            YourDiary.OpenFull(item.mapID, item.entry)
-        end
-    end)
+    row:SetScript("OnClick", function(self) YourDiary.OpenItem(self.item) end)
     -- Under the mouse, a rubric's rule darkens: it opens its level. A
     -- zone's row that opens its map, a sitting's and a run's line are
     -- marked (LEDGER.mark).
@@ -480,6 +579,10 @@ local function UpdateEntryRow(row, item)
     row.lip:SetShown(false)
     if not (isSub or (isZone and (item.mapID or LiveRun(item)))) then row.hot = nil end
     for _, face in ipairs(row.faces) do face:Hide() end
+    if row.chevrons then
+        row.chevrons.LEFT:Hide()
+        row.chevrons.RIGHT:Hide()
+    end
     -- A ledger's name lines up with the prose; a sitting's and a run's
     -- hang further in under the rubric (SITTINGS).
     if isZone or isSub then
@@ -531,7 +634,15 @@ local function UpdateEntryRow(row, item)
         -- in the order met; the rule runs out to the first of them.
         local faces = item.faces or {}
         local shown = math.min(#faces, FACES.most)
-        local to, point, x = row, "RIGHT", -2
+        -- (the pad's level shown: its chevrons, the faces in from the end)
+        local edge = -2
+        if item.solo then
+            Chevrons(row, item)
+            edge = -2 - SOLO.reserve
+        end
+        local to, point, x = row, "RIGHT", edge
+        row.more:ClearAllPoints()
+        row.more:SetPoint("RIGHT", row, "RIGHT", edge, 0)
         if #faces > FACES.most then
             row.more:SetText("+" .. (#faces - FACES.most))
             row.more:Show()
@@ -548,7 +659,7 @@ local function UpdateEntryRow(row, item)
         end
         row.rule:ClearAllPoints()
         row.rule:SetPoint("LEFT", row.aside, "RIGHT", ENTRY.rule, 0)
-        row.rule:SetPoint("RIGHT", to, point, to == row and -2 or -ENTRY.rule, 0)
+        row.rule:SetPoint("RIGHT", to, point, to == row and edge or -ENTRY.rule, 0)
     elseif isZone then
         local place = item.zone
         row.zone:SetFontObject(FONT.small)
@@ -579,3 +690,4 @@ end
 YourDiary.FillHeader, YourDiary.ToPerson, YourDiary.EntryItems = FillHeader, ToPerson, EntryItems
 YourDiary.BuildEntryRow, YourDiary.UpdateEntryRow = BuildEntryRow, UpdateEntryRow
 YourDiary.PiecesOf, YourDiary.OpenPieceOf = PiecesOf, OpenPieceOf
+YourDiary.Solo, YourDiary.OpenItem, YourDiary.Opens, YourDiary.NudgeChevron = Solo, OpenItem, Opens, NudgeChevron

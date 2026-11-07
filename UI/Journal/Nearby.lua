@@ -484,7 +484,7 @@ local function BuildPage(parent)
     page = {}
 
     -- Left page: the days.
-    page.dayCount = J.PageHeading(parent, "Recently nearby")
+    page.dayCount, page.heading = J.PageHeading(parent, "Recently nearby")
 
     page.hint = Style.Text(parent, FONT.small)
     page.hint:SetPoint("TOPLEFT", BOOK.LEFT_X, -50)
@@ -560,4 +560,5 @@ ns.UI.Journal.RegisterPage("nearby", {
     order = 30, ribbon = { colour = "purple", label = "Recently nearby" }, leaf = -2, buildOrder = 50,
     build = function(container) BuildPage(container) end,
     refresh = function() ns.UI.RefreshNearbyPage() end,
+    title = function() return page and page.heading end,
 })

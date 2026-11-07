@@ -45,6 +45,8 @@ local function Back()
     local e = page.recap and page.recap.entries[page.open]
     YourDiary.OpenPiece(page.open, page.pieceOf == e and page.piece or nil)
 end
+-- (the pad's B on the full page, UI/Journey/Pad.lua)
+YourDiary.FullBack = Back
 
 -- The full page's plate drawn at a view (FULLZOOM, UI/Journey/Plate.lua):
 -- `f` px on the screen a px of the map's art, round cx, cy; nil for the
@@ -73,6 +75,10 @@ local function DrawFullPlate(e, view)
         onSettle = function(nf, ncx, ncy)
             DrawFullPlate(e, { f = nf, cx = ncx, cy = ncy,
                 redraws = plate.look and plate.look.redraws })
+            -- (the marks handed round again for the new window: the pad
+            -- finds the one it stood on again, UI/Journey/Pad.lua; with the
+            -- mouse nothing is done)
+            if ns.UI.Pad.Input.Active() then ns.UI.Pad.Refresh() end
         end })
     plate:Show()
     return plate, sheet
@@ -106,6 +112,17 @@ local function Company(sheet)
     return names, fights
 end
 
+-- The foot's hint: the mouse's words, or with the pad in hand its B
+-- (Look.lua's FOOT.pad). Asked again as the hand changes (UI/Journey/Pad.lua).
+local function Hint()
+    local page = YourDiary.page
+    local hint = page and page.foot and page.foot.hint
+    if not hint then return end
+    local Pad = ns.UI.Pad
+    hint:SetText(Pad.Input.Active() and FOOT.pad:format(Pad.Glyphs.Text("PAD2", 12)) or FOOT.words)
+end
+YourDiary.FullHint = Hint
+
 -- One zone's whole map across the page (JRN-14), the open level's road.
 local function DrawFull(e)
     local page = YourDiary.page
@@ -137,6 +154,7 @@ local function DrawFull(e)
         foot.meta:SetPoint("TOPLEFT", foot.name, "BOTTOMLEFT", 0, -FOOT.under)
         foot.hint:SetPoint("TOPLEFT", foot.meta, "BOTTOMLEFT", 0, -FOOT.hint)
     end
+    Hint()
     for _, part in pairs({ foot.name, foot.meta, foot.hint }) do part:Show() end
     return 1
 end

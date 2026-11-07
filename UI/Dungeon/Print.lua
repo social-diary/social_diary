@@ -429,7 +429,8 @@ end
 --   P.Face(pool, x, y, look, boss)           a boss's face (its medallion),
 --                                            how it came, or nil
 --   P.Text(pool, text, x, y)                 a line of text on its middle
---   P.Hit(pool, x, y, size, tip)             a square that takes the mouse
+--   P.Hit(pool, x, y, size, tip, what)       a square that takes the mouse
+--                                            (`what` it marks, for the pad)
 -- each lit by the facet it lies on; and P.pools, the pools by name: route,
 -- tether, halo, ink, fill, crossHalo, cross, medal, sketch, numberHalo,
 -- number, hit. `stock` is the paper's colour, for the dots under marks.
@@ -546,7 +547,7 @@ local function Cross(plan, P, x, y, pencil, stock, tip)
     P.Dot(pools.crossHalo, x, y, D.halo, stock, D.haloAlpha)
     P.Rect(pools.cross, x - D.stem[1] / 2, y + 0.5 - D.stem[2] / 2, D.stem[1], D.stem[2], c, a)
     P.Rect(pools.cross, x - D.bar[1] / 2, y - D.up - D.bar[2] / 2, D.bar[1], D.bar[2], c, a)
-    P.Hit(pools.hit, x, y, D.hit, tip)
+    P.Hit(pools.hit, x, y, D.hit, tip, "cross")
     plan.crosses[#plan.crosses + 1] = { x = x, y = y, pencil = pencil or nil, tip = tip }
 end
 
@@ -1142,7 +1143,7 @@ local function Levels(plan, P, busy, stock)
             local tx, ty = x + L.text.dx, y + L.text.dy
             if not Free(busy, tx + 6, ty, 8) then tx = x - L.text.dx - 12 end
             local label = P.Text(pools.scrawl, DungeonPage.Words.LevelScrawl(up.level), tx + 6, ty)
-            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.LevelTip(plan.visit, up))
+            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.LevelTip(plan.visit, up), "level")
             plan.flavour[#plan.flavour + 1] = { kind = "level", x = x, y = y, r = L.halo / 2 + 1, level = up.level,
                 label = label, size = size }
             plan.flavour[#plan.flavour + 1] = { kind = "levelText", x = tx + 6, y = ty, r = 9 }
@@ -1190,7 +1191,7 @@ local function Finds(plan, P, busy, stock)
                         pools.scribbleUnder, 0)
                 end
             end
-            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.FoundTip(plan.visit, f))
+            P.Hit(pools.hit, x, y, DungeonPage.HOVER, DungeonPage.Words.FoundTip(plan.visit, f), "find")
             plan.flavour[#plan.flavour + 1] = { kind = "find", tier = tier, x = x, y = y, r = outer + 1, find = i }
             busy[#busy + 1] = { x = x, y = y, r = outer }
             t.x, t.y, t.r = x, y, reach
@@ -1248,7 +1249,7 @@ function DungeonPage.Ink(plan, P, stock)
         -- And the runs back in, which a strip may have had no room for.
         local ranBack = plan.hasNotes and plan.notes.ranBack or 0
         P.Hit(pools.hit, d.x, d.y, HOVER, Style.TipList("The way in",
-            ranBack > 0 and { W.RanBack(ranBack) .. " " .. W.GHOST } or nil))
+            ranBack > 0 and { W.RanBack(ranBack) .. " " .. W.GHOST } or nil), "door")
     end
 
     plan.targets, plan.crosses = {}, {}
@@ -1275,7 +1276,7 @@ function DungeonPage.Ink(plan, P, stock)
                 r = mark.face and MEDAL.standing / 2 or STANDING.radius + 1 }
         end
         for _, fact in ipairs(plan.facts[mark.name] or {}) do lines[#lines + 1] = fact end
-        P.Hit(pools.hit, mark.x, mark.y, HOVER, Style.TipList(plan.names[mark.name] or mark.name, lines))
+        P.Hit(pools.hit, mark.x, mark.y, HOVER, Style.TipList(plan.names[mark.name] or mark.name, lines), "boss")
     end
     if plan.door then plan.targets.door = { x = plan.door.x, y = plan.door.y, r = 7 } end
     DungeonPage.Step()

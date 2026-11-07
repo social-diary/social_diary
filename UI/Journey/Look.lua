@@ -37,6 +37,8 @@
 --                           its entry points (ns.UI.RefreshJourneyPage,
 --                           RedrawJourneyPage, OpenZoneSheet, JourneyPage,
 --                           JourneyLook)
+--   UI/Journey/Pad.lua      the page with the pad (step 4a: the left page,
+--                           one level at a time; YourDiary.Solo, Rebuild)
 --
 -- Shared state, on the module:
 --   .page       the page: its frames and pools, the open entry, what is
@@ -139,6 +141,21 @@ local FACES = { most = 4, size = 13, gap = 4, edge = 2, ring = 5, ringAlpha = 0.
 -- level's own mark (it is the paraph, smaller) and stays while a run or a
 -- zone of it is on the right page.
 local SITTINGS = { indent = 12, run = 13, row = 18, runRow = 16, after = 8, aside = 7, tick = 5, tickX = 8 }
+-- With the pad in hand the left page shows one level at a time (the user,
+-- 7 Nov 2026: the whole contents is too crowded for a pad), and the level
+-- shown has a chevron either side of its rubric, written with the diary's
+-- pen, for D-pad left and right: the one before it, the one after. They
+-- are the pen's, not buttons: two strokes each, `w` x `h` px, `thick` px
+-- wide, in INK_STRONG at `alpha`; at the first or last level the dead
+-- side's is the same chevron faded to `dead` (no wrap round: a diary's
+-- first page has nothing before it). The left one hangs in the outer
+-- margin `out` px left of the paraph's centre, so it reads before the
+-- rubric as a page number's arrow does; the right one ends the rubric's
+-- line, the faces moving `reserve` px in to give it room. A press nudges
+-- the chevron on its side `travel` px outward and back over `nudge` s, the
+-- page turning under the hand. With the mouse none of this is made.
+local SOLO = { w = 5, h = 9, thick = 1.4, alpha = 0.85, dead = 0.22, out = 10, reserve = 13, travel = 3,
+    nudge = 0.22 }
 
 -- The right page, measured from its top left (RIGHT_X, TOP), as the
 -- mockup's (.claude/ui-proposal/journey-moments-mockup.html): the plates'
@@ -340,7 +357,10 @@ local LEADERS, STRIPS = { level = 20 }, { level = 25 }
 -- second line's gap when it wraps, and under it all the hint, which says
 -- how to look closer and how to go back. There is no back link: a click on
 -- the map is the way back (FULLZOOM's DRAG), so the hint is what tells it.
-local FOOT = { y = 506, gap = 10, under = 3, hint = 3, words = "Left click to go back" }
+-- `pad`: the hint with the pad in hand (step 4d), the B button's glyph in
+-- it; the legend under the book says the rest.
+local FOOT = { y = 506, gap = 10, under = 3, hint = 3, words = "Left click to go back",
+    pad = "%s to go back" }
 -- A level with nothing kept: its faded line, `y` down the page. The
 -- setting off: its line and link in the right column at the foot (`x`,
 -- `y`), or on the full page's last line (`fullY`).
@@ -357,7 +377,7 @@ local SKETCH = { x = RIGHT_X + 8, y = 58, w = 270, h = 190, turn = -1.3, alpha =
 local NOTES = { x = RIGHT_X + 296, w = 166, leader = 0.55, gap = 6 }
 
 YourDiary.HEAD, YourDiary.ENTRY, YourDiary.LEDGER, YourDiary.PARAPHS, YourDiary.FACES = HEAD, ENTRY, LEDGER, PARAPHS, FACES
-YourDiary.SITTINGS = SITTINGS
+YourDiary.SITTINGS, YourDiary.SOLO = SITTINGS, SOLO
 YourDiary.RIGHT_H, YourDiary.LAYOUT, YourDiary.SNAPSHOT, YourDiary.FULL = RIGHT_H, LAYOUT, SNAPSHOT, FULL
 YourDiary.CAPTION, YourDiary.LEADER, YourDiary.LEADERS, YourDiary.STRIPS = CAPTION, LEADER, LEADERS, STRIPS
 YourDiary.FOOT, YourDiary.NOTHING, YourDiary.OFF = FOOT, NOTHING, OFF

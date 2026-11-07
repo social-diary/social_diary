@@ -297,6 +297,29 @@ Subagent, "UI build" brief. It writes `Text.lua`'s registrations,
 geometry with the plates' render (`.claude/skills/plates/tools/plates.sh`)
 and reports which pages it looked at.
 
+**The controller comes free, if the feature keeps to the kit.** With the
+pad in hand (Forever's Gamepad UI), Your Diary's plates, cards, marks and
+the Dungeon View are walked by `UI/Journey/Pad.lua` and `UI/Dungeon/Pad.lua`.
+They find what a feature draws without pad code of its own:
+- **Marks:** a mark's button placed by the plate gets its `padAt`.
+- **Prints:** a print on `plate.overButtons` is found too.
+- **Cards:** every strip answers `:Focus()`, which gives the button under
+  its name and its heading.
+
+A feature needs pad code only when its card's heading isn't the strip's
+`name`, or the card is more than its slip. Then it adds the strip's
+optional `focus(strip, f)` hook (documented above `ns.UI.PaperStrip`).
+
+Things that hold for every feature:
+- **No chat links or try-on from the pad:** never make a click on an item
+  for the pad.
+- **Nothing with the pad on Blizzard frames.**
+- **Pad prompts go through the copywriter.**
+
+The UI build's tests open the feature's testdata level with the pad on
+(see `tests/pad_plates.lua`). They check that its marks and cards are
+reached, and that the look is given back when the mouse takes over.
+
 ### 9. Verification (main session, independently of the subagents)
 
 - `luajit tests/run.lua` is green. `tests/kinds.lua` passes, which means:
@@ -419,6 +442,12 @@ It doesn't get the conversation. All briefs share these rules:
 >
 > Don't edit `Core/`, `UI/`, `Capture/`, `Kind.lua`'s data or
 > `Capture.lua`. If you need a hook, stop and say what and why.
+>
+> The pad (Gamepad UI) finds marks, prints and cards by itself (phase 8's
+> note): add the strip's `focus` hook only if the card's heading isn't
+> `name`. Test with the pad on, as `tests/pad_plates.lua` does: the
+> feature's marks and cards are reached, and nothing stays red when the
+> mouse takes over.
 >
 > Run `luajit tests/run.lua` and `.claude/skills/plates/tools/plates.sh`,
 > and look at the render of the testdata levels where the feature shows.

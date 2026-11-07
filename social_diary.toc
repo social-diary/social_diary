@@ -90,6 +90,14 @@ UI/Style/Widgets.lua
 UI/Style/Person.lua
 UI/Kit/Keys.lua
 UI/Kit/Confirm.lua
+# The controller (ns.UI.Pad): which hand is in, the glyphs, the focus model,
+# its look, then the catcher that uses them. Input and Glyphs each make an
+# event frame as they load; the rest make frames only once a pad is in hand.
+UI/Pad/Input.lua
+UI/Pad/Glyphs.lua
+UI/Pad/Focus.lua
+UI/Pad/Look.lua
+UI/Pad/Catcher.lua
 # Pool, Surface and Light make nothing as they load: kits for the paper after them.
 UI/Kit/Pool.lua
 UI/Paper/Surface.lua
@@ -128,6 +136,7 @@ UI/Journey/Text/Margin.lua
 UI/Journey/Text/Run.lua
 UI/Journal/Book.lua
 UI/Journal/Pages.lua
+UI/Journal/Pad.lua
 # Your Diary's page (ns.UI.YourDiary): the module and its look first, each
 # file after those it takes from as it loads, the page itself last.
 UI/Journey/Look.lua
@@ -142,6 +151,8 @@ UI/Journey/Empty.lua
 UI/Journey/Run.lua
 UI/Journey/Page.lua
 UI/Journey/CardSheet.lua
+UI/Journey/Pad.lua
+UI/Journey/CardPad.lua
 # The person's page: its paper strips (the timeline's day labels and note
 # slips among them), the timeline, the People page, then the page's own
 # pieces in the order they take from each other as they load (the plate,
@@ -165,6 +176,7 @@ UI/Dungeon/Sheet.lua
 UI/Dungeon/Spread.lua
 UI/Dungeon/Way.lua
 UI/Dungeon/Tutorial.lua
+UI/Dungeon/Pad.lua
 UI/Journal/Nearby.lua
 UI/Journal/Empty.lua
 UI/Journal/Glimpse.lua
@@ -195,6 +207,7 @@ UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Memory.lua
 UI/Settings/Sections/Feedback.lua
 UI/Settings/Sections/About.lua
+UI/Settings/Pad.lua
 UI/Blizzard/Signpost.lua
 # The parcel at login: its scene first (ns.UI.Parcel, and the fonts made
 # as it loads), wrapped, torn, then the host and the entry points. The
@@ -327,6 +340,7 @@ Dev/JourneyDebug.lua
 Dev/PaceDebug.lua
 Dev/TestData.lua
 Dev/Hints.lua
+Dev/Pad.lua
 Features/LevelUps/Dev.lua
 Features/Trade/Dev.lua
 Features/Chat/Dev.lua

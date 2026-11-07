@@ -255,6 +255,11 @@ local Seed, Width, Turned = Surface.Seed, Surface.Width, Surface.Turned
 --   nearest(strip, x, y, sx, sy) → x, y
 --            strip:Nearest's, given the slip's own nearest point sx, sy
 --            (the lucky card's tag is nearer, some ways)
+--   focus(strip, f) → f
+--            strip:Focus's, given what the strip says of itself (below):
+--            a card whose heading is not `name`, or that is more than its
+--            slip, says so here. Optional: a card without it is found by
+--            the pad as it is (UI/Journey/Pad.lua), no pad code of its own
 -- What a card may use of the strip, and nothing else (the rest is the
 -- strip's own, and may change; nor may a card's own fields take its
 -- names):
@@ -275,6 +280,13 @@ local Seed, Width, Turned = Surface.Seed, Surface.Width, Surface.Turned
 --            :WhatLines() → what happened's lines as shown (font strings)
 --            :Lay, :Bend, :Out, :Screen (at the foot), :Nearest, :SetNote,
 --            :Hover, :What, :Quote, :SetRight (a right click on it)
+-- What the pad stands on (.claude/controller-plan.md, step 4b), asked of
+-- every note as laid, a person's strip and a card alike:
+--   :Focus() → { frame, words, corners, x, y }
+--            `frame` the button under its name (its tooltip, its click),
+--            `words` its heading (the name in the hand), `corners` the
+--            slip's four corners on the parent as laid (y down, turned),
+--            x, y their middle; the card's `focus` hook may change any
 -- Something drawn in the strip's look that is not a strip (good luck's S
 -- on a print, Features/Hunts/LuckyCard.lua) reads ns.UI.PAPER_LOOK (at the
 -- foot of this file).
@@ -1180,6 +1192,20 @@ function ns.UI.PaperStrip(parent, card)
         local sx, sy = Nearest(x, y)
         if card.nearest then return card.nearest(self, x, y, sx, sy) end
         return sx, sy
+    end
+
+    -- What the pad stands on (the comment over ns.UI.PaperStrip): its
+    -- name's button and words, and the slip's corners as laid, turned.
+    function strip:Focus()
+        local corners = {}
+        for i, c in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
+            local px, py = Out(c[1] * W / 2, c[2] * H / 2)
+            corners[i] = { px, py }
+        end
+        local mx, my = Out(0, 0)
+        local f = { frame = self.link, words = self.name, corners = corners, x = mx, y = my }
+        if card.focus then f = card.focus(self, f) or f end
+        return f
     end
 
     strip:Hide()

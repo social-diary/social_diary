@@ -426,8 +426,12 @@ function ns.UI.LooseSheet(parent, W, H, opts)
     end
 
     -- A button, which cannot turn: its square goes where the box's middle
-    -- lands.
+    -- lands. Its middle on the sheet is kept (`padAt`, x right, y down): the
+    -- pad reads a sheet's controls in the order they lie, top down and left to
+    -- right (UI/Journey/CardPad.lua), and a plate's marks by it (plate:Marks).
     local function PlaceButton(button, x, y, w, h)
+        local at = button.padAt
+        if at then at[1], at[2] = x + w / 2, y + h / 2 else button.padAt = { x + w / 2, y + h / 2 } end
         local sx, sy = Screen(x + w / 2, y + h / 2)
         button:ClearAllPoints()
         button:SetPoint("CENTER", button.anchorTo or S, "CENTER", sx, sy)

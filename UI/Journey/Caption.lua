@@ -221,6 +221,9 @@ local function Plated(ctx, slot, over)
     -- For the tests: where the words end, what the margin shows, and
     -- whether the caption is over the plate.
     plate.captionFoot, plate.margin, plate.captionOver = top + tall, shown, over
+    -- Its heading: the plate's words for the pad (UI/Journey/Pad.lua),
+    -- red while the pad is on it or among its marks.
+    plate.heading = heading
     return true
 end
 

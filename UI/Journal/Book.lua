@@ -65,7 +65,8 @@ J.BOOK = BOOK
 
 -- The heading of one of the journal's pages, on the left page, and the
 -- count to its right ("3 in the diary", "2 days"). Returns the count, for
--- the page to fill.
+-- the page to fill, and the title, for the page's `title` (the pad boxes it
+-- after a ribbon turn: UI/Journal/Pad.lua).
 function J.PageHeading(book, text)
     local title = Style.Text(book, FONT.page)
     title:SetPoint("TOPLEFT", LEFT_X, -20)
@@ -74,7 +75,7 @@ function J.PageHeading(book, text)
     local count = Style.Text(book, FONT.small)
     count:SetPoint("BOTTOMRIGHT", book, "TOPLEFT", LEFT_X + LEFT_W, -36)
     count:SetJustifyH("RIGHT")
-    return count
+    return count, title
 end
 
 -- The journal's frame, once built, and whose page is open.
@@ -227,6 +228,8 @@ local function ShowView()
     -- page: either goes once its page is turned away from
     -- (UI/Windows/Intro/Tour.lua).
     ns.UI.Tour.Turned()
+    -- The pad's scopes follow the page (UI/Pad/Catcher.lua).
+    ns.UI.Pad.Refresh()
 end
 
 local function Build()

@@ -339,6 +339,9 @@ local function PlaceLinks(host, slot)
             local hover = slot.links:Next()
             hover:SetFrameLevel(strip:GetFrameLevel() + 5)
             hover.item = it
+            -- (its middle on the host, y down, as the strip's own: the pad
+            -- walks the items by where they lie, UI/Dungeon/Pad.lua)
+            hover.padAt = { x, y }
             hover:ClearAllPoints()
             hover:SetPoint("CENTER", host, "TOPLEFT", x, -y)
             hover:SetSize(w, h)

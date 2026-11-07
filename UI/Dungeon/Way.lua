@@ -855,6 +855,9 @@ Start = function(view)
     if not way.pen then way.pen = ns.DungeonWay.Pen(view.visit, DungeonPage.Wing(view.visit)) end
     way.drawing = true
     way.slip.lifted = false
+    -- The pad steps aside while the pencil is out (controller plan, step 4f:
+    -- the route editor is the mouse's alone), back as it is put down (Lower).
+    ns.UI.Pad.Aside("way", true)
     GameTooltip:Hide()
     Style.PlaySound("write")
     Take(view)
@@ -865,6 +868,7 @@ end
 local function Lower(view)
     local way = view.way
     way.drawing, way.drag, way.hover = false, nil, nil
+    ns.UI.Pad.Aside("way", false)
     way.catcher:Hide()
     way.ink:Hide()
     for _, pool in pairs(way.pools) do

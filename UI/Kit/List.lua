@@ -362,6 +362,42 @@ function ns.UI.VirtualList(parent, rowHeight, numRows, build, update)
         self.smooth = height
     end
 
+    -- The row showing item `index` now, or nil where it is scrolled out of
+    -- view (the pad's focus on a list: UI/Pad/Focus.lua finds its words
+    -- there, as the rows are handed round as the list scrolls).
+    function list:RowOf(index)
+        local item = self.data[index]
+        if not item then return nil end
+        for i = 1, maxRows do
+            local row = self.rows[i]
+            if row.item == item and row:IsShown() then return row end
+        end
+    end
+
+    -- Scrolled the least way that shows item `index` whole: up to it where
+    -- it lies above, down until it is the last shown where it lies below.
+    function list:Reveal(index)
+        local item = self.data[index]
+        if not item then return end
+        if smooth then
+            local top, height = tops[index] or 0, HeightOf(item)
+            if top < self.pos then
+                self:SetPosition(top)
+            elseif top + height > self.pos + smooth then
+                self:SetPosition(top + height - smooth)
+            end
+            return
+        end
+        if index <= self.offset then return self:SetOffset(index - 1) end
+        if self:RowOf(index) then return end
+        local room, used, first = rowHeight * numRows, 0, index
+        while first >= 1 and used + HeightOf(self.data[first]) <= room do
+            used = used + HeightOf(self.data[first])
+            first = first - 1
+        end
+        self:SetOffset(math.min(first, index - 1))
+    end
+
     -- Call before SetData. Never more than were built.
     function list:SetNumRows(n)
         numRows = math.max(1, math.min(n, maxRows))

@@ -707,9 +707,12 @@ local function New(parent, slot)
     local numberPool = TextPool(Style.FONT.tag)
 
     -- A hover square passes a click on to the plate: a mark is part of it.
+    -- `what` says what it is over (a registered kind, "person", "pin",
+    -- "door", "flight", "cross", "pool"), kept on it with where it is on
+    -- the card (`padAt`), so the pad finds the marks (plate:Marks).
     local hoverPool = { used = 0 }
     function hoverPool:Begin() self.used = 0 end
-    function hoverPool:Next(x, y, tip, size)
+    function hoverPool:Next(x, y, tip, size, what)
         size = size or MARK.hover
         self.used = self.used + 1
         local button = self[self.used]
@@ -734,13 +737,14 @@ local function New(parent, slot)
             self[self.used] = button
         end
         button.tip, button.spot = tip, nil
+        button.what, button.padAt = what, { x, y }
         PlaceButton(button, x - size / 2, y - size / 2, size, size)
         button:Show()
         return button
     end
     function hoverPool:Finish()
         for i = self.used + 1, #self do
-            self[i].tip, self[i].spot = nil, nil
+            self[i].tip, self[i].spot, self[i].what, self[i].padAt = nil, nil, nil, nil
             self[i]:Hide()
         end
     end
@@ -756,7 +760,15 @@ local function New(parent, slot)
     -- Each pass's `new` is asked here, in the passes' order, as the plate
     -- is made.
     local overPools, overTexts = {}, {}
-    local overKit = { over = over, Place = Place, Quad = Quad, PlaceButton = PlaceButton, Tip = Tip }
+    -- (a button placed there keeps its middle on the card, `padAt`, and
+    -- every one is listed in plate.overButtons: the pad finds them with
+    -- the marks, plate:Marks)
+    plate.overButtons = {}
+    local overKit = { over = over, Place = Place, Quad = Quad, Tip = Tip }
+    function overKit.PlaceButton(button, x, y, w, h)
+        button.padAt = { x + w / 2, y + h / 2 }
+        return PlaceButton(button, x, y, w, h)
+    end
     function overKit.Pool(layer, sublevel)
         local pool = Pool(layer, sublevel, nil, over)
         overPools[#overPools + 1] = pool
@@ -776,6 +788,7 @@ local function New(parent, slot)
             if which == "RightButton" then plate:Right() end
         end)
         button:Hide()
+        plate.overButtons[#plate.overButtons + 1] = button
         return button
     end
     for _, spec in ipairs(PASS_ORDER) do
@@ -1665,7 +1678,7 @@ local function New(parent, slot)
                         Style.TipList(title, lines, tip)
                     end
                     return tip
-                end)
+                end, nil, "flight")
             end
         end
 
@@ -1776,7 +1789,7 @@ local function New(parent, slot)
         end
         number:SetTextColor(text[1], text[2], text[3])
         PlaceText(number, x, y, "CENTER")
-        hoverPool:Next(x, y, function() return Tip(Text.Pin(pin, now)) end)
+        hoverPool:Next(x, y, function() return Tip(Text.Pin(pin, now)) end, nil, "pin")
         return x, y
     end
 
@@ -1825,7 +1838,7 @@ local function New(parent, slot)
                     local x, y = Apart(h.x, h.y, Radius("dungeon"))
                     Halo(x, y, MARK.door + 5, true)
                     SHAPES.dungeon(markPool, markInnerPool, x, y)
-                    hoverPool:Next(x, y, function() return Tip(Text.Dungeon(seg, now)) end)
+                    hoverPool:Next(x, y, function() return Tip(Text.Dungeon(seg, now)) end, nil, "door")
                 end
             end
 
@@ -1935,7 +1948,7 @@ local function New(parent, slot)
                         for _, line in ipairs(lines or {}) do list[#list + 1] = { line, 1, 1, 1, true } end
                     end
                     return #list > 0 and list or nil
-                end)
+                end, nil, "person")
                 local px, py = OnPage(x, y)
                 for _, m in ipairs(c.list) do
                     where[m] = { px, py, x = x, y = y }
@@ -1989,7 +2002,7 @@ local function New(parent, slot)
                 if spec.halo then Halo(x, y, spec.halo, true) end
                 local arg = spec.arg and spec.arg(c.list) or nil
                 spec.draw(kit, x, y, arg)
-                hoverPool:Next(x, y, spec.tip and Tell(c.list, spec.tip) or nil, hover).spot =
+                hoverPool:Next(x, y, spec.tip and Tell(c.list, spec.tip) or nil, hover, spec.kind).spot =
                     { kind = spec.kind, list = c.list }
                 local px, py = OnPage(x, y)
                 marks[#marks + 1] = { x = x, y = y, list = c.list, at = { px, py }, arg = arg }
@@ -2032,7 +2045,7 @@ local function New(parent, slot)
     local function Passes(mapID, At, entry, now, opts)
         local c = { crosses = crosses, mapID = mapID, entry = entry, now = now, opts = opts, At = At,
             OnPage = OnPage, Tip = Tip,
-            HoverCross = function(cross, fn) hoverPool:Next(cross.x, cross.y, fn, DEATH.dot + 4) end }
+            HoverCross = function(cross, fn) hoverPool:Next(cross.x, cross.y, fn, DEATH.dot + 4, "cross") end }
         for _, spec in ipairs(PASS_ORDER) do spec.draw(plate, c) end
     end
 
@@ -2090,7 +2103,7 @@ local function New(parent, slot)
                     local title, lines = Text.Stop(pool.seg, now, pool.more)
                     lines[1] = Text.Pool(pool.seg)
                     return Tip(title, lines)
-                end, size)
+                end, size, "pool")
             end
         end
 
@@ -2192,6 +2205,41 @@ local function New(parent, slot)
         return OnPage(px, py)
     end
 
+    -- What the pad stands on (UI/Journey/Pad.lua, .claude/controller-plan.md
+    -- step 4b), found here so a feature's mark needs no pad code:
+    -- plate:Marks() → every mark shown with a tooltip, each { frame (its
+    -- hover square or a pass's button), key (the same however often it is
+    -- drawn again: what it is and where on the card), what, x, y (its
+    -- middle on the page, y down) }. The trail's pools are left out: up to
+    -- HOVER.most of them would bury the marks (they keep their tooltips
+    -- under the mouse). plate:Corners() → the card's four corners on the
+    -- page, turned, for the pad's outline round it.
+    function plate:Marks()
+        local out = {}
+        local function Take(button, what)
+            local at = button.padAt
+            if not (at and button:IsShown()) then return end
+            local px, py = OnPage(at[1], at[2])
+            out[#out + 1] = { frame = button, what = what, x = px, y = py,
+                key = string.format("%s:%d:%d", tostring(what), math.floor(at[1] + 0.5), math.floor(at[2] + 0.5)) }
+        end
+        for i = 1, hoverPool.used do
+            local button = hoverPool[i]
+            if button.tip and button.what and button.what ~= "pool" then Take(button, button.what) end
+        end
+        for _, button in ipairs(self.overButtons) do Take(button, "over") end
+        return out
+    end
+    function plate:Corners()
+        local s = self.slot
+        local out = {}
+        for i, c in ipairs({ { 0, 0 }, { s.w, 0 }, { s.w, s.h }, { 0, s.h } }) do
+            local px, py = OnPage(c[1], c[2])
+            out[i] = { px, py }
+        end
+        return out
+    end
+
     -- What a click on the card does (the full page); nil for nothing.
     -- What a click on the card does: `fn(plate)`, nil for nothing. With
     -- `lean` (the close-ups), it leans in under the mouse (ZOOM).
@@ -2213,8 +2261,10 @@ local function New(parent, slot)
     -- lets it go. plate.onZoom(plate, scale) hears each step (the page's
     -- leaders follow their marks).
     plate.zoom, plate.scale = 0, 1
+    -- (plate.padLean: the pad is among its marks, UI/Journey/Pad.lua, and
+    -- it leans in as under the mouse)
     local function Want()
-        return (plate.leans and clip:IsMouseOver()) and 1 or 0
+        return (plate.leans and (clip:IsMouseOver() or plate.padLean)) and 1 or 0
     end
     local function Apply()
         local t = 1 - (1 - plate.zoom) ^ 4
@@ -2370,6 +2420,69 @@ local function New(parent, slot)
     end
     clip:SetScript("OnMouseWheel", function(_, delta) plate:Wheel(delta) end)
 
+    -- The pad's look closer (UI/Journey/Pad.lua, .claude/controller-plan.md
+    -- step 4d), with no cursor to say where: the same arithmetic as the
+    -- wheel's and the drag's, about a point of the map (0..1) instead.
+
+    -- A notch about map point x, y (a mark the pad is on): it stays where
+    -- it is on the card, as the point under the cursor does for the wheel.
+    -- Nil x: about the card's middle. False back at either end (no closer
+    -- than `native`, no further than the fit), where nothing moves.
+    function plate:ZoomAt(delta, x, y)
+        if not look then return false end
+        local g = look.goal
+        local f = Clamp(g.f * FULLZOOM.step ^ (delta or 0), look.fit, FULLZOOM.native)
+        if math.abs(f - g.f) < 1e-9 then return false end
+        local qx, qy = 0, 0
+        if x then qx, qy = (x - g.cx) * g.f * look.LW, (y - g.cy) * g.f * look.LH end
+        self:Wheel(delta, qx, qy)
+        return true
+    end
+
+    -- How far it can go now: "in" and "out", each true while a notch that
+    -- way would move it (the pad's prompts).
+    function plate:Zooms()
+        if not look then return false, false end
+        local f = look.goal.f
+        return f < FULLZOOM.native - 1e-9, f > look.fit + 1e-9
+    end
+
+    -- Map point x, y within the view it is going to (look.goal), `margin`
+    -- card px inside the neat line; true on a close-up (no look: it shows
+    -- what it shows).
+    function plate:InView(x, y, margin)
+        if not look then return true end
+        local s, g = self.slot, look.goal
+        margin = margin or 0
+        return math.abs((x - g.cx) * g.f * look.LW) <= s.w / 2 - s.pad - margin
+            and math.abs((y - g.cy) * g.f * look.LH) <= s.h / 2 - s.pad - margin
+    end
+
+    -- Map point x, y brought to the middle (held on the map), eased as the
+    -- wheel eases; drawn sharp again once it has stood `settle` seconds
+    -- (Tick), never at once: the pad's walk asks this as it lands on a
+    -- mark, and a redraw then would hand the marks round under it.
+    function plate:PanTo(x, y)
+        if not look then return end
+        local f, cx, cy = Hold(look.goal.f, x, y)
+        look.goal = { f = f, cx = cx, cy = cy }
+        look.move = { t = 0, f = look.f, cx = look.cx, cy = look.cy }
+        Wait()
+    end
+
+    -- Moved by dx, dy card px (x right, y down: what comes into view from
+    -- that side), as a drag moves it the other way, at once; drawn sharp
+    -- again once it has stood `settle` seconds. The right stick's, a
+    -- frame at a time.
+    function plate:Pan(dx, dy)
+        if not look or look.pressed then return end
+        local f, cx, cy = Hold(look.f, look.cx + dx / (look.f * look.LW), look.cy + dy / (look.f * look.LH))
+        look.f, look.cx, look.cy, look.move = f, cx, cy, nil
+        look.goal = { f = f, cx = cx, cy = cy }
+        Show()
+        Wait()
+    end
+
     -- A press on the picture: a click, or a drag that pans.
     function Drag()
         local p = look and look.pressed
@@ -2454,6 +2567,26 @@ local function New(parent, slot)
             local scale = self.scale or 1
             x = window[1] + (s.w / 2 + qx / scale - self.box[1]) / self.fullW
             y = window[2] + (s.h / 2 + qy / scale - self.box[2]) / self.fullH
+        end
+        if x < 0 or x > 1 or y < 0 or y > 1 then return nil end
+        return x, y
+    end
+
+    -- The point of the map (0..1) at a point of the card (x right, y down
+    -- from its top left, as a button's `padAt`): MapAtCursor without the
+    -- cursor, for the pad (UI/Journey/CardSheet.lua's PadWhere: a card added
+    -- at a mark). The picture as drawn, not leaned; nil off the picture or
+    -- past the map's edge.
+    function plate:MapAtCard(cx, cy)
+        local s, window = self.slot, self.window
+        if not (s and window and self.box) then return nil end
+        local x, y
+        if look then
+            local d = look.drawn or look
+            x, y = d.cx + (cx - s.w / 2) / (d.f * look.LW), d.cy + (cy - s.h / 2) / (d.f * look.LH)
+        else
+            x = window[1] + (cx - self.box[1]) / self.fullW
+            y = window[2] + (cy - self.box[2]) / self.fullH
         end
         if x < 0 or x > 1 or y < 0 or y > 1 then return nil end
         return x, y

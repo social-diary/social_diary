@@ -317,10 +317,13 @@ local function Placer(view, K)
         return label
     end
 
-    function P.Hit(pool, x, y, size, tip)
+    -- (`what` it marks, "boss", "cross", "level", "find" or "door", kept on
+    -- the square with its middle, `padAt`: the pad walks the marks by them,
+    -- UI/Dungeon/Pad.lua)
+    function P.Hit(pool, x, y, size, tip, what)
         local hit = pool:Next()
         K.PlaceButton(hit, x - size / 2, y - size / 2, size, size)
-        hit.tip = tip
+        hit.tip, hit.what = tip, what
         return hit
     end
 
