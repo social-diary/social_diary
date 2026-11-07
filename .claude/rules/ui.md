@@ -24,6 +24,7 @@ Find a thing by its area first:
 | `Journey/` | Your Diary: the page's parts, the plate, its words (`Text/`) | `ns.UI.YourDiary`, `JourneyPlate`, `JourneyText` |
 | `Settings/` | the settings page, its kit, `Sections/` one file per section | `ns.UI.Settings` |
 | `Windows/` | what opens outside the book or over it: entry, picker, `Reunion/` toast, `Intro/` parcel and the introduction's tour | `ns.UI.Entry`, `Toast`, `Parcel`, `Tour` |
+| `Pad/` | controller support: which input is in hand, glyphs, the focus model, its look, the catcher and scopes. Each area's scope lives with the area (`Journal/PeoplePad.lua`, `Settings/Pad.lua`, ...) | `ns.UI.Pad` |
 | `Blizzard/` | hooks into Blizzard's frames: tooltip, Social tab, AddOns settings signpost, key bindings, the minimap button | — |
 
 ## Namespaces
@@ -66,6 +67,18 @@ the header above `ns.UI.PaperStrip` (`UI/Paper/Strip.lua`). Never override
 a strip's `Layout`, `Smaller` or `Nearest`, read `PAPER_STRIP`, or touch its
 private fields: `tests/kinds.lua` fails on each. Tooltip lists go through
 `Style.TipList`.
+
+## The controller
+
+Everything a player can reach works with a gamepad (WoW Forever's Gamepad
+UI). Before adding or changing UI, load `/controller-support`. It says
+what is found without pad code (strips' `:Focus()`, plate marks'
+`padAt`, the settings kit, `Pad.Controls` on forms, rows of existing
+lists) and how to register a scope when it isn't. It also covers the
+chosen look, the button map, the copy rules and the tests. Never call
+Blizzard's Gamepad UI or set properties on its frames (taint). Never
+click an item for the pad. A window takes the pad only if the player
+opened it (`Pad.Opened`).
 
 ## Load order
 

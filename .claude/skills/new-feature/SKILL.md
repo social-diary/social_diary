@@ -297,7 +297,10 @@ Subagent, "UI build" brief. It writes `Text.lua`'s registrations,
 geometry with the plates' render (`.claude/skills/plates/tools/plates.sh`)
 and reports which pages it looked at.
 
-**The controller comes free, if the feature keeps to the kit.** With the
+**The controller comes free, if the feature keeps to the kit.** The
+rules, the look, the button map and the test setup are in
+`/controller-support` (`.claude/skills/controller-support/`). The UI
+proposal and the UI build both load it. In short: with the
 pad in hand (Forever's Gamepad UI), Your Diary's plates, cards, marks and
 the Dungeon View are walked by `UI/Journey/Pad.lua` and `UI/Dungeon/Pad.lua`.
 They find what a feature draws without pad code of its own:
@@ -387,8 +390,8 @@ It doesn't get the conversation. All briefs share these rules:
 
 ### UI proposal (phase 5b)
 
-> Load the skills `plates` and `frontend-design`. Read `AGENTS.md`,
-> `.impeccable.md`, `.claude/rules/ui.md` and the dossier
+> Load the skills `plates`, `frontend-design` and `controller-support`.
+> Read `AGENTS.md`, `.impeccable.md`, `.claude/rules/ui.md` and the dossier
 > `.claude/features/<name>.md` (scope, probe, record).
 >
 > Propose how <Name> shows on: <the sheet's surfaces>. The plate label
@@ -430,7 +433,8 @@ It doesn't get the conversation. All briefs share these rules:
 
 ### UI build (phase 8)
 
-> Load the skills `plates` and `frontend-design`. Read `.claude/rules/ui.md`,
+> Load the skills `plates`, `frontend-design` and `controller-support`.
+> Read `.claude/rules/ui.md`,
 > the dossier (the signed proposal and its decisions) and
 > `.claude/skills/new-feature/folder.md`.
 >
