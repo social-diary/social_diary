@@ -73,27 +73,38 @@ local KILL, DEATH = "pvp_kill", "pvp_death"
 -- "in Hillsbrad Foothills". The name is the profile's.
 
 local Place = ns.UI.TimelineText.Place
+local L, Fmt = ns.L, ns.Fmt
 
 local function Always() return true end
 
-ns.Rows.Register(KILL, { fight = "kill", plate = 1, moment = Always, reason = "you killed them",
+ns.Rows.Register(KILL, { fight = "kill", plate = 1, moment = Always, reason = L["you killed them"],
     text = function(row, guid)
-        local them = guid and ns.Characters.Name(guid) or "them"
+        local them = guid and ns.Characters.Name(guid) or L["them##killed"]
         local by = row.context and row.context.by
         local You = ns.UI.Format.You
-        if not by then return You(row.me, "{You} killed ") .. them .. Place(row) end
+        if not by then return You(row.me, Fmt(L["{You} killed %1$s%2$s"], them, Place(row))) end
         local blow = ns.Characters.Name(by)
-        return You(row.me, "{Your} group killed ") .. them .. Place(row) .. (blow and (" (" .. blow .. "'s killing blow)") or "")
+        if blow then
+            return You(row.me, Fmt(L["{Your} group killed %1$s%2$s (%3$s's killing blow)"], them, Place(row), blow))
+        end
+        return You(row.me, Fmt(L["{Your} group killed %1$s%2$s"], them, Place(row)))
     end,
     icon = "hostile" })
 
-ns.Rows.Register(DEATH, { fight = "death", plate = 1, moment = Always, reason = "they killed you",
+ns.Rows.Register(DEATH, { fight = "death", plate = 1, moment = Always, reason = L["they killed you"],
     text = function(row, guid)
         local c = row.context or {}
-        local them = guid and ns.Characters.Name(guid) or "They"
-        local with = c.spell and (" with " .. c.spell) or ""
-        local killed = c.probable and " probably killed {you}" or " killed {you}"
-        return them .. ns.UI.Format.You(row.me, killed) .. with .. Place(row)
+        local them = guid and ns.Characters.Name(guid)
+        local with = c.spell and Fmt(L[" with %s"], c.spell) or ""
+        local text
+        if them then
+            text = Fmt(c.probable and L["%1$s probably killed {you}%2$s%3$s"] or L["%1$s killed {you}%2$s%3$s"],
+                them, with, Place(row))
+        else
+            text = Fmt(c.probable and L["They probably killed {you}%1$s%2$s"] or L["They killed {you}%1$s%2$s"],
+                with, Place(row))
+        end
+        return ns.UI.Format.You(row.me, text)
     end,
     icon = "death" })
 

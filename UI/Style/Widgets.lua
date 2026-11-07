@@ -125,7 +125,7 @@ function Style.GroupedRow(list, body)
         for _, part in ipairs(self.parts) do part:SetShown(not isHeader) end
         self.highlight:SetAlpha(isHeader and 0 or 1)
         if isHeader then
-            self.header:SetText(item.header:upper())
+            self.header:SetText(Style.Upper(item.header))
             self.selected:Hide()
         end
         return isHeader

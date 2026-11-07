@@ -57,6 +57,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Style = ns.Style
 
 local BOOK = ns.UI.Journal.BOOK
@@ -340,7 +342,7 @@ local LEADERS, STRIPS = { level = 20 }, { level = 25 }
 -- second line's gap when it wraps, and under it all the hint, which says
 -- how to look closer and how to go back. There is no back link: a click on
 -- the map is the way back (FULLZOOM's DRAG), so the hint is what tells it.
-local FOOT = { y = 506, gap = 10, under = 3, hint = 3, words = "Left click to go back" }
+local FOOT = { y = 506, gap = 10, under = 3, hint = 3, words = L["Left click to go back"] }
 -- A level with nothing kept: its faded line, `y` down the page. The
 -- setting off: its line and link in the right column at the foot (`x`,
 -- `y`), or on the full page's last line (`fullY`).

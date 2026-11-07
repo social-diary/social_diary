@@ -284,7 +284,7 @@ function Strips.Level(parent)
             hand:SetFont(Style.NEUTON_ITALIC, L.hand, "")
         end
         local lv = note.level or {}
-        printed:SetText("Level " .. tostring(lv[1] or ""))
+        printed:SetText(ns.L["Level "] .. tostring(lv[1] or ""))
         hand:SetText(tostring(lv[2] or ""))
         local w = math.ceil(L.pad + Width(printed) + 2 + L.gap + Width(hand) + 2 + LOOK.overhang + L.pad)
         note.size = { w, L.h }
@@ -308,9 +308,9 @@ function Strips.Level(parent)
         -- Through the old figures, not the word.
         local note = strip.note or {}
         local figures = tostring((note.level or {})[1] or "")
-        printed:SetText("Level ")
+        printed:SetText(ns.L["Level "])
         local lead = Width(printed)
-        printed:SetText("Level " .. figures)
+        printed:SetText(ns.L["Level "] .. figures)
         local fw = math.max(1, Width(printed) - lead)
         local pts = Strike(Seed(note.seed or "level"), left + lead, fw, 1, 11)
         for k = 1, #pts - 1 do

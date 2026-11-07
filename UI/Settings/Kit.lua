@@ -41,7 +41,7 @@ local function Column(parent, x, y, width)
         self.first = false
 
         local heading = Style.Text(self.parent, FONT.heading)
-        heading:SetText(text:upper())
+        heading:SetText(Style.Upper(text))
         self:Place(heading, 14, 0, 8)
 
         local rule = self.parent:CreateTexture(nil, "ARTWORK")
@@ -71,17 +71,21 @@ local function Column(parent, x, y, width)
     function column:Number(text, unit, min, max, get, set)
         local row = CreateFrame("Frame", nil, self.parent)
 
+        -- The unit first: a longer one (a translation's "Zeilen") takes the
+        -- room it needs from the sentence.
+        row.unit = Style.Text(row, FONT.body)
+        row.unit:SetText(unit)
+        local unitW = math.max(UNIT_W, math.ceil(row.unit:GetStringWidth() or 0))
+
         row.label = Style.Text(row, FONT.body)
         row.label:SetPoint("TOPLEFT")
-        row.label:SetWidth(self.width - FIELD_W - UNIT_W - 8)
+        row.label:SetWidth(self.width - FIELD_W - unitW - 8)
         row.label:SetText(text)
 
         row.box = Style.NumberField(row, FIELD_W, min, max, get, set)
-        row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -UNIT_W, 1)
+        row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -unitW, 1)
 
-        row.unit = Style.Text(row, FONT.body)
         row.unit:SetPoint("LEFT", row.box, "RIGHT", 6, 0)
-        row.unit:SetText(unit)
 
         local height = math.max(18, row.label:GetStringHeight())
         row:SetSize(self.width, height)
@@ -143,13 +147,27 @@ local function Pane(s)
     pane.title = Style.Text(pane, s.parent and FONT.titleSmall or FONT.title)
     pane.title:SetPoint("TOPLEFT", 0, 0)
     pane.title:SetHeight(28)
-    pane.title:SetText(s.label:upper())
+    pane.title:SetText(Style.Upper(s.label))
 
     pane.about = Style.Text(pane, FONT.faded)
-    pane.about:SetPoint("BOTTOMLEFT", pane.title, "BOTTOMRIGHT", 10, 5)
     pane.about:SetText(s.about)
 
-    return pane, Column(pane, 0, -48, BOOK.RIGHT_W)
+    -- Beside the name while it fits on the page; a longer line (German
+    -- runs a third longer) goes under the name instead, wrapped to the
+    -- page's width, and the column starts below it.
+    local top = -48
+    local room = BOOK.RIGHT_W - (pane.title:GetStringWidth() or 0) - 10
+    if (pane.about:GetStringWidth() or 0) <= room then
+        pane.about:SetPoint("BOTTOMLEFT", pane.title, "BOTTOMRIGHT", 10, 5)
+    else
+        pane.about:SetPoint("TOPLEFT", pane.title, "BOTTOMLEFT", 0, -2)
+        pane.about:SetWidth(BOOK.RIGHT_W)
+        pane.about:SetJustifyH("LEFT")
+        pane.about:SetWordWrap(true)
+        top = -(28 + 2 + math.ceil(pane.about:GetStringHeight() or 0) + 14)
+    end
+
+    return pane, Column(pane, 0, top, BOOK.RIGHT_W)
 end
 
 -- A setting from the saved table, in column `c`, refreshed with the page.

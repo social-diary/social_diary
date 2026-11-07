@@ -633,7 +633,7 @@ function FindCard.ShowTip(owner, item, now)
     local C = TIP.colour
     for _, m in ipairs(item.moments) do
         local title, line = Firsts.Tip(m, now, true)
-        GameTooltip:AddLine(line ~= "" and (title .. ", " .. line) or title, C[1], C[2], C[3], true)
+        GameTooltip:AddLine(line ~= "" and ns.T("%1$s, %2$s", title, line) or title, C[1], C[2], C[3], true)
     end
     GameTooltip:Show()
 end

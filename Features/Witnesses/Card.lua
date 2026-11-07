@@ -73,6 +73,7 @@ local addonName, ns = ...
 
 local Style = ns.Style
 local Witnesses = ns.Witnesses
+local L = ns.L
 
 local WitnessCard = {}
 Witnesses.Card = WitnessCard
@@ -396,7 +397,7 @@ function WitnessCard.New(parent)
                 -- A stranger's opens their page pencilled in, the glimpse (the
                 -- stranger-glimpse proposal, 5 Nov 2026), and says so.
                 if guid then
-                    local click = ns.Diary.IsDiary(guid) and "Click to open their page in the diary"
+                    local click = ns.Diary.IsDiary(guid) and L["Click to open their page in the diary"]
                         or ns.UI.PersonText.GLIMPSE.click
                     list[#list + 1] = { click, 0.6, 0.6, 0.6, true }
                 end
@@ -487,7 +488,7 @@ function WitnessCard.New(parent)
         local name = card.nameWords or ""
         Hand(card.name, F.name)
         local others = Witnesses.Others(w.others)
-        local line = others and (name .. " " .. others) or name
+        local line = others and ns.Fmt(L["%1$s %2$s"], name, others) or name
         card.name:SetText(line)
         if others and Width(card.name) + 2 > room then
             line, others = name, nil

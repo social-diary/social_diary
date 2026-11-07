@@ -101,7 +101,7 @@ end
 function Style.SetPersonHeading(owner, record, name, who)
     owner.portrait:SetCharacter(record)
     owner.name:SetFontObject(Style.FONT.title)
-    owner.name:SetText(name:upper())
+    owner.name:SetText(Style.Upper(name))
     if owner.name:GetUnboundedStringWidth() > owner.nameRoom then
         owner.name:SetFontObject(Style.FONT.titleSmall)
     end
@@ -324,7 +324,7 @@ function Style.Rubric(parent, width)
     Style.Shade(rule, "HORIZONTAL", R[1], R[2], R[3], RUBRIC.ruleAlpha, 0)
 
     function heading:SetText(text, lapis)
-        self.text:SetText(text:upper())
+        self.text:SetText(Style.Upper(text))
         local colour = lapis and Style.LAPIS or Style.RUBRIC
         self.paraph:SetColorTexture(colour[1], colour[2], colour[3], 1)
     end

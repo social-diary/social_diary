@@ -5,6 +5,10 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- Social Diary speaks German on a German client
+
 ## [2.4.0]
 
 ### Fixes

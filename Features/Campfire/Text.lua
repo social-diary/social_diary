@@ -8,11 +8,12 @@ local addonName, ns = ...
 local Campfire = ns.Campfire
 local Text = ns.UI.JourneyText
 local Capital, MapName, When = Text.Capital, Text.MapName, Text.When
+local L, Fmt = ns.L, ns.Fmt
 
 -- The margin's slip for a campfire on a plate (Slip.lua): the user's own
 -- words (14 Oct), exactly, lower case and all, however many fires the
 -- plate has. Not to be reworded.
-Campfire.WORDS = "sat by a campfire"
+Campfire.WORDS = L["sat by a campfire"]
 
 -- The subzone a plate's campfires (records { t, subZone, ... }) all share,
 -- or nil where they differ, where one has none, or where it is only the
@@ -34,7 +35,7 @@ end
 function Campfire.Tip(fire, now)
     local lines = {}
     local sub = fire.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = "In " .. sub end
+    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = Fmt(L["In %s"], sub) end
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
     local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
     lines[#lines + 1] = When(fire.t or 0, level, now)
@@ -47,8 +48,8 @@ end
 -- or "A campfire, yesterday, 21:40" with no place to name.
 function Campfire.Describe(fire)
     local sub = fire.subZone
-    local place = type(sub) == "string" and sub ~= "" and sub or "A campfire"
-    return place .. ", " .. ns.UI.Format.At(fire.t or 0, ns.Now())
+    local place = type(sub) == "string" and sub ~= "" and sub or L["A campfire"]
+    return Fmt(L["%1$s, %2$s"], place, ns.UI.Format.At(fire.t or 0, ns.Now()))
 end
 
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
@@ -66,9 +67,19 @@ end
 --
 -- Its lead (`at` 140) comes after a long stay (120) and the company (130),
 -- before a level's pin (150); its tail (`at` 90) after every other kind's.
+local function One(fires)
+    return #fires == 1 or Campfire.At(fires) ~= nil
+end
+
 local function Camped(fires)
-    if #fires == 1 or Campfire.At(fires) then return "a campfire" end
-    return "campfires"
+    return One(fires) and L["a campfire"] or L["campfires"]
+end
+
+-- The lead where the words say it: "By a campfire in Lushwater Oasis",
+-- "By campfires", whole, as a translation's case goes with its noun.
+local function By(fires, spot)
+    if One(fires) then return spot and Fmt(L["By a campfire in %s"], spot) or L["By a campfire"] end
+    return spot and Fmt(L["By campfires in %s"], spot) or L["By campfires"]
 end
 
 Text.RegisterCaption("campfire", {
@@ -76,7 +87,7 @@ Text.RegisterCaption("campfire", {
     take = function(m) return m.campfire end,
     lead = { at = 140, say = function(fires, c)
         local spot = Campfire.At(fires, MapName(c.plate.mapID))
-        if c.said.campfire then return "By " .. Camped(fires) .. (spot and (" in " .. spot) or "") end
+        if c.said.campfire then return By(fires, spot) end
         return spot
     end },
     tail = { at = 90, say = function(fires, c) return c.said.campfire and Camped(fires) or nil end },

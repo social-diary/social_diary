@@ -149,7 +149,7 @@ end
 -- How long the pencil keeps a stranger, in words: "7 days" (the
 -- introduction's tour, UI/Windows/Intro/Tour.lua, and the empty People page).
 function J.PencilDays()
-    return ns.UI.Format.Count(ns.BufferDays(), "day", "days")
+    return ns.UI.Format.Count(ns.BufferDays(), ns.L["day##count"], ns.L["days##count"])
 end
 
 local RIBBON_W, RIBBON_GAP = 22, 8

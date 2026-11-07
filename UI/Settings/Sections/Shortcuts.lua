@@ -5,6 +5,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local FONT = Style.FONT
 local BOOK = ns.UI.Journal.BOOK
@@ -14,21 +16,21 @@ local MACROS, MACRO_ORDER, BOOK_ICON, BookButton = Macro.MACROS, Macro.MACRO_ORD
 
 -- The keys, in Bindings.xml's terms.
 local BINDINGS = {
-    { action = "SOCIALDIARY_JOURNAL", label = "Open the journal" },
-    { action = "SOCIALDIARY_REMEMBER", label = "Remember this" },
+    { action = "SOCIALDIARY_JOURNAL", label = L["Open the journal"] },
+    { action = "SOCIALDIARY_REMEMBER", label = L["Remember this"] },
 }
 local KEY_LABEL_W = 160
 
 -- The /sd commands worth knowing (Core/Slash.lua has them all; /sd help
 -- lists them in chat). In the order they would be wanted.
 local COMMANDS = {
-    { "/sd", "Opens the journal" },
-    { "/sd add <name>", "Adds your target, or whoever you name" },
-    { "/sd remember", "Remember this, from who you met lately" },
-    { "/sd settings", "These pages" },
-    { "/sd about", "What the diary keeps, and where" },
-    { "/sd forget <name>", "Deletes everything about someone" },
-    { "/sd help", "Every command, in chat" },
+    { "/sd", L["Opens the journal"] },
+    { "/sd add <name>", L["Adds your target, or whoever you name"] },
+    { "/sd remember", L["Remember this, from who you met lately"] },
+    { "/sd settings", L["These pages"] },
+    { "/sd about", L["What the diary keeps, and where"] },
+    { "/sd forget <name>", L["Deletes everything about someone"] },
+    { "/sd help", L["Every command, in chat"] },
 }
 local COMMAND_W = 150
 
@@ -39,7 +41,7 @@ local function BuildShortcuts(pane, c)
 
     -- One status line for both keys, under them: what the key did before,
     -- or why it was refused. Room kept, so nothing below moves.
-    c:Heading("Keys")
+    c:Heading(L["Keys"])
     page.keyStatus = Style.Text(pane, FONT.small)
     page.keyStatus:SetWidth(BOOK.RIGHT_W)
     page.keys = {}
@@ -62,7 +64,7 @@ local function BuildShortcuts(pane, c)
     c:Place(page.keyStatus, 28, 0, 0)
 
     -- One status line for both books, under them, as for the keys.
-    c:Heading("On your action bar")
+    c:Heading(L["On your action bar"])
     page.macroStatus = Style.Text(pane, FONT.small)
     page.macroStatus:SetWidth(BOOK.RIGHT_W)
     page.macroBooks = {}
@@ -77,7 +79,7 @@ local function BuildShortcuts(pane, c)
     end
     c:Place(page.macroStatus, 28, 0, 0)
 
-    c:Heading("Slash commands")
+    c:Heading(L["Slash commands"])
     page.commands = {}
     for i, command in ipairs(COMMANDS) do
         local line = Style.Text(pane, FONT.strong)
@@ -90,5 +92,5 @@ local function BuildShortcuts(pane, c)
     end
 end
 
-SettingsUI.RegisterSection("shortcuts", { order = 24, label = "Keybinds & Shortcuts", parent = "interface",
-    about = "Keys, macros, and /sd", build = BuildShortcuts })
+SettingsUI.RegisterSection("shortcuts", { order = 24, label = L["Keybinds & Shortcuts"], parent = "interface",
+    about = L["Keys, macros, and /sd"], build = BuildShortcuts })

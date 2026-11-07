@@ -14,6 +14,7 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
 
 local Style = ns.Style
 local FONT = Style.FONT
@@ -91,9 +92,9 @@ end
 -- What a click on a visit's card does, for its tooltip: lays the run's map
 -- out, or, with that run out already, puts it away.
 local function VisitHint(visit)
-    if J.visit and J.visit.id == visit.id then return "Click to go back to their story." end
-    if ns.Dungeons.Floors(visit.instanceID) then return "Click to open its map." end
-    return "Click to open its sheet."
+    if J.visit and J.visit.id == visit.id then return L["Click to go back to their story."] end
+    if ns.Dungeons.Floors(visit.instanceID) then return L["Click to open its map."] end
+    return L["Click to open its sheet."]
 end
 
 -- Where a line's icon starts, `depth` levels in: the icon column, clear of
@@ -170,8 +171,8 @@ local function TimelineLines(items, guid)
         local isOpen = Openable(item) and openEpisodes[item.key]
         local isFolded = Openable(item) and not isOpen
         if Openable(item) then
-            full = full .. "\n" .. (isOpen and "Click to fold it up again."
-                or ("Click to show all %d."):format(#item.all))
+            full = full .. "\n" .. (isOpen and L["Click to fold it up again."]
+                or Fmt(L["Click to show all %d."], #item.all))
         elseif isVisit then
             full = full .. "\n" .. VisitHint(item.visit)
         end
@@ -198,10 +199,10 @@ local function TimelineLines(items, guid)
             local aside = Format.Duration(item.seconds)
             if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. "  ·  " .. visit.difficulty end
             local losses = {}
-            if (visit.deaths or 0) > 0 then losses[#losses + 1] = Count(visit.deaths, "death", "deaths") end
+            if (visit.deaths or 0) > 0 then losses[#losses + 1] = Count(visit.deaths, L["death"], L["deaths"]) end
             local wipes = ns.DungeonRun.Wipes(visit)
-            if wipes > 0 then losses[#losses + 1] = Count(wipes, "wipe", "wipes") end
-            lines[#lines + 1] = { item = item, when = when, text = visit.name or "An instance",
+            if wipes > 0 then losses[#losses + 1] = Count(wipes, L["wipe"], L["wipes"]) end
+            lines[#lines + 1] = { item = item, when = when, text = visit.name or L["An instance"],
                 font = FONT.runTitle, depth = item.depth, full = full, height = VISIT.height,
                 visit = { visit = visit, aside = aside, losses = table.concat(losses, "  ·  "),
                     members = OtherMembers(visit, guid) } }
@@ -287,8 +288,8 @@ local function PartyName(info, i)
     local members = info.members or {}
     local member = members[i]
     if not member then return nil end
-    local name = member.first or "someone"
-    if i == VISIT.members and #members > i then name = ("%s +%d"):format(name, #members - i) end
+    local name = member.first or L["someone"]
+    if i == VISIT.members and #members > i then name = Fmt(L["%1$s +%2$d"], name, #members - i) end
     return name
 end
 

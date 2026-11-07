@@ -16,6 +16,7 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
 
 local Style = ns.Style
 local FONT = Style.FONT
@@ -63,15 +64,15 @@ local cache
 local addedHere = {}
 
 local FILTERS = {
-    { key = "everyone", label = "Everyone" },
-    { key = "dealt", label = "Dealt with" },
-    { key = "before", label = "Seen before" },
-    { key = "hostile", label = "Hostile" },
+    { key = "everyone", label = L["Everyone"] },
+    { key = "dealt", label = L["Dealt with"] },
+    { key = "before", label = L["Seen before"] },
+    { key = "hostile", label = L["Hostile"] },
 }
 
 -- The "dealt with" marks (ns.Sightings.DayEntries works out which one;
 -- Core/Rows.lua's Rows.DEALT lists them).
-local DEALT_TEXT = { together = "Grouped with you", trade = "Traded with you", talk = "Talked with you" }
+local DEALT_TEXT = { together = L["Grouped with you"], trade = L["Traded with you"], talk = L["Talked with you"] }
 
 -- The first click on a heading sorts the way people expect for that column;
 -- the second reverses it; the third goes back to the latest seen first.
@@ -89,12 +90,12 @@ end
 
 -- Counted from day starts rather than ns.UI.Format.DayLabel's calendar dates, so
 -- the same rounding decides "Yesterday" here and the week below.
-local RECENT = { [0] = "Today", [1] = "Yesterday" }
+local RECENT = { [0] = L["Today"], [1] = L["Yesterday"] }
 
 -- "Monday 6 October": no comma and no year, as this page has always shown
 -- them. The journal's headings (ns.UI.Format.DayLabel) have both.
 local function Dated(start)
-    return date("%A ", start) .. Format.DayMonth(start)
+    return Fmt(L["%1$s %2$s##weekday"], Format.Weekday(start), Format.DayMonth(start))
 end
 
 local function DayLabel(start, now)
@@ -105,16 +106,16 @@ end
 local function DayTitle(start, now)
     local recent = RECENT[DaysAgo(start, now)]
     if recent then return recent, Dated(start) end
-    return date("%A", start), Format.DayMonth(start)
+    return Format.Weekday(start), Format.DayMonth(start)
 end
 
 -- Weeks start on Monday.
 local function Week(start, now)
     local weekday = (date("*t", now).wday + 5) % 7
     local ago = DaysAgo(start, now)
-    if ago <= weekday then return "This week" end
-    if ago <= weekday + 7 then return "Last week" end
-    return "Earlier"
+    if ago <= weekday then return L["This week"] end
+    if ago <= weekday + 7 then return L["Last week"] end
+    return L["Earlier"]
 end
 
 --------------------------------------------------------------------------
@@ -167,7 +168,7 @@ end
 local function Place(e)
     if not e.subZone then return e.zone end
     if e.zone == "?" then return e.subZone end
-    return e.subZone .. ", " .. e.zone
+    return Fmt(L["%1$s, %2$s"], e.subZone, e.zone)
 end
 
 -- The tooltip's lines: all the detail a stranger gets.
@@ -184,28 +185,33 @@ local function TooltipLines(row)
     end
 
     local who = {}
-    if e.level then who[#who + 1] = "Level " .. e.level end
+    if e.level then who[#who + 1] = Fmt(L["Level %d"], e.level) end
     who[#who + 1] = Format.RaceName(record)
     who[#who + 1] = Format.ClassName(record)
     local line = table.concat(who, " ")
-    if record.faction then line = line .. "  ·  " .. record.faction end
+    if record.faction then
+        local faction = record.faction == "Horde" and L["Horde"] or record.faction == "Alliance" and L["Alliance"]
+            or record.faction
+        line = line .. "  ·  " .. faction
+    end
     lines[#lines + 1] = { line, 1, 1, 1 }
 
     local now = ns.Now()
     if e.days > 1 then
-        lines[#lines + 1] = { ("Seen on %d days since %s"):format(e.days, Format.DayMonth(e.first, ns.Now())), 1, 0.82, 0 }
+        lines[#lines + 1] = { Fmt(L["Seen on %1$d days since %2$s"], e.days, Format.DayMonth(e.first, ns.Now())), 1, 0.82, 0 }
     end
     if e.firstLevel and e.level and e.firstLevel < e.level then
-        lines[#lines + 1] = { ("Level %d when you first saw them"):format(e.firstLevel), 0.66, 0.66, 0.66 }
+        lines[#lines + 1] = { Fmt(L["Level %d when you first saw them"], e.firstLevel), 0.66, 0.66, 0.66 }
     end
     if e.dealt and DEALT_TEXT[e.dealt] then
-        lines[#lines + 1] = { ("%s at %s"):format(DEALT_TEXT[e.dealt], date("%H:%M", e.dealtAt)), 1, 0.82, 0 }
+        lines[#lines + 1] = { Fmt(L["%1$s at %2$s##time"], DEALT_TEXT[e.dealt], date("%H:%M", e.dealtAt)), 1, 0.82, 0 }
     end
     -- Worded as the profile's line will be once they are added.
     local place = Place(e)
-    lines[#lines + 1] = { "Last seen " .. Format.At(e.last, now) .. (place ~= "?" and (" in " .. place) or ""),
-        0.66, 0.66, 0.66 }
-    if ns.Diary.IsDiary(e.guid) then lines[#lines + 1] = { "In your diary", 1, 0.82, 0 } end
+    local seen = place ~= "?" and Fmt(L["Last seen %1$s in %2$s"], Format.At(e.last, now), place)
+        or Fmt(L["Last seen %s"], Format.At(e.last, now))
+    lines[#lines + 1] = { seen, 0.66, 0.66, 0.66 }
+    if ns.Diary.IsDiary(e.guid) then lines[#lines + 1] = { L["In your diary"], 1, 0.82, 0 } end
     return lines
 end
 
@@ -219,7 +225,7 @@ local function AddFromRow(row)
         where = { zone = e.zone, subZone = e.subZone, mapID = e.row.mapID, x = e.row.x, y = e.row.y },
     })
     if not entry then
-        ns.Print("could not identify that character.")
+        ns.Print(L["could not identify that character."])
         return
     end
     if added then Style.PlaySound("write") end
@@ -269,7 +275,7 @@ local function BuildEntryRow(list)
     row.subZone:SetWordWrap(false)
 
     row.add = Style.Link(row, FONT.small, function() AddFromRow(row) end)
-    row.add:SetText("+ Add")
+    row.add:SetText(L["+ Add"])
     row.add:SetPoint("RIGHT", -4, 0)
 
     local function OpenProfile()
@@ -277,12 +283,12 @@ local function BuildEntryRow(list)
     end
 
     row.open = Style.Link(row, FONT.small, OpenProfile)
-    row.open:SetText("Open")
+    row.open:SetText(L["Open"])
     row.open:SetPoint("RIGHT", -4, 0)
 
     -- Just added: says so in faded ink, and still opens their new profile.
     row.added = Style.Link(row, FONT.small, OpenProfile)
-    row.added:SetText("Added")
+    row.added:SetText(L["Added"])
     row.added:SetColor(Style.INK_FADED[1], Style.INK_FADED[2], Style.INK_FADED[3])
     row.added:SetPoint("RIGHT", -4, 0)
 
@@ -358,7 +364,7 @@ local RefreshTable
 
 local function FilterLabel()
     local f = J.ByKey(FILTERS, query.filter)
-    return f and f.label or "Everyone"
+    return f and f.label or L["Everyone"]
 end
 
 local function ShowFilterMenu(owner)
@@ -405,15 +411,15 @@ local function SortBy(key)
 end
 
 local function EmptyText()
-    local text = "Nobody yet."
+    local text = L["Nobody yet."]
     if not ns.Setting("detectSightings") then
-        return text .. "\n\nSightings are switched off. Turn them back on in the settings, under Recording: |cffffd100Notice who passes you in the open world|r."
+        return text .. "\n\n" .. Fmt(L["Sightings are switched off. Turn them back on in the settings, under %1$s: %2$s."],
+            L["Recording"], "|cffffd100" .. L["Notice who passes you in the open world"] .. "|r")
     end
-    text = text .. "\n\nSightings pause in cities and dungeons."
+    text = text .. "\n\n" .. L["Sightings pause in cities and dungeons."]
     local get = C_CVar and C_CVar.GetCVar or GetCVar
     if get and ns.Plain(get("nameplateShowFriends")) == "0" then
-        text = text .. "\n\nFriendly nameplates are off, so only people you target, mouse over"
-            .. " or hear in /say are listed."
+        text = text .. "\n\n" .. L["Friendly nameplates are off, so only people you target, mouse over or hear in /say are listed."]
     end
     return text
 end
@@ -426,9 +432,9 @@ function RefreshTable(keepScroll)
     for i = 1, #list do list[i].index = i end
     page.table:SetData(list, keepScroll)
 
-    page.count:SetText(#list == #entries and Format.Count(#entries, "person", "people")
-        or ("%d of %d"):format(#list, #entries))
-    page.empty:SetText(#list == 0 and "Nobody matches." or "")
+    page.count:SetText(#list == #entries and Format.Count(#entries, L["person"], L["people"])
+        or Fmt(L["%1$d of %2$d"], #list, #entries))
+    page.empty:SetText(#list == 0 and L["Nobody matches."] or "")
     page.filter:SetText(FilterLabel())
     PaintHeadings()
 end
@@ -457,9 +463,8 @@ function ns.UI.RefreshNearbyPage()
     end
     page.days:SetData(items, true)
 
-    page.hint:SetText(("Everyone you passed in the open world. Kept for %d days.")
-        :format(ns.BufferDays()))
-    page.dayCount:SetText(Format.Count(#days, "day", "days"))
+    page.hint:SetText(Fmt(L["Everyone you passed in the open world. Kept for %d days."], ns.BufferDays()))
+    page.dayCount:SetText(Format.Count(#days, L["day##count"], L["days##count"]))
     page.noDays:SetText(#days == 0 and EmptyText() or "")
     page.right:SetShown(selectedDay ~= nil)
     if not selectedDay then
@@ -471,7 +476,7 @@ function ns.UI.RefreshNearbyPage()
     cache = { day = selectedDay, list = ns.Sightings.DayEntries(selectedDay) }
 
     local title, sub = DayTitle(selectedDay, now)
-    page.title:SetText(title:upper())
+    page.title:SetText(Style.Upper(title))
     page.date:SetText(sub)
     RefreshTable(sameDay)
 end
@@ -484,7 +489,7 @@ local function BuildPage(parent)
     page = {}
 
     -- Left page: the days.
-    page.dayCount = J.PageHeading(parent, "Recently nearby")
+    page.dayCount = J.PageHeading(parent, L["Recently nearby"])
 
     page.hint = Style.Text(parent, FONT.small)
     page.hint:SetPoint("TOPLEFT", BOOK.LEFT_X, -50)
@@ -514,7 +519,7 @@ local function BuildPage(parent)
     page.count:SetPoint("TOPRIGHT", 0, -10)
     page.count:SetJustifyH("RIGHT")
 
-    page.search = Style.PageSearch(r, 0, -40, 260, "Search names, zones, subzones",
+    page.search = Style.PageSearch(r, 0, -40, 260, L["Search names, zones, subzones"],
         Style.SearchInto(query, RefreshTable))
 
     page.filter = Style.Link(r, FONT.body, function(self) ShowFilterMenu(self) end)
@@ -524,15 +529,15 @@ local function BuildPage(parent)
     page.headings = {}
     local function Heading(key, text)
         local link = Style.Link(r, FONT.heading, function() SortBy(key) end)
-        link:SetText(text:upper())
+        link:SetText(Style.Upper(text))
         page.headings[key] = link
         return link
     end
-    Heading("level", "Lvl"):SetPoint("RIGHT", r, "TOPLEFT", LEVEL_RIGHT, -86)
+    Heading("level", L["Lvl"]):SetPoint("RIGHT", r, "TOPLEFT", LEVEL_RIGHT, -86)
     page.headings.level.alignRight = true
-    Heading("name", "Name"):SetPoint("LEFT", r, "TOPLEFT", NAME_X, -86)
-    Heading("zone", "Zone"):SetPoint("LEFT", r, "TOPLEFT", ZONE_X, -86)
-    Heading("subzone", "Subzone"):SetPoint("LEFT", r, "TOPLEFT", SUBZONE_X, -86)
+    Heading("name", L["Name"]):SetPoint("LEFT", r, "TOPLEFT", NAME_X, -86)
+    Heading("zone", L["Zone"]):SetPoint("LEFT", r, "TOPLEFT", ZONE_X, -86)
+    Heading("subzone", L["Subzone"]):SetPoint("LEFT", r, "TOPLEFT", SUBZONE_X, -86)
 
     page.arrow = r:CreateTexture(nil, "ARTWORK")
     page.arrow:SetSize(9, 8)
@@ -557,7 +562,7 @@ end
 -- UI/Journal/Pages.lua). It reads live data, so it is brought up to date
 -- as it opens.
 ns.UI.Journal.RegisterPage("nearby", {
-    order = 30, ribbon = { colour = "purple", label = "Recently nearby" }, leaf = -2, buildOrder = 50,
+    order = 30, ribbon = { colour = "purple", label = L["Recently nearby"] }, leaf = -2, buildOrder = 50,
     build = function(container) BuildPage(container) end,
     refresh = function() ns.UI.RefreshNearbyPage() end,
 })

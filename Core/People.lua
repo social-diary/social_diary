@@ -19,6 +19,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local People = {}
 ns.People = People
 
@@ -31,18 +33,18 @@ local DAY = ns.DAY
 local Rows = ns.Rows
 
 People.SORTS = {
-    { key = "lastMet", label = "Last met" },
-    { key = "timesMet", label = "Times met" },
-    { key = "together", label = "Time together" },
-    { key = "lastSeen", label = "Last seen" },
-    { key = "name", label = "Name" },
+    { key = "lastMet", label = L["Last met"] },
+    { key = "timesMet", label = L["Times met"] },
+    { key = "together", label = L["Time together"] },
+    { key = "lastSeen", label = L["Last seen"] },
+    { key = "name", label = L["Name"] },
 }
 
 People.WITHIN = {
-    { days = 7, label = "Last 7 days" },
-    { days = 30, label = "Last 30 days" },
-    { days = 90, label = "Last 90 days" },
-    { days = 365, label = "Last year" },
+    { days = 7, label = L["Last 7 days"] },
+    { days = 30, label = L["Last 30 days"] },
+    { days = 90, label = L["Last 90 days"] },
+    { days = 365, label = L["Last year"] },
 }
 
 --------------------------------------------------------------------------

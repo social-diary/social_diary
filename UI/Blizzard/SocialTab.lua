@@ -8,6 +8,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local GAP = 3
 
 -- The minimap button's logo, its art registered in UI/Blizzard/Minimap.lua. It
@@ -82,7 +84,7 @@ local function Build(window)
     hover:SetPoint("CENTER")
     if HasAtlas("common-sidetab-hover") then hover:SetAtlas("common-sidetab-hover") end
 
-    ns.Style.Tooltip(tab, { { "Social Diary" }, { "Open your journal.", 1, 1, 1 } }, "ANCHOR_RIGHT",
+    ns.Style.Tooltip(tab, { { "Social Diary" }, { L["Open your journal."], 1, 1, 1 } }, "ANCHOR_RIGHT",
         function(self, over) self.icon:SetAlpha(over and 1 or 0.75) end)
     tab:SetScript("OnClick", function()
         if SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end

@@ -154,7 +154,7 @@ local function Note(parent)
 
     -- Written at x, y of the block, `w` wide; returns its height.
     function note:Lay(x, y, w, heading, line, sub, tip)
-        self.heading:SetText((heading or ""):upper())
+        self.heading:SetText(Style.Upper(heading or ""))
         self.line:SetText(line or "")
         self.sub:SetText(sub or "")
         At(self.heading, parent, x, y, w)
@@ -335,12 +335,12 @@ function Glimpse.New(parent)
         end
         if #g.after == 0 then return top end
         local y = top + L.gap
-        page.ledgerHeading:SetText(PersonText.GLIMPSE.after:upper())
+        page.ledgerHeading:SetText(Style.Upper(PersonText.GLIMPSE.after))
         At(page.ledgerHeading, block, L.x, y, L.right - L.x)
         y = y + L.headH
         for i = 1, shown do
             local row, r = page.rows[i], g.after[i]
-            row.day:SetText(PersonText.GlimpseDay(r.time, now):upper())
+            row.day:SetText(Style.Upper(PersonText.GlimpseDay(r.time, now)))
             At(row.day, block, L.x, y + 2, L.dayRight - L.x)
             local words = PersonText.GlimpseRow(r, g.guid)
             row.words:SetText(words)

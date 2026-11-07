@@ -53,6 +53,7 @@ local CloseCalls = {}
 ns.CloseCalls = CloseCalls
 
 local Journey = ns.Journey
+local L, Fmt = ns.L, ns.Fmt
 
 --------------------------------------------------------------------------
 -- The route's list: out of a fight alive, and only just
@@ -126,25 +127,25 @@ end
 ns.JourneyRecap.RegisterMoment("close", { order = 20, list = LIST, field = "call", rank = 3,
     custom = {
         creature = "name",
-        label = "Close Call",
-        heading = "A close call",
+        label = L["Close Call"],
+        heading = L["A close call"],
         group = "combat",
         -- A line of a menu, where a spot merges several or one is hidden: the
         -- health tells apart two fights with one creature.
         describe = function(call)
-            return ("%s, %d%% health"):format(call.name or "A close call", call.pct or 0)
+            return Fmt(L["%1$s, %2$d%% health"], call.name or L["A close call"], call.pct or 0)
         end,
         defaults = { pct = 5 },
         fields = {
-            { key = "name", type = "text", label = "Creature" },
-            { key = "foeLevel", type = "number", min = -1, max = 99, label = "Level", hint = "-1 for a skull" },
+            { key = "name", type = "text", label = L["Creature"] },
+            { key = "foeLevel", type = "number", min = -1, max = 99, label = L["Level"], hint = L["-1 for a skull"] },
             -- Saved as `rank`, what a detected record calls it. Neither ticked is
             -- a common creature. Only these two can be chosen (the user, 1 Nov:
             -- no boss here, and no rare elite); a detected record's other ranks
             -- stay as detected until the player ticks one (Core/Custom.lua).
-            { key = "rank", type = "choice", values = { "rare", "elite" }, label = "Type",
-                names = { rare = "Rare", elite = "Elite" } },
-            { key = "foes", type = "number", min = 1, max = 99, label = "How many" },
-            { key = "pct", type = "number", min = 0, max = 100, label = "Health left", hint = "%" },
+            { key = "rank", type = "choice", values = { "rare", "elite" }, label = L["Type"],
+                names = { rare = L["Rare"], elite = L["Elite"] } },
+            { key = "foes", type = "number", min = 1, max = 99, label = L["How many"] },
+            { key = "pct", type = "number", min = 0, max = 100, label = L["Health left"], hint = L["%"] },
         },
     } })

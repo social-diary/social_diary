@@ -11,6 +11,7 @@ local addonName, ns = ...
 
 local Style = ns.Style
 local FONT = Style.FONT
+local L, Fmt = ns.L, ns.Fmt
 
 local Keys = {}
 ns.UI.Keys = Keys
@@ -48,7 +49,7 @@ local NEVER = { ENTER = true, BACKSPACE = true, BUTTON1 = true, BUTTON2 = true }
 function Keys.Refused(key)
     return NEVER[key] == true
 end
-Keys.REFUSED = "That key stays with the game. Choose another."
+Keys.REFUSED = L["That key stays with the game. Choose another."]
 
 -- The mouse's buttons as the bindings write them; the left and right are
 -- BUTTON1 and BUTTON2.
@@ -56,7 +57,7 @@ local BUTTONS = { LeftButton = "BUTTON1", RightButton = "BUTTON2", MiddleButton 
 function Keys.Button(button)
     return BUTTONS[button] or button:upper()
 end
-Keys.COMBAT = "Not during a fight. Try again after it."
+Keys.COMBAT = L["Not during a fight. Try again after it."]
 
 -- What the setter asks before it takes `key` from what has it; nil when the
 -- key is free, or already `action`'s, and there is nothing to ask.
@@ -64,9 +65,9 @@ function Keys.Question(action, key)
     local taken = ActionName(GetBindingAction(key), action)
     if not taken then return nil end
     local shown = GetBindingText and GetBindingText(key) or key
-    return ("%s is set to %s.\n\nUse it for %s instead?"):format(shown, taken, ActionName(action))
+    return Fmt(L["%1$s is set to %2$s.\n\nUse it for %3$s instead?"], shown, taken, ActionName(action))
 end
-Keys.TAKE = "Use it"
+Keys.TAKE = L["Use it"]
 
 -- Binds `key` to `action` in place of whatever had it, and of the key
 -- `action` had. Saved with the character's or the account's bindings,
@@ -78,7 +79,7 @@ function Keys.Bind(action, key)
     for _, k in ipairs(old) do SetBinding(k) end
     SetBinding(key, action)
     SaveBindings(GetCurrentBindingSet())
-    return true, before and ("It was " .. before .. " until now.") or ""
+    return true, before and Fmt(L["It was %s until now."], before) or ""
 end
 
 -- The key pressed, with its modifiers, as the bindings write it.
@@ -163,14 +164,14 @@ function Keys.Setter(parent, action, status)
         self.bind:SetShown(not self.listening)
         self.hint:SetShown(self.listening == true)
         if self.listening then
-            self.keycap:SetKey("press a key", FONT.headingRubric)
-            self.hint:SetText("Escape to cancel")
+            self.keycap:SetKey(L["press a key"], FONT.headingRubric)
+            self.hint:SetText(L["Escape to cancel"])
         elseif key then
             self.keycap:SetKey(key)
-            self.bind:SetText("Change")
+            self.bind:SetText(L["Change"])
         else
-            self.keycap:SetKey("no key", FONT.faded)
-            self.bind:SetText("Choose one")
+            self.keycap:SetKey(L["no key"], FONT.faded)
+            self.bind:SetText(L["Choose one"])
         end
     end
 

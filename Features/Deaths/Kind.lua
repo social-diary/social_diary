@@ -50,6 +50,8 @@ local addonName, ns = ...
 local Deaths = {}
 ns.Deaths = Deaths
 
+local L, Fmt = ns.L, ns.Fmt
+
 --------------------------------------------------------------------------
 -- The user's deaths, and what killed them
 --------------------------------------------------------------------------
@@ -163,18 +165,18 @@ ns.JourneyRecap.RegisterMoment("killedBy", { order = 15, entry = "killedBy", fie
     end,
     custom = {
         creature = "name",
-        label = "Death",
-        heading = "A death",
+        label = L["Death"],
+        heading = L["A death"],
         group = "combat",
         -- A line of a menu, as the cross's tooltip says it.
         describe = function(d)
-            if not d.name then return "A death" end
-            return d.name .. (d.spell and (", with " .. d.spell) or "")
+            if not d.name then return L["A death"] end
+            return d.spell and Fmt(L["%1$s, with %2$s"], d.name, d.spell) or d.name
         end,
         fields = {
-            { key = "name", type = "text", label = "Killed by" },
+            { key = "name", type = "text", label = L["Killed by"] },
             -- The close call's two, for the same reason (Features/CloseCalls/Kind.lua).
-            { key = "rank", type = "choice", values = { "rare", "elite" }, label = "Type",
-                names = { rare = "Rare", elite = "Elite" } },
+            { key = "rank", type = "choice", values = { "rare", "elite" }, label = L["Type"],
+                names = { rare = L["Rare"], elite = L["Elite"] } },
         },
     } })

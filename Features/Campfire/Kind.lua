@@ -22,6 +22,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Campfire = {}
 ns.Campfire = Campfire
 
@@ -42,19 +44,22 @@ ns.Rows.Register("campfire", {
     proximity = true,
     plate = 6,
     moment = function() return true end,
-    reason = "sat by a campfire together",
+    reason = L["sat by a campfire together"],
     text = function(row, guid)
         local them = guid and ns.Characters.Name(guid)
         local subZone = row.context and row.context.subZone
         if subZone == "" then subZone = nil end
         local place = row.zone
         if subZone and place and subZone ~= place then
-            place = subZone .. ", " .. place
+            place = Fmt(L["%1$s, %2$s"], subZone, place)
         elseif subZone then
             place = subZone
         end
-        return (them and (ns.UI.Format.You(row.me, "{You} and ") .. them .. " sat") or "Sat") .. " by a campfire together"
-            .. (place and (" in " .. place) or "")
+        if them then
+            return ns.UI.Format.You(row.me, place and Fmt(L["{You} and %1$s sat by a campfire together in %2$s"], them, place)
+                or Fmt(L["{You} and %s sat by a campfire together"], them))
+        end
+        return place and Fmt(L["Sat by a campfire together in %s"], place) or L["Sat by a campfire together"]
     end,
     icon = "campfire",
 })
@@ -123,12 +128,13 @@ end
 ns.JourneyRecap.RegisterMoment("campfire", { order = 70, list = "campfires", field = "campfire", rank = 5.5,
     light = true,
     custom = {
-        label = "Campfire",
-        heading = "A campfire",
+        label = L["Campfire"],
+        heading = L["A campfire"],
         group = "other",
         -- Text.lua's, read when asked: this file loads before it.
         describe = function(fire) return Campfire.Describe(fire) end,
         fields = {
-            { key = "subZone", type = "text", most = 40, label = "Where", hint = "a camp, a village, an oasis" },
+            { key = "subZone", type = "text", most = 40, label = L["Where"],
+                hint = L["a camp, a village, an oasis"] },
         },
     } })

@@ -455,7 +455,7 @@ function DungeonPage.Sheet(parent)
             for i, floor in ipairs(floors) do
                 local link = view.links:Next()
                 link.index = i
-                link:SetText(floor.name or ("Floor %d"):format(i))
+                link:SetText(floor.name or ns.Fmt(ns.L["Floor %d"], i))
                 link:SetCurrent(i == shown)
                 widths[i] = K.Width(link.label)
                 total = total + widths[i] + (i > 1 and LABEL.gap or 0)
@@ -517,7 +517,7 @@ function DungeonPage.Sheet(parent)
         DungeonPage.ClearNotes(view)
         view.plan, view.box, view.kept, view.scale, view.From, view.At = nil, nil, nil, nil, nil, nil
         DungeonPage.WayLaid(view)
-        view.none:SetText(("The diary has no map of %s yet."):format(visit.name or "this place"))
+        view.none:SetText(ns.Fmt(ns.L["The diary has no map of %s yet."], visit.name or ns.L["this place"]))
         K.PlaceText(view.none, W / 2, H / 2, "CENTER")
         view.none:Show()
     end
