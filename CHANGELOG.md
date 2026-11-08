@@ -1,9 +1,14 @@
 # Changelog
 
-All notable changes to Social Diary. Versions follow the `## Version` line in
-`social_diary.toc`; a release is the matching `v` tag (for example `v1.0.0`).
-
 ## [Unreleased]
+
+## [3.0.1]
+
+A Hotfix for Behaviour in Battlegrounds. Currently, BG data is interpreted badly and potentially clogging up a Diary entry. Until a proper Battleground Feature is implemented, BG Capture will be turned off.
+
+### Fixes
+
+- Battleground Activities are currently skipped, because they result in bad Diary data. 
 
 ## [3.0.0]
 

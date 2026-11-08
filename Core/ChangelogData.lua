@@ -7,6 +7,15 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "3.0.1",
+        summary = "A Hotfix for Behaviour in Battlegrounds. Currently, BG data is interpreted badly and potentially clogging up a Diary entry. Until a proper Battleground Feature is implemented, BG Capture will be turned off.",
+        groups = {
+            { heading = "Fixes", entries = {
+                { text = "Battleground Activities are currently skipped, because they result in bad Diary data." },
+            } },
+        },
+    },
+    {
         version = "3.0.0",
         summary = "A big Update: the diary now works with a controller through WoW's Gamepad UI, and a new _Changelog_ under _About_ in _Settings_ shows what's new after each update.",
         groups = {
@@ -49,26 +58,6 @@ ns.Changelog = {
         groups = {
             { heading = "Fixes", entries = {
                 { text = "The journal's close button now works in combat" },
-            } },
-        },
-    },
-    {
-        version = "2.2.0",
-        summary = "This Update introduces hints, a _Feedback_ page and tamed pets for Hunters, and the _Dungeon View_ now knows which pack killed you.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "Occasional hints point out features you may have missed" },
-                { text = "A _Feedback_ page in _Settings_ for bug reports and comments" },
-                { text = "Hunters: _Your Diary_ remembers the pets you tame and name" },
-            } },
-            { heading = "Changes", entries = {
-                { text = "A few rarely used chat commands are gone", sub = { { text = "The sightings switch now lives in _Settings_" } } },
-                { text = "_Dungeon View_ places deaths and wipes at the pack that killed you", sub = { { text = "In Ragefire, the Deadmines, the Stockade and both Razorfens so far" } } },
-                { text = "_Dungeon View_ keeps a wipe's marks and its note together in one spot" },
-                { text = "_Dungeon View_ marks no longer drift ahead after idle time" },
-            } },
-            { heading = "Fixes", entries = {
-                { text = "_Dungeon View_ spreads deaths along the way before the first boss falls" },
             } },
         },
     },
