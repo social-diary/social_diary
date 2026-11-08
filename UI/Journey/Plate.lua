@@ -2229,7 +2229,7 @@ local function New(parent, slot)
         end
         for _, button in ipairs(self.overButtons) do Take(button, "over") end
         -- (8 Nov 2026, in the client: a plate a stay, an arrival or a road
-        -- opened has no mark but its trail's pools, so "Look at the marks"
+        -- opened has no mark but its trail's pools, so "Show marks"
         -- found nothing and A did nothing. With no other mark to bury, the
         -- pools are what there is to look at: they are walked then.)
         if not out[1] then
@@ -2240,7 +2240,7 @@ local function New(parent, slot)
         end
         return out
     end
-    -- Whether the pad has a mark to stand on here (its "Look at the marks"
+    -- Whether the pad has a mark to stand on here (its "Show marks"
     -- is offered only then: a print of the road alone has none).
     function plate:HasMarks() return self:Marks()[1] ~= nil end
     function plate:Corners()

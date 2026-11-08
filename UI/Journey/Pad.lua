@@ -124,7 +124,7 @@ local PROMPT = {
     person = { "PAD1", "Go to their page", main = true },
     levels = { { "PADDLEFT", "PADDRIGHT" }, "Earlier · later", main = false },
     title = { { "PADDUP", "PADDDOWN" }, "Go to the levels", main = true },
-    marks = { "PAD1", "Look at the marks", main = true },
+    marks = { "PAD1", "Show marks", main = true },
     whole = { "PAD3", "See the whole map" },
     backLeft = { "PAD2", "Back to the contents" },
     backPlate = { "PAD2", "Back to the plate" },

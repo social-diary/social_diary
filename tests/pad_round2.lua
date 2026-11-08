@@ -1,7 +1,7 @@
 -- The pad's second client round (.claude/controller-plan.md, "Client round
 -- 2", 8 Nov 2026): the pen's box holds the paraph that leads Your Diary's
 -- level rubric (an item's `encloses`); the buttons drawn in their real
--- colours, the client's modern atlas first; "Look at the marks" only where
+-- colours, the client's modern atlas first; "Show marks" only where
 -- a plate has a mark to stand on, and a plate whose only hover squares are
 -- its trail's pools (a stay, an arrival, a road: the client's case) walks
 -- those. The pad's own menu has tests/pad_menu.lua.
@@ -171,7 +171,7 @@ G.Changed()
 Pad.Refresh()
 
 --------------------------------------------------------------------------
-Section("Your Diary: \"Look at the marks\" only where a plate has one")
+Section("Your Diary: \"Show marks\" only where a plate has one")
 
 -- (onto the right page's first plate)
 Press("PAD1")
@@ -183,7 +183,7 @@ Check(plateItem, "setup: a plate on the right page")
 Pad.Top().focus:Set(plateItem)
 local plate = plateItem.whole()
 Check(plate:HasMarks(), "setup: testdata's plate has marks")
-Eq(Legend().PAD1, "Look at the marks", "the prompt with marks")
+Eq(Legend().PAD1, "Show marks", "the prompt with marks")
 -- Drawn again with the road alone, as a stay's plate is in the client: its
 -- pools are what there is to look at.
 local data, window = plate.data, plate.window
@@ -202,7 +202,7 @@ plate:Draw(empty, plate.entry, window, { moments = {}, fights = {}, witnesses = 
 Check(not plate:HasMarks(), "an empty plate has marks")
 Pad.Refresh()
 Eq(At().key, plateItem.key, "setup: still on the plate")
-Check(Legend().PAD1 ~= "Look at the marks", "the prompt on a plate with nothing to look at")
+Check(Legend().PAD1 ~= "Show marks", "the prompt on a plate with nothing to look at")
 Press("PAD1")
 Eq(At().key, plateItem.key, "A on an empty plate moved the pad")
 ns.UI.RedrawJourneyPage()
@@ -223,7 +223,7 @@ Press("PAD1")
 Check(scope.focus:Focus("plate", "page"), "setup: onto their plate")
 local pp = p.clippings.plate
 Check(pp:HasMarks(), "setup: their plate has marks")
-Eq(Legend().PAD1, "Look at the marks", "the plate's prompt with marks")
+Eq(Legend().PAD1, "Show marks", "the plate's prompt with marks")
 Press("PAD1")
 Eq(At().group, "marks", "A did not step among the marks")
 Check(At().ring, "the mark not ringed")
@@ -242,7 +242,7 @@ empty = { mapID = data.mapID, stops = {}, roads = {}, flights = {}, dungeons = {
 pp:Draw(empty, nil, window, { moments = {}, fights = {}, witnesses = {} })
 Pad.Refresh()
 Eq(At().key, "plate", "setup: on the plate")
-Check(Legend().PAD1 ~= "Look at the marks", "the prompt on a print with nothing to look at")
+Check(Legend().PAD1 ~= "Show marks", "the prompt on a print with nothing to look at")
 Eq(Legend().PAD3, "See the map", "X's prompt gone too")
 Press("PAD1")
 Eq(At().key, "plate", "A on an empty print moved the pad")

@@ -125,7 +125,7 @@ Check(not parts.pen:IsShown(), "a pen box drawn round a plate")
 for _, t in ipairs(o.line.strokes) do Check(t:IsShown(), "an edge of the outline missing") end
 Check(o.shadow:GetFrameLevel() < plate1:GetFrameLevel(), "the shadow not under the plate")
 Check(o.line:GetFrameLevel() > plate1:GetFrameLevel(), "the outline not over the plate")
-Eq(Legend().PAD1, "Look at the marks", "A's prompt on a plate")
+Eq(Legend().PAD1, "Show marks", "A's prompt on a plate")
 Eq(Legend().PAD3, "See the whole map", "X's prompt on a plate")
 Eq(Legend().PAD2, "Back to the contents", "B's prompt on a plate")
 

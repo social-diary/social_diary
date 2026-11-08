@@ -91,7 +91,7 @@ local PROMPT = {
     stop = { "PAD2", "Stop writing" },
     choose = { "PAD1", "Choose", main = true },
     sorts = { { "PADDLEFT", "PADDRIGHT" }, "Sort another way" },
-    marks = { "PAD1", "Look at the marks", main = true },
+    marks = { "PAD1", "Show marks", main = true },
     map = { "PAD3", "See the map" },
     person = { "PAD1", "Go to their page", main = true },
     unfold = { "PAD1", "See the rest", main = true },
