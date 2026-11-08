@@ -7,6 +7,10 @@
 --   /sd hint                the hints, and where each stands
 --   /sd hint <id> | all     forced at the next occasion
 --   /sd hint reset          every hint unseen and unretired, the clocks at 0
+--   /sd hint update [X.Y.Z] a major update to X.Y.Z (the next major by
+--                           default), as a login after it would see it:
+--                           the notice comes on the next page open, past
+--                           the clocks, unless its switch is off
 
 local addonName, ns = ...
 
@@ -31,6 +35,26 @@ local function CommandHint(rest)
         ns.Print("open %s; %d opens, %d key presses, %d min played, sitting %d (%d shown).",
             Hints.Open() and "now" or "not yet", s.opens or 0, s.remembers or 0,
             math.floor((s.played or 0) / 60), s.sitting or 0, s.sittingShown or 0)
+        ns.Print("version %s recorded; update to tell of: %s.", s.version or "none", Hints.Update() or "none")
+        return
+    end
+    if arg == "update" then
+        local version = (rest or ""):match("^%s*%S+%s+(%S+)")
+            or ("%d.0.0"):format((Hints.Major(ns.version) or 0) + 1)
+        local major = Hints.Major(version)
+        if not major or major < 1 then
+            ns.Print("not a version: %s (/sd hint update 3.0.0).", version)
+            return
+        end
+        if ns.Setting("showUpdateHint") == false then
+            ns.Print("the update hint is switched off (Settings > Interface > Hints).")
+            return
+        end
+        -- The real path: a login that last ran the major before.
+        s.version = ("%d.0.0"):format(major - 1)
+        Hints.Installed(version)
+        s.version = ns.version
+        ns.Print("%s installed: the notice comes the next time the book is open, on any page.", version)
         return
     end
     if arg == "reset" then
@@ -56,5 +80,5 @@ local function CommandHint(rest)
     end
 end
 
-ns.Slash.Register("hint", CommandHint, "a hint at its next occasion: |cffffd100/sd hint [id | all | reset]|r",
+ns.Slash.Register("hint", CommandHint, "a hint at its next occasion: |cffffd100/sd hint [id | all | reset | update [X.Y.Z]]|r",
     { dev = true })

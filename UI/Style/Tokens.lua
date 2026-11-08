@@ -215,6 +215,9 @@ Style.FONT = {
     heading = Font("SocialDiaryFontHeading", FRIZ, 11, Style.INK_FADED),
     -- A day on the timeline: a small heading rubricated.
     headingRubric = Font("SocialDiaryFontHeadingRubric", FRIZ, 11, Style.RUBRIC),
+    -- A rubric a size up, for a heading the eye scans a long page by: a
+    -- group of the changelog's (UI/Settings/Sections/Changelog.lua).
+    headingRubricLarge = Font("SocialDiaryFontHeadingRubricLarge", FRIZ, 12, Style.RUBRIC),
     note = Font("SocialDiaryFontNote", FRIZ, 14, Style.INK_STRONG),
     -- A note on the page, as written: on the timeline and the profile.
     noteWritten = Font("SocialDiaryFontNoteWritten", NEUTON_ITALIC, 16, Style.INK_STRONG),

@@ -270,3 +270,26 @@ ns.SetSetting("showHints", true)
 Settled()
 Hints.Reset()
 Eq(Hints.Again("major-update"), false, "Show hints again does not ask the notice again")
+
+--------------------------------------------------------------------------
+Section("/sd hint update: a major update, as a login after it sees it")
+
+Settled()
+S.update = nil
+local recorded = S.version
+SlashCmdList.SOCIALDIARY("hint update")
+local nextMajor = ("%d.0.0"):format((Hints.Major(ns.version) or 0) + 1)
+Eq(Hints.Update(), nextMajor, "the next major version by default")
+Eq(S.version, ns.version, "the real version stays recorded")
+Eq(Due("people"), "major-update", "the notice is due on any page")
+Hints.UpdateRead()
+SlashCmdList.SOCIALDIARY("hint update 7.1.0")
+Eq(Hints.Update(), "7.1.0", "a version given")
+Hints.UpdateRead()
+SlashCmdList.SOCIALDIARY("hint update banana")
+Eq(Hints.Update(), nil, "not a version: nothing")
+ns.SetSetting("showUpdateHint", false)
+SlashCmdList.SOCIALDIARY("hint update")
+Eq(Hints.Update(), nil, "its switch off: nothing")
+ns.SetSetting("showUpdateHint", true)
+S.version = recorded

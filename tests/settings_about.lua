@@ -142,6 +142,40 @@ local anchors = {}
 for _, p in ipairs(div.divider.recorded.points) do anchors[p.point] = true end
 Check(anchors.TOPLEFT and anchors.TOPRIGHT, "the divider does not run the column's width")
 
+-- A group's heading is rubricated: red capitals a size up, a paraph in the
+-- gutter (red, then lapis on the release's second group) and a rule after.
+P.changelog:Reveal(3)
+local head = P.changelog:RowOf(3)
+Eq(head.text.recorded.calls.SetFontObject[1], Style.FONT.headingRubricLarge, "a group's heading not in rubric")
+Check(head.bullet:IsShown() and head.rule:IsShown(), "a group's heading without its paraph or rule")
+Eq(head.bullet.recorded.calls.SetColorTexture[1], Style.RUBRIC[1], "the first group's paraph not red")
+local second
+for i = 4, #lines do if lines[i].kind == "group" then second = i break end end
+Check(lines[second].lapis and not lines[3].lapis, "the paraphs not red and lapis by turns")
+-- (the rule starts after the words, inside the column)
+local rulePoint = head.rule.recorded.points[1].args
+Eq(rulePoint[1], head, "the group's rule not placed on its row")
+Check(rulePoint[3] > head.text:GetStringWidth() and rulePoint[3] < P.changelog:GetWidth(),
+    "the group's rule not after its words, inside the column")
+-- The hanging column: a heading's words on the entries' indent, its paraph
+-- over their lozenges; the version and the summary at the margin.
+local function TextX(i)
+    P.changelog:Reveal(i)
+    return P.changelog:RowOf(i).text.recorded.points[1].args[1]
+end
+Eq(TextX(3), TextX(4), "the group's words and its entries' not on one indent")
+Check(TextX(1) < TextX(3) and TextX(2) < TextX(3), "the release's head not at the margin")
+-- The rhythm: between releases > before a group > between entries.
+local entryA, entryB
+for i = 1, #lines - 1 do
+    if lines[i].kind == "entry" and lines[i + 1].kind == "entry" and not lines[i].thanks then
+        entryA, entryB = i, i + 1 break
+    end
+end
+Check(entryA ~= nil, "no two entries in a row")
+Check(lines[at].height > lines[3].height - 14 and lines[3].height - 14 > lines[entryA].height - 14,
+    "the spacing does not step down: release, group, entry")
+
 -- The wheel scrolls it.
 P.changelog:SetPosition(0)
 P.changelog.Wheel(nil, -1)
