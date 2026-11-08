@@ -214,7 +214,7 @@ Section("the plate: outlined; A among its marks; X the map; B back")
 
 Check(Scope().focus:Focus("plate", "page"), "setup: onto the plate")
 Check(parts.outline.line:IsShown(), "the plate not outlined")
-Eq(Legend().PAD1, "Look at the marks", "the plate's prompt")
+Eq(Legend().PAD1, "Show marks", "the plate's prompt")
 Eq(Legend().PAD3, "See the map", "X on the plate")
 local plate = p.clippings.plate
 Press("PAD1")
