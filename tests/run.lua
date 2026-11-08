@@ -24,6 +24,7 @@ local FILES = {
     "group_sessions",
     "deaths",
     "pvp",
+    "battlegrounds",
     "journey",
     "sittings",
     "firsts",

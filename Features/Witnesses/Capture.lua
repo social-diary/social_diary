@@ -349,6 +349,7 @@ local function Onlookers(f, now)
 end
 
 local function Died()
+    if ns.InBattleground() then return end
     local now = ns.Now()
     local f = fights[#fights]
     if not f or (f.ended and now - f.ended > WAIT.fight) then
@@ -411,7 +412,10 @@ local function Scan()
     if f then ReadAll(f) end
 end
 
+-- No fight is watched in a battleground (ns.InBattleground): nobody there
+-- looks on, and the user's deaths and close calls in one are kept nowhere.
 ns.On("PLAYER_REGEN_DISABLED", function()
+    if ns.InBattleground() then return end
     fights[#fights + 1] = NewFight(ns.Now())
     while #fights > KEEP do table.remove(fights, 1) end
     Trace(true, "fight begins")

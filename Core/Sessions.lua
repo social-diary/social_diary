@@ -267,7 +267,10 @@ end
 
 -- The user's zone, written down for the session and for every
 -- participant near right now. Called while somebody is near.
+-- A battleground is no place the session was (ns.InBattleground): "questing
+-- with Tabi in Warsong Gulch and Orgrimmar", 8 Nov.
 local function TrackZone(session, now)
+    if ns.InBattleground() then return end
     local zone = ns.Where().zone
     if not zone then return end
     local moved = AddZone(session.zones, zone)

@@ -437,8 +437,10 @@ end
 -- run's (Core/Instances.lua, INS-30), with or without a session; the
 -- user's own is told as well (SD_YOU_DIED), session or not. `told` is the
 -- death as the messages carry it, the same table at the moment and with
--- the recap.
+-- the recap. None in a battleground (ns.InBattleground): a match's deaths
+-- are no session's, no fight with a stranger and no spot on the route.
 local function Died(guid)
+    if ns.InBattleground() then return end
     local death = ns.Sessions.Death(guid) or nil
     local run = ns.Instances.Death(guid) or nil
     local own = guid == ns.ownGUID

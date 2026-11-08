@@ -222,7 +222,12 @@ ns.On("QUEST_ACCEPTED", function(_, ...)
     if type(questID) == "number" then ns.Fire("SD_QUEST_ACCEPTED", questID) end
 end)
 
+-- A battleground's deaths and fighting are not the road's
+-- (ns.InBattleground): the route is stopped inside one, and they went to
+-- the stop the queue was taken at (a match's deaths on the Orgrimmar plate,
+-- 8 Nov).
 ns.On("PLAYER_DEAD", function()
+    if ns.InBattleground() then return end
     Journey.Act(Journey.Kept(), "deaths", 1)
 end)
 
@@ -237,7 +242,7 @@ end)
 
 ns.On("PLAYER_REGEN_DISABLED", function()
     local j = Journey.Kept()
-    if j then Journey.FightStart(j, ns.Now()) end
+    if j and not ns.InBattleground() then Journey.FightStart(j, ns.Now()) end
 end)
 
 -- A duel's fight is no fighting on the route (SD_DUEL_FINISHED,

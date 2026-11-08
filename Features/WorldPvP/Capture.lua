@@ -8,7 +8,10 @@
 --
 -- Open world only. A battleground or arena kill is not a meeting with
 -- anyone, and forty of them a match would bury the buffer; their GUIDs come
--- back secret there anyway, which SafeGUID drops.
+-- back secret there anyway, which SafeGUID drops (ns.InBattleground). The
+-- user's deaths there never reach this file: Deaths' capture tells none
+-- inside one, as its recap names players by plain GUIDs once combat is over
+-- and each death became a lost fight here (8 Nov).
 --
 -- Rares' capture (once Capture/Together.lua's, now Features/Rares/
 -- Capture.lua, listed after this file) and Capture/Combat.lua (the hunts',
@@ -29,8 +32,6 @@
 local addonName, ns = ...
 
 local WorldPvP = ns.WorldPvP
-
-local PVP_INSTANCES = { pvp = true, arena = true }
 
 -- Unit tokens that may still point at the victim, to read what the GUID
 -- alone cannot (level, faction). The plates last.
@@ -57,8 +58,7 @@ ns.On("PARTY_KILL", function(_, attacker, victim)
     -- One of your own group, mind-controlled or otherwise: not a fight.
     if ns.Roster.Has(victim) then return end
 
-    local _, kind = IsInInstance()
-    if PVP_INSTANCES[ns.Plain(kind)] then return end
+    if ns.InBattleground() then return end
 
     Observe(victim)
     WorldPvP.Kill(victim, not mine and attacker or nil)

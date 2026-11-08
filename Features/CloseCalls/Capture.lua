@@ -255,8 +255,10 @@ local function Judge(f, now, tries)
     if call and call.npcID and ns.Deaths then ns.Deaths.LookUp(call) end
 end
 
+-- No fight is judged in a battleground (ns.InBattleground): a match is
+-- nothing but close calls, and none has a spot on the route.
 ns.On("PLAYER_REGEN_DISABLED", function()
-    if not Journey.Kept() then return end
+    if not Journey.Kept() or ns.InBattleground() then return end
     fight = { started = ns.Now(), seen = {}, foes = 0, kinds = {} }
     Foe("target")
 end)

@@ -188,6 +188,21 @@ local function Project(fromMap, toMap, x, y)
 end
 ns.ProjectMapPos = Project
 
+-- In a battleground or an arena now. The diary has no shape for a match yet
+-- (a feature of its own, to come), so until it does the open world's
+-- detections stand down inside one: its deaths, close calls, witnesses,
+-- fights and the session's places are written nowhere (a Warsong Gulch match
+-- was ten "You died to ..." lines in the session and a lost fight on the
+-- Orgrimmar plate, 8 Nov). Only while inside: everything works again on the
+-- way out.
+local MATCH = { pvp = true, arena = true }
+
+function ns.InBattleground()
+    if not IsInInstance then return false end
+    local inside, kind = IsInInstance()
+    return ns.Plain(inside) == true and MATCH[ns.Plain(kind)] == true
+end
+
 -- Where the user is on the zone map: zone map id, x, y (0..1, rounded and
 -- clamped), or nil -- in an instance, off any zone, with the position
 -- secret, or on a sub-map that cannot be moved onto its zone. A point that

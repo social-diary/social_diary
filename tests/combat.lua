@@ -132,6 +132,21 @@ Eq(call.seconds, 40, "how long the fight was")
 Eq(call.mapID, mock.mapID, "where it ended")
 Check(call.t >= before, "when")
 
+-- In a battleground or an arena nothing is judged; out again, it is.
+do
+    mock.inInstance = true
+    for _, kind in ipairs({ "pvp", "arena" }) do
+        mock.instanceType = kind
+        Fight({ Mob(STRIDER1, "Plainstrider") }, 3)
+        Eq(#ns.CloseCalls.List(j), 1, "a close call kept in a " .. kind .. " instance")
+    end
+    mock.inInstance, mock.instanceType = false, "party"
+    Fight({ Mob(STRIDER1, "Plainstrider") }, 3)
+    Eq(#ns.CloseCalls.List(j), 2, "no close call after leaving the battleground")
+    -- Back to one, so the counts below stay as they were.
+    table.remove(j.closeCalls)
+end
+
 -- The same creature targeted twice is one foe; one foe keeps no count.
 Fight({ Mob(STRIDER3, "Plainstrider"), Mob(STRIDER3, "Plainstrider") }, 1)
 Eq(ns.CloseCalls.List(j)[2].foes, nil, "one foe was counted as more")
