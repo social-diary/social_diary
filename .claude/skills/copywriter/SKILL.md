@@ -134,6 +134,27 @@ Use the helpers; don't hand-format numbers or dates.
 - **Chat**: after the coloured prefix, start lowercase, end with a full
   stop, plain words, no internals. Debug-only lines (behind `/sd debug`)
   may be technical.
+- **Release summaries**: the short paragraph under each `## [X.Y.Z]` in
+  `CHANGELOG.md`. It is read in-game at the top of each release on the
+  _Changelog_ page in Settings, and again as the release notes on
+  CurseForge and GitHub, so it is the first thing a player sees of an
+  update. One or two sentences: what the update is about as a whole, not
+  a list of its entries. Warm and plain, the author talking to the player,
+  not the diary narrating. Feature names in italics, as in the entries.
+  Openers the user likes: “This Update brings / adds / introduces /
+  integrates …”, “A big Update: …”, and for a small one, “Just small
+  fixes connected to Battleground Data and how they’re displayed in
+  _Your Diary_.” Name the one or two things a player would notice; a
+  fixes-only release says so and names the area. Plain apostrophes and
+  quotes there (it is Markdown), and still no exclamation marks.
+- **Credits in the changelog**: an entry may thank the player who
+  reported or helped with it, by a trailing `(thanks Name)` at the end of
+  the bullet line: `- _Hunts_ in _Your Diary_ are no longer confused by
+  crafting (thanks Wendla Morrow)`. The character or player name only, as
+  they gave it; never an `@` (GitHub would notify someone), never a
+  realm or a link. Only real people who asked or agreed to be named;
+  samples and tests use invented names. The Changelog page shows it under
+  the entry as “Thanks to %s”.
 
 ## 6. How to work
 

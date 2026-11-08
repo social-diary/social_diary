@@ -1,7 +1,8 @@
 -- Settings: Interface (UI/Settings/Page.lua lists the sections; the
 -- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, how
--- the book looks, and the hints on the pages. Its
--- subpages are Toasts.lua, Shortcuts.lua and Dungeons.lua beside it.
+-- the book looks, the hints on the pages and the one after a major update.
+-- Its subpages are Toasts.lua, Shortcuts.lua and Dungeons.lua beside it,
+-- always listed under it.
 
 local addonName, ns = ...
 
@@ -49,6 +50,11 @@ local function BuildInterface(pane, c)
     end)
     page.hintsAgain:SetText("Show hints again")
     c:Place(page.hintsAgain, 18, 0, 8)
+    -- The notice after a major update (Core/Hints.lua, the major-update
+    -- hint): its own switch, not under showHints, as it tells of the
+    -- update rather than of something on a page. The account's too.
+    page.showUpdateHint = Switch(c, "Show a hint after a big update", "showUpdateHint", nil, nil,
+        "When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character.")
 end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = "Interface",

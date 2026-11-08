@@ -1,6 +1,6 @@
 ---
 name: release-version
-description: Cut a Social Diary release — bump the TOC version, close the changelog's Unreleased section, commit, tag, and (after confirmation) push the tag that makes GitHub Actions package and publish the release.
+description: Cut a Social Diary release — bump the TOC version, close the changelog's Unreleased section, prune the in-game changelog to the last five releases, commit, tag, and (after confirmation) push the tag that makes GitHub Actions package and publish the release.
 argument-hint: "[patch|minor|major|X.Y.Z]"
 disable-model-invocation: true
 ---
@@ -39,6 +39,9 @@ Stop if the tag already exists.
   empty, there is nothing to release. Say so and stop.
 - The changelog entries follow `.claude/rules/changelog.md`. Tighten any
   that don't, and show the user what you changed.
+- `## [Unreleased]` has its summary line (one or two sentences under the
+  heading, `.claude/rules/changelog.md`). If not, write one with the
+  `/copywriter` skill (its release-summary pattern) and show it to the user.
 - The `Dev/` lines in the TOC are still inside
   `#@do-not-package@` … `#@end-do-not-package@`, and no new `Dev/` or
   `tests/` file sits outside that block.
@@ -61,10 +64,17 @@ number moves with the client, not with the addon.
 1. TOC: set `## Version: X.Y.Z`.
 2. CHANGELOG: rename `## [Unreleased]` to `## [X.Y.Z]`, then add a fresh,
    empty `## [Unreleased]` above it. Headings carry no date.
-3. Run the tests again.
-4. Commit only those two files (plus anything the user approved in step 2)
+3. Prune the in-game changelog: `/opt/homebrew/bin/luajit Dev/changelog.lua`.
+   It rewrites `Core/ChangelogData.lua` from `CHANGELOG.md` with the newest
+   five releases only (`KEEP` in the script), so the new one comes in and
+   the oldest drops out of the game's copy; `CHANGELOG.md` keeps them all.
+   It prints the versions it kept; none may say "(no summary!)".
+4. Run the tests again (`tests/changelog.lua` fails if the data and
+   `CHANGELOG.md` disagree).
+5. Commit only those three files (TOC, `CHANGELOG.md`,
+   `Core/ChangelogData.lua`, plus anything the user approved in step 2)
    with the message `vX.Y.Z`.
-5. `git tag vX.Y.Z`.
+6. `git tag vX.Y.Z`.
 
 ## 4. Publish (confirm first)
 

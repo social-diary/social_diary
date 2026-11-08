@@ -163,7 +163,7 @@ local function Pane(s)
 
     pane.about = Style.Text(pane, FONT.faded)
     pane.about:SetPoint("BOTTOMLEFT", pane.title, "BOTTOMRIGHT", 10, 5)
-    pane.about:SetText(s.about)
+    pane.about:SetText(s.about or "")
 
     return pane, Column(pane, 0, -48, BOOK.RIGHT_W)
 end

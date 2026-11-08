@@ -47,7 +47,7 @@ Check(not pcall(Hints.Register, "x", { page = "people", eligible = function() en
     "a done that is not a function")
 local ids = {}
 for _, spec in ipairs(Hints.All()) do ids[#ids + 1] = spec.id end
-Eq(table.concat(ids, ","), "custom-events,remember-bind,remember-use", "the hints, in order")
+Eq(table.concat(ids, ","), "major-update,custom-events,remember-bind,remember-use", "the hints, in order")
 
 --------------------------------------------------------------------------
 Section("the heartbeat: played time and sittings")
@@ -215,3 +215,58 @@ S.remembers = 1
 SetBinding("F7", "SOCIALDIARY_REMEMBER")
 Eq(Due("people", false), nil, "pressed once: b2 is done")
 SetBinding("F7")
+
+--------------------------------------------------------------------------
+Section("a major update: the version record and its notice")
+
+Eq(ns.IsAccountSetting("showUpdateHint"), true, "the update switch is the account's")
+Eq(ns.Setting("showUpdateHint"), true, "...and on to begin with")
+Eq(Hints.Major("2.4.0"), 2, "a version's major number")
+Eq(Hints.Major("v10.1.3"), 10, "...with a v, two digits")
+Eq(Hints.Major("@project-version@"), nil, "...nothing for what is not a version")
+
+Settled()
+S.version, S.update = nil, nil
+Hints.Installed("2.4.0")
+Eq(S.version, "2.4.0", "the login records the version")
+Eq(Hints.Update(), nil, "no version known before: nothing to tell (a new install)")
+Hints.Installed("2.5.0")
+Eq(Hints.Update(), nil, "a minor update tells nothing")
+Hints.Installed("3.0.0")
+Eq(Hints.Update(), "3.0.0", "a major update is told of")
+Eq(S.version, "3.0.0", "...and recorded")
+
+-- Every clock shut and Show hints off: a notice comes all the same, on any page.
+S.sittingFrom, S.sittingShown = mock.now, Hints.CAP
+S.lastShown = S.played
+ns.SetSetting("showHints", false)
+Eq(Due("people"), "major-update", "the notice: past the clocks and Show hints")
+Eq(Due("journey"), "major-update", "...on whatever page is open")
+local words = Hints.Get("major-update").words()
+Check(words.body:find("3.0.0", 1, true) ~= nil, "the notice names the version")
+Check(type(words.onLink) == "function" and words.link ~= nil, "...with a link to the Changelog")
+ns.SetSetting("showUpdateHint", false)
+Eq(Due("people"), nil, "its own switch off: no notice")
+ns.SetSetting("showUpdateHint", true)
+
+local played, shownInSitting = S.lastShown, S.sittingShown
+Hints.Shown("major-update")
+Eq(Hints.Update(), nil, "laid: the update is told of")
+Eq(S.lastShown, played, "a notice leaves the cooldown as it was")
+Eq(S.sittingShown, shownInSitting, "...and the sitting's count")
+Eq(Due("people"), nil, "told once only")
+
+Hints.Installed("4.0.0")
+Eq(Hints.Update(), "4.0.0", "the next major update")
+Hints.UpdateRead()
+Eq(Hints.Update(), nil, "reading the Changelog is as good as the notice")
+
+ns.SetSetting("showUpdateHint", false)
+Hints.Installed("5.0.0")
+Eq(Hints.Update(), nil, "with the switch off, a major update is not kept to tell later")
+ns.SetSetting("showUpdateHint", true)
+ns.SetSetting("showHints", true)
+
+Settled()
+Hints.Reset()
+Eq(Hints.Again("major-update"), false, "Show hints again does not ask the notice again")

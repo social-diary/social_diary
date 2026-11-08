@@ -1,6 +1,8 @@
--- Settings: Feedback, above About (UI/Settings/Page.lua lists the sections;
--- the controls are UI/Settings/Kit.lua's): where to report a bug or leave
--- an idea or a comment, and what a bug report wants. The client cannot open
+-- Settings: Feedback, About's first subpage, the one turning to About opens
+-- (UI/Settings/Page.lua lists the sections; About is
+-- UI/Settings/Sections/About.lua; the controls are UI/Settings/Kit.lua's):
+-- where to report a bug or leave an idea or a comment, and what a bug
+-- report wants. The client cannot open
 -- a web address, so each is written on a slip to copy (Style.CopyField).
 
 local addonName, ns = ...
@@ -56,5 +58,5 @@ local function BuildFeedback(pane, c)
     page.feedbackDebug = Line(pane, c, DEBUG_TEXT, FONT.body, 8)
 end
 
-SettingsUI.RegisterSection("feedback", { order = 55, label = "Feedback",
+SettingsUI.RegisterSection("feedback", { order = 56, label = "Feedback", parent = "about",
     about = "Bugs, ideas and comments", build = BuildFeedback })

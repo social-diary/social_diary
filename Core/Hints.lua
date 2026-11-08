@@ -25,6 +25,9 @@
 --   boundAt   the sitting the Remember this key was first seen bound in.
 --   again     [id] = true: asked for again (Show hints again, Hints.Reset),
 --             shown the next time its page is open, past the clocks.
+--   version   the addon's version at the last login (Hints.Installed).
+--   update    the version a major update brought, until its notice has
+--             been shown or the Changelog read (Hints.Update).
 --
 -- Hints.Register(id, spec), each a hint (UI/Journal/Hints.lua):
 --   order     which goes first where two could show at once
@@ -35,6 +38,16 @@
 --   fits      optional: function(ctx) -> true where it makes sense at all,
 --             asked again or not (b1 with no key bound, b2 with one); the
 --             part of `eligible` Show hints again still asks
+--   notice    optional: true for news rather than teaching (a major update,
+--             later perhaps a poll). It comes past the clocks (HNT-1..3)
+--             and does not start them again; `seen` does not hold it back,
+--             its `eligible` says when it is over; Show hints again does
+--             not ask it again. Gated by its own switch (`setting`), not
+--             by Show hints.
+--   setting   optional: the account setting that switches it off
+--   page      may be "any" for a notice: it lies on whatever page is open
+--   dwell     optional: seconds on the page before it comes (Hints.DWELL)
+--   shown     optional: function() run as it is laid
 --
 -- ctx, from the watcher: { view, selected, inGroup }.
 
@@ -67,7 +80,13 @@ local registry = ns.Registry.New({
     end,
 })
 
-function Hints.Register(id, spec) return registry:Add(id, spec) end
+function Hints.Register(id, spec)
+    for _, field in ipairs({ "shown" }) do
+        assert(spec[field] == nil or type(spec[field]) == "function",
+            "Hints.Register: " .. tostring(id) .. "'s " .. field .. " is not a function")
+    end
+    return registry:Add(id, spec)
+end
 function Hints.Get(id) return registry:Get(id) end
 function Hints.All() return registry:Ordered() end
 
@@ -167,21 +186,37 @@ local function Done(spec)
     return false
 end
 
+-- Whether a hint lies on page `view`: its own, or any for a notice.
+function Hints.OnPage(spec, view)
+    return spec.page == view or (spec.page == "any" and view ~= nil)
+end
+
 -- The hint due on this context, or nil. In turn:
 --   forced    (/sd hint) on its page: nothing else asked;
+--   notices   on their page (or any), their switch on, eligible: the
+--             clocks and Show hints passed over;
 --   again     (Show hints again) on its page, with Show hints on, not done
 --             and where it fits: the clocks (HNT-1..3) passed over;
 --   the rest  the first, in order, the clocks let through that is neither
 --             seen nor retired and whose context holds.
 function Hints.Due(ctx, now)
     for _, spec in ipairs(registry:Ordered()) do
-        if forced[spec.id] and spec.page == ctx.view then return spec end
+        if forced[spec.id] and Hints.OnPage(spec, ctx.view) then return spec end
     end
     local s = State()
-    if not s or ns.Setting("showHints") == false then return nil end
+    if not s then return nil end
+    -- Notices first, past the clocks, each behind its own switch.
+    for _, spec in ipairs(registry:Ordered()) do
+        if spec.notice and Hints.OnPage(spec, ctx.view)
+            and (not spec.setting or ns.Setting(spec.setting) ~= false)
+            and not Hints.Retired(spec.id) and spec.eligible(ctx) then
+            return spec
+        end
+    end
+    if ns.Setting("showHints") == false then return nil end
     for _, spec in ipairs(registry:Ordered()) do
         local id = spec.id
-        if s.again[id] and spec.page == ctx.view then
+        if s.again[id] and not spec.notice and spec.page == ctx.view then
             if Hints.Retired(id) or Done(spec) then
                 s.again[id] = nil
             elseif not spec.fits or spec.fits(ctx) then
@@ -192,7 +227,7 @@ function Hints.Due(ctx, now)
     if not Hints.Open(now) then return nil end
     for _, spec in ipairs(registry:Ordered()) do
         local id = spec.id
-        if not Hints.Seen(id) and not Hints.Retired(id) and spec.page == ctx.view then
+        if not spec.notice and not Hints.Seen(id) and not Hints.Retired(id) and spec.page == ctx.view then
             if not Done(spec) and spec.eligible(ctx) then
                 return spec
             end
@@ -202,11 +237,15 @@ function Hints.Due(ctx, now)
 end
 
 -- It has been shown (HNT-7): seen, and the clocks start again.
+-- A notice is seen too, but leaves the clocks as they were.
 function Hints.Shown(id, now)
     local s = State()
     if not s then return end
     forced[id], s.again[id] = nil, nil
     s.seen[id] = now or Now()
+    local spec = registry:Get(id)
+    if spec and spec.shown then spec.shown() end
+    if spec and spec.notice then return end
     s.lastShown = s.played or 0
     s.sittingShown = (s.sittingShown or 0) + 1
 end
@@ -220,7 +259,7 @@ function Hints.Reset()
     wipe(s.seen)
     s.lastShown = nil
     for _, spec in ipairs(registry:Ordered()) do
-        if not Hints.Retired(spec.id) then s.again[spec.id] = true end
+        if not Hints.Retired(spec.id) and not spec.notice then s.again[spec.id] = true end
     end
 end
 
@@ -229,11 +268,49 @@ function Hints.Again(id)
     return s and s.again[id] == true or false
 end
 
+--------------------------------------------------------------------------
+-- Updates: the version installed, and a major one brought
+--------------------------------------------------------------------------
+
+-- "2.4.0" -> 2; nil for what is not a version.
+function Hints.Major(version)
+    return tonumber(tostring(version or ""):match("^v?(%d+)%."))
+end
+
+-- At login: the version now against the one the last login ran. A higher
+-- major number (2.x to 3.0) is an update to tell of, with its switch on
+-- (showUpdateHint). The first login with this record (a new install, or
+-- the update that brought it) knows no version before, so tells nothing.
+function Hints.Installed(version)
+    local s = State()
+    if not s then return end
+    version = version or ns.version
+    local was, now = Hints.Major(s.version), Hints.Major(version)
+    if was and now and now > was and ns.Setting("showUpdateHint") ~= false then
+        s.update = version
+    end
+    s.version = version
+end
+
+-- The version a major update brought, until it has been told of or the
+-- Changelog read; else nil.
+function Hints.Update()
+    local s = State()
+    return s and s.update or nil
+end
+
+-- Told of (its notice laid), or the Changelog read: over.
+function Hints.UpdateRead()
+    local s = State()
+    if s then s.update = nil end
+end
+
 -- /sd hint <id> (Dev/Hints.lua).
 function Hints.Force(id) forced[id] = true end
 function Hints.Forced(id) return forced[id] == true end
 
 ns.On("PLAYER_LOGIN", function()
+    Hints.Installed()
     Hints.Beat()
     if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(Hints.BEAT, function() Hints.Beat() end) end
 end)

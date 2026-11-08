@@ -83,6 +83,26 @@ Hints.Register("remember-use", {
     end,
 })
 
+-- c) News, not teaching: the first time the book opens after a major
+-- update (2.x to 3.0, Core/Hints.lua's Installed), on whatever page it
+-- opens on, past the clocks, behind its own switch. Over once laid, or
+-- once the Changelog has been read.
+Hints.Register("major-update", {
+    order = 1,
+    page = "any",
+    notice = true,
+    setting = "showUpdateHint",
+    dwell = 1.5,
+    eligible = function() return Hints.Update() ~= nil end,
+    shown = function() Hints.UpdateRead() end,
+    words = function()
+        local version = Hints.Update() or ns.version
+        return { title = "Fresh Pages",
+            body = ("Social Diary %s is here, with a few new things to find."):format(version),
+            link = "See what’s new", onLink = function() ns.UI.ShowSettings("changelog") end }
+    end,
+})
+
 --------------------------------------------------------------------------
 -- The watcher
 --------------------------------------------------------------------------
@@ -106,6 +126,7 @@ end
 -- Where the book lies now, and since when it has lain there.
 local where, since
 local showing   -- the hint's spec while its slip is out
+local laidOn    -- the page it lies on (a notice's "any" made one)
 
 -- The pad told a slip came or went: it joins the page's focus, or leaves
 -- it (UI/Journal/HintPad.lua). Nothing while the pad is not in hand.
@@ -137,17 +158,19 @@ function HintsUI.Look(now)
     if here ~= where then
         where, since = here, now
         -- The slip lies on its page: turned away from, it goes.
-        if showing and showing.page ~= ctx.view then Put() end
+        if showing and laidOn ~= ctx.view then Put() end
     end
     -- Kept up whether or not a hint is due: the sitting the key was first
     -- seen bound in (Core/Hints.lua's BoundFor).
     Hints.BoundFor(RememberKey() ~= nil)
-    if showing or now - since < Hints.DWELL or InTheWay() then return end
+    if showing or InTheWay() then return end
     local spec = Hints.Due(ctx)
-    if not spec then return end
-    showing = spec
+    if not spec or now - since < (spec.dwell or Hints.DWELL) then return end
+    -- Read before Shown: a notice's words may name what Shown clears.
+    local words = spec.words()
+    showing, laidOn = spec, ctx.view
     Hints.Shown(spec.id)
-    ns.UI.HintSlip.Show(J.journal.views[spec.page], spec.page, spec.words(), Put)
+    ns.UI.HintSlip.Show(J.journal.views[ctx.view], ctx.view, words, Put)
     Told()
 end
 

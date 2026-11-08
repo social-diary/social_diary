@@ -1,6 +1,7 @@
--- Settings: Feedback (UI/Settings/Sections/Feedback.lua), listed right above
--- About: the two web addresses on read-only slips to copy (Style.CopyField),
--- the version a bug report asks for, and /sd debug.
+-- Settings: Feedback (UI/Settings/Sections/Feedback.lua), About's first
+-- subpage, the one turning to About opens: the two web addresses on
+-- read-only slips to copy (Style.CopyField), the version a bug report asks
+-- for, and /sd debug.
 
 local T = ...
 local mock = T.mock
@@ -16,22 +17,28 @@ Section("settings: Feedback, the way to report a bug")
 mock.RunTimers()
 local P = ns.UI.SettingsPage()
 
--- Registered, and listed directly above About, after Memory.
+-- Registered as About's first subpage, About right after Memory.
 local list = ns.UI.Settings.Sections()
 local at = {}
 for i, s in ipairs(list) do at[s.key] = i end
 Check(at.feedback ~= nil, "no Feedback section")
-Eq(at.about, (at.feedback or 0) + 1, "Feedback is not directly above About")
-Eq(at.memory, (at.feedback or 0) - 1, "Feedback is not directly under Memory")
-local function NavY(key) return P.nav[key].recorded.points[1].args[2] end
-Check(NavY("memory") > NavY("feedback") and NavY("feedback") > NavY("about"),
-    "the Feedback row is not placed between Memory and About")
+Eq(list[at.feedback].parent, "about", "Feedback is not About's subpage")
+Eq(at.feedback, (at.about or 0) + 1, "Feedback is not About's first subpage")
+Eq(at.about, (at.memory or 0) + 1, "About is not directly under Memory")
 Eq(P.nav.feedback.label:GetText(), "Feedback", "the Feedback row's name")
-Eq(P.nav.feedback.about:GetText(), "Bugs, ideas and comments", "the Feedback row's small print")
+Eq(P.nav.feedback.about, nil, "a subpage's row carries small print")
 
+P.nav.about:Click()
+Eq(P:Section(), "feedback", "clicking About did not open Feedback")
+local function NavY(key) return P.nav[key].recorded.points[1].args[2] end
+Check(NavY("memory") > NavY("about") and NavY("about") > NavY("feedback"),
+    "the Feedback row is not placed under About")
+Eq(P.panes.feedback.about:GetText(), "Bugs, ideas and comments", "the Feedback page's small print")
+P.nav.memory:Click()
+P.nav.about:Click()
 P.nav.feedback:Click()
 Eq(P:Section(), "feedback", "clicking Feedback did not open it")
-Check(P.panes.feedback:IsShown() and not P.panes.about:IsShown(), "the Feedback page did not open")
+Check(P.panes.feedback:IsShown() and not P.panes.credits:IsShown(), "the Feedback page did not open")
 
 -- Both addresses, exactly, each on its own slip on the Feedback page.
 local issues, comments = P.feedbackLinks.issues, P.feedbackLinks.comments

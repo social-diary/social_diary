@@ -37,6 +37,18 @@
 -- ticks or unticks one, as its click does. Rows are known by who they are,
 -- so a search or a tick keeps the pad's place.
 --
+-- A pane may hand over lines of its own to read (`pane.padItems`, a
+-- function given `add(item)`): the Changelog's, a smooth list read down a
+-- line at a time, each scrolled into view by the item's own `reveal` as
+-- the pad lands on it. A does nothing there; up and down read on.
+--
+-- A collapsed group's subpages (About's) are passed over while their rows
+-- are hidden: a row's item is available only while its row is shown.
+-- Landing on About opens its first subpage (Feedback) and lists the
+-- group, and the pad stays on About's row: on the sections it is put on
+-- the open section's row, except where it stands on the row of that
+-- section's group and the group has no page of its own (About).
+--
 -- After a ribbon turn the page's title holds the box until the first
 -- D-pad press (the journal's HOLD_TITLE), which lands on the sections.
 
@@ -99,6 +111,7 @@ local PROMPT = {
     done = { "PAD1", "Done writing", main = true },
     stop = { "PAD2", "Stop writing" },
     title = { { "PADDUP", "PADDDOWN" }, "Go to the sections", main = true },
+    read = { { "PADDUP", "PADDDOWN" }, "Read on", main = true },  -- copy TBD (copywriter)
 }
 
 local scope
@@ -163,7 +176,9 @@ local function IndexOf(guid)
 end
 
 -- The pad lands on a row: in view, its name boxed, the heading over it.
+-- (A line a pane handed over brings itself into view.)
 local function FindRow(item)
+    if item.reveal then return item.reveal(item) end
     if not item.guid then return end
     local list = Quiet()
     local index = IndexOf(item.guid)
@@ -212,6 +227,15 @@ scope = {
     active = function() return ns.UI.JournalShowing("settings") and Page() ~= nil end,
 }
 
+-- Whether the section open is a subpage of section `key`.
+local function InGroup(key)
+    local open = Page():Section()
+    for _, s in ipairs(SettingsUI.Sections()) do
+        if s.key == open then return s.parent == key end
+    end
+    return false
+end
+
 function scope.build(f)
     local page = Page()
     f:Group("nav", { mode = "list", right = "pane" })
@@ -237,13 +261,14 @@ function scope.build(f)
         f:Add("nav", {
             key = "nav:" .. key, frame = row, prompt = PROMPT.nav,
             -- (landing on a section shows it, after the row's own hover look)
+            -- (a group's row, About's, keeps the subpage of it open, if one is)
             enter = function()
                 local fn = row:GetScript("OnEnter")
                 if fn then fn(row, false) end
-                if page:Section() ~= key then page:ShowSection(key) end
+                if page:Section() ~= key and not InGroup(key) then page:ShowSection(key) end
             end,
             press = function()
-                page:ShowSection(key)
+                if not InGroup(key) then page:ShowSection(key) end
                 scope.focus:EnterGroup("pane")
             end,
         })
@@ -253,14 +278,27 @@ function scope.build(f)
     end
     -- (on the sections, the pad stands on the one open: it may have been
     -- opened otherwise meanwhile, by a link or /sd settings)
-    if f.group ~= "pane" and f.remembered.nav ~= "nav:intro" then f:Remember("nav", "nav:" .. page:Section()) end
+    -- (on the row of a group with no page of its own, About's, whose
+    -- subpage is open, the pad stays there)
+    local open
+    for _, s in ipairs(SettingsUI.Sections()) do
+        if s.key == page:Section() then open = s end
+    end
+    local group = open and open.parent and not page.panes[open.parent] and ("nav:" .. open.parent)
+    if f.group ~= "pane" and f.remembered.nav ~= "nav:intro" and not (group and f.remembered.nav == group) then
+        f:Remember("nav", "nav:" .. page:Section())
+    end
 
     for _, s in ipairs(SettingsUI.Sections()) do
         local pane = page.panes[s.key]
-        for i, found in ipairs(Collect(pane, {}, page.quiet)) do
-            f:Add("pane", Item(pane, s.key, i, found))
+        if pane then
+            for i, found in ipairs(Collect(pane, {}, page.quiet)) do
+                f:Add("pane", Item(pane, s.key, i, found))
+            end
+            if page.quiet and page.quiet:GetParent() == pane then QuietItems(f, pane) end
+            local lines = pane.padItems
+            if lines then lines(function(item) f:Add("pane", item) end) end
         end
-        if page.quiet and page.quiet:GetParent() == pane then QuietItems(f, pane) end
     end
 
     -- (the quiet list's search lets go as the pad stands anywhere else)
@@ -340,6 +378,8 @@ function scope.legend()
         out[1] = PROMPT.step
     elseif at.kind == "link" then
         out[1] = PROMPT.link
+    elseif at.kind == "read" then
+        out[1] = PROMPT.read
     end
     out[#out + 1] = PROMPT.back
     return out

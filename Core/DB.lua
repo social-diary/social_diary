@@ -98,6 +98,10 @@ local ACCOUNT_SETTINGS = {
     -- HNT-10: the hints on the pages (Core/Hints.lua). About the person, as
     -- the hints' own record is.
     showHints = true,
+    -- A notice on the page the first time the journal opens after a major
+    -- update (2.x to 3.0), linking the Changelog (Core/Hints.lua's
+    -- Installed). Its own switch, beside Show hints.
+    showUpdateHint = true,
     debug = false,
 }
 

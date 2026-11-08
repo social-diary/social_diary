@@ -10,7 +10,16 @@ few words. The addon shows the details, so the changelog doesn't need to.
 
 ## Shape
 
-Group entries under these subheadings inside each version
+Every released version opens with a **summary paragraph** directly under
+its `## [X.Y.Z]` heading, before the first subheading: one or two
+sentences on what the update is about as a whole, on one line (never
+wrapped). It is shown in-game atop the release on the _Changelog_ page in
+Settings, and as the release notes on CurseForge and GitHub. Write it when cutting the release at the latest;
+`[Unreleased]` may carry one in progress. Its voice and openers are in the
+copywriter skill (`.claude/skills/copywriter/SKILL.md`, §5 Release
+summaries).
+
+Then group entries under these subheadings inside each version
 (`## [Unreleased]`, `## [1.2.0]`, …), in this order. Leave out any that
 are empty.
 
@@ -42,6 +51,11 @@ are empty.
 - **Fixes describe the corrected behaviour**, not the cause of the bug.
 - If an entry needs a comma clause to explain itself, it is too long. Cut
   it down to the subject and the verb.
+- **Credit a player** who reported or helped with an entry by a trailing
+  `(thanks Name)` at the end of the bullet line. A name only: no `@`
+  (GitHub would notify someone), no realm, no link. It doesn't count
+  towards the ten words. Only real people who agreed to be named; examples
+  use invented names.
 
 ## Example
 
@@ -64,6 +78,10 @@ Too verbose:
 Right:
 
 ```markdown
+## [1.3.0]
+
+This Update brings the creatures that killed you into _Your Diary_ and gives _Settings_ subpages.
+
 ### Shiny new Things
 
 - _Your Diary_ now showcases NPCs that killed you
@@ -72,7 +90,7 @@ Right:
 
 ### Fixes
 
-- Map _Plates_ in _Your Diary_ now show only their own level's content
+- Map _Plates_ in _Your Diary_ now show only their own level's content (thanks Brannoc Ashby)
 ```
 
 ## Scope

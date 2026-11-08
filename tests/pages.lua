@@ -61,10 +61,16 @@ Eq(J.Page("bad"), nil, "a refused page was kept")
 --------------------------------------------------------------------------
 Section("the settings' sections, and what a section must say")
 
-Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds integrations memory feedback about",
+Eq(Keys(SettingsUI.Sections()),
+    "recording interface toasts shortcuts dungeons sounds integrations memory about feedback changelog credits",
     "the sections, in the order the left page lists them")
 Eq(SettingsUI.Sections()[3].parent, "interface", "Toasts is not Interface's subpage")
-Check(Refused(SettingsUI.RegisterSection, "bad", { label = "Bad", about = "x" }) ~= nil, "a section without a build")
+-- (a section without a build is a group, opening its first subpage: a
+-- subpage always has its own)
+Check(Refused(SettingsUI.RegisterSection, "bad", { label = "Bad", about = "x", parent = "about" }) ~= nil,
+    "a subpage without a build")
+Check(Refused(SettingsUI.RegisterSection, "bad", { label = "Bad", about = 3, build = Build }) ~= nil,
+    "small print that is not words")
 Check(Refused(SettingsUI.RegisterSection, "bad", { about = "x", build = Build }) ~= nil, "a section without a name")
 Check(Refused(SettingsUI.RegisterSection, "bad", { label = "Bad", about = "x", build = Build, parent = 3 }) ~= nil,
     "a subpage of a number")
@@ -79,10 +85,10 @@ SettingsUI.RegisterSection("test", { order = 35, label = "Test section", about =
     end })
 SettingsUI.RegisterSection("gone", { order = 36, label = "Gone", about = "Taken out",
     build = function() section.gone = true end })
-Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test gone integrations memory feedback about",
+Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test gone integrations memory about feedback changelog credits",
     "the test's sections not in their order")
 Check(SettingsUI.RemoveSection("gone") ~= nil, "a section taken out was not found")
-Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test integrations memory feedback about",
+Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test integrations memory about feedback changelog credits",
     "a section taken out is still listed")
 
 --------------------------------------------------------------------------

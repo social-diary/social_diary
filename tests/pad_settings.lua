@@ -166,10 +166,11 @@ Press("PAD2")
 for _, key in ipairs(sections) do
     page:ShowSection(key)
     Pad.Refresh()
-    Eq(At().key, "nav:" .. key, "not on " .. key)
+    -- (About has no page of its own: turning to it opens Feedback)
+    Eq(At().key, "nav:" .. (key == "about" and "feedback" or key), "not on " .. key)
 end
 for _, item in ipairs(Pad.Top().focus.groups.pane.items) do
-    Check(not item.frame.readOnly, "a read-only box among the settings: " .. item.key)
+    Check(not (item.frame and item.frame.readOnly), "a read-only box among the settings: " .. item.key)
 end
 
 --------------------------------------------------------------------------

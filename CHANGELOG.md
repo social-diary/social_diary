@@ -5,7 +5,18 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- An in-game _Changelog_ in _Settings_, under _About_
+- A hint points you to the _Changelog_ after a big update
+
+### Changes
+
+- _Feedback_ and _Credits_ now sit under _About_ in _Settings_
+
 ## [2.4.0]
+
+Just small fixes connected to _Hunts_, Nearby _Toasts_ and the _Dungeon View_.
 
 ### Fixes
 
@@ -16,7 +27,7 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [2.3.0]
 
-This Update adds Language Support for non-latin Languages and Preview Pages for Strangers.
+This Update adds support for non-latin languages and pencilled-in preview pages for strangers in _Your Diary_.
 
 ### Shiny new Things
 
@@ -28,11 +39,15 @@ This Update adds Language Support for non-latin Languages and Preview Pages for 
 
 ## [2.2.1]
 
+Just one small fix, so the journal can be closed during a fight.
+
 ### Fixes
 
 - The journal's close button now works in combat
 
 ## [2.2.0]
+
+This Update introduces hints, a _Feedback_ page and tamed pets for Hunters, and the _Dungeon View_ now knows which pack killed you.
 
 ### Shiny new Things
 
@@ -54,6 +69,8 @@ This Update adds Language Support for non-latin Languages and Preview Pages for 
 - _Dungeon View_ spreads deaths along the way before the first boss falls
 
 ## [2.1.0]
+
+This Update lets you add your own events to _Your Diary_ and makes getting started shorter, along with a good round of fixes.
 
 ### Shiny new Things
 

@@ -12,6 +12,7 @@ local here = (arg and arg[0] or "tests/run.lua"):match("^(.*)[/\\]") or "."
 
 local FILES = {
     "identity",
+    "changelog",
     "interactions",
     "trade",
     "chat",
@@ -56,6 +57,7 @@ local FILES = {
     "reunion",
     "settings",
     "feedback",
+    "settings_about",
     "hints",
     "hints_ui",
     "paper_grain",

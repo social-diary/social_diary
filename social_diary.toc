@@ -73,6 +73,7 @@ Core/Events.lua
 # After Events.lua: its PLAYER_LOGIN handler runs after the one that
 # loads the saved data.
 Core/Hints.lua
+Core/ChangelogData.lua
 Core/Slash.lua
 
 UI/Kit/Chrome.lua
@@ -214,8 +215,10 @@ UI/Settings/Sections/Dungeons.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Memory.lua
-UI/Settings/Sections/Feedback.lua
 UI/Settings/Sections/About.lua
+UI/Settings/Sections/Feedback.lua
+UI/Settings/Sections/Changelog.lua
+UI/Settings/Sections/Credits.lua
 UI/Settings/Pad.lua
 UI/Blizzard/Signpost.lua
 # The parcel at login: its scene first (ns.UI.Parcel, and the fonts made
