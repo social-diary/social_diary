@@ -102,29 +102,67 @@ local function Wake(root)
 end
 
 --------------------------------------------------------------------------
-Section("an empty diary: the key and the link walked")
+Section("an empty diary: Remember this's book in place of the key, and the link walked")
 
 local welcome = journal.welcome
 Check(welcome:IsShown(), "setup: the empty page not shown")
 Wake(welcome)
 Eq(Top(), "people", "the People page's scope has not the pad on an empty diary")
 local setter = welcome.key
-Eq(At().kind, "setter", "the pad not on the key")
-Check(parts.pen:IsShown(), "the key's link not boxed")
-Eq(Legend().PAD1, "Choose a button", "A's prompt does not ask for a button")
+local remember = welcome.book
+Check(remember ~= nil, "no book on the empty page with the pad in hand")
+Check(not setter:IsShown(), "the key setter shown with the pad in hand")
+Eq(remember.diaryMacro, "remember", "the book not Remember this's")
+Eq(welcome.keyHeading.text:GetText(), "OR PRESS A BUTTON", "the way in's heading with the pad")
+Eq(welcome.keyText:GetText(), ns.UI.Settings.Macro.PadLine(Pad.Glyphs.Text("PAD1", 16), true),
+    "the line saying what to do with the book")
+Check(not welcome.keyText:GetText():find("can't", 1, true), "the line explains what does not work")
+Eq(At().kind, "book", "the pad not on the book")
+Eq(At().words, remember.label, "the book's name not boxed")
+Check(parts.pen:IsShown(), "the book's name not boxed")
+Eq(Legend().PAD1, "Pick it up", "A's prompt on the book")
+mock.macros, mock.cursor = {}, nil
 Press("PAD1")
-Check(setter.listening, "A did not listen for a key")
--- (step 7c: the setter has the pad while it listens, the book's aside)
-Check(Pad.Top() == nil, "a scope kept the pad while the key listens")
-Check(setter.catcher:IsGamePadButtonEnabled(), "the key does not take pad buttons while listening")
-mock.PadPress(setter.catcher, "PAD2", true)
-Check(not setter.listening, "B did not stop the listening")
-Check(book:IsShown(), "B while listening closed the book")
-Eq(At().kind, "setter", "listening moved the pad off the key")
+Eq(#mock.macros, 1, "A did not make the macro")
+Eq(mock.macros[1].body, "/sd remember", "A made the wrong macro")
+Eq(mock.cursor and mock.cursor[1], "macro", "A did not pick the book up")
+Eq(welcome.keyStatus:GetText(), ns.UI.Settings.Macro.SAID.padClick, "the pad's line after a pickup")
+Check(book:IsShown(), "A on the book closed the journal")
+Eq(At().kind, "book", "picking it up moved the pad")
+
+-- In a fight the book fades, and the pad passes over it.
+mock.cursor = nil
+mock.inCombat = true
+mock.fire("PLAYER_REGEN_DISABLED")
+Pad.Refresh()
+Check(remember.unavailable, "the book not faded in a fight")
+Check(At() == nil or At().kind ~= "book", "the pad stands on a faded book")
+remember:Click("LeftButton")
+Eq(mock.cursor, nil, "a faded book picked up")
+mock.inCombat = false
+mock.fire("PLAYER_REGEN_ENABLED")
+Onto(remember, "left")
+Eq(At().kind, "book", "the book not back after the fight")
+
 Press("PADDDOWN")
-Eq(At().kind, "link", "down from the key not the Recently nearby link")
+Eq(At().kind, "link", "down from the book not the Recently nearby link")
 Eq(At().control, welcome.nearby, "not the Recently nearby link")
 Eq(Legend().PAD1, "Choose", "A's prompt on the link")
+
+--------------------------------------------------------------------------
+Section("an empty diary with the mouse: the key as before")
+
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+Check(not Pad.Input.Active(), "setup: the mouse did not take over")
+Check(setter:IsShown(), "the key setter not back with the mouse")
+Check(not remember:IsShown(), "the book kept with the mouse")
+Eq(welcome.keyHeading.text:GetText(), "OR PRESS A KEY", "the key's heading not back")
+Eq(welcome.keyText:GetText(), "Target them first.", "the key's line not back")
+Eq(welcome.keyStatus:GetText(), "", "the pad's line kept with the mouse")
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+Check(Pad.Input.Active(), "setup: the pad not back")
+Check(remember:IsShown() and not setter:IsShown(), "the book not back with the pad")
+Pad.Refresh()
 
 --------------------------------------------------------------------------
 Section("a glimpse: opened from elsewhere, the pad on it; walked")

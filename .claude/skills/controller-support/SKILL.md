@@ -36,7 +36,18 @@ Background, if you need more than this file:
    - No override bindings for navigation.
    - Never `SetBinding` for the player, except the key setter
      (`UI/Kit/Keys.lua`), where they choose the key. That's their opt-in,
-     and it is refused in combat.
+     and it is refused in combat. The setter is **keyboard-only**.
+   - **Never bind a pad button** (`PAD1`, `SHIFT-PAD3`): under the Gamepad
+     UI the binding context `GamepadModeInGameCore` takes nearly every pad
+     press first, so a normal binding on a pad button never fires
+     (`.claude/ui-proposal/controller/bindings-and-radial.md`). A
+     controller's player opens the diary or Remember this with the
+     **macro books** (`UI/Settings/Macro.lua`), placed in a slot of their
+     controller's action bar. With the pad in hand, Keybinds & Shortcuts
+     shows the books first and hides the key setters; the empty People
+     page shows Remember this's book in place of its key. A book is a
+     control of its own kind (`.diaryMacro`): A picks it up as a click
+     does. Words for it say what to do, never what doesn't work.
 
 3. **Additive.** The pad never takes a press it doesn't use.
    - Unclaimed buttons go on to the game (movement, camera, action bars),
@@ -87,7 +98,7 @@ was picked up or put down. `/sd pad on|off|auto` forces it for testing.
 | A **margin card / strip** on Your Diary or a person's page | every strip's `:Focus()` (`UI/Paper/Strip.lua`) | nothing. Only if its heading isn't the strip's `name`, or the card is more than its slip, add the optional `focus(strip, f)` card hook (documented above `ns.UI.PaperStrip`). Never touch the strip's private fields. |
 | A **mark on a plate** | the plate's mark buttons keep `padAt`; prints on `plate.overButtons` | nothing |
 | A **setting** built with `UI/Settings/Kit.lua` or a Style widget | the settings scope walks the pane (`UI/Settings/Pad.lua`) | nothing (use the kit) |
-| A **field on a form or sheet** (entry, note, link card, custom card) | `Pad.Controls` / the sheet's collector | nothing, if it's a standard widget: `Style.Checkbox` (tick+label), `Style.Link` (line+label), EditBox, `Style.TagButton`, `Style.Portrait`, a key setter |
+| A **field on a form or sheet** (entry, note, link card, custom card) | `Pad.Controls` / the sheet's collector | nothing, if it's a standard widget: `Style.Checkbox` (tick+label), `Style.Link` (line+label), EditBox, `Style.TagButton`, `Style.Portrait`, a key setter, a macro book (`BookButton`) |
 | A **row in an existing list** (People, Nearby, the quiet list, the left page) | that page's scope walks the virtual list | nothing |
 
 Discovery reads **lowercase fields** the widgets set (`tick`, `label`,

@@ -17,11 +17,17 @@
 --   a scale (the kit's Slider) left and right step it
 --   a number (the kit's Number) left and right count it up or down
 --   a link (Style.Link)        A follows it
---   a key (UI/Kit/Keys.lua)    A listens; the next key or pad button binds
---                              (the setter takes it itself, the pad aside)
+--   a key (UI/Kit/Keys.lua)    A listens for a keyboard key (the setters
+--                              are not shown with the pad in hand: a pad
+--                              button is never bound, it would not fire
+--                              under the Gamepad UI)
+--   a book (UI/Settings/Macro.lua, `.diaryMacro`)  A picks it up, as a
+--                              click does, for a slot on the controller's
+--                              action bar; a book faded in a fight is
+--                              passed over
 -- Faded settings (DependsOn) and read-only boxes are passed over. So are
--- Feedback's copy fields (copying needs a keyboard) and the books to drag
--- onto an action bar (a drag): neither is a control found here.
+-- Feedback's copy fields (copying needs a keyboard): not a control found
+-- here.
 --
 -- The quiet list (the Toasts section, UI/Settings/Quiet.lua) ends the
 -- Toasts settings: its search (A gives the box the keyboard's cursor; A
@@ -47,6 +53,7 @@ local function Journal() return Pad.Scope("journal") end
 -- What a widget on a pane is, by what it is made of (lowercase fields:
 -- the widgets' own, and safe to read on any frame).
 local function Kind(w)
+    if w.diaryMacro then return "book" end
     if w.keycap and w.bind and rawget(w, "Listen") then return "setter" end
     if w.slider then return "slider" end
     if w.box and w.label then return "number" end
@@ -86,7 +93,8 @@ local PROMPT = {
     link = { "PAD1", "Choose", main = true },
     step = { { "PADDLEFT", "PADDRIGHT" }, "Less · more", main = true },
     back = { "PAD2", "Back to the sections" },
-    key = { "PAD1", "Choose a button", main = true },
+    key = { "PAD1", "Choose a keyboard key", main = true },
+    book = { "PAD1", "Pick it up", main = true },
     write = { "PAD1", "Write", main = true },
     done = { "PAD1", "Done writing", main = true },
     stop = { "PAD2", "Stop writing" },
@@ -119,9 +127,12 @@ local function Item(pane, sectionKey, i, found)
     elseif kind == "switch" then
         -- (its tooltip and hover look are the mouse's; A clicks it)
         item.press = function() w:Click("LeftButton") end
+    elseif kind == "book" then
+        -- (its name beside it boxed, its tooltip shown; A picks it up)
+        item.words, item.subhead = w.label, w.group
+        item.press = function() w:Click("LeftButton") end
     elseif kind == "setter" then
-        -- (its link boxed; A listens, and the setter has the pad until a
-        -- button, B or Escape)
+        -- (its link boxed; A listens for a keyboard key)
         item.frame, item.words, item.subhead = w.bind, w.bind.label, w.group
         item.available = function()
             return pane:IsShown() and Shown(w) and not w.listening
@@ -323,6 +334,8 @@ function scope.legend()
         out[1] = PROMPT.write
     elseif at.kind == "setter" then
         out[1] = PROMPT.key
+    elseif at.kind == "book" then
+        out[1] = PROMPT.book
     elseif at.kind == "slider" or at.kind == "number" then
         out[1] = PROMPT.step
     elseif at.kind == "link" then

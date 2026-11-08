@@ -24,109 +24,11 @@ local MODIFIER_KEYS = {
     LALT = true, RALT = true, LMETA = true, RMETA = true,
 }
 
---------------------------------------------------------------------------
--- The pad's buttons (.claude/controller-plan.md, step 7c)
---------------------------------------------------------------------------
---
--- A pad button binds as a key does ("PAD3"), with the modifiers its
--- stand-in buttons hold ("SHIFT-PAD3" while the button set as Shift is
--- held: the GamePadEmulate* CVars, read each time, never assumed). A
--- stand-in itself is never bound (a modifier fires no binding of its own,
--- and Escape's is the game's), and B cancels as Escape does, so it is
--- never bound either.
-
-local function CVar(name)
-    local get = (C_CVar and C_CVar.GetCVar) or GetCVar
-    return get and get(name) or nil
-end
-
--- The stand-ins, and the client's own defaults where a CVar is not there.
-local STAND_IN = {
-    { role = "ALT", cvar = "GamePadEmulateAlt", default = "none" },
-    { role = "CTRL", cvar = "GamePadEmulateCtrl", default = "PADLSHOULDER" },
-    { role = "SHIFT", cvar = "GamePadEmulateShift", default = "PADLTRIGGER" },
-    { role = "ESCAPE", cvar = "GamePadEmulateEsc", default = "PADBACK" },
-}
-
--- The pad button standing in for `role` ("ALT", "CTRL", "SHIFT" or
--- "ESCAPE"), or nil when none is.
-function Keys.StandIn(role)
-    for _, s in ipairs(STAND_IN) do
-        if s.role == role then
-            local button = CVar(s.cvar)
-            if button == nil then button = s.default end
-            if button == "" or button == "none" then return nil end
-            return button
-        end
-    end
-end
-
--- What `button` stands in for, or nil.
-function Keys.RoleOf(button)
-    for _, s in ipairs(STAND_IN) do
-        if Keys.StandIn(s.role) == button then return s.role end
-    end
-end
-
--- Whether `key` (bare or with modifiers) is a pad button.
-function Keys.IsPad(key)
-    local base = key and key:match("([^-]+)$")
-    return base ~= nil and base:sub(1, 3) == "PAD"
-end
-
--- The pad button pressed, with the modifiers held (the keyboard's, or the
--- pad's stand-ins), as the bindings write it.
-function Keys.PadCombo(button)
-    local function Held(role, down)
-        if down() then return true end
-        local b = Keys.StandIn(role)
-        return b ~= nil and IsKeyDown ~= nil and IsKeyDown(b) and true or false
-    end
-    local mods = ""
-    if Held("ALT", IsAltKeyDown) then mods = mods .. "ALT-" end
-    if Held("CTRL", IsControlKeyDown) then mods = mods .. "CTRL-" end
-    if Held("SHIFT", IsShiftKeyDown) then mods = mods .. "SHIFT-" end
-    return mods .. button
-end
-
-Keys.PAD_ESCAPE = "That button is the pad's Escape. Choose another."
-Keys.PAD_MODIFIER = "That button is the pad's %s. Hold it while you press another."
-Keys.PAD_CANCEL = "%s cancels. Choose another."
-local MODIFIER_NAME = { ALT = "Alt", CTRL = "Ctrl", SHIFT = "Shift" }
-
--- What is said of a stand-in pressed while listening; nil for any other
--- button.
-function Keys.PadRefused(button)
-    local role = Keys.RoleOf(button)
-    if role == "ESCAPE" then return Keys.PAD_ESCAPE end
-    if role then return Keys.PAD_MODIFIER:format(MODIFIER_NAME[role]) end
-end
-
--- The glyphs' size on a keycap.
-local GLYPH = 18
-
--- A key as it is shown: a pad button as the player's pad draws it (and a
--- modifier as the button standing in for it, else its name), any other key
--- in the key bindings' words.
-function Keys.Text(key)
-    local Glyphs = ns.UI.Pad and ns.UI.Pad.Glyphs
-    if not (Glyphs and Keys.IsPad(key)) then
-        return GetBindingText and GetBindingText(key) or key
-    end
-    local parts = {}
-    for mod in key:gmatch("(%u+)%-") do
-        local button = Keys.StandIn(mod)
-        parts[#parts + 1] = button and Glyphs.Text(button, GLYPH) or MODIFIER_NAME[mod] or mod
-    end
-    parts[#parts + 1] = Glyphs.Text(key:match("([^-]+)$"), GLYPH)
-    return table.concat(parts, " + ")
-end
-
--- The key `action` is on, as it is shown, or nil.
+-- The key `action` is on, as the key bindings write it, or nil.
 function Keys.Bound(action)
     local key = GetBindingKey and GetBindingKey(action)
     if not key then return nil end
-    return Keys.Text(key)
+    return GetBindingText and GetBindingText(key) or key
 end
 
 -- What the key did before, in the words of the key bindings; nil when it
@@ -161,7 +63,7 @@ Keys.COMBAT = "Not during a fight. Try again after it."
 function Keys.Question(action, key)
     local taken = ActionName(GetBindingAction(key), action)
     if not taken then return nil end
-    local shown = Keys.Text(key)
+    local shown = GetBindingText and GetBindingText(key) or key
     return ("%s is set to %s.\n\nUse it for %s instead?"):format(shown, taken, ActionName(action))
 end
 Keys.TAKE = "Use it"
@@ -230,21 +132,12 @@ end
 -- a page never both take the keyboard.
 local listening
 
--- The pad in hand (Forever's Gamepad UI on, the pad used last): the
--- setter then asks for a button, and says B cancels.
-local function PadInHand()
-    local Pad = ns.UI.Pad
-    return Pad ~= nil and Pad.Input ~= nil and Pad.Input.Active() and true or false
-end
-
 -- One binding's keycap, with "Choose one" or "Change" beside it, one line
 -- KEYCAP.h tall. `status` is where it answers (what the key did before, a
 -- refusal): a font string of the caller's, or else its own, under the
 -- keycap, for the caller to size and to anchor what follows to.
 -- `.listening` while it waits for a key; `.catcher` takes the keyboard
--- then, and the pad's buttons (whichever hand clicked: a pad button pressed
--- after a click binds too). While it listens the pad's own focus steps
--- aside (Pad.Aside), so every button but the stand-ins comes here. `onBound`, if set, runs after a key is bound. A key something else
+-- then. `onBound`, if set, runs after a key is bound. A key something else
 -- has is asked about first, with the listening over and the keyboard given
 -- back: bound on yes, nothing touched otherwise.
 function Keys.Setter(parent, action, status)
@@ -270,10 +163,8 @@ function Keys.Setter(parent, action, status)
         self.bind:SetShown(not self.listening)
         self.hint:SetShown(self.listening == true)
         if self.listening then
-            local pad = PadInHand()
-            self.keycap:SetKey(pad and "press a button" or "press a key", FONT.headingRubric)
-            local B = pad and ns.UI.Pad.Glyphs.Text("PAD2", 16)
-            self.hint:SetText(pad and (B .. " to cancel") or "Escape to cancel")
+            self.keycap:SetKey("press a key", FONT.headingRubric)
+            self.hint:SetText("Escape to cancel")
         elseif key then
             self.keycap:SetKey(key)
             self.bind:SetText("Change")
@@ -303,21 +194,18 @@ function Keys.Setter(parent, action, status)
         catcher:SetScript("OnKeyDown", nil)
         catcher:SetScript("OnMouseDown", nil)
         catcher:SetScript("OnMouseWheel", nil)
-        catcher:SetScript("OnGamePadButtonDown", nil)
-        catcher:EnableGamePadButton(false)
         catcher:Hide()
-        if ns.UI.Pad then ns.UI.Pad.Aside(self, nil) end
         self:Refresh()
     end
 
     -- A key or button pressed while listening: refused, or bound (asked
     -- first if something else has it).
-    local function Pressed(key, combo)
+    local function Pressed(key)
         if Keys.Refused(key) then
             s.status:SetText(Keys.REFUSED)
             return
         end
-        combo = combo or Keys.Combo(key)
+        local combo = Keys.Combo(key)
         s:Stop()
         local question = Keys.Question(s.action, combo)
         if question then
@@ -361,28 +249,6 @@ function Keys.Setter(parent, action, status)
         catcher:SetScript("OnMouseWheel", function(_, delta)
             Pressed(delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")
         end)
-        -- A pad button: a stand-in refused (a modifier's press goes on to
-        -- the game, which holds it as the modifier), B cancels, any other
-        -- binds with the modifiers held. Taken on the press, as a key is.
-        catcher:SetScript("OnGamePadButtonDown", function(_, button)
-            local refused = Keys.PadRefused(button)
-            if refused then
-                self.status:SetText(refused)
-                return Keys.RoleOf(button) ~= "ESCAPE"
-            end
-            if button == "PAD2" then
-                self:Stop()
-                return false
-            end
-            Pressed(button, Keys.PadCombo(button))
-            return false
-        end)
-        catcher:EnableGamePadButton(true)
-        -- (the pad's focus aside meanwhile: its catchers off, its box gone)
-        if ns.UI.Pad then ns.UI.Pad.Aside(self, true) end
-        if PadInHand() then
-            self.status:SetText(Keys.PAD_CANCEL:format(ns.UI.Pad.Glyphs.Text("PAD2", 16)))
-        end
         self:Refresh()
     end
 

@@ -28,9 +28,12 @@
 --                       cross: unlinks them. Ringed, its tooltip shown
 --   a face (Style.Portrait)  ringed, its tooltip shown; A does nothing
 --   a key (UI/Kit/Keys.lua's setter: keycap, bind)  A listens for a key on
---                       the keyboard or a pad button (step 7c: the setter
---                       takes the pad itself while it listens, ours aside;
---                       B cancels)
+--                       the keyboard (a pad button is never bound: it would
+--                       not fire under the Gamepad UI), A again stops
+--   a book (UI/Settings/Macro.lua's BookButton: diaryMacro)  A picks it up,
+--                       as a click does, for a slot on the controller's
+--                       action bar. Its name beside it boxed, its tooltip
+--                       shown; faded in a fight, it is passed over
 --   a box (Style.Checkbox: tick, label)  A ticks or unticks it
 --   a link (Style.Link: line, label)  A follows it, as a click
 --   a line or a box to write in (an EditBox)  A gives it the keyboard's
@@ -55,7 +58,8 @@ local PROMPT = {
     tagOff = { "PAD1", "Take the tag off", main = true },
     tagAway = { "PAD1", "Take the tag off", main = true },
     unlink = { "PAD1", "Unlink them", main = true },
-    key = { "PAD1", "Choose a button", main = true },
+    key = { "PAD1", "Choose a keyboard key", main = true },
+    book = { "PAD1", "Pick it up", main = true },
     listening = { "PAD1", "Stop listening", main = true },
 }
 Controls.PROMPT = PROMPT
@@ -72,6 +76,7 @@ function Controls.Kind(w)
         return "face"
     end
     if w.keycap and w.bind and rawget(w, "Listen") then return "setter" end
+    if w.diaryMacro then return "book" end
     if w.tick and w.label then return "switch" end
     if w.line and w.label then return "link" end
     if TypeOf(w) == "EditBox" then return "field" end
@@ -191,6 +196,13 @@ function Controls.Add(f, group, found, opts)
             elseif kind == "face" then
                 item.ring = true
                 item.press = function() end
+            elseif kind == "book" then
+                item.words = w.label
+                item.available = function() return w:IsVisible() and not w.unavailable end
+                item.press = function()
+                    w:Click("LeftButton")
+                    After()
+                end
             elseif kind == "setter" then
                 -- (its link while it waits; the keycap's words while it
                 -- listens, the link hidden then)
@@ -231,4 +243,5 @@ function Controls.Prompt(item)
     if kind == "crossed" then return PROMPT.unlink end
     if kind == "setter" then return w.listening and PROMPT.listening or PROMPT.key end
     if kind == "link" then return PROMPT.choose end
+    if kind == "book" then return PROMPT.book end
 end

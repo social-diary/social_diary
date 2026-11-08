@@ -1,9 +1,10 @@
--- The Settings leftovers with the pad (.claude/controller-plan.md, step 7c):
--- the quiet list on Toasts (its search, its rows walked, scrolled and
--- ticked), the key setter taking a pad button (PAD3, SHIFT-PAD3 with the
--- Shift stand-in held, the stand-ins refused, B cancelling, never in a
--- fight, the keycap drawn with the pad's glyph, the mouse's click too), and
--- Feedback's copy fields and the action-bar books never reached.
+-- The Settings leftovers with the pad (.claude/controller-plan.md, step 7c
+-- and "As built (macros for the pad)"): the quiet list on Toasts (its
+-- search, its rows walked, scrolled and ticked); Keybinds & Shortcuts laid
+-- out for the pad (the books first, with their line, the keys gone, and
+-- back with the mouse); the books stood on and picked up with A (faded in
+-- a fight, passed over); the key setter keyboard-only (no pad button
+-- taken); Feedback's copy fields never reached.
 
 local T = ...
 local mock, F = T.mock, T.F
@@ -161,169 +162,117 @@ for _, it in ipairs(Pad.Top().focus.groups.pane.items) do
 end
 
 --------------------------------------------------------------------------
-Section("Feedback's copy fields and the action-bar books are never stood on")
+Section("Feedback's copy fields are never stood on")
 
-local books = {}
-for _, b in pairs(page.macroBooks) do books[b] = true end
 for _, it in ipairs(Pad.Top().focus.groups.pane.items) do
     local w = it.frame
-    Check(not books[w], "an action-bar book is stood on: " .. it.key)
     Check(not (w and w.box and w.edges), "a copy field is stood on: " .. it.key)
 end
 
 --------------------------------------------------------------------------
-Section("the key setter: A listens, the pad aside")
+Section("Keybinds & Shortcuts with the pad: the books first, the keys gone")
 
-mock.bindings = {}
-mock.cvars.GamePadEmulateShift = "PADLTRIGGER"
-mock.cvars.GamePadEmulateCtrl = "PADLSHOULDER"
-mock.cvars.GamePadEmulateAlt = "none"
-mock.cvars.GamePadEmulateEsc = "PADBACK"
+local Macro = ns.UI.Settings.Macro
 local JOURNAL = page.keys.SOCIALDIARY_JOURNAL
-JOURNAL:Refresh()
+local function Y(w) return w.recorded.points[1].args[4] end
+local keysHeading = JOURNAL.group
 page:ShowSection("shortcuts")
 Pad.Refresh()
-Press("PAD1")
-Eq(At().kind, "setter", "the first setting on Shortcuts not the journal's key")
-Eq(At().frame, JOURNAL.bind, "its link not stood on")
-Eq(At().words, JOURNAL.bind.label, "its link's words not boxed")
-Eq(At().subhead, JOURNAL.group, "the Keys heading not its subheading")
-Eq(Prompt(), "Choose a button", "the key's prompt")
-Press("PAD1")
-Check(JOURNAL.listening, "A did not listen")
-Check(Pad.Top() == nil, "a scope kept the pad while the key listens")
-Check(not catcher:IsGamePadButtonEnabled(), "the book's catcher still takes buttons")
-Check(JOURNAL.catcher:IsGamePadButtonEnabled(), "the setter does not take pad buttons")
-Eq(JOURNAL.keycap.text:GetText(), "press a button", "the keycap does not ask for a button")
-Eq(JOURNAL.hint:GetText(), Glyphs.Text("PAD2", 16) .. " to cancel", "the hint does not say B cancels")
-Eq(page.keyStatus:GetText(), Keys.PAD_CANCEL:format(Glyphs.Text("PAD2", 16)), "B's not being bindable not said")
+Check(not keysHeading:IsShown() and not keysHeading.rule:IsShown(), "the Keys heading shown with the pad")
+for action, setter in pairs(page.keys) do
+    Check(not setter:IsVisible(), "a key setter shown with the pad: " .. action)
+end
+Check(not page.keyStatus:IsShown(), "the keys' status line shown with the pad")
+Eq(Y(page.macroHeading), -48, "the books' heading not first on the page")
+Check(page.macroLine and page.macroLine:IsShown(), "no line beside the books with the pad")
+Eq(page.macroLine:GetText(), Macro.PadLine(Glyphs.Text("PAD1", 16)), "the books' line")
+Check(Y(page.macroLine) < Y(page.macroHeading), "the line not under the heading")
+Check(Y(page.macroBooks.journal) < Y(page.macroLine), "the books not under the line")
+Check(Y(page.macroStatus) < Y(page.macroBooks.remember), "the status line not under the books")
+Check(Y(page.commands[1]) < Y(page.macroStatus), "the slash commands not after the books")
 
 --------------------------------------------------------------------------
-Section("a pad button binds, saved, the keycap its glyph")
+Section("the books: stood on, A picks one up as a click does")
 
-local saves = mock.bindingSaves
-Eq(mock.PadPress(JOURNAL.catcher, "PAD3", true), false, "the button went on past the setter")
-Eq(mock.bindings.PAD3, "SOCIALDIARY_JOURNAL", "PAD3 not bound")
-Eq(mock.bindingSaves, saves + 1, "the bindings not saved")
-Check(not JOURNAL.listening, "still listening after the bind")
-Eq(JOURNAL.keycap.text:GetText(), Glyphs.Text("PAD3", 18), "the keycap does not show the pad's glyph")
-Eq(Keys.Bound("SOCIALDIARY_JOURNAL"), Glyphs.Text("PAD3", 18), "Bound not the glyph")
-Eq(Keys.Text("F5"), "F5", "a keyboard key not in the bindings' words")
-Eq(Pad.Top() and Pad.Top().key, "settings", "the pad not back after the bind")
-Check(catcher:IsGamePadButtonEnabled(), "the book's catcher not back")
-Check(not JOURNAL.catcher:IsGamePadButtonEnabled(), "the setter still takes pad buttons")
-Eq(At().frame, JOURNAL.bind, "the pad not back on the key")
+local BOOKS = page.macroBooks
+Press("PAD1")
+Eq(At().kind, "book", "the first setting on Shortcuts not a book")
+Eq(At().frame, BOOKS.journal, "not the journal's book")
+Eq(At().words, BOOKS.journal.label, "the book's name not boxed")
+Eq(At().subhead, page.macroHeading, "the books' heading not the subheading")
+Eq(Prompt(), "Pick it up", "the book's prompt")
+Eq(GameTooltip.lines and GameTooltip.lines[1] and GameTooltip.lines[1][1],
+    "Place it in a slot on your controller's action bar.", "the book's tooltip with the pad")
+mock.macros, mock.cursor = {}, nil
+Press("PAD1")
+Eq(#mock.macros, 1, "A did not make the macro")
+Eq(mock.macros[1].body, "/sd", "A made the wrong macro")
+Eq(mock.cursor and mock.cursor[1], "macro", "A did not put the book on the cursor")
+Eq(page.macroStatus:GetText(), Macro.SAID.padClick, "the pad's line after a pickup")
+Eq(At().frame, BOOKS.journal, "picking it up moved the pad")
+Press("PADDDOWN")
+Eq(At().frame, BOOKS.remember, "down from the journal's book not Remember this's")
+mock.cursor = nil
+Press("PAD1")
+Eq(mock.macros[2] and mock.macros[2].body, "/sd remember", "A did not make Remember this's macro")
+Eq(mock.cursor and mock.cursor[1], "macro", "Remember this's book not picked up")
 
 --------------------------------------------------------------------------
-Section("with the Shift stand-in held: SHIFT-PAD3, drawn as both buttons")
+Section("in a fight a book fades, and the pad passes over it")
 
-Press("PAD1")
-Check(JOURNAL.listening, "A did not listen again")
-Eq(mock.PadPress(JOURNAL.catcher, "PADLTRIGGER", true), true, "the Shift stand-in did not go on to the game")
-Check(JOURNAL.listening, "the Shift stand-in ended the listening")
-Eq(page.keyStatus:GetText(), Keys.PAD_MODIFIER:format("Shift"), "the Shift stand-in not explained")
-mock.keysDown.PADLTRIGGER = true
-mock.PadPress(JOURNAL.catcher, "PAD3", true)
-mock.keysDown.PADLTRIGGER = nil
-Eq(mock.bindings["SHIFT-PAD3"], "SOCIALDIARY_JOURNAL", "SHIFT-PAD3 not bound")
-Eq(mock.bindings.PAD3, nil, "the old key not let go")
-Eq(JOURNAL.keycap.text:GetText(), Glyphs.Text("PADLTRIGGER", 18) .. " + " .. Glyphs.Text("PAD3", 18),
-    "the keycap does not draw Shift's button and the button")
-Eq(Keys.PadCombo("PAD4"), "PAD4", "a modifier held with nothing held")
-mock.modifiers.ctrl = true
-Eq(Keys.PadCombo("PAD4"), "CTRL-PAD4", "the keyboard's Ctrl not taken")
-mock.modifiers.ctrl = false
-mock.cvars.GamePadEmulateShift = "PADPADDLE1"
-mock.keysDown.PADPADDLE1 = true
-Eq(Keys.PadCombo("PAD4"), "SHIFT-PAD4", "the Shift stand-in not read from its CVar")
-mock.keysDown.PADPADDLE1 = nil
-mock.cvars.GamePadEmulateShift = "PADLTRIGGER"
-
---------------------------------------------------------------------------
-Section("the stand-ins are refused, B cancels")
-
-Press("PAD1")
-Check(JOURNAL.listening, "A did not listen")
-Eq(mock.PadPress(JOURNAL.catcher, "PADBACK", true), false, "the Escape stand-in went on")
-Check(JOURNAL.listening, "the Escape stand-in ended the listening")
-Eq(page.keyStatus:GetText(), Keys.PAD_ESCAPE, "the Escape stand-in not refused")
-mock.PadPress(JOURNAL.catcher, "PADLSHOULDER", true)
-Eq(page.keyStatus:GetText(), Keys.PAD_MODIFIER:format("Ctrl"), "the Ctrl stand-in not refused")
-mock.cvars.GamePadEmulateEsc = "PAD4"
-mock.PadPress(JOURNAL.catcher, "PAD4", true)
-Eq(page.keyStatus:GetText(), Keys.PAD_ESCAPE, "the Escape stand-in not read from its CVar")
-mock.cvars.GamePadEmulateEsc = "PADBACK"
-Eq(mock.bindings.PADBACK, nil, "the Escape stand-in bound")
-Eq(mock.bindings.PADLSHOULDER, nil, "the Ctrl stand-in bound")
-Eq(mock.bindings.PAD4, nil, "a stand-in bound")
-Eq(mock.PadPress(JOURNAL.catcher, "PAD2", true), false, "B went on past the setter")
-Check(not JOURNAL.listening, "B did not cancel")
-Eq(mock.bindings.PAD2, nil, "B was bound")
-Eq(mock.bindings["SHIFT-PAD3"], "SOCIALDIARY_JOURNAL", "cancelling changed the key")
-Eq(Pad.Top() and Pad.Top().key, "settings", "the pad not back after B")
-Eq(Keys.Text("CTRL-ALT-PAD1"):find(Glyphs.Text("PADLSHOULDER", 18), 1, true) ~= nil, true, "Ctrl not drawn as its button")
-Check(Keys.Text("ALT-PAD1"):find("Alt", 1, true), "Alt without a stand-in not named")
-
---------------------------------------------------------------------------
-Section("what the button did before, asked and said")
-
-mock.bindings.PAD4 = "TOGGLEBAG"
-BINDING_NAME_TOGGLEBAG = "Open a Bag"
-Press("PAD1")
-mock.PadPress(JOURNAL.catcher, "PAD4", true)
-Eq(mock.bindings.PAD4, "TOGGLEBAG", "a taken button bound before the answer")
-Check(mock.popups[#mock.popups].args[1]:find(Glyphs.Text("PAD4", 18), 1, true) == 1,
-    "the question does not show the button's glyph")
-mock.AnswerPopup("accept")
-Eq(mock.bindings.PAD4, "SOCIALDIARY_JOURNAL", "yes did not bind the button")
-Check(page.keyStatus:GetText():find("Open a Bag", 1, true), "what it did before not said")
-
---------------------------------------------------------------------------
-Section("never in a fight")
-
-mock.inCombat = true
-Press("PAD1")
-Check(not JOURNAL.listening, "it listened in a fight")
-Eq(page.keyStatus:GetText(), Keys.COMBAT, "the fight's refusal not said")
-mock.inCombat = false
-Press("PAD1")
-Check(JOURNAL.listening, "it did not listen after the fight")
+mock.cursor = nil
 mock.inCombat = true
 mock.fire("PLAYER_REGEN_DISABLED")
-Check(not JOURNAL.listening, "a fight did not stop the listening")
-Check(not JOURNAL.catcher:IsGamePadButtonEnabled(), "the setter kept the pad's buttons in a fight")
-Eq(mock.PadPress(JOURNAL.catcher, "PAD1", true), true, "a stopped setter took a button")
+Pad.Refresh()
+Check(BOOKS.remember.unavailable, "the book not faded in a fight")
+for _, it in ipairs(Pad.Top().focus.groups.pane.items) do
+    if it.kind == "book" then Check(not it.available(), "a faded book is stood on") end
+end
+BOOKS.remember:Click("LeftButton")
+Eq(mock.cursor, nil, "a faded book was picked up")
 mock.inCombat = false
-Press("PAD1")
-Check(JOURNAL.listening, "it did not listen")
-mock.inCombat = true   -- (a fight begun, its event not yet come)
-saves = mock.bindingSaves
-mock.PadPress(JOURNAL.catcher, "PAD1", true)
-Eq(mock.bindings.PAD1, nil, "a button bound in a fight")
-Eq(mock.bindingSaves, saves, "the bindings saved in a fight")
-Eq(page.keyStatus:GetText(), Keys.COMBAT, "the fight's refusal not said after the press")
-mock.inCombat = false
+mock.fire("PLAYER_REGEN_ENABLED")
+Pad.Refresh()
+Eq(page.macroStatus:GetText(), "", "the fight's line kept after it")
 
 --------------------------------------------------------------------------
-Section("with the mouse: a click, then a pad button")
+Section("with the mouse: the page as it always was")
 
-mock.fire("GAME_PAD_ACTIVE_CHANGED", false)
-mock.pad.using = false
-Pad.Input.Force("off")
-Check(not Pad.Input.Active(), "setup: the pad still in hand")
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+Check(not Pad.Input.Active(), "setup: the mouse did not take over")
+Check(keysHeading:IsShown() and keysHeading.rule:IsShown(), "the Keys heading not back")
+Check(JOURNAL:IsVisible(), "the key setter not back with the mouse")
+Check(page.keyStatus:IsShown(), "the keys' status line not back")
+Check(not page.macroLine:IsShown(), "the books' line kept with the mouse")
+Eq(Y(keysHeading), -48, "the Keys heading not first again")
+Check(Y(page.macroHeading) < Y(page.keyStatus), "the books not after the keys again")
+BOOKS.journal.scripts.OnEnter(BOOKS.journal)
+Eq(GameTooltip.lines[1][1], "Drag onto an action bar.", "the mouse's tooltip")
+BOOKS.journal:Click("LeftButton")
+Eq(page.macroStatus:GetText(), Macro.SAID.click, "the mouse's line after a click")
+
+--------------------------------------------------------------------------
+Section("the key setter is the keyboard's: no pad button taken")
+
+mock.bindings = {}
 JOURNAL.bind:Click()
 Check(JOURNAL.listening, "the click did not listen")
-Eq(JOURNAL.keycap.text:GetText(), "press a key", "the mouse's keycap words")
-Eq(JOURNAL.hint:GetText(), "Escape to cancel", "the mouse's hint")
-Eq(page.keyStatus:GetText(), "", "B's line said with the mouse")
+Eq(JOURNAL.keycap.text:GetText(), "press a key", "the keycap's words")
+Eq(JOURNAL.hint:GetText(), "Escape to cancel", "the hint")
+Check(not JOURNAL.catcher:IsGamePadButtonEnabled(), "the setter takes pad buttons")
 mock.PadPress(JOURNAL.catcher, "PAD3", true)
-Eq(mock.bindings.PAD3, "SOCIALDIARY_JOURNAL", "a pad button after a click not bound")
-JOURNAL.bind:Click()
+Eq(mock.bindings.PAD3, nil, "a pad button was bound")
+Check(JOURNAL.listening, "a pad button ended the listening")
+Eq(Keys.PadCombo, nil, "the pad's combo building still there")
 JOURNAL.catcher.scripts.OnKeyDown(JOURNAL.catcher, "F16")
 Eq(mock.bindings.F16, "SOCIALDIARY_JOURNAL", "a keyboard key no longer binds")
 Eq(JOURNAL.keycap.text:GetText(), "F16", "a keyboard key not shown in its words")
+-- (a pad key bound elsewhere, before: shown in the bindings' words)
+mock.bindings = { PAD3 = "SOCIALDIARY_JOURNAL" }
+JOURNAL:Refresh()
+Eq(JOURNAL.keycap.text:GetText(), GetBindingText("PAD3"), "a bound pad key not in the bindings' words")
+mock.inCombat = true
 JOURNAL.bind:Click()
-JOURNAL.catcher.scripts.OnKeyDown(JOURNAL.catcher, "ESCAPE")
-Check(not JOURNAL.listening, "Escape did not cancel")
-Check(not JOURNAL.catcher:IsGamePadButtonEnabled(), "Escape left the setter taking pad buttons")
-Pad.Input.Force(nil)
+Check(not JOURNAL.listening, "it listened in a fight")
+Eq(page.keyStatus:GetText(), Keys.COMBAT, "the fight's refusal not said")
+mock.inCombat = false

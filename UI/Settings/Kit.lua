@@ -39,12 +39,9 @@ local function Column(parent, x, y, width)
     -- next, keep it as `.group` and it keeps its rule as `.rule`: the pad
     -- rubricates both while it stands on one of them (UI/Pad/Look.lua).
     function column:Heading(text)
-        if not self.first then self.y = self.y - SECTION_GAP end
-        self.first = false
-
         local heading = Style.Text(self.parent, FONT.heading)
         heading:SetText(text:upper())
-        self:Place(heading, 14, 0, 8)
+        self:PlaceHeading(heading)
 
         local rule = self.parent:CreateTexture(nil, "ARTWORK")
         rule:SetHeight(1)
@@ -52,6 +49,17 @@ local function Column(parent, x, y, width)
         rule:SetWidth(math.max(0, self.width - heading:GetStringWidth() - 8))
         rule:SetColorTexture(INK[1], INK[2], INK[3], 0.25)
         heading.rule = rule
+        self.group = heading
+        return heading
+    end
+
+    -- A heading placed under the last piece, with the gap before it: a
+    -- new one's, or one made already and laid out again (a section that
+    -- changes what it shows, as Keybinds & Shortcuts does with the pad).
+    function column:PlaceHeading(heading)
+        if not self.first then self.y = self.y - SECTION_GAP end
+        self.first = false
+        self:Place(heading, 14, 0, 8)
         self.group = heading
         return heading
     end

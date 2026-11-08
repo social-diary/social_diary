@@ -448,6 +448,11 @@ Check(Restored(words, was), "the scope gone left the words red")
 --------------------------------------------------------------------------
 Section("the look: after a ribbon turn the title holds the box")
 
+-- (the turn lands on a page with nothing to stand on: the empty People
+-- page's book, there with the pad in hand, put away meanwhile)
+local welcomeBook = J.journal.welcome and J.journal.welcome.book
+if welcomeBook then welcomeBook:Hide() end
+
 for _, r in ipairs(J.Ribbons()) do
     local spec = J.Page(r.key)
     local title = spec.title and spec.title()
@@ -478,6 +483,7 @@ Check(parts.slip:IsShown(), "the slip not back with the book")
 PadIn(false)
 Check(not parts.slip:IsShown() and not parts.keys:IsShown(), "the slip or LB / RB up without the pad")
 PadIn(true)
+if welcomeBook then welcomeBook:Show() end
 
 --------------------------------------------------------------------------
 Section("glyphs by the pad's style")

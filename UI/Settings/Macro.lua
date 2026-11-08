@@ -58,12 +58,23 @@ local MACRO_SAID = {
     combat = ns.UI.Keys.COMBAT,
     full = "Your macros are full, so there is no room for it. %s works anywhere, typed in chat.",
     click = "It is on your cursor: click a slot on an action bar to put it there.",
+    -- (the pad in hand: a slot on the controller's bar is where it goes)
+    padClick = "It is on your cursor: place it in a slot on your controller's action bar.",
 }
+
+-- The pad in hand (Forever's Gamepad UI on, the pad used last): the book
+-- then speaks of the controller's action bar.
+local function PadInHand()
+    local Pad = ns.UI.Pad
+    return Pad ~= nil and Pad.Input ~= nil and Pad.Input.Active() and true or false
+end
 
 -- A book: the macro's icon, lying on the page with a hairline
 -- round it and a shadow under it, lit from the top left like the rest, to
 -- be picked up. Faded and deaf in a fight; SetFight says so, as the
 -- client is not in lockdown yet when PLAYER_REGEN_DISABLED arrives.
+-- `.diaryMacro` names it for the pad, which stands on it and picks it up
+-- with A as a click does (UI/Settings/Pad.lua, UI/Pad/Controls.lua).
 local BOOK_ICON = 36
 
 local function BookButton(parent, status, which)
@@ -72,6 +83,7 @@ local function BookButton(parent, status, which)
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(BOOK_ICON, BOOK_ICON)
     button:RegisterForDrag("LeftButton")
+    button.diaryMacro = which
 
     local shadow = button:CreateTexture(nil, "BACKGROUND")
     shadow:SetSize(BOOK_ICON, BOOK_ICON)
@@ -106,7 +118,7 @@ local function BookButton(parent, status, which)
         if self.unavailable then return end
         local ok, why = ns.UI.PickupDiaryMacro(which)
         if ok then
-            status:SetText(clicked and MACRO_SAID.click or "")
+            status:SetText(clicked and (PadInHand() and MACRO_SAID.padClick or MACRO_SAID.click) or "")
         elseif why == "combat" then
             self:SetFight(true)
         else
@@ -116,10 +128,20 @@ local function BookButton(parent, status, which)
     button:SetScript("OnDragStart", function(self) Pickup(self, false) end)
     button:SetScript("OnClick", function(self) Pickup(self, true) end)
 
-    Style.Tooltip(button, { { macro.label }, { "Drag onto an action bar.", 1, 1, 1 } })
+    local mouseTip = { { macro.label }, { "Drag onto an action bar.", 1, 1, 1 } }
+    local padTip = { { macro.label }, { "Place it in a slot on your controller's action bar.", 1, 1, 1 } }
+    Style.Tooltip(button, function() return PadInHand() and padTip or mouseTip end)
     ns.On("PLAYER_REGEN_DISABLED", function() button:SetFight(true) end)
     ns.On("PLAYER_REGEN_ENABLED", function() button:SetFight(false) end)
     return button
 end
 
-SettingsUI.Macro = { MACROS = MACROS, MACRO_ORDER = MACRO_ORDER, BOOK_ICON = BOOK_ICON, BookButton = BookButton }
+-- What the pad's player is told beside the books: what to do with one.
+-- `glyph` is A as their pad draws it; `one`: a single book lies there.
+local function PadLine(glyph, one)
+    return ("Pick up %s with %s, then place it in a slot on your controller's action bar.")
+        :format(one and "the book" or "a book", glyph)
+end
+
+SettingsUI.Macro = { MACROS = MACROS, MACRO_ORDER = MACRO_ORDER, BOOK_ICON = BOOK_ICON, BookButton = BookButton,
+    SAID = MACRO_SAID, PadLine = PadLine, PadInHand = PadInHand }

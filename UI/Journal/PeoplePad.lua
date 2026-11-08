@@ -442,10 +442,17 @@ end
 -- An empty diary, a stranger's glimpse (5b)
 --------------------------------------------------------------------------
 
--- The empty page's left page: its controls, found (the key, the link to
--- Recently nearby).
+-- The empty page's left page: its controls, found (with the pad in hand,
+-- Remember this's book in place of its key; the link to Recently nearby).
 local function BuildWelcome(f, welcome)
-    local set = Pad.Controls.Add(f, "left", Pad.Controls.Find(welcome))
+    -- (the book is made after the link, the first time the pad is in hand,
+    -- but lies where the key does, above it: read first)
+    local found, books = {}, {}
+    for _, c in ipairs(Pad.Controls.Find(welcome)) do
+        table.insert(c.kind == "book" and books or found, c)
+    end
+    for i, c in ipairs(books) do table.insert(found, i, c) end
+    local set = Pad.Controls.Add(f, "left", found)
     for _, it in ipairs(set.items) do
         if it.kind == "setter" then scope.setter = it.control end
     end
@@ -750,7 +757,7 @@ function scope.legend()
         end
     elseif k == "tab" then
         out[1] = ({ map = PROMPT.seen, note = PROMPT.addNote, edit = PROMPT.edit })[at.tab] or PROMPT.story
-    elseif k == "setter" or k == "link" and at.control then
+    elseif k == "setter" or k == "book" or k == "link" and at.control then
         out[1] = Pad.Controls.Prompt(at)
         if k == "setter" and at.control.listening then out[2] = PROMPT.stopKey end
         if J.glimpse and ns.UI.Glimpse and J.journal.glimpse:IsShown() then out[#out + 1] = PROMPT.glimpse end
