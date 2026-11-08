@@ -5,10 +5,20 @@ All notable changes to Social Diary. Versions follow the `## Version` line in
 
 ## [Unreleased]
 
+## [3.0.0]
+
+A big Update: the diary now works with a controller through WoW's Gamepad UI, and a new _Changelog_ under _About_ in _Settings_ shows what's new after each update.
+
 ### Shiny new Things
 
+- The Addon now supports Gamepad UI!
+  - You can use almost all diary features just with a controller.
+  - Some actions still require Keyboard and Mouse, such as:
+    - Editing A Dungeon Route
+    - Precise Placing of Custom Events
+  - As this is a new feature and Blizzard's Gamepad UI will likely change frequently, bug reports are especially welcome.
 - An in-game _Changelog_ in _Settings_, under _About_
-- A hint points you to the _Changelog_ after a big update
+  - A hint points you to the _Changelog_ after a big update
 
 ### Changes
 

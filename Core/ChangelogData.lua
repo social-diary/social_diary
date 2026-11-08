@@ -7,6 +7,19 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "3.0.0",
+        summary = "A big Update: the diary now works with a controller through WoW's Gamepad UI, and a new _Changelog_ under _About_ in _Settings_ shows what's new after each update.",
+        groups = {
+            { heading = "Shiny new Things", entries = {
+                { text = "The Addon now supports Gamepad UI!", sub = { { text = "You can use almost all diary features just with a controller." }, { text = "Some actions still require Keyboard and Mouse, such as:" }, { text = "Editing A Dungeon Route" }, { text = "Precise Placing of Custom Events" }, { text = "As this is a new feature and Blizzard's Gamepad UI will likely change frequently, bug reports are especially welcome." } } },
+                { text = "An in-game _Changelog_ in _Settings_, under _About_", sub = { { text = "A hint points you to the _Changelog_ after a big update" } } },
+            } },
+            { heading = "Changes", entries = {
+                { text = "_Feedback_ and _Credits_ now sit under _About_ in _Settings_" },
+            } },
+        },
+    },
+    {
         version = "2.4.0",
         summary = "Just small fixes connected to _Hunts_, Nearby _Toasts_ and the _Dungeon View_.",
         groups = {
@@ -56,30 +69,6 @@ ns.Changelog = {
             } },
             { heading = "Fixes", entries = {
                 { text = "_Dungeon View_ spreads deaths along the way before the first boss falls" },
-            } },
-        },
-    },
-    {
-        version = "2.1.0",
-        summary = "This Update lets you add your own events to _Your Diary_ and makes getting started shorter, along with a good round of fixes.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "_Your Diary_ now allows adding custom events by right clicking the Map" },
-                { text = "_Dungeon View_ explains its default route the first time it opens" },
-                { text = "Paper texture intensity can be set in _Settings_" },
-            } },
-            { heading = "Changes", entries = {
-                { text = "Onboarding and the login parcel are shorter and easier to follow" },
-                { text = "Any key or mouse button can be bound to the addon's shortcuts" },
-                { text = "Clicking your current dungeon in _Your Diary_ opens its _Dungeon View_" },
-            } },
-            { heading = "Fixes", entries = {
-                { text = "Sightings, language support and _Remember this_ behave reliably again" },
-                { text = "_Dungeon View_ stays open when you right-click beside the map" },
-                { text = "_People_ shows the right time for people you've only seen" },
-                { text = "_People_ names back-to-back dungeons together correctly" },
-                { text = "_Your Diary_ skips empty levels from before the addon was installed" },
-                { text = "Dungeon run pages in _Your Diary_ list everyone and lay out correctly" },
             } },
         },
     },
