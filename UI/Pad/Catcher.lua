@@ -172,6 +172,9 @@ function Pad.Aside(owner, on)
     Pad.Refresh()
 end
 
+-- (Unused since 8 Nov 2026: Forever's Gamepad UI did not drive such a
+-- menu in the client, so the pad opens its own instead, Pad.Menu in
+-- UI/Pad/Menu.lua. Kept for anything that must still open Blizzard's.)
 -- A Blizzard menu (MenuUtil's context menu: the People page's sort and
 -- filter, the map sheet's "Show map") opened by an A press: the pad steps
 -- aside while it is open, so Forever's Gamepad UI (or the Escape stand-in)

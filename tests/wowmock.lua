@@ -299,6 +299,15 @@ local function NewWidget(frameType, name, parent, template)
     function w:GetTop() return self.at and self.at[2] end
     -- Its right edge on the screen: what a test says (`right`), else nil.
     function w:GetRight() return self.right end
+    -- Its left and bottom edges likewise (`left`, `bottom`), else nil: a
+    -- test that lays a region out sets all four (`at[2]` the top).
+    function w:GetLeft() return self.left end
+    function w:GetBottom() return self.bottom end
+    -- Its turn, as last set (SetRotation is recorded with the no-ops).
+    function w:GetRotation()
+        local turn = rec.calls.SetRotation
+        return turn and turn[1] or 0
+    end
     -- Its alpha, as last set (SetAlpha is recorded with the no-ops).
     function w:GetAlpha()
         local alpha = rec.calls.SetAlpha

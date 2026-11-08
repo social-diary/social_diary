@@ -33,6 +33,12 @@
 --             default frame.group (UI/Settings/Kit.lua stamps it)
 --   room      clear px left of the words, so the box holds back there (a
 --             checkbox's tick box is 7 px away)
+--   encloses  a region, or a list of regions, the box must hold too beside
+--             the words: an ornament that leads them (Your Diary's level
+--             rubric's paraph, cut by the box's left edge in the client, 8
+--             Nov 2026). Measured on the screen (GetLeft ... GetBottom), a
+--             turned texture by its turned corners; a region not laid out
+--             yet is left out. Without it the box is the words' alone
 --   adjust    { reading = FontString, nib = texture, scale = frame }: a
 --             slider's; the reading turns rubric and bold, the nib red, a
 --             chevron either side of the scale
@@ -347,6 +353,35 @@ local function Ink(fs, bold)
     return x, y, w + (bold and BOLD or 0), h
 end
 
+-- The box x, y, w, h (from fs's top left, y down) grown to hold each region
+-- of `encloses` as it lies on the screen; as it was where none is laid out.
+local function Enclose(fs, encloses, x, y, w, h)
+    if type(encloses) ~= "table" then return x, y, w, h end
+    -- (a list has a first; a region, a table of its own, has none)
+    local list = rawget(encloses, 1) ~= nil and encloses or { encloses }
+    local fl, ft = fs:GetLeft(), fs:GetTop()
+    if not (fl and ft) then return x, y, w, h end
+    local x0, y0, x1, y1 = x, y, x + w, y + h
+    for _, r in ipairs(list) do
+        local l, rt, t, b = r:GetLeft(), r:GetRight(), r:GetTop(), r:GetBottom()
+        if l and rt and t and b and r:IsShown() then
+            local cx, cy = (l + rt) / 2 - fl, ft - (t + b) / 2
+            local hw, hh = (rt - l) / 2, (t - b) / 2
+            -- (a turned texture: its rect is its unturned one; its corners
+            -- turned reach further, a paraph's 45° by its half diagonal)
+            local a = r.GetRotation and r:GetRotation() or 0
+            if a ~= 0 then
+                local c, s = math.abs(math.cos(a)), math.abs(math.sin(a))
+                hw, hh = hw * c + hh * s, hw * s + hh * c
+            end
+            x0, x1 = math.min(x0, cx - hw), math.max(x1, cx + hw)
+            y0, y1 = math.min(y0, cy - hh), math.max(y1, cy + hh)
+        end
+    end
+    return x0, y0, x1 - x0, y1 - y0
+end
+Look.Enclose = Enclose
+
 local function FontSize(fs, fallback)
     local size = fs.GetFont and select(2, fs:GetFont())
     return (type(size) == "number" and size > 0) and size or fallback
@@ -576,6 +611,7 @@ function Look.Mark(host, item, drawn)
         m.words = Rubricate(fs, true)
         x, y, w, h = Ink(fs, true)
         size = FontSize(fs, h)
+        if item.encloses then x, y, w, h = Enclose(fs, item.encloses, x, y, w, h) end
     else
         -- (no words of its own: the pen round the frame, nothing recoloured)
         x, y, w, h = 0, 0, frame:GetWidth() or 0, frame:GetHeight() or 0
@@ -715,19 +751,19 @@ local function Slip(host)
     return slip
 end
 
--- A glyph in the book's ink on the slip, or in the pad's own colours on the
--- world: the atlas, else its printed name.
+-- A button as the pad's own prompts draw it, in its real colours, on the
+-- slip as on the world (the client, 8 Nov 2026: desaturated and inked, its
+-- letters were nearly as dark as the button): the atlas `size` px tall,
+-- never tinted. Where the client has no atlas, its printed name, in the
+-- book's ink on the slip.
 local function Glyph(parent, key, size, inked)
     local atlas = Pad.Glyphs.Atlas(key)
     if atlas then
         local t = parent:CreateTexture(nil, "ARTWORK")
         t:SetAtlas(atlas)
-        t:SetSize(size, size)
-        if inked then
-            t:SetDesaturated(true)
-            t:SetVertexColor(Style.INK[1], Style.INK[2], Style.INK[3], 1)
-        end
-        return t, size
+        local w, h = Pad.Glyphs.Size(atlas, size)
+        t:SetSize(w, h)
+        return t, w
     end
     local fs = inked and Style.Text(parent, Style.FONT.strong) or parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     fs:SetText(Pad.Glyphs.Name(key))

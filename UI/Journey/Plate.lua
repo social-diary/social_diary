@@ -2212,7 +2212,7 @@ local function New(parent, slot)
     -- drawn again: what it is and where on the card), what, x, y (its
     -- middle on the page, y down) }. The trail's pools are left out: up to
     -- HOVER.most of them would bury the marks (they keep their tooltips
-    -- under the mouse). plate:Corners() → the card's four corners on the
+    -- under the mouse); on a plate with no other mark they are its marks. plate:Corners() → the card's four corners on the
     -- page, turned, for the pad's outline round it.
     function plate:Marks()
         local out = {}
@@ -2228,8 +2228,21 @@ local function New(parent, slot)
             if button.tip and button.what and button.what ~= "pool" then Take(button, button.what) end
         end
         for _, button in ipairs(self.overButtons) do Take(button, "over") end
+        -- (8 Nov 2026, in the client: a plate a stay, an arrival or a road
+        -- opened has no mark but its trail's pools, so "Look at the marks"
+        -- found nothing and A did nothing. With no other mark to bury, the
+        -- pools are what there is to look at: they are walked then.)
+        if not out[1] then
+            for i = 1, hoverPool.used do
+                local button = hoverPool[i]
+                if button.tip and button.what == "pool" then Take(button, "pool") end
+            end
+        end
         return out
     end
+    -- Whether the pad has a mark to stand on here (its "Look at the marks"
+    -- is offered only then: a print of the road alone has none).
+    function plate:HasMarks() return self:Marks()[1] ~= nil end
     function plate:Corners()
         local s = self.slot
         local out = {}

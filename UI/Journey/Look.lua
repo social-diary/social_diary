@@ -154,7 +154,11 @@ local SITTINGS = { indent = 12, run = 13, row = 18, runRow = 16, after = 8, asid
 -- line, the faces moving `reserve` px in to give it room. A press nudges
 -- the chevron on its side `travel` px outward and back over `nudge` s, the
 -- page turning under the hand. With the mouse none of this is made.
-local SOLO = { w = 5, h = 9, thick = 1.4, alpha = 0.85, dead = 0.22, out = 10, reserve = 13, travel = 3,
+-- (8 Nov 2026, in the client: the pen's box cut the paraph. It holds it
+-- now (the item's `encloses`, UI/Pad/Look.lua), its left edge some 12 px
+-- left of the paraph's centre, so `out` went from 10 to 18 to keep the
+-- "<" clear of the box, about 3 px of paper between.)
+local SOLO = { w = 5, h = 9, thick = 1.4, alpha = 0.85, dead = 0.22, out = 18, reserve = 13, travel = 3,
     nudge = 0.22 }
 
 -- The right page, measured from its top left (RIGHT_X, TOP), as the

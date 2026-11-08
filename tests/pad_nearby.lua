@@ -221,21 +221,17 @@ box:SetText("")
 box:GetScript("OnTextChanged")(box)
 
 --------------------------------------------------------------------------
-Section("the filter: right of the search; A opens its menu, the pad steps aside")
+Section("the filter: right of the search; A opens the pad's menu, B puts it away")
 
 Check(Scope().focus:Focus("search", "bar"), "setup: onto the search")
 Press("PADDRIGHT")
 Eq(At().key, "filter", "right from the search not the filter")
 Eq(Legend().PAD1, "Choose", "A's prompt on the filter")
 mock.contextMenu = nil
-local open = true
-_G.Menu = { GetManager = function() return { GetOpenMenu = function() return open or nil end } end }
 Press("PAD1")
-Check(mock.contextMenu ~= nil, "A on the filter opened no menu")
-Eq(Pad.Top(), nil, "the pad did not step aside for the menu")
-open = false
-Pad.menuWatch.scripts.OnUpdate(Pad.menuWatch, 0.1)
-_G.Menu = nil
+Eq(mock.contextMenu, nil, "A on the filter opened Blizzard's menu")
+Eq(Pad.Top() and Pad.Top().key, "menu", "A on the filter opened no menu of the pad's")
+Press("PAD2")
 Eq(Pad.Top() and Pad.Top().key, "nearby", "the pad not back after the menu")
 Eq(At().key, "filter", "not back on the filter")
 Press("PADDDOWN")

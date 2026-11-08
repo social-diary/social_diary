@@ -187,11 +187,15 @@ local function SetSort(key)
     RefreshList()
 end
 
+-- The sort's menu as MenuUtil's generator, for the mouse's menu and the
+-- pad's (UI/Pad/Menu.lua runs the same one), so the two never differ.
+local function SortMenu(_, root)
+    root:CreateTitle("Sort by")
+    Style.Choices(root, ns.People.SORTS, function() return J.query.sort end, SetSort)
+end
+
 local function ShowSortMenu(owner)
-    MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Sort by")
-        Style.Choices(root, ns.People.SORTS, function() return J.query.sort end, SetSort)
-    end)
+    MenuUtil.CreateContextMenu(owner, SortMenu)
 end
 
 -- The saved sort, if it is still one the list knows (a hand-edited file or
@@ -202,10 +206,12 @@ local function SavedSort()
     return ns.SettingDefault("peopleSort")
 end
 
-local function ShowFilterMenu(owner)
+-- The filter's menu's generator (the facets as they are now), for the
+-- mouse's menu and the pad's alike.
+local function FilterMenu()
     local facets = ns.People.Facets()
 
-    MenuUtil.CreateContextMenu(owner, function(_, root)
+    return function(_, root)
         root:CreateButton("Clear filters", function()
             J.query.tag, J.query.relationship, J.query.faction, J.query.zone, J.query.withinDays =
                 nil, nil, nil, nil, nil
@@ -223,7 +229,11 @@ local function ShowFilterMenu(owner)
             within[#within + 1] = { label = option.label, key = option.days }
         end
         Field(root:CreateButton("Last met"), "withinDays", within)
-    end)
+    end
+end
+
+local function ShowFilterMenu(owner)
+    MenuUtil.CreateContextMenu(owner, FilterMenu())
 end
 
 --------------------------------------------------------------------------
@@ -269,6 +279,8 @@ end
 -- For the book, which refreshes it (UI/Journal/Book.lua); the sort as its
 -- menu sets it, for the pad's left and right on it (UI/Journal/PeoplePad.lua).
 J.RefreshList, J.SetSort = RefreshList, SetSort
+-- (the menus' generators, for the pad's menu: UI/Journal/PeoplePad.lua)
+J.SortMenu, J.FilterMenu = SortMenu, FilterMenu
 
 -- The red ribbon's page, second in the book (UI/Journal/Pages.lua): the
 -- list on the left page, the selected person's page on the right

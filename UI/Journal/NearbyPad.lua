@@ -13,9 +13,10 @@
 --            the box the keyboard's cursor (there is no on-screen keyboard
 --            to rely on); A again, B, or the pad moving off takes it back.
 --            The table narrows as it is written in (Nearby.lua's
---            RefreshTable refreshes us). The filter: A opens its menu, which
---            is Blizzard's (MenuUtil), so the pad steps aside while it is
---            open (Pad.MenuAside)
+--            RefreshTable refreshes us). The filter: A opens its menu, the
+--            pad's own (Pad.Menu), from the same generator as the mouse's
+--            Blizzard menu (Nearby.lua's J.Nearby.FilterMenu): Forever's Gamepad
+--            UI does not drive a menu an addon opens (8 Nov 2026)
 --   `heads`  the column headings, side by side: A sorts by one, as its
 --            click does (again: the other way; a third time: the latest
 --            seen first again)
@@ -173,10 +174,8 @@ local function BuildBar(f, page)
         key = "filter", kind = "filter", frame = filter, center = At(filter),
         -- (shown with the table: its parent's)
         available = Shown,
-        press = function()
-            filter:Click("LeftButton")
-            Pad.MenuAside()
-        end,
+        -- (the pad's own menu, from the mouse's generator: Pad.Menu)
+        press = function() Pad.Menu.Open(filter, J.Nearby.FilterMenu()) end,
     })
 end
 

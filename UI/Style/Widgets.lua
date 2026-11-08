@@ -204,12 +204,19 @@ function Style.Choices(menu, choices, get, set)
     end
 end
 
--- A context menu of nothing but those choices, under `title` if given.
-function Style.ChoiceMenu(owner, title, choices, get, set)
-    MenuUtil.CreateContextMenu(owner, function(_, root)
+-- The generator of a menu of nothing but those choices, under `title` if
+-- given: what MenuUtil.CreateContextMenu is handed (and a pad's own menu,
+-- which runs the same one).
+function Style.ChoiceGenerator(title, choices, get, set)
+    return function(_, root)
         if title then root:CreateTitle(title) end
         Style.Choices(root, choices, get, set)
-    end)
+    end
+end
+
+-- A context menu of nothing but those choices, under `title` if given.
+function Style.ChoiceMenu(owner, title, choices, get, set)
+    MenuUtil.CreateContextMenu(owner, Style.ChoiceGenerator(title, choices, get, set))
 end
 
 -- An index tab sticking out of the book's right edge: a paper tab with a

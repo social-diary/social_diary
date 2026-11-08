@@ -15,8 +15,10 @@
 --   the sort    A opens its menu, as a click; left and right go through
 --               the sorts at once, without it (People.lua's SetSort)
 --   the filter  A opens its menu
--- A menu is Blizzard's (MenuUtil): the pad steps aside while it is open
--- (Pad.MenuAside), so Forever's Gamepad UI or the Escape stand-in has it.
+-- A menu is the pad's own (Pad.Menu, UI/Pad/Menu.lua), run from the same
+-- generator as the mouse's Blizzard menu (People.lua's J.SortMenu,
+-- J.FilterMenu): Forever's Gamepad UI does not drive a menu an addon opens
+-- (the client, 8 Nov 2026), so with the pad Blizzard's is never opened.
 -- B on the left page is the book's: it closes.
 --
 -- The right page (group `page`, a list, top to bottom as it reads): their
@@ -190,10 +192,9 @@ local function BuildLeft(f)
     local sort = journal.sortButton
     f:Add("left", {
         key = "sort", kind = "sort", frame = sort,
-        press = function()
-            sort:Click("LeftButton")
-            Pad.MenuAside()
-        end,
+        -- (its menu the pad's own, from the mouse's generator: Forever's
+        -- Gamepad UI does not drive a menu an addon opens, 8 Nov 2026)
+        press = function() Pad.Menu.Open(sort, J.SortMenu) end,
         step = function(dir)
             local sorts = ns.People.SORTS
             local at = 1
@@ -204,10 +205,7 @@ local function BuildLeft(f)
     })
     f:Add("left", {
         key = "filter", kind = "filter", frame = journal.filterButton,
-        press = function()
-            journal.filterButton:Click("LeftButton")
-            Pad.MenuAside()
-        end,
+        press = function() Pad.Menu.Open(journal.filterButton, J.FilterMenu()) end,
     })
     local data = journal.people.data or {}
     for index, s in ipairs(data) do
@@ -300,7 +298,9 @@ local function BuildBlock(f, p)
             outline = function()
                 return { anchor = plate:GetParent(), corners = plate:Corners(), level = plate:GetFrameLevel() }
             end,
-            press = function() scope.EnterMarks() end,
+            -- (A goes in only where the print has a mark to stand on; its
+            -- prompt likewise, scope.legend)
+            press = function() if plate:HasMarks() then scope.EnterMarks() end end,
             whole = function() return plate end,
         })
     end
@@ -430,9 +430,15 @@ local function BuildSheet(f, p)
             key = "sheet:" .. tostring(link), kind = "link", frame = link,
             level = p.map:GetFrameLevel() + 30,
             available = function() return OnMap() end,
+            -- (the map's link opens a menu: the pad's own, from the
+            -- mouse's generator; the other links are their click)
             press = function()
-                link:Click("LeftButton")
-                Pad.MenuAside()
+                if link == p.map.mapButton then
+                    local generator = p.map.mapMenu()
+                    if generator then Pad.Menu.Open(link, generator) end
+                else
+                    link:Click("LeftButton")
+                end
             end,
         })
     end
@@ -490,7 +496,8 @@ local function BuildGlimpse(f, page)
             outline = function()
                 return { anchor = print:GetParent(), corners = print:Corners(), level = print:GetFrameLevel() }
             end,
-            press = function() scope.EnterMarks("glimpse", "g:print") end,
+            press = function() if print:HasMarks() then scope.EnterMarks("glimpse", "g:print") end end,
+            whole = function() return print end,
         })
     end
     for _, which in ipairs({ "first", "hinge" }) do
@@ -742,7 +749,7 @@ function scope.legend()
     elseif k == "mark" then
         return { PROMPT.map, PROMPT.backPlate }
     elseif k == "plate" then
-        out = { PROMPT.marks, PROMPT.map }
+        out = at.whole():HasMarks() and { PROMPT.marks, PROMPT.map } or { PROMPT.map }
     elseif k == "strip" then
         if at.strip.guid and at.strip.onClick then out[1] = PROMPT.person end
     elseif k == "line" then
@@ -763,7 +770,7 @@ function scope.legend()
         if J.glimpse and ns.UI.Glimpse and J.journal.glimpse:IsShown() then out[#out + 1] = PROMPT.glimpse end
         return out
     elseif k == "glimpsePrint" then
-        out[1] = PROMPT.marks
+        if at.whole():HasMarks() then out[1] = PROMPT.marks end
     elseif k == "glimpseStrip" then
         out[1] = PROMPT.add
     end

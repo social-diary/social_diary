@@ -91,7 +91,7 @@ UI/Style/Person.lua
 UI/Kit/Keys.lua
 UI/Kit/Confirm.lua
 # The controller (ns.UI.Pad): which hand is in, the glyphs, the focus model,
-# its look, then the catcher that uses them. Input and Glyphs each make an
+# its look, then the catcher that uses them and the menu the pad drives. Input and Glyphs each make an
 # event frame as they load; the rest make frames only once a pad is in hand.
 UI/Pad/Input.lua
 UI/Pad/Glyphs.lua
@@ -99,6 +99,7 @@ UI/Pad/Focus.lua
 UI/Pad/Look.lua
 UI/Pad/Controls.lua
 UI/Pad/Catcher.lua
+UI/Pad/Menu.lua
 # Pool, Surface and Light make nothing as they load: kits for the paper after them.
 UI/Kit/Pool.lua
 UI/Paper/Surface.lua

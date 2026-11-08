@@ -215,16 +215,22 @@ function ns.UI.MapSheet.New(parent)
     ----------------------------------------------------------------------
     -- Header and key
 
-    view.mapButton = Link(Style.FONT.page, function(self)
-        if not view.maps or #view.maps == 0 then return end
+    -- The map's menu's generator (the maps as they are now), or nil where
+    -- there is none: the mouse's menu and the pad's (UI/Journal/PeoplePad.lua).
+    function view.mapMenu()
+        if not view.maps or #view.maps == 0 then return nil end
         local choices = {}
         for _, entry in ipairs(view.maps) do
             choices[#choices + 1] = { label = ("%s (%d)"):format(MapName(entry.mapID), entry.total), key = entry.mapID }
         end
-        Style.ChoiceMenu(self, "Show map", choices, function() return view.mapID end, function(mapID)
+        return Style.ChoiceGenerator("Show map", choices, function() return view.mapID end, function(mapID)
             view.mapID = mapID
             view:Refresh()
         end)
+    end
+    view.mapButton = Link(Style.FONT.page, function(self)
+        local generator = view.mapMenu()
+        if generator then MenuUtil.CreateContextMenu(self, generator) end
     end)
 
     local function SetScope(everyone)

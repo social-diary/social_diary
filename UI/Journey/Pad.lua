@@ -171,6 +171,9 @@ local function Find(item)
     local row = list:RowOf(item.index)
     item.frame = row
     item.words = row and WordsOf(row, item.data) or nil
+    -- (the rubric's paraph leads its words: the box holds it too, else its
+    -- left edge cut the diamond, in the client 8 Nov 2026)
+    item.encloses = row and item.data.title and row.paraph or nil
     local head = item.rubric ~= item.index and item.rubric and list:RowOf(item.rubric)
     if head then head.header.rule = head.rule end
     item.subhead = head and head.header or nil
@@ -231,7 +234,7 @@ local function BuildRight(f, page)
         local plate = plates[i]
         if plate then
             f:Add("page", {
-                key = PlateKey(i, plate), plate = i, heading = plate.heading, prompt = PROMPT.marks,
+                key = PlateKey(i, plate), plate = i, heading = plate.heading,
                 available = function() return plate:IsShown() end,
                 center = function()
                     local x, y = Middle(plate:Corners())
@@ -242,7 +245,7 @@ local function BuildRight(f, page)
                 end,
                 -- (no hover look of its own: the outline is the whole of it)
                 enter = function() end, leave = function() end,
-                press = function() scope.EnterMarks(i) end,
+                press = function() if plate:HasMarks() then scope.EnterMarks(i) end end,
                 whole = function() return plate end,
             })
         end
@@ -744,7 +747,9 @@ function scope.legend()
     if at.group == "page" then
         local out = {}
         if at.plate then
-            out[#out + 1] = PROMPT.marks
+            -- (A goes in only where there is a mark to stand on)
+            local plate = at.whole and at.whole()
+            if plate and plate:HasMarks() then out[#out + 1] = PROMPT.marks end
             out[#out + 1] = PROMPT.whole
         elseif at.person then
             out[#out + 1] = PROMPT.person

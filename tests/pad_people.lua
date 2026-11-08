@@ -139,7 +139,7 @@ box:SetText("")
 box:GetScript("OnTextChanged")(box)
 
 --------------------------------------------------------------------------
-Section("the sort: left and right go through the sorts; A opens its menu")
+Section("the sort: left and right go through the sorts; A opens the pad's menu")
 
 Check(Scope().focus:Focus("sort", "left"), "setup: onto the sort")
 Check(Red(journal.sortButton.label), "the sort's words not red")
@@ -151,20 +151,18 @@ Press("PADDLEFT")
 Eq(J.query.sort, sort, "left did not come back")
 Eq(At().key, "sort", "sorting moved the pad")
 mock.contextMenu = nil
--- (Blizzard's menu open: the pad steps aside until it closes)
-local open = true
-_G.Menu = { GetManager = function() return { GetOpenMenu = function() return open or nil end } end }
+-- (the pad's own menu, never Blizzard's: tests/pad_menu.lua walks it)
 Press("PAD1")
-Check(mock.contextMenu ~= nil, "A on the sort opened no menu")
-Eq(Pad.Top(), nil, "the pad did not step aside for the menu")
-open = false
-Pad.menuWatch.scripts.OnUpdate(Pad.menuWatch, 0.1)
-_G.Menu = nil
+Eq(mock.contextMenu, nil, "A on the sort opened Blizzard's menu")
+Eq(Pad.Top() and Pad.Top().key, "menu", "A on the sort opened no menu of the pad's")
+Press("PAD2")
 Eq(Pad.Top() and Pad.Top().key, "people", "the pad not back after the menu")
+Eq(At().key, "sort", "not back on the sort")
 Check(Scope().focus:Focus("filter", "left"), "setup: onto the filter")
-mock.contextMenu = nil
 Press("PAD1")
-Check(mock.contextMenu ~= nil, "A on the filter opened no menu")
+Eq(mock.contextMenu, nil, "A on the filter opened Blizzard's menu")
+Eq(Pad.Top() and Pad.Top().key, "menu", "A on the filter opened no menu of the pad's")
+Press("PAD2")
 Eq(Legend().PAD1, "Choose", "A's prompt on the filter")
 
 --------------------------------------------------------------------------

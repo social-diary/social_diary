@@ -5,13 +5,19 @@
 --
 --   Glyphs.Style()          "Shapes", "Letters", "Reverse" or "Generic"
 --   Glyphs.Atlas(key)       the button's atlas, or nil
+--   Glyphs.Size(atlas, h)   its width and height drawn h px tall
 --   Glyphs.Text(key, size)  the button inline in a text: its icon, else its name
 --   Glyphs.Name(key)        its printed name ("Cross", "A", "LB")
 --   Glyphs.OnChange(fn)     fn() when the pad's style may have changed
 --
--- Forever writes its gamepad KEY_* strings as atlas markup, one per style
--- (KEY_PAD1_SHP ...), so those are read first; the atlases listed below
--- stand in where a client has none.
+-- The buttons are shown as the pad's own prompts show them, in their real
+-- colours (the client, 8 Nov 2026: inked dark on the slip, their letters
+-- were nearly as dark as the button). So the client's modern full-colour
+-- atlases of each style (MODERN, "gamepad-xbox1-buttona-normal" ...) are
+-- read first, each checked with C_Texture.GetAtlasInfo; then the atlas of
+-- Forever's KEY_* markup for the style (KEY_PAD1_SHP ...); then the older
+-- per-style set (Gamepad_Shp_Cross_64 ...). Nothing is tinted: whoever
+-- draws an atlas draws it as it is (UI/Pad/Look.lua, Glyph).
 
 local addonName, ns = ...
 
@@ -21,6 +27,46 @@ local Glyphs = {}
 Pad.Glyphs = Glyphs
 
 local SUFFIX = { Letters = "_LTR", Shapes = "_SHP", Reverse = "_REV" }
+
+-- The client's modern atlases, by style and key: what the game's own
+-- prompts draw (the names as Blizzard_SharedXML's InputIconTexture and the
+-- ImprovedForever addon use them, ref/). "Generic" (a pad SDL does not
+-- name) shows Xbox's, as the game does. Nintendo's letters sit the other
+-- way round: its bottom button (PAD1) is B.
+local MODERN = {
+    Letters = {
+        PAD1 = "gamepad-xbox1-buttona-normal", PAD2 = "gamepad-xbox1-buttonb-normal",
+        PAD3 = "gamepad-xbox1-buttonx-normal", PAD4 = "gamepad-xbox1-buttony-normal",
+        PADLSHOULDER = "gamepad-xbox1-trigger-lb-normal", PADRSHOULDER = "gamepad-xbox1-trigger-rb-normal",
+        PADLTRIGGER = "gamepad-xbox1-trigger-lt-normal", PADRTRIGGER = "gamepad-xbox1-trigger-rt-normal",
+        PADLSTICK = "gamepad-xbox1-stick-l3-normal", PADRSTICK = "gamepad-xbox1-stick-r3-normal",
+        PADDUP = "gamepad-xbox1-dpadup-normal", PADDDOWN = "gamepad-xbox1-dpaddown-normal",
+        PADDLEFT = "gamepad-xbox1-dpadleft-normal", PADDRIGHT = "gamepad-xbox1-dpadright-normal",
+        PADBACK = "gamepad-xbox1-view-normal", PADFORWARD = "gamepad-xbox1-menu-normal",
+    },
+    Shapes = {
+        PAD1 = "gamepad-ps-buttoncrox-normal", PAD2 = "gamepad-ps-buttoncircle-normal",
+        PAD3 = "gamepad-ps-buttonsquare-normal", PAD4 = "gamepad-ps-buttontriangle-normal",
+        PADLSHOULDER = "gamepad-ps-triggerl1-normal", PADRSHOULDER = "gamepad-ps-triggerr1-normal",
+        PADLTRIGGER = "gamepad-ps-triggerl2-normal", PADRTRIGGER = "gamepad-ps-triggerr2-normal",
+        PADLSTICK = "gamepad-ps-stickl3-normal", PADRSTICK = "gamepad-ps-stickr3-normal",
+        PADDUP = "gamepad-ps-dpadup-normal", PADDDOWN = "gamepad-ps-dpaddown-normal",
+        PADDLEFT = "gamepad-ps-dpadleft-normal", PADDRIGHT = "gamepad-ps-dpadright-normal",
+        PADBACK = "gamepad-ps-touchpad-normal", PADFORWARD = "gamepad-ps-options-normal",
+    },
+    Reverse = {
+        PAD1 = "gamepad-switch-128x-face-b-normal", PAD2 = "gamepad-switch-128x-face-a-normal",
+        PAD3 = "gamepad-switch-128x-face-y-normal", PAD4 = "gamepad-switch-128x-face-x-normal",
+        PADLSHOULDER = "gamepad-switch-128x-shoulder-l-normal", PADRSHOULDER = "gamepad-switch-128x-shoulder-r-normal",
+        PADLTRIGGER = "gamepad-switch-128x-zl-normal", PADRTRIGGER = "gamepad-switch-128x-zr-normal",
+        PADLSTICK = "gamepad-switch-128x-stick-l3-normal", PADRSTICK = "gamepad-switch-128x-stick-r3-normal",
+        PADDUP = "gamepad-switch-128x-dpad-up-normal", PADDDOWN = "gamepad-switch-128x-dpad-down-normal",
+        PADDLEFT = "gamepad-switch-128x-dpad-left-normal", PADDRIGHT = "gamepad-switch-128x-dpad-right-normal",
+        PADBACK = "gamepad-switch-128x-minus-normal", PADFORWARD = "gamepad-switch-128x-plus-normal",
+    },
+}
+MODERN.Generic = MODERN.Letters
+Glyphs.MODERN = MODERN
 
 -- The atlases of the older per-style set, by key.
 local ATLAS_NAME = {
@@ -74,10 +120,12 @@ local function Markup(key)
 end
 
 function Glyphs.Atlas(key)
+    local s = Glyphs.Style()
+    local modern = MODERN[s] and MODERN[s][key]
+    if HasAtlas(modern) then return modern end
     local markup = Markup(key)
     local atlas = markup and markup:match("|A:([^:|]+)")
     if atlas then return atlas end
-    local s = Glyphs.Style()
     local name = ATLAS_NAME[key]
     if type(name) == "table" then name = name[s] or name.Letters end
     if not name then return nil end
@@ -93,11 +141,25 @@ function Glyphs.Name(key)
     return names[key] or COMMON[key] or key
 end
 
+-- An atlas `size` px tall: its width by its own shape (a shoulder button
+-- is wider than it is tall), square where the client does not say.
+function Glyphs.Size(atlas, size)
+    if atlas and C_Texture and C_Texture.GetAtlasInfo then
+        local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+        local w, h = ok and info and info.width, ok and info and info.height
+        if type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
+            return math.floor(size * w / h + 0.5), size
+        end
+    end
+    return size, size
+end
+
 function Glyphs.Text(key, size)
     local atlas = Glyphs.Atlas(key)
     if atlas then
         size = size or 16
-        return ("|A:%s:%d:%d|a"):format(atlas, size, size)
+        local w, h = Glyphs.Size(atlas, size)
+        return ("|A:%s:%d:%d|a"):format(atlas, h, w)
     end
     return Glyphs.Name(key)
 end

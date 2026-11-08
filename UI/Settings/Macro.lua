@@ -57,9 +57,9 @@ end
 local MACRO_SAID = {
     combat = ns.UI.Keys.COMBAT,
     full = "Your macros are full, so there is no room for it. %s works anywhere, typed in chat.",
-    click = "It is on your cursor: click a slot on an action bar to put it there.",
+    click = "Place it in your action bars.",
     -- (the pad in hand: a slot on the controller's bar is where it goes)
-    padClick = "It is on your cursor: place it in a slot on your controller's action bar.",
+    padClick = "place it with your mouse in a slot on your controller's action bar.",
 }
 
 -- The pad in hand (Forever's Gamepad UI on, the pad used last): the book
@@ -140,7 +140,7 @@ end
 -- `glyph` is A as their pad draws it; `one`: a single book lies there.
 local function PadLine(glyph, one)
     return ("Pick up %s with %s, then place it in a slot on your controller's action bar.")
-        :format(one and "the book" or "a book", glyph)
+        :format(one and "the Macro" or "a Macro", glyph)
 end
 
 SettingsUI.Macro = { MACROS = MACROS, MACRO_ORDER = MACRO_ORDER, BOOK_ICON = BOOK_ICON, BookButton = BookButton,

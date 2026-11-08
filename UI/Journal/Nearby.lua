@@ -361,11 +361,17 @@ local function FilterLabel()
     return f and f.label or "Everyone"
 end
 
-local function ShowFilterMenu(owner)
-    Style.ChoiceMenu(owner, nil, FILTERS, function() return query.filter end, function(key)
+-- The filter's menu's generator, the mouse's and the pad's
+-- (UI/Journal/NearbyPad.lua) alike.
+local function FilterMenu()
+    return Style.ChoiceGenerator(nil, FILTERS, function() return query.filter end, function(key)
         query.filter = key
         RefreshTable()
     end)
+end
+
+local function ShowFilterMenu(owner)
+    MenuUtil.CreateContextMenu(owner, FilterMenu())
 end
 
 local function PaintHeadings()
@@ -566,9 +572,11 @@ local function BuildPage(parent)
 end
 
 -- For the pad (UI/Journal/NearbyPad.lua): the day shown, and showing
--- another, as a day's click does.
+-- another, as a day's click does; the filter's menu.
 J.Nearby = {
     Day = function() return selectedDay end,
+    -- (the filter menu's generator, the mouse's own, for the pad's menu)
+    FilterMenu = FilterMenu,
     ShowDay = function(start)
         selectedDay = start
         ns.UI.RefreshNearbyPage()

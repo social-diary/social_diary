@@ -67,10 +67,15 @@ Background, if you need more than this file:
 
 6. **Blizzard's own pieces step aside.**
    - A StaticPopup we show (`UI/Kit/Confirm.lua`): the dialog's `OnShow` /
-     `OnHide` call `Pad.Aside(self, true/nil)`.
-   - A Blizzard menu opened by A: call `Pad.MenuAside()` right after.
-
-   Forever's Gamepad UI drives those itself.
+     `OnHide` call `Pad.Aside(self, true/nil)`: Forever's Gamepad UI
+     drives that itself.
+   - **A Blizzard menu (MenuUtil) is never opened with the pad.** Forever's
+     Gamepad UI does not drive a menu an addon opens (the client, 8 Nov
+     2026: nothing walked it, B did not close it). A calls
+     `Pad.Menu.Open(owner, generator)` (`UI/Pad/Menu.lua`) with the **same
+     generator** the mouse's `MenuUtil.CreateContextMenu` gets, exposed from
+     its file (`J.SortMenu`, `J.FilterMenu()`, `Style.ChoiceGenerator`):
+     the choices can never drift. Never `Pad.MenuAside()` and hope.
 
 7. **Saved data:** pad support saves nothing. If it ever must, follow
    AGENTS.md's migration rule.
@@ -80,11 +85,12 @@ Background, if you need more than this file:
 | File | What you use from it |
 |---|---|
 | `Input.lua` | `Pad.Input.Active()` (pad in hand), `Pad.Input.OnChange(fn)`. Detection is settled (see "Input detection" below): don't add your own. |
-| `Glyphs.lua` | `Pad.Glyphs.Text(key, size)` (inline icon), `.Atlas(key)`, `.Name(key)`, `.Style()`. Keys are binding keys (`PAD1`, `PADDUP`), never labels. |
+| `Glyphs.lua` | `Pad.Glyphs.Text(key, size)` (inline icon), `.Atlas(key)`, `.Size(atlas, h)`, `.Name(key)`, `.Style()`. Keys are binding keys (`PAD1`, `PADDUP`), never labels. Buttons are drawn **in their real colours**, the client's modern atlas first: never desaturate or tint a glyph (inked, its letters were unreadable in the client). |
 | `Focus.lua` | The focus model. Groups (`list` / `spatial`, `wrap`, jumps `left/right/up/down`, `reveal`), items, `Remember`, `EnterGroup`, `Focus(key)`, `Within`. |
 | `Look.lua` | The look. You never draw focus yourself: you describe the item (fields below) and `Look` does it. |
 | `Controls.lua` | `Pad.Controls.Find(root, skip)` and `.Add(f, group, found, opts)`: a form's or sheet's controls found rather than listed. |
-| `Catcher.lua` | `Pad.RegisterScope`, `Pad.Refresh`, `Pad.Top`, `Pad.Opened` / `Owns`, `Pad.Aside`, `Pad.MenuAside`, `Pad.RegisterJoin` / `JoinAside` / `LandAside`. |
+| `Catcher.lua` | `Pad.RegisterScope`, `Pad.Refresh`, `Pad.Top`, `Pad.Opened` / `Owns`, `Pad.Aside`, `Pad.RegisterJoin` / `JoinAside` / `LandAside`. (`Pad.MenuAside` is kept but unused: see rule 6.) |
+| `Menu.lua` | `Pad.Menu.Open(owner, generator)`, `.Close()`, `.IsOpen()`, `.Record(owner, generator)`: a MenuUtil generator laid on the diary's own slip, walked by the pad. |
 
 `Dev/Pad.lua`: `/sd pad` prints every signal and the last reason the pad
 was picked up or put down. `/sd pad on|off|auto` forces it for testing.
@@ -165,6 +171,7 @@ Pad.RegisterScope("mything", {
 | 30 | sheets over a page: `cards`, `note` (`links` +5) |
 | 40 | `spread` (Dungeon View) |
 | 50+ | windows outside the book: `entry`, `picker`, `quicknote`, `parcel`, `toastplace` |
+| 60 | `menu` (the pad's own menu, `Pad.Menu`; no parent: the ribbons wait under it) |
 
 ### 3. The look: describe, don't draw
 
@@ -179,9 +186,11 @@ The chosen design (user, 7 Nov 2026), all in `Look.lua`:
 - **Prompts:** on a paper slip under the cover's foot. LB/RB sit beside
   the ribbons.
 
-Item fields `Look` reads: `words`, `subhead`, `room`, `adjust`
-(sliders), `clip` (scroll child), `level` (over a sheet), `ring`,
-`outline` + `heading`, `plain` (keep a coloured chip's own colours).
+Item fields `Look` reads: `words`, `subhead`, `room`, `encloses` (a
+region or list the box must hold too: an ornament leading the words, as
+Your Diary's rubric's paraph), `adjust` (sliders), `clip` (scroll child),
+`level` (over a sheet), `ring`, `outline` + `heading`, `plain` (keep a
+coloured chip's own colours).
 Legend entries: `{ key | {keyA, keyB}, text, main = true, beside = {l, r} }`.
 
 Everything Look changes is saved and given back on Unmark, on Hide and
@@ -207,6 +216,11 @@ steps did.
 Landing on a list row doesn't open it; A does. The exception is the
 Settings sections, which show on landing. After a ribbon turn the page's
 title holds the box until the first D-pad press (`journal.held()`).
+
+**A prompt only where its action exists.** A legend entry (and the press
+behind it) is offered only when there is something for it to do: "Look at
+the marks" only where `plate:HasMarks()` (the client, 8 Nov 2026: a plate
+of a stay had none, and A silently did nothing).
 
 ### 5. Words
 
