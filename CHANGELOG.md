@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- Dungeons, battlegrounds and boss fights no longer cause repeated Lua errors
+
 ## [3.0.1]
 
 A Hotfix for Behaviour in Battlegrounds. Currently, BG data is interpreted badly and potentially clogging up a Diary entry. Until a proper Battleground Feature is implemented, BG Capture will be turned off.

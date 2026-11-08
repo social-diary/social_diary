@@ -108,7 +108,8 @@ function Hints.Beat(now)
     if not last or now - last > GAP then
         s.sitting = (s.sitting or 0) + 1
         s.sittingFrom, s.sittingShown = now, 0
-    elseif now > last and not (UnitIsAFK and UnitIsAFK("player")) then
+
+    elseif now > last and not (UnitIsAFK and ns.Plain(UnitIsAFK("player")) == true) then
         s.played = (s.played or 0) + math.min(now - last, 2 * Hints.BEAT)
     end
     s.lastBeat = now
