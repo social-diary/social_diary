@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.0.2]
+
+This Updates brings small but important UX fixes. Especially the red ink spills that mark your combat zones in _Your Diary_ are now more clearly computed and displayed.
+
 ### Changes
 
 - _Dungeon View_ now places deaths, wipes and rolls precisely by mob pack data in Wailing Caverns and Shadowfang Keep

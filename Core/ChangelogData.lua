@@ -7,6 +7,22 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "3.0.2",
+        summary = "This Updates brings small but important UX fixes. Especially the red ink spills that mark your combat zones in _Your Diary_ are now more clearly computed and displayed.",
+        groups = {
+            { heading = "Changes", entries = {
+                { text = "_Dungeon View_ now places deaths, wipes and rolls precisely by mob pack data in Wailing Caverns and Shadowfang Keep" },
+            } },
+            { heading = "Changes", entries = {
+                { text = "Tooltips in _Your Diary_ Plates now summarize their data instead of showing e.g. 4 times \"Fought here for x Minutes\"" },
+            } },
+            { heading = "Fixes", entries = {
+                { text = "Dungeons, battlegrounds and boss fights no longer cause repeated Lua errors" },
+                { text = "In _Your Diary_, The red ink spills that mark your combat zones are now more clearly visible." },
+            } },
+        },
+    },
+    {
         version = "3.0.1",
         summary = "A Hotfix for Behaviour in Battlegrounds. Currently, BG data is interpreted badly and potentially clogging up a Diary entry. Until a proper Battleground Feature is implemented, BG Capture will be turned off.",
         groups = {
@@ -49,15 +65,6 @@ ns.Changelog = {
             } },
             { heading = "Fixes", entries = {
                 { text = "Names and places now show on Russian, Korean and Chinese clients" },
-            } },
-        },
-    },
-    {
-        version = "2.2.1",
-        summary = "Just one small fix, so the journal can be closed during a fight.",
-        groups = {
-            { heading = "Fixes", entries = {
-                { text = "The journal's close button now works in combat" },
             } },
         },
     },
