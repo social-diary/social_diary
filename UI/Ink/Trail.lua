@@ -21,7 +21,10 @@
 --                   that closes, a darker nib on a small one, and drops flicked
 --                   onto the road as you leave. A stop of under two minutes
 --                   without a death is a droplet, one dot of its tint
---   the join        the line swells and darkens for a few pixels where it
+--   the fight       a fight is a stain of rust instead (STAIN): the fights
+--                   near one another run together into one blot that grows
+--                   and darkens the longer you fought there, never a droplet
+--   the join       the line swells and darkens for a few pixels where it
 --                   leaves or enters a stop, and inside the stop the pool's
 --                   ink takes over, so roads and stops read as one trail
 --
@@ -87,9 +90,8 @@ local FOOT = { sigmas = 2, rootTwo = math.sqrt(2), least = 6, aspect = 4, most =
 --           on the edge, rimDab px, at rim[1] + rim[2] * T, `rimDark`
 --           toward the ink, broken where the noise is under -1 + 2 *
 --           `rimGap` * (1 - T): a short stay's rim is broken, a long one's
---           closed. A fight's rim throws a short streak every `splash` dabs,
---           out to `streak` of the footprint: a sign of the fight that is
---           not its colour
+--           closed. (A fight's rim threw a streak out of it every few dabs;
+--           a fight is a stain now, STAIN below, 9 Nov)
 --   nib     on a footprint under `nibBelow` across: a dark core `nib` px in
 --           radius at nibAlpha[1] + nibAlpha[2] * T
 -- No dab reaches more than `edge` px past the footprint (its anti-aliasing).
@@ -100,8 +102,66 @@ local FOOT = { sigmas = 2, rootTwo = math.sqrt(2), least = 6, aspect = 4, most =
 local POOL = { droplet = 120, drop = 3.2, dropAlpha = { 0.55, 0.85 }, wash = { 0.22, 0.33 },
     layers = 5, layerAlpha = 0.20, dab = { 0.5, 0.9, 5 }, spacing = 1.25, inset = 0.5, jitter = 0.35,
     deepen = 0.10, tiny = 2.6, copy = 0.85, wander = 0.25, rimAt = 7.5, rimStep = 1.25, rimDab = { 0.45, 0.8 },
-    rim = { 0.10, 0.70 }, rimDark = 0.55, rimGap = 0.45, splash = 3, streak = 1.12, nibBelow = 7.5, nib = 1.3,
+    rim = { 0.10, 0.70 }, rimDark = 0.55, rimGap = 0.45, nibBelow = 7.5, nib = 1.3,
     nibAlpha = { 0.35, 0.60 }, merge = 0.6, perPool = 160, edge = 0.4 }
+
+-- A fight's stain (9 Nov, in the client, Ratchet to Northwatch: a fight
+-- of a minute on the way was a 3 px droplet sitting on the road and
+-- breaking its line, read as a glitch; a quarter of an hour round
+-- Northwatch was a scatter of droplets, small rust pools with their
+-- streaks, and rust sprinkles on the roads between, not one place). A
+-- fight is never a droplet and never a pool of dabs. Its ink is a blot
+-- (UI/Ink/Blot.lua) that runs together and deepens:
+--   ground  the fight's stops whose footprints come within `join` px of
+--           each other are one stain, while it stays within `span` px
+--           across (a long grind along a road is still several). A stop
+--           with any fighting in it whose middle lies on a stain is part
+--           of it whatever its kind (a quest handed in between pulls),
+--           and a road with fighting on it that left or reached a stain
+--           adds its fighting to the stain, not rust sprinkles to the
+--           road. The stain's ground is the ellipse holding its stops'
+--           (their spread at `sigmas` standard deviations about the middle
+--           of where the fighting went, no longer than `aspect` times its
+--           width, then stretched along the axis a stop lies out on until
+--           it holds each stop's middle and `hold` of its footprint)
+--   time    the fight's score F, 0..1: log(1 + minutes of fighting /
+--           score.knee) against score.full minutes. 1 min 0.20, 2 min
+--           0.32, 5 min 0.52, 15 min 0.81, 30 min 1. Unlike a stay, a
+--           fight grows with it (the user's ask, 9 Nov: "ink accumulating
+--           in one spot, growing and deepening the longer they fought"):
+--           its ground `bleed` * F px wider, at least least[1] +
+--           least[2] * F px in radius (a minute's fight 9 px across, three
+--           droplets), at most most[1] + most[2] * F (so a short fight on
+--           wide ground is still small) and FOOT.most across, at most
+--           `aspect` times as long as wide
+--   blot    bumps `sigma` px on a hex grid `spacing` sigmas apart, the
+--           ground shrunk by `inset` sigmas, so the first level's edge
+--           falls about on the ground's: a lone bump is a stain 2.9 sigma
+--           across. Its cores are the bumps within core[1] + core[2] * F
+--           of the ground's reach and the stops' middles, at strength
+--           0.5 + 0.5 * F at the heart, fading out to the core's edge (a
+--           bump outside it 0.4): the deeper levels take them only from their
+--           `from`, so a short fight is one even rust, a long one browns
+--           and blackens at its heart. levels { sigma, edge, from, full }
+--           and their `ink` { r, g, b toward INK_STRONG, alpha[1] +
+--           alpha[2] * F }; a dried `rim` px wide at rimAlpha[1] +
+--           rimAlpha[2] * F, `rimDark` toward the ink; the field wobbles
+--           `warp` { px, wave }; a grid of `step` px, or coarser so that
+--           at most `across` samples span it (a big stain is quick to
+--           draw), at most `cap` pieces (InkBlot coarsens the grid to keep
+--           to it); where that has no room, or the grid had to grow past
+--           `coarsest` times its step (the shape lost), the ground once in
+--           rust (a wash)
+-- Its layers are a pool's: the first level as its wash (under the road,
+-- which hands over to it inside stainHandOver of its reach), the first
+-- core as its dabs, the deepest and the rim as its rim. So the tour's
+-- pool comes in as a pool does, wash, dabs, rim (UI/Windows/Intro/Tour.lua).
+local STAIN = { join = 8, span = 64, sigmas = 1.5, hold = 0.6, score = { knee = 1, full = 30 }, least = { 4.2, 1.6 },
+    most = { 6, 30 }, bleed = 4, aspect = 2.5, sigma = 2.9, spacing = 1.7, inset = 0.9, core = { 0.4, 0.45 },
+    levels = { { sigma = 2.9, edge = 0.34, from = 0, full = 0 }, { sigma = 2.2, edge = 0.42, from = 0.55, full = 1 },
+        { sigma = 1.7, edge = 0.5, from = 0.72, full = 1 } },
+    ink = { { 0, 0.42, 0.22 }, { 0.38, 0.40, 0.14 }, { 0.66, 0.42, 0.18 } }, rim = 0.75, rimDark = 0.5,
+    rimAlpha = { 0.22, 0.38 }, warp = { 1.1, 7 }, step = 1.1, across = 44, coarsest = 4, cap = 160 }
 
 -- A road: smoothed `smooth` times (Chaikin), then a point every `step` px
 -- (growing by `stepGrow`, to at most `stepMost`, while the sheet's roads
@@ -122,14 +182,17 @@ local POOL = { droplet = 120, drop = 3.2, dropAlpha = { 0.55, 0.85 }, wash = { 0
 --             * (0.5 + T) px and `swellAlpha` * T; within `handOver` of the
 --             stop's reach the line stops and the pool takes over. A stop
 --             is joined when it ended within `gap` seconds of the road's
---             start, or began within them of its end
+--             start, or began within them of its end. A fight's stain
+--             (STAIN) takes over within `stainHandOver`: it is one even
+--             body of ink, and a stroke of the line just inside its edge
+--             read as a crack in it
 --   free end  lifts over `lift` px to `liftTo` of the width
 -- Joints are mitred, at most `miter` times the half width.
 local ROAD = { step = 4, stepGrow = 2, stepMost = 16, stepRoom = 1.6, smooth = 2, width = { 0.9, 1.3 },
     alpha = { 0.50, 0.40 }, darkest = 0.95, wobble = 0.18, wobbleScale = 10, flicker = 0.12, flickerScale = 14,
     dryBelow = 0.3, dryWidth = 0.75, dryGap = -0.45, dryScale = 3, dryFade = 0.3, handOver = 0.8, haloAbove = 0.6,
     halo = 1.4, haloAlpha = 0.10, swell = 9, swellWidth = 0.7, swellAlpha = 0.25, lift = 4, liftTo = 0.4,
-    miter = 2, gap = 120,
+    miter = 2, gap = 120, stainHandOver = 0.95,
     pace = { base = 0.45, gain = 0.35, ref = 0.75, least = 15, short = 8 } }
 
 -- Sprinkles. Along a road, per100[1] + per100[2] * p dots every 100 px,
@@ -152,6 +215,7 @@ local LAYER = { wash = -6, halo = -5, road = -4, dab = -3, rim = -2, spatter = -
 
 Ink.TIME, Ink.FOOT, Ink.POOL, Ink.ROAD, Ink.SPATTER, Ink.CAP, Ink.LAYER = TIME, FOOT, POOL, ROAD, SPATTER, CAP,
     LAYER
+Ink.STAIN = STAIN
 
 --------------------------------------------------------------------------
 -- Small helpers
@@ -188,6 +252,12 @@ local function Gauss(rand) return (rand() + rand() + rand() - 1.5) * 2 end
 function Ink.TimeScore(seconds)
     local m = (seconds or 0) / 60
     return Clamp(log(1 + m / TIME.knee) / log(1 + TIME.full / TIME.knee), 0, 1)
+end
+
+-- A fight's ink, 0..1, from its seconds of fighting (STAIN.score).
+function Ink.FightScore(seconds)
+    local m, K = (seconds or 0) / 60, STAIN.score
+    return Clamp(log(1 + m / K.knee) / log(1 + K.full / K.knee), 0, 1)
 end
 
 -- What was done at a stop, when the caller does not say: JourneyText's
@@ -365,8 +435,13 @@ function Ink.Road(out, road, flat, p, ends, seed, room)
     -- Inside the stops it joins, the pool's ink takes over from the line.
     local function Within(i)
         local pt = P[i]
-        if ends.first and Ink.Reach(ends.first.e, pt.x, pt.y) < R.handOver then return true end
-        if ends.last and Ink.Reach(ends.last.e, pt.x, pt.y) < R.handOver then return true end
+        local first, last = ends.first, ends.last
+        if first and Ink.Reach(first.e, pt.x, pt.y) < (first.stains and R.stainHandOver or R.handOver) then
+            return true
+        end
+        if last and Ink.Reach(last.e, pt.x, pt.y) < (last.stains and R.stainHandOver or R.handOver) then
+            return true
+        end
         return false
     end
     local function Inside(i) return Within(i) and Within(i + 1) end
@@ -438,8 +513,9 @@ function Ink.Road(out, road, flat, p, ends, seed, room)
             end
         end
     end
-    -- Rust where it fought on the way.
-    local combat = road.act and road.act.combat or 0
+    -- Rust where it fought on the way, unless the fight's stain at its end
+    -- took it in (room.rust false).
+    local combat = room.rust ~= false and road.act and road.act.combat or 0
     for _ = 1, min(S.rustMost, floor(combat / S.rustEvery)) do
         Drop(rand() * total, Ink.TINT.fighting, 1.8, 0.9)
     end
@@ -451,8 +527,8 @@ end
 --------------------------------------------------------------------------
 
 -- One stop's ink, all inside its footprint. `pool` = { e, T, kind, seconds,
--- droplet }; `room` = { dabs }. Returns the dabs used (discs, and a fight's
--- streaks).
+-- droplet }; `room` = { dabs }. Returns the dabs used. A fight is no pool:
+-- Ink.Build draws it with Ink.Stain.
 function Ink.Pool(out, pool, seed, room)
     local Q = POOL
     local e, T, kind = pool.e, pool.T, pool.kind
@@ -533,19 +609,8 @@ function Ink.Pool(out, pool, seed, room)
                 local r = Q.rimDab[1] + (Q.rimDab[2] - Q.rimDab[1]) * rand()
                 -- On the edge, never more than `edge` px past it.
                 local q = min(0.92 + 0.04 * Gauss(rand), 1 + (Q.edge - r) / b)
-                if kind == "fighting" and i % Q.splash == 0 then
-                    -- A streak flung out from the rim.
-                    local x2, y2 = FromLocal(e, a * cos(phi) * Q.streak, b * sin(phi) * Q.streak)
-                    local x1, y1 = FromLocal(e, a * cos(phi) * 0.8, b * sin(phi) * 0.8)
-                    local dx, dy = x2 - x1, y2 - y1
-                    local len = sqrt(dx * dx + dy * dy)
-                    local nx, ny = -dy / len * 0.35, dx / len * 0.35
-                    Quad(out, LAYER.rim, x1 + nx, y1 + ny, x2 + nx * 0.4, y2 + ny * 0.4,
-                        x2 - nx * 0.4, y2 - ny * 0.4, x1 - nx, y1 - ny, c, alpha, pool)
-                else
-                    local x, y = FromLocal(e, a * cos(phi) * q, b * sin(phi) * q)
-                    Disc(out, LAYER.rim, x, y, r, r, 0, c, alpha, pool)
-                end
+                local x, y = FromLocal(e, a * cos(phi) * q, b * sin(phi) * q)
+                Disc(out, LAYER.rim, x, y, r, r, 0, c, alpha, pool)
                 used = used + 1
             end
         end
@@ -553,6 +618,173 @@ function Ink.Pool(out, pool, seed, room)
         -- A small stop: the pen's nib rested here, darker the longer.
         Disc(out, LAYER.nib, e.x, e.y, Q.nib, Q.nib, 0, Toward(tint, INK, 0.55), Q.nibAlpha[1] + Q.nibAlpha[2] * T,
             pool)
+        used = used + 1
+    end
+    return used
+end
+
+--------------------------------------------------------------------------
+-- A fight
+--------------------------------------------------------------------------
+
+-- How far apart two footprints are along the line between their middles:
+-- the gap between their edges, below 0 where they overlap.
+local function Gap(a, b)
+    local dx, dy = b.x - a.x, b.y - a.y
+    local d = sqrt(dx * dx + dy * dy)
+    if d < 1e-6 then return -a.a2 end
+    return d - Ink.Extent(a, dx / d, dy / d) - Ink.Extent(b, -dx / d, -dy / d)
+end
+
+-- The ground holding footprints `list` ({ e, w }: each stop's footprint and
+-- its weight, its seconds of fighting): the ellipse of their spread about
+-- the middle of their weight (each footprint's own spread, a semi-axis
+-- being FOOT.sigmas of it, and their middles' about that middle), at
+-- FOOT.sigmas, made large enough to hold every middle and STAIN.hold of
+-- each footprint. One footprint is its own ground.
+function Ink.Ground(list)
+    if #list == 1 then
+        local e = list[1].e
+        return { x = e.x, y = e.y, a1 = e.a1, a2 = e.a2, theta = e.theta }
+    end
+    local W, mx, my = 0, 0, 0
+    for _, m in ipairs(list) do
+        local w = max(m.w, 1)
+        W, mx, my = W + w, mx + m.e.x * w, my + m.e.y * w
+    end
+    mx, my = mx / W, my / W
+    local sxx, syy, sxy = 0, 0, 0
+    for _, m in ipairs(list) do
+        local e, w = m.e, max(m.w, 1)
+        local c, s = cos(e.theta), sin(e.theta)
+        local u, v = (e.a1 / FOOT.sigmas) ^ 2, (e.a2 / FOOT.sigmas) ^ 2
+        local dx, dy = e.x - mx, e.y - my
+        sxx = sxx + w * (u * c * c + v * s * s + dx * dx)
+        syy = syy + w * (u * s * s + v * c * c + dy * dy)
+        sxy = sxy + w * ((u - v) * c * s + dx * dy)
+    end
+    sxx, syy, sxy = sxx / W, syy / W, sxy / W
+    local mid, diff = (sxx + syy) / 2, sqrt(((sxx - syy) / 2) ^ 2 + sxy * sxy)
+    local g = { x = mx, y = my, a1 = STAIN.sigmas * sqrt(max(mid + diff, 0.01)),
+        a2 = STAIN.sigmas * sqrt(max(mid - diff, 0.01)), theta = 0.5 * atan2(2 * sxy, sxx - syy) }
+    -- No longer than STAIN.aspect times its width before it is made to
+    -- hold its stops: a stop off the line of the rest widens it, rather
+    -- than stretching the whole stain past its span.
+    g.a2 = max(g.a2, g.a1 / STAIN.aspect)
+    -- Large enough to hold each stop's middle and the most of its ground:
+    -- the point furthest out stretches the axis it lies out along (a stop
+    -- off to one side widens the stain, it does not lengthen it), a few
+    -- times over, and what is still out after that grows the whole.
+    local held = {}
+    for _, m in ipairs(list) do
+        local e = m.e
+        held[#held + 1] = { e.x, e.y }
+        for k = 0, 7 do
+            local phi = k * pi / 4
+            local x, y = FromLocal(e, e.a1 * STAIN.hold * cos(phi), e.a2 * STAIN.hold * sin(phi))
+            held[#held + 1] = { x, y }
+        end
+    end
+    local c, s = cos(g.theta), sin(g.theta)
+    for round = 1, 9 do
+        local most, U, V = 1, 0, 0
+        for _, p in ipairs(held) do
+            local dx, dy = p[1] - g.x, p[2] - g.y
+            local u, v = (dx * c + dy * s) / g.a1, (-dx * s + dy * c) / g.a2
+            local r = sqrt(u * u + v * v)
+            if r > most then most, U, V = r, abs(u), abs(v) end
+        end
+        if most <= 1 + 1e-9 then break end
+        if round == 9 then
+            g.a1, g.a2 = g.a1 * most, g.a2 * most
+        elseif U >= V then
+            g.a1 = g.a1 * most
+        else
+            g.a2 = g.a2 * most
+        end
+    end
+    if g.a2 > g.a1 then g.a1, g.a2, g.theta = g.a2, g.a1, g.theta + pi / 2 end
+    return g
+end
+
+-- The stain's ground drawn: its ground, grown with the fight's score F,
+-- within its least, FOOT.most and STAIN.aspect.
+local function Grown(g, F)
+    local least = STAIN.least[1] + STAIN.least[2] * F
+    local most = min(STAIN.most[1] + STAIN.most[2] * F, FOOT.most / 2)
+    local a1 = Clamp(g.a1 + STAIN.bleed * F, least, most)
+    local a2 = Clamp(g.a2 + STAIN.bleed * F, least, most)
+    a2 = max(a2, a1 / STAIN.aspect)
+    return { x = g.x, y = g.y, a1 = a1, a2 = a2, theta = g.theta }
+end
+
+-- One fight's ink: a blot over its ground (STAIN), deepening with its
+-- fighting. `pool` = { e (its ground, grown), F, tint, segs, stains (the
+-- footprints of its stops, { e, w }) }; `room` = { dabs }. Returns the
+-- pieces used.
+function Ink.Stain(out, pool, seed, room)
+    local Q = STAIN
+    if room.dabs <= 0 then return 0 end
+    local e, F, tint = pool.e, pool.F or 0, pool.tint or Ink.TINT.fighting
+    local INK = Style.INK_STRONG
+    local sigma = Q.sigma
+    local strength = 0.5 + 0.5 * F
+
+    -- The bumps: a hex grid over the ground shrunk by `inset` sigmas (or
+    -- its middle alone, where nothing else fits), the cores those near
+    -- the middle; and the middle of each stop, where the time went.
+    local points = {}
+    local step = Q.spacing * sigma
+    local ia1, ia2 = e.a1 - Q.inset * sigma, e.a2 - Q.inset * sigma
+    local core = Q.core[1] + Q.core[2] * F
+    if ia1 > 0 and ia2 > 0 then
+        local rand = Pen.Random(seed * 17 + 3)
+        local ox, oy = (rand() - 0.5) * step, (rand() - 0.5) * step
+        local row = 0
+        for v = -ia2 + oy % step, ia2, step * 0.866 do
+            for u = -ia1 + ((row % 2 == 1) and step / 2 or 0) + ox % step, ia1, step do
+                if (u / ia1) ^ 2 + (v / ia2) ^ 2 <= 1 then
+                    local x, y = FromLocal(e, u, v)
+                    -- Deeper toward the heart, fading out to its edge.
+                    local heart = Clamp(1 - Ink.Reach(e, x, y) / core, 0, 1)
+                    points[#points + 1] = { x = x, y = y, t = 0.4 + (strength - 0.4) * heart ^ 0.35 }
+                end
+            end
+            row = row + 1
+        end
+    end
+    points[#points + 1] = { x = e.x, y = e.y, t = strength }
+    for _, m in ipairs(pool.stains or {}) do
+        if Ink.Reach(e, m.e.x, m.e.y) <= 1 then points[#points + 1] = { x = m.e.x, y = m.e.y, t = strength } end
+    end
+
+    local reach = max(e.a1, e.a2) + 4 * sigma
+    local Blot = ns.UI.InkBlot
+    -- The grid at most `across` samples over the stain: a big one is
+    -- coarser (it is the field that is smooth, not the grid), and quick.
+    local step = max(Q.step, 2 * reach / Q.across)
+    local blot = Blot and Blot.Build(points, Q.levels, { step = step, warp = Q.warp, rim = Q.rim,
+        cap = min(Q.cap, room.dabs), clip = { e.x - reach, e.y - reach, e.x + reach, e.y + reach } })
+    if not blot or blot.count > room.dabs or #blot.levels[1] == 0 or blot.step > Q.coarsest * step then
+        -- No room for the blot (a grid so coarse it lost the stain's shape,
+        -- or lost the stain): the ground once, in its rust.
+        local ink = Q.ink[1]
+        Disc(out, LAYER.wash, e.x, e.y, e.a1, e.a2, e.theta, Toward(tint, INK, ink[1]), ink[2] + ink[3] * F, pool)
+        return 1
+    end
+    local used = 0
+    for n, quads in ipairs(blot.levels) do
+        local ink = Q.ink[n]
+        local c, a = Toward(tint, INK, ink[1]), ink[2] + ink[3] * F
+        local layer = n == 1 and LAYER.wash or n == 2 and LAYER.dab or LAYER.rim
+        for _, q in ipairs(quads) do
+            Quad(out, layer, q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8], c, a, pool)
+            used = used + 1
+        end
+    end
+    local c, a = Toward(tint, INK, Q.rimDark), Q.rimAlpha[1] + Q.rimAlpha[2] * F
+    for _, q in ipairs(blot.rim) do
+        Quad(out, LAYER.rim, q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8], c, a, pool)
         used = used + 1
     end
     return used
@@ -587,10 +819,24 @@ function Ink.Build(sheet, box, opts)
 
     -- The pools, longest first; a stop on a longer one of its kind is part
     -- of it. Whether a pool is a droplet is settled once all its time is in.
+    -- A fight's stops near one another are one stain (STAIN): `ground` the
+    -- ground holding them, `stains` their footprints, `combat` its seconds
+    -- of fighting.
     local list = {}
     for _, seg in ipairs(sheet.stops or {}) do list[#list + 1] = seg end
     table.sort(list, function(a, b) return (a.seconds or 0) > (b.seconds or 0) end)
     local pools, of = {}, {}
+    -- The ground of a stain of `stains`, if it stays within its span.
+    local function Joins(stains)
+        local ground = Ink.Ground(stains)
+        if 2 * ground.a1 <= STAIN.span then return ground end
+    end
+    local function Append(a, b)
+        local all = {}
+        for _, m in ipairs(a) do all[#all + 1] = m end
+        for _, m in ipairs(b) do all[#all + 1] = m end
+        return all
+    end
     for i = 1, min(#list, CAP.stops) do
         local seg = list[i]
         local x, y = box.at(seg.x, seg.y)
@@ -599,29 +845,99 @@ function Ink.Build(sheet, box, opts)
             local kind = KindOf(seg) or "stayed"
             local seconds = seg.seconds or ((seg.to or 0) - (seg.from or 0))
             local deaths = seg.act and seg.act.deaths or 0
-            local into
+            local combat = seg.act and seg.act.combat or 0
+            local e = Ink.Footprint(seg, x, y, box.fullW, box.fullH, box.pxPerYard or 0)
+            local into, ground
             for _, pool in ipairs(pools) do
-                if pool.kind == kind and Ink.Reach(pool.e, x, y) < POOL.merge then
-                    into = pool
-                    break
+                if pool.kind == kind then
+                    if kind == "fighting" then
+                        if Gap(pool.ground, e) <= STAIN.join then
+                            ground = Joins(Append(pool.stains, { { e = e, w = combat } }))
+                        end
+                        if ground then into = pool end
+                    elseif Ink.Reach(pool.e, x, y) < POOL.merge then
+                        into = pool
+                    end
+                    if into then break end
                 end
             end
             if into then
                 into.seconds, into.deaths, into.more = into.seconds + seconds, into.deaths + deaths, into.more + 1
                 into.segs[#into.segs + 1] = seg
                 of[seg] = into
+                if ground then
+                    into.stains[#into.stains + 1] = { e = e, w = combat }
+                    into.ground, into.combat = ground, into.combat + combat
+                end
             else
                 local pool = { seg = seg, segs = { seg }, kind = kind, seconds = seconds, deaths = deaths, more = 0,
-                    e = Ink.Footprint(seg, x, y, box.fullW, box.fullH, box.pxPerYard or 0),
-                    tint = Ink.TINT[kind] or Ink.TINT.stayed }
+                    e = e, tint = Ink.TINT[kind] or Ink.TINT.stayed, combat = combat }
+                if kind == "fighting" then
+                    pool.stains = { { e = e, w = combat } }
+                    pool.ground = Ink.Ground(pool.stains)
+                end
                 pools[#pools + 1] = pool
                 of[seg] = pool
             end
         end
     end
+
+    -- A stain takes in what lies on it: another fight's stain its own
+    -- footprints come near (stops taken longest first can leave two that a
+    -- shorter one between them joins), and a stop of another kind with any
+    -- fighting whose middle lies on it. The pool taken in keeps its place
+    -- in no list: its stops are the stain's.
+    local function Take(into, pool)
+        into.seconds, into.deaths = into.seconds + pool.seconds, into.deaths + pool.deaths
+        into.more = into.more + 1 + pool.more
+        for _, seg in ipairs(pool.segs) do
+            into.segs[#into.segs + 1] = seg
+            of[seg] = into
+        end
+        into.combat = into.combat + (pool.combat or 0)
+        pool.taken = true
+    end
+    local merged = true
+    while merged do
+        merged = false
+        for a = 1, #pools do
+            local p = pools[a]
+            if p.stains and not p.taken then
+                for b = a + 1, #pools do
+                    local q = pools[b]
+                    if q.stains and not q.taken then
+                        local near = false
+                        for _, m in ipairs(q.stains) do
+                            if Gap(p.ground, m.e) <= STAIN.join then near = true; break end
+                        end
+                        local all = near and Append(p.stains, q.stains)
+                        local ground = all and Joins(all)
+                        if ground then
+                            Take(p, q)
+                            p.stains, p.ground, merged = all, ground, true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    for _, p in ipairs(pools) do
+        if p.stains and not p.taken then
+            for _, q in ipairs(pools) do
+                if not q.stains and not q.taken and q.combat > 0 and Gap(p.ground, q.e) <= 0 then
+                    Take(p, q)
+                end
+            end
+        end
+    end
+    local kept = {}
+    for _, pool in ipairs(pools) do
+        if not pool.taken then kept[#kept + 1] = pool end
+    end
+    pools = kept
     for _, pool in ipairs(pools) do
         pool.T = Ink.TimeScore(pool.seconds)
-        pool.droplet = pool.seconds < POOL.droplet and pool.deaths == 0
+        pool.droplet = not pool.stains and pool.seconds < POOL.droplet and pool.deaths == 0
     end
 
     -- The roads on the sheet, and each one's pressure.
@@ -652,6 +968,27 @@ function Ink.Build(sheet, box, opts)
         return pool and not pool.droplet and pool or nil
     end
 
+    -- A road fought on that left or reached a stain: its fighting is the
+    -- stain's, not sprinkles of rust on the road. Then each stain's score,
+    -- and its ground as drawn, grown with it: what the roads hand over to.
+    local ends, intoStain = {}, {}
+    for i, road in ipairs(roads) do
+        ends[i] = { first = Near(road, true), last = Near(road, false) }
+        local combat = road.act and road.act.combat or 0
+        local stain = ends[i].first and ends[i].first.stains and ends[i].first
+            or ends[i].last and ends[i].last.stains and ends[i].last
+        if combat > 0 and stain then
+            stain.combat = stain.combat + combat
+            intoStain[i] = true
+        end
+    end
+    for _, pool in ipairs(pools) do
+        if pool.stains then
+            pool.F = Ink.FightScore(pool.combat)
+            pool.e = Grown(pool.ground, pool.F)
+        end
+    end
+
     -- Room for the roads: under the cap, the step grows.
     local length = 0
     for i = 1, #roads do
@@ -665,8 +1002,8 @@ function Ink.Build(sheet, box, opts)
     for i, road in ipairs(roads) do
         local room = { quads = CAP.quads - counts.quads, dots = CAP.dots - counts.dots, step = step }
         if room.quads <= 0 then break end
-        local q, d = Ink.Road(out, road, pts[i], pressure[i], { first = Near(road, true), last = Near(road, false) },
-            floor(road.from or i) % 9973, room)
+        room.rust = not intoStain[i]
+        local q, d = Ink.Road(out, road, pts[i], pressure[i], ends[i], floor(road.from or i) % 9973, room)
         counts.quads, counts.dots = counts.quads + q, counts.dots + d
         if q > 0 then counts.roads = counts.roads + 1 end
     end
@@ -675,9 +1012,10 @@ function Ink.Build(sheet, box, opts)
     -- to come: past the cap a short stay is at least its wash or its dot.
     local roadsMade = #out
     for i, pool in ipairs(pools) do
-        local room = { dabs = min(POOL.perPool, CAP.dabs - counts.dabs - (#pools - i)) }
+        local room = { dabs = min(pool.stains and STAIN.cap or POOL.perPool, CAP.dabs - counts.dabs - (#pools - i)) }
         if room.dabs <= 0 then break end
-        counts.dabs = counts.dabs + Ink.Pool(out, pool, floor(pool.seg.from or 0) % 9973, room)
+        local Draw = pool.stains and Ink.Stain or Ink.Pool
+        counts.dabs = counts.dabs + Draw(out, pool, floor(pool.seg.from or 0) % 9973, room)
         pool.drawn = true
         if pool.droplet then counts.droplets = counts.droplets + 1 else counts.pools = counts.pools + 1 end
     end

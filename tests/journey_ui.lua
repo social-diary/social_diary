@@ -1589,9 +1589,9 @@ Check(by[minute].droplet, "a minute's stay is not a droplet")
 Check(by[died] and not by[died].droplet, "a stop with a death became a droplet")
 local dropDiscs, deathless = 0, true
 for _, pool in ipairs(plate.pools) do
-    deathless = deathless and pool.droplet == (pool.seconds < Ink.POOL.droplet and pool.deaths == 0)
+    deathless = deathless and pool.droplet == (not pool.stains and pool.seconds < Ink.POOL.droplet and pool.deaths == 0)
 end
-Check(deathless, "a droplet is not exactly a short stay without a death")
+Check(deathless, "a droplet is not exactly a short stay without a death or a fight")
 for _, prim in ipairs(plate.prims) do
     if prim.of == drop then dropDiscs = dropDiscs + 1 end
 end
@@ -1624,10 +1624,14 @@ for _, pool in ipairs(plate.pools) do
 end
 
 -- Time never touches the ground: a minute, five and an hour on the same
--- spread are the same size. It goes into the ink.
+-- spread cover the same ground. It goes into the ink; only a fight's
+-- stain grows past its ground with its time (Ink.STAIN, 9 Nov: the
+-- user's "growing and deepening the longer they fought").
 local long, short = by[hour], by[brief]
-Check(long.e.a1 == short.e.a1 and long.e.a2 == short.e.a2, "an hour's pool is larger than five minutes'")
-Check(by[minute].e.a1 == long.e.a1 and by[minute].e.a2 == long.e.a2, "a minute's footprint is not an hour's")
+Check(long.ground.a1 == short.ground.a1 and long.ground.a2 == short.ground.a2,
+    "an hour's fight covered more ground than five minutes'")
+Check(by[minute].e.a1 == long.ground.a1 and by[minute].e.a2 == long.ground.a2, "a minute's footprint is not an hour's")
+Check(long.e.a1 > short.e.a1 and short.e.a1 >= short.ground.a1, "an hour's fight's stain is not the larger")
 Check(long.T > short.T + 0.3, ("an hour is not inked darker: %.2f against %.2f"):format(long.T, short.T))
 local function Ink_(pool)
     local passes, wash = 0, 0
@@ -1639,11 +1643,12 @@ local function Ink_(pool)
 end
 local longPasses, longWash = Ink_(long)
 local shortPasses, shortWash = Ink_(short)
-Check(longPasses > shortPasses and longWash > shortWash, "a long stay has no more passes or a paler wash")
+Check(longPasses > shortPasses and longWash > shortWash, "a long fight has no darker heart or a paler stain")
 
 -- No pool's ink leaves its ground: no disc past its footprint by more
--- than its anti-aliased edge; a fight's streaks reach 12 % past it.
-local worst, streak = -math.huge, 0
+-- than its anti-aliased edge; a fight's stain, a blot of quads, no further
+-- past its ground than its bumps reach (Ink.STAIN's sigma and wobble).
+local worst, past = -math.huge, 0
 for _, prim in ipairs(plate.prims) do
     local e = prim.of and prim.of.e
     if e and prim.k == "d" then
@@ -1660,12 +1665,16 @@ for _, prim in ipairs(plate.prims) do
             end
         end
     elseif e and prim.k == "q" then
-        Eq(prim.of.kind, "fighting", "a pool's quad that is not a fight's streak")
-        for k = 1, 4 do streak = math.max(streak, Ink.Reach(e, prim["x" .. k], prim["y" .. k])) end
+        Check(prim.of.kind == "fighting" and prim.of.stains, "a pool's quad that is not a fight's stain")
+        for k = 1, 4 do
+            local dx, dy = prim["x" .. k] - e.x, prim["y" .. k] - e.y
+            local d = math.sqrt(dx * dx + dy * dy)
+            if d > 1e-9 then past = math.max(past, d - Ink.Extent(e, dx / d, dy / d)) end
+        end
     end
 end
 Check(worst <= Ink.POOL.edge + 1e-6, ("a dab reached %.2f px past its footprint"):format(worst))
-Check(streak > 1 and streak <= Ink.POOL.streak + 0.05, "a fight's streaks: " .. streak)
+Check(past > 0 and past <= Ink.STAIN.sigma + Ink.STAIN.warp[1], ("a fight's stain reached %.2f px out"):format(past))
 
 -- The spread's form: the inn's pool along its measured angle, longer than wide.
 local sx, sy = 0.02 * fullW, 0.006 * fullH

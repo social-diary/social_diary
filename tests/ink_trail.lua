@@ -93,24 +93,21 @@ local function PoolOf(e, seconds, kind)
     return out
 end
 local big = Ink.Footprint({ sdx = 0.02, sdy = 0.012, rho = 0.3 }, 250, 170, 500, 340, 0.1)
-for _, case in ipairs({ { e1, 180 }, { e1, 7200 }, { big, 180 }, { big, 7200 }, { big, 7200, "fighting" },
+for _, case in ipairs({ { e1, 180 }, { e1, 7200 }, { big, 180 }, { big, 7200 },
     { Ink.Footprint({ r = 10 }, 50, 50, 500, 340, 0.1), 3600 } }) do
     local e = case[1]
-    local worst, streak, stray = -math.huge, 0, 0
+    local worst, stray = -math.huge, 0
     for _, prim in ipairs(PoolOf(e, case[2], case[3])) do
         if prim.k == "d" then
             worst = math.max(worst, Past(e, prim))
-        elseif case[3] == "fighting" and prim.layer == LAYER.rim then
-            for k = 1, 4 do streak = math.max(streak, Ink.Reach(e, prim["x" .. k], prim["y" .. k])) end
         else
             stray = stray + 1
         end
     end
     -- Give or take the outline's sampling (0.01 px).
     Check(worst <= POOL.edge + 0.01, ("a dab reached %.3f px past its footprint"):format(worst))
-    Eq(stray, 0, "quads in a pool that are not a fight's streaks")
-    -- A fight's streaks, out to 12 % past the edge and no further.
-    Check(streak <= POOL.streak + 0.05 and (case[3] ~= "fighting" or streak > 1), "a fight's streaks: " .. streak)
+    -- A pool is discs only (a fight's streaks went with its stain, 9 Nov).
+    Eq(stray, 0, "quads in a pool")
 end
 
 local short, long = PoolOf(e1, 180), PoolOf(e1, 7200)
@@ -299,6 +296,160 @@ Check(drops >= 2, "no drops flicked out of the stops: " .. drops)
 for _, seed in ipairs({ 1791000000, 2 ^ 40 }) do
     local n = Ink.Noise(seed, 3.5)
     Check(n >= -1 and n <= 1 and n == n, "noise on a big seed")
+end
+
+--------------------------------------------------------------------------
+Section("a fight is a stain: one blot, never a droplet, growing and darker the longer")
+do
+
+    local STAIN = Ink.STAIN
+    local function Fought(seg) return seg.act and (seg.act.combat or 0) > 0 and "fighting" or "stayed" end
+    -- A fight of `combat` seconds at sheet px x, y (on the 500 x 340 box).
+    local function Fight(from, x, y, seconds, combat, extra)
+        local seg = { kind = "stop", from = from, to = from + seconds, seconds = seconds, x = x / 500, y = y / 340,
+            sdx = 0.004, sdy = 0.004, rho = 0, act = { combat = combat } }
+        for k, v in pairs(extra or {}) do seg.act[k] = v end
+        return seg
+    end
+    local function Road(from, to, xy, combat)
+        local pts = {}
+        for k = 1, #xy, 2 do pts[#pts + 1], pts[#pts + 2] = xy[k] / 500, xy[k + 1] / 340 end
+        return { from = from, to = to, pts = pts, act = combat and { combat = combat } or nil }
+    end
+    -- Each pool's pieces by layer, and how far its ink reaches past its ground.
+    local function Pieces(prims, pool)
+        local by, past = {}, 0
+        for _, prim in ipairs(prims) do
+            if prim.of == pool then
+                by[prim.layer] = (by[prim.layer] or 0) + 1
+                for k = 1, prim.k == "q" and 4 or 0 do
+                    local x, y = prim["x" .. k], prim["y" .. k]
+                    local dx, dy = x - pool.e.x, y - pool.e.y
+                    local d = math.sqrt(dx * dx + dy * dy)
+                    if d > 1e-6 then past = math.max(past, d - Ink.Extent(pool.e, dx / d, dy / d)) end
+                end
+            end
+        end
+        return by, past
+    end
+
+    -- The anchors of a fight's score.
+    for _, anchor in ipairs({ { 60, 0.20 }, { 120, 0.32 }, { 300, 0.52 }, { 900, 0.81 }, { 1800, 1 }, { 7200, 1 } }) do
+        Check(math.abs(Ink.FightScore(anchor[1]) - anchor[2]) < 0.01,
+            ("F at %d s is %.3f, not %.2f"):format(anchor[1], Ink.FightScore(anchor[1]), anchor[2]))
+    end
+
+    -- A minute's fight on the way: no droplet, but a stain several times a
+    -- droplet across, of blot pieces, that the road goes into and comes out
+    -- of (no free ends: the line is not broken at the fight, 9 Nov).
+    local onTheWay = { stops = { Fight(100, 250, 170, 60, 45) }, roads = {
+        Road(0, 100, { 150, 170, 200, 170, 250, 170 }), Road(160, 260, { 250, 170, 300, 170, 350, 170 }) } }
+    local wprims, wc, wpools = Ink.Build(onTheWay, box, { kind = Fought })
+    local stain = wpools[1]
+    Check(stain.stains and not stain.droplet and wc.droplets == 0, "a minute's fight is a droplet")
+    Check(2 * math.min(stain.e.a1, stain.e.a2) >= 2 * STAIN.least[1] and 2 * stain.e.a2 > 2.5 * POOL.drop,
+        ("a minute's fight is not a stain: %.1f px across"):format(2 * stain.e.a2))
+    local wby, wpast = Pieces(wprims, stain)
+    Check((wby[LAYER.wash] or 0) > 4 and not wby[LAYER.nib], "a minute's fight is not a blot")
+    Check(not wby[LAYER.dab], "a minute's fight has a dark heart already")
+    Check(wpast <= STAIN.sigma + STAIN.warp[1], ("a stain's ink reached %.2f px past its ground"):format(wpast))
+    local inside, roadBeads = math.huge, 0
+    for _, prim in ipairs(wprims) do
+        if prim.layer == LAYER.road then
+            if prim.k == "q" then
+                inside = math.min(inside, Ink.Reach(stain.e, (prim.x1 + prim.x3) / 2, (prim.y1 + prim.y3) / 2))
+            else
+                roadBeads = roadBeads + 1
+            end
+        end
+    end
+    Check(inside > Ink.ROAD.stainHandOver - 0.3, "the line runs on inside a fight's stain: " .. inside)
+
+    -- A quarter of an hour round one spot: six fights close together, the roads
+    -- between fought on, a quest handed in between pulls (some fighting in it),
+    -- a death. One stain, all its time and all its fighting in it, roads
+    -- included, and none of their rust sprinkled on the roads.
+    local function Grind(roadCombat)
+        local sheet = { stops = {}, roads = {} }
+        local spots = { { 240, 160, 140, 100 }, { 248, 172, 110, 80 }, { 260, 176, 180, 130 }, { 254, 186, 70, 50 },
+            { 252, 165, 160, 120 }, { 266, 188, 90, 70 } }
+        local t = 1000
+        for i, sp in ipairs(spots) do
+            sheet.stops[#sheet.stops + 1] = Fight(t, sp[1], sp[2], sp[3], sp[4], i == 3 and { deaths = 1 } or nil)
+            t = t + sp[3]
+            local nx = spots[i + 1] or { 300, 230 }
+            sheet.roads[#sheet.roads + 1] = Road(t, t + 25, { sp[1], sp[2], nx[1], nx[2] }, roadCombat)
+            t = t + 25
+        end
+        sheet.stops[#sheet.stops + 1] = { kind = "stop", from = t, to = t + 120, seconds = 120, x = 244 / 500,
+            y = 178 / 340, sdx = 0.004, sdy = 0.004, rho = 0, act = { questsOut = 2, combat = 20 } }
+        return sheet
+    end
+    local function Kinds(seg)
+        if seg.act and (seg.act.questsOut or 0) > 0 then return "questing" end
+        return Fought(seg)
+    end
+    local gprims, gc, gpools = Ink.Build(Grind(20), box, { kind = Kinds })
+    Eq(#gpools, 1, "a quarter of an hour's fighting round one spot is not one stain")
+    local grind = gpools[1]
+    Eq(grind.more, 6, "the stain does not hold every stop on it")
+    Eq(grind.deaths, 1, "the stain lost its death")
+    Eq(grind.combat, 550 + 20 + 6 * 20, "the stain's fighting is not its stops' and its roads'")
+    local function Rust(prims)
+        local n = 0
+        for _, prim in ipairs(prims) do
+            if prim.layer == LAYER.spatter and prim.r == Ink.TINT.fighting[1] then n = n + 1 end
+        end
+        return n
+    end
+    Eq(Rust(gprims), Rust((Ink.Build(Grind(nil), box, { kind = Kinds }))), "the roads into the stain sprinkled rust")
+    local gby, gpast = Pieces(gprims, grind)
+    Check((gby[LAYER.dab] or 0) > 0 and (gby[LAYER.rim] or 0) > (wby[LAYER.rim] or 0),
+        "a long fight's stain has no darker heart")
+    Check(gpast <= STAIN.sigma + STAIN.warp[1], ("a stain's ink reached %.2f px past its ground"):format(gpast))
+    Check(grind.e.a1 > stain.e.a1 + 5 and 2 * grind.e.a1 <= FOOT.most
+        and grind.e.a1 <= STAIN.aspect * grind.e.a2 + 1e-9,
+        ("a long fight's stain is not larger, within its most and aspect: %.1f by %.1f"):format(grind.e.a1, grind.e.a2))
+    for _, prim in ipairs(gprims) do
+        if prim.of == grind and prim.layer == LAYER.wash then
+            Check(prim.a > STAIN.ink[1][2] + STAIN.ink[1][3] * 0.6, "a long fight's stain is not deeper")
+            break
+        end
+    end
+
+    -- The same ground fought on a minute and an hour: the hour's larger. And a
+    -- fight with no room for its blot is its ground once, in rust.
+    local function Lone(seconds)
+        local _, _, pools = Ink.Build({ stops = { Fight(0, 250, 170, seconds, seconds) }, roads = {} }, box,
+            { kind = Fought })
+        return pools[1]
+    end
+    Check(Lone(3600).e.a1 > Lone(60).e.a1 and Lone(3600).e.a1 >= Lone(600).e.a1, "a fight does not grow with its time")
+    local tight = {}
+    Eq(Ink.Stain(tight, Lone(3600), 1, { dabs = 5 }), 1, "a stain with no room is not one wash")
+    Check(#tight == 1 and tight[1].k == "d" and tight[1].layer == LAYER.wash, "a stain with no room is not its ground")
+
+    -- Apart: fights far from one another stay their own; a fight's stain
+    -- never spans more than STAIN.span, however long the grind along a road;
+    -- a stop without fighting on a stain stays its own pool.
+    local road = { stops = {}, roads = {} }
+    for i = 0, 14 do road.stops[#road.stops + 1] = Fight(i * 300, 40 + i * 8, 170, 200, 150) end
+    road.stops[#road.stops + 1] = { kind = "stop", from = 9000, to = 9600, seconds = 600, x = 40 / 500, y = 170 / 340,
+        sdx = 0.004, sdy = 0.004, rho = 0 }
+    local _, _, rpools = Ink.Build(road, box, { kind = Fought })
+    local stains, rest = 0, 0
+    for _, pool in ipairs(rpools) do
+        if pool.stains then
+            stains = stains + 1
+            Check(2 * pool.e.a1 <= STAIN.span + 2 * STAIN.bleed + 1e-6, "a stain passed its span: " .. 2 * pool.e.a1)
+        else
+            rest = rest + 1
+        end
+    end
+    Check(stains >= 2, "a long grind along a road is one stain")
+    Eq(rest, 1, "a stop without fighting joined a stain")
+    local far = { stops = { Fight(0, 100, 100, 300, 200), Fight(400, 160, 100, 300, 200) }, roads = {} }
+    Eq(#select(3, Ink.Build(far, box, { kind = Fought })), 2, "two fights far apart ran together")
 end
 
 --------------------------------------------------------------------------
