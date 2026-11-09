@@ -4,11 +4,16 @@
 
 ### Changes
 
-- _Dungeon View_ now places deaths, wipes and rolls by the packs in Wailing Caverns and Shadowfang Keep
+- _Dungeon View_ now places deaths, wipes and rolls precisely by mob pack data in Wailing Caverns and Shadowfang Keep
+
+### Changes
+
+- Tooltips in _Your Diary_ Plates now summarize their data instead of showing e.g. 4 times "Fought here for x Minutes"
 
 ### Fixes
 
 - Dungeons, battlegrounds and boss fights no longer cause repeated Lua errors
+- In _Your Diary_, The red ink spills that mark your combat zones are now more clearly visible. 
 
 ## [3.0.1]
 
