@@ -26,6 +26,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local Controls = Pad.Controls
@@ -33,13 +35,13 @@ local Controls = Pad.Controls
 local function Profile() return J.journal and J.journal.profile end
 
 local PROMPT = {
-    stop = { "PAD2", "Stop writing" },
-    leave = { "PAD2", "Done writing" },
-    tabs = { "PADDRIGHT", "Go to the tabs" },
-    story = { "PAD1", "See their story", main = true },
-    seen = { "PAD1", "See where you saw them", main = true },
-    note = { "PAD1", "Add a note", main = true },
-    edit = { "PAD1", "Done writing", main = true },
+    stop = { "PAD2", L["Stop writing"] },
+    leave = { "PAD2", L["Done writing"] },
+    tabs = { "PADDRIGHT", L["Go to the tabs"] },
+    story = { "PAD1", L["See their story"], main = true },
+    seen = { "PAD1", L["See where you saw them"], main = true },
+    note = { "PAD1", L["Add a note"], main = true },
+    edit = { "PAD1", L["Done writing"], main = true },
 }
 
 -- Writing about someone on their page (asked from the moment J.Edit says

@@ -10,6 +10,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local FONT = Style.FONT
 local YourDiary = ns.UI.YourDiary
@@ -65,7 +67,7 @@ local function BuildEmptyRight(e)
     local G, P, A = Style.GRAPHITE, Style.PAPER, Style.ACCENT
     local lede = Style.Text(e, FONT.faded)
     lede:SetPoint("TOPLEFT", RIGHT_X, -22)
-    lede:SetText("Each level's places are glued in here:")
+    lede:SetText(L["Each level's places are glued in here:"])
 
     -- The card's edge, a little askew, and the art's frame inside it.
     local function Edge(u1, v1, u2, v2, alpha)
@@ -136,11 +138,11 @@ local function BuildEmptyRight(e)
 
     -- The notes in the margin: { y of the note, what it points to (u, v) }.
     local notes = {
-        { 4, "Where you stayed a while, darker the longer.", 0.30, 0.58 },
-        { 44, "The roads between.", 0.22, 0.70 },
-        { 80, "Flights, dashed. Dungeons, where you went in.", 0.87, 0.19 },
-        { 122, "Who you met there, written in the margin.", 0.36, 0.62 },
-        { 160, "Where the level came.", 0.47, 0.51 },
+        { 4, L["Where you stayed a while, darker the longer."], 0.30, 0.58 },
+        { 44, L["The roads between."], 0.22, 0.70 },
+        { 80, L["Flights, dashed. Dungeons, where you went in."], 0.87, 0.19 },
+        { 122, L["Who you met there, written in the margin."], 0.36, 0.62 },
+        { 160, L["Where the level came."], 0.47, 0.51 },
     }
     for _, n in ipairs(notes) do
         local text = Style.Text(e, FONT.margin)
@@ -155,12 +157,12 @@ local function BuildEmptyRight(e)
 
     -- Its caption, pencilled under it, and what a caption is.
     local y = SKETCH.y + SKETCH.h + 26
-    Pencilled(e, FONT.pencil, RIGHT_X + 8, y, "The Barrens, Tuesday")
-    Pencilled(e, FONT.pencil, RIGHT_X + 8, y + 18, "Level 12, and a death by the oasis.")
+    Pencilled(e, FONT.pencil, RIGHT_X + 8, y, L["The Barrens, Tuesday"])
+    Pencilled(e, FONT.pencil, RIGHT_X + 8, y + 18, L["Level 12, and a death by the oasis."])
     local note = Style.Text(e, FONT.margin)
     note:SetPoint("TOPLEFT", NOTES.x, -y - 4)
     note:SetWidth(NOTES.w)
-    note:SetText("A few words for each place, up to three a level.")
+    note:SetText(L["A few words for each place, up to three a level."])
     Style.Curve(e, "ARTWORK", NOTES.x - 4, y + 11, NOTES.x - 20, y + 11, RIGHT_X + 8 + 250, y + 25, A,
         NOTES.leader, 1, 3)
 
@@ -171,7 +173,7 @@ local function BuildEmptyRight(e)
     rule:SetColorTexture(INK[1], INK[2], INK[3], Style.HAIRLINE)
     local promise = Paragraph(e, FONT.body, RIGHT_W)
     promise:SetPoint("TOPLEFT", RIGHT_X, -482)
-    promise:SetText("A recap of where you went and who you were with. It counts no quests and keeps no score.")
+    promise:SetText(L["A recap of where you went and who you were with. It counts no quests and keeps no score."])
 end
 
 -- The left page, empty: why, and an entry as it will read, in pencil.
@@ -186,20 +188,20 @@ local function BuildEmptyLeft(e)
         ns.JourneyCapture.SetEnabled(true)
         ns.UI.RefreshJourneyPage(true)
     end)
-    e.keep:SetText("Keep my own route")
+    e.keep:SetText(L["Keep my own route"])
     e.keep:SetPoint("TOPLEFT", e.why, "BOTTOMLEFT", 0, -EMPTY.under)
     e.only = Paragraph(e, FONT.small, LEFT_W)
     e.only:SetPoint("TOPLEFT", e.keep, "BOTTOMLEFT", 0, -4)
-    e.only:SetText("Only your own position, never anyone else's.")
+    e.only:SetText(L["Only your own position, never anyone else's."])
 
     -- The sample entry, under whichever of the two ends lower.
     e.sampleLede = Paragraph(e, FONT.faded, LEFT_W)
-    e.sampleLede:SetText("Each level gets an entry, like this:")
+    e.sampleLede:SetText(L["Each level gets an entry, like this:"])
 
     local G = Style.GRAPHITE
     e.sampleTitle = Style.Text(e, FONT.pencilSmall)
     e.sampleTitle:SetPoint("TOPLEFT", e.sampleLede, "BOTTOMLEFT", ENTRY.indent, -EMPTY.gap)
-    e.sampleTitle:SetText("LEVEL 12")
+    e.sampleTitle:SetText(ns.UI.JourneyText.Upper(Fmt(L["Level %d"], 12)))
     local paraph = e:CreateTexture(nil, "ARTWORK")
     paraph:SetSize(ENTRY.paraph, ENTRY.paraph)
     paraph:SetRotation(math.pi / 4)
@@ -212,9 +214,9 @@ local function BuildEmptyLeft(e)
 
     local previous = e.sampleTitle
     for i, line in ipairs({
-        "Reached on 6 October at the Crossroads, The Barrens.",
-        "An hour of quests round the Crossroads. Then Lushwater Oasis.",
-        "With Thex Theximus for forty minutes.",
+        L["Reached on 6 October at the Crossroads, The Barrens."],
+        L["An hour of quests round the Crossroads. Then Lushwater Oasis."],
+        L["With Thex Theximus for forty minutes."],
     }) do
         local t = Paragraph(e, i == 1 and FONT.pencilSmall or FONT.pencil, LEFT_W - ENTRY.indent)
         t:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -(i == 1 and 8 or ENTRY.para))
@@ -224,7 +226,7 @@ local function BuildEmptyLeft(e)
     -- And its ledger: the zones it was spent in, each a way to its map,
     -- with dot leaders out to their times, as the entries have it.
     local right = LEFT_X + LEFT_W - LEDGER.right
-    for i, zone in ipairs({ { "The Barrens", "1 h 20" }, { "Stonetalon Mountains", "40 min" } }) do
+    for i, zone in ipairs({ { L["The Barrens"], L["1 h 20"] }, { L["Stonetalon Mountains"], L["40 min"] } }) do
         local name = Style.Text(e, FONT.pencilSmall)
         name:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -(i == 1 and ENTRY.para or 4))
         name:SetText(zone[1])
@@ -257,10 +259,9 @@ end
 
 -- Which of the two empty pages: the setting off, or nothing walked yet.
 local function FillEmpty(e, on)
-    e.heading:SetText(on and "Your road starts here" or "Not keeping your road", not on)
-    e.why:SetText(on and "Nothing is on it yet. From now on the diary keeps where this character goes:"
-        .. " the places you stay a while, the roads between, flights and dungeons, and who you were with."
-        or "The diary is not keeping this character's road just now, so there is nothing to tell here yet.")
+    e.heading:SetText(on and L["Your road starts here"] or L["Not keeping your road"], not on)
+    e.why:SetText(on and L["Nothing is on it yet. From now on the diary keeps where this character goes: the places you stay a while, the roads between, flights and dungeons, and who you were with."]
+        or L["The diary is not keeping this character's road just now, so there is nothing to tell here yet."])
     e.keep:SetShown(not on)
     e.only:SetShown(not on)
     e.sampleLede:ClearAllPoints()

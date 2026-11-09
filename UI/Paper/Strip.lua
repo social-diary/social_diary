@@ -71,6 +71,7 @@
 -- on a slip that was cut.
 
 local addonName, ns = ...
+local L = ns.L
 
 local Style = ns.Style
 
@@ -103,7 +104,7 @@ STRIP.balance = { step = 3, least = 0.55 }
 -- over what happened (a little more: the diary's words are not theirs).
 -- The opening quote hangs into the margin, at most `hang` px.
 STRIP.quote = { lines = 3, least = 1, gap = 1, after = 3, hang = 6,
-    open = "\226\128\156", close = "\226\128\157", cut = "\226\128\166" }
+    open = L["\226\128\156##quote open"], close = L["\226\128\157##quote close"], cut = "\226\128\166" }
 -- Its cut: scissors never cut square, so each corner lies off true by up
 -- to `skew` px each way (seeded). Laid flat, or where corners cannot move,
 -- square.

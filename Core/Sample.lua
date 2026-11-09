@@ -22,6 +22,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Sample = {}
 ns.Sample = Sample
 
@@ -36,7 +38,7 @@ Sample.ZONE = ZONE
 
 local MIN = 60
 
-local LINEN = "|cnIQ1:|Hitem:2589::::::::::::|h[Linen Cloth]|h|r"
+local LINEN = "|cnIQ1:|Hitem:2589::::::::::::|h[" .. L["Linen Cloth"] .. "]|h|r"
 
 function Sample.Present()
     local db = ns.db
@@ -125,7 +127,7 @@ function Sample.Write(now)
     record.sample = { session = nextId }
 
     Row("trade", start + 12 * MIN, { context = { received = { { link = LINEN, count = 5 } } } }, session)
-    Row("whisper_in", start + seconds + 3 * MIN, { excerpt = "thanks for the help" })
+    Row("whisper_in", start + seconds + 3 * MIN, { excerpt = L["thanks for the help"] })
 
     -- The entry's fields above were written by hand, past Diary's setters.
     ns.Touch()

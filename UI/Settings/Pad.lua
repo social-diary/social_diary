@@ -54,6 +54,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local SettingsUI = ns.UI.Settings
@@ -100,18 +102,18 @@ end
 
 -- copy: the copywriter's pass (.claude/ui-proposal/controller/headings/proposal.md)
 local PROMPT = {
-    nav = { "PAD1", "Go to the page", main = true },
-    intro = { "PAD1", "Choose", main = true },
-    link = { "PAD1", "Choose", main = true },
-    step = { { "PADDLEFT", "PADDRIGHT" }, "Less · more", main = true },
-    back = { "PAD2", "Back to the sections" },
-    key = { "PAD1", "Choose a keyboard key", main = true },
-    book = { "PAD1", "Pick it up", main = true },
-    write = { "PAD1", "Write", main = true },
-    done = { "PAD1", "Done writing", main = true },
-    stop = { "PAD2", "Stop writing" },
-    title = { { "PADDUP", "PADDDOWN" }, "Go to the sections", main = true },
-    read = { { "PADDUP", "PADDDOWN" }, "Read on", main = true },  -- copy TBD (copywriter)
+    nav = { "PAD1", L["Go to the page"], main = true },
+    intro = { "PAD1", L["Choose"], main = true },
+    link = { "PAD1", L["Choose"], main = true },
+    step = { { "PADDLEFT", "PADDRIGHT" }, L["Less · more"], main = true },
+    back = { "PAD2", L["Back to the sections"] },
+    key = { "PAD1", L["Choose a keyboard key"], main = true },
+    book = { "PAD1", L["Pick it up"], main = true },
+    write = { "PAD1", L["Write"], main = true },
+    done = { "PAD1", L["Done writing"], main = true },
+    stop = { "PAD2", L["Stop writing"] },
+    title = { { "PADDUP", "PADDDOWN" }, L["Go to the sections"], main = true },
+    read = { { "PADDUP", "PADDDOWN" }, L["Read on"], main = true },  -- copy TBD (copywriter)
 }
 
 local scope
@@ -360,9 +362,9 @@ function scope.legend()
     if at.prompt then return { at.prompt } end
     local out = {}
     if at.kind == "switch" then
-        out[1] = { "PAD1", at.frame:GetChecked() and "Untick" or "Tick", main = true }
+        out[1] = { "PAD1", at.frame:GetChecked() and L["Untick"] or L["Tick"], main = true }
     elseif at.kind == "quiet" then
-        out[1] = { "PAD1", ns.Diary.IsQuietNearby(at.guid) and "Untick" or "Tick", main = true }
+        out[1] = { "PAD1", ns.Diary.IsQuietNearby(at.guid) and L["Untick"] or L["Tick"], main = true }
     elseif at.kind == "search" then
         local box = Page().quietSearch
         if box:HasFocus() then

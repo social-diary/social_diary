@@ -8,6 +8,7 @@
 -- ns.UI.Parcel; torn open is Torn.lua; the host Parcel.lua.
 
 local addonName, ns = ...
+local L = ns.L
 
 local Style = ns.Style
 local FONT = Style.FONT
@@ -218,9 +219,9 @@ function Parcel.BuildWrapped(host, S)
 
     -- The links under it, on the game world.
     local y = py + ph + P.links
-    host.tear = LightLink(F, "Tear it open", LINK.hot, function() host:Tear() end)
+    host.tear = LightLink(F, L["Tear it open"], LINK.hot, function() host:Tear() end)
     host.tear:SetPoint("LEFT", host, "TOPLEFT", px + 4 - SCENE.left, -(y - SCENE.top))
-    host.later = LightLink(F, "Later", LINK.base, function()
+    host.later = LightLink(F, L["Later"], LINK.base, function()
         Parcel.later = true
         ns.UI.Parcel.HideSlip(false)
     end)

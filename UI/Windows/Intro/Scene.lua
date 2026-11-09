@@ -66,6 +66,7 @@
 local addonName, ns = ...
 
 local Style = ns.Style
+local L, Fmt = ns.L, ns.Fmt
 
 local Parcel = {
     slip = nil,
@@ -221,22 +222,22 @@ local CREASE = {
 
 -- The makers. Placeholders until checked against real NPCs.
 local MAKERS = {
-    gnome = { sender = { "WIZZLEBOLT & DAUGHTER", "Diarywrights, Tinker Town" },
-        address = {}, postmark = { "TINKER", "TOWN" } },
-    goblin = { sender = { "GRIZZIK'S DIARIES", "Ratchet \194\183 no refunds" },
-        address = { "To the new owner", "(paid in full)" }, aside = true, postmark = { "RATCHET" } },
+    gnome = { sender = { L["WIZZLEBOLT & DAUGHTER"], L["Diarywrights, Tinker Town"] },
+        address = {}, postmark = { L["TINKER"], L["TOWN"] } },
+    goblin = { sender = { L["GRIZZIK'S DIARIES"], L["Ratchet \194\183 no refunds"] },
+        address = { L["To the new owner"], L["(paid in full)"] }, aside = true, postmark = { L["RATCHET"] } },
 }
 
 -- What the note says.
-local HELLO = { first = "Oh \226\128\148 hello. I'm your new diary.", again = "Your diary, still here whenever you're ready." }
-local BODY = "I write down the people you meet, all by myself, so that months from now you still know who they"
-    .. " were. It's only pencil, until you ink someone in."
+local HELLO = { first = L["Oh \226\128\148 hello. I'm your new diary."],
+    again = L["Your diary, still here whenever you're ready."] }
+local BODY = L["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."]
 
 local function Pencilled(n)
     -- Nobody yet: nothing to say.
     if n == 0 then return nil end
-    if n == 1 then return "I've pencilled in one already." end
-    return ("I've pencilled in %d already."):format(n)
+    if n == 1 then return L["I've pencilled in one already."] end
+    return Fmt(L["I've pencilled in %d already."], n)
 end
 
 --------------------------------------------------------------------------
@@ -435,7 +436,8 @@ end
 
 -- Today, as the postmark strikes it: "9 OCT".
 local function Day()
-    return ("%d %s"):format(tonumber(date("%d")) or 1, (date("%b") or ""):upper())
+    -- (no time given: date() reads now)
+    return Fmt(L["%1$d %2$s"], tonumber(date("%d")) or 1, Style.Upper(ns.UI.Format.MonthShort(nil) or ""))
 end
 
 -- For the pieces after this file.

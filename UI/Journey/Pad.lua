@@ -103,6 +103,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local Style = ns.Style
@@ -119,24 +121,24 @@ local function Road()
 end
 
 local PROMPT = {
-    open = { "PAD1", "Open", main = true },
-    map = { "PAD1", "See the map", main = true },
-    person = { "PAD1", "Go to their page", main = true },
-    levels = { { "PADDLEFT", "PADDRIGHT" }, "Earlier · later", main = false },
-    title = { { "PADDUP", "PADDDOWN" }, "Go to the levels", main = true },
-    marks = { "PAD1", "Show marks", main = true },
-    whole = { "PAD3", "See the whole map" },
-    backLeft = { "PAD2", "Back to the contents" },
-    backPlate = { "PAD2", "Back to the plate" },
-    backPlates = { "PAD2", "Back to the plates" },
-    edit = { "PAD4", "Change the card" },
-    add = { "PAD4", "Add a card here" },
-    closer = { "PAD1", "Closer", main = true },
-    further = { "PAD3", "Further" },
-    move = { "PADRSTICK", "Move the map" },
-    layout = { "PAD1", "Open the map", main = true },
-    keep = { "PAD1", "Add to the diary", main = true },
-    others = { "PAD1", "See the others", main = true },
+    open = { "PAD1", L["Open"], main = true },
+    map = { "PAD1", L["See the map"], main = true },
+    person = { "PAD1", L["Go to their page"], main = true },
+    levels = { { "PADDLEFT", "PADDRIGHT" }, L["Earlier · later"], main = false },
+    title = { { "PADDUP", "PADDDOWN" }, L["Go to the levels"], main = true },
+    marks = { "PAD1", L["Show marks"], main = true },
+    whole = { "PAD3", L["See the whole map"] },
+    backLeft = { "PAD2", L["Back to the contents"] },
+    backPlate = { "PAD2", L["Back to the plate"] },
+    backPlates = { "PAD2", L["Back to the plates"] },
+    edit = { "PAD4", L["Change the card"] },
+    add = { "PAD4", L["Add a card here"] },
+    closer = { "PAD1", L["Closer"], main = true },
+    further = { "PAD3", L["Further"] },
+    move = { "PADRSTICK", L["Move the map"] },
+    layout = { "PAD1", L["Open the map"], main = true },
+    keep = { "PAD1", L["Add to the diary"], main = true },
+    others = { "PAD1", L["See the others"], main = true },
 }
 
 -- The whole map with the pad: `speed` card px a second the right stick

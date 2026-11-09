@@ -45,22 +45,24 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 
 local Controls = {}
 Pad.Controls = Controls
 
 local PROMPT = {
-    write = { "PAD1", "Write", main = true },
-    done = { "PAD1", "Done writing", main = true },
-    choose = { "PAD1", "Choose", main = true },
-    tagOn = { "PAD1", "Add the tag", main = true },
-    tagOff = { "PAD1", "Take the tag off", main = true },
-    tagAway = { "PAD1", "Take the tag off", main = true },
-    unlink = { "PAD1", "Unlink them", main = true },
-    key = { "PAD1", "Choose a keyboard key", main = true },
-    book = { "PAD1", "Pick it up", main = true },
-    listening = { "PAD1", "Stop listening", main = true },
+    write = { "PAD1", L["Write"], main = true },
+    done = { "PAD1", L["Done writing"], main = true },
+    choose = { "PAD1", L["Choose"], main = true },
+    tagOn = { "PAD1", L["Add the tag"], main = true },
+    tagOff = { "PAD1", L["Take the tag off"], main = true },
+    tagAway = { "PAD1", L["Take the tag off"], main = true },
+    unlink = { "PAD1", L["Unlink them"], main = true },
+    key = { "PAD1", L["Choose a keyboard key"], main = true },
+    book = { "PAD1", L["Pick it up"], main = true },
+    listening = { "PAD1", L["Stop listening"], main = true },
 }
 Controls.PROMPT = PROMPT
 
@@ -235,7 +237,7 @@ function Controls.Prompt(item)
     local w, kind = item.control, item.kind
     if not w then return nil end
     if kind == "field" then return w:HasFocus() and PROMPT.done or PROMPT.write end
-    if kind == "switch" then return { "PAD1", w:GetChecked() and "Untick" or "Tick", main = true } end
+    if kind == "switch" then return { "PAD1", w:GetChecked() and L["Untick"] or L["Tick"], main = true } end
     if kind == "chip" then
         if w.cross:IsShown() then return PROMPT.tagAway end
         return w.on and PROMPT.tagOff or PROMPT.tagOn

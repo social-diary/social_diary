@@ -582,7 +582,7 @@ end
 local function AddMember(visit, guid)
     local entry, added = ns.DungeonRun.Keep(visit, guid)
     if not entry then
-        ns.Print("could not identify that character.")
+        ns.Print(ns.T("could not identify that character."))
         return
     end
     if added then Style.PlaySound("write") end
@@ -757,7 +757,7 @@ function YourDiary.DrawRun(e, visit)
     local seed = Surface.Seed("run:" .. tostring(visit.id))
 
     -- The title: hand-lettered, as large as it goes on one line; else two.
-    local name = visit.name or "A dungeon"
+    local name = visit.name or ns.T("A dungeon")
     local size, two = ns.RunPage.TitleSize(function(s) return Measure(run, name, Style.GOODMOUNTAIN, s) end)
     local T = RUN.title
     local titleLines = two and Wrap(run, name, Style.GOODMOUNTAIN, size, T.most, 2) or { name }

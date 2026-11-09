@@ -59,17 +59,19 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local DungeonPage = ns.UI.DungeonPage
 
 local PROMPT = {
-    person = { "PAD1", "Go to their page", main = true },
-    floor = { "PAD1", "See this floor", main = true },
-    away = { "PAD1", "Put the map away", main = true },
-    floors = { { "PADLSHOULDER", "PADRSHOULDER" }, "See another floor", main = false },
-    back = { "PAD2", "Put the map away" },
-    note = { "PAD1", "Put the note away", main = true },
+    person = { "PAD1", L["Go to their page"], main = true },
+    floor = { "PAD1", L["See this floor"], main = true },
+    away = { "PAD1", L["Put the map away"], main = true },
+    floors = { { "PADLSHOULDER", "PADRSHOULDER" }, L["See another floor"], main = false },
+    back = { "PAD2", L["Put the map away"] },
+    note = { "PAD1", L["Put the note away"], main = true },
 }
 
 -- The slip of prompts on the table: its right end `right` px in from the

@@ -33,6 +33,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local Controls = Pad.Controls
 
@@ -41,11 +43,11 @@ local LAYER = 50
 local OVER = 30
 
 local PROMPT = {
-    away = { "PAD2", "Put the page away" },
-    stop = { "PAD2", "Stop writing" },
-    open = { "PAD1", "Open their page", main = true },
-    remember = { "PAD1", "Remember them", main = true },
-    list = { "PAD2", "Put the list away" },
+    away = { "PAD2", L["Put the page away"] },
+    stop = { "PAD2", L["Stop writing"] },
+    open = { "PAD1", L["Open their page"], main = true },
+    remember = { "PAD1", L["Remember them"], main = true },
+    list = { "PAD2", L["Put the list away"] },
 }
 
 --------------------------------------------------------------------------

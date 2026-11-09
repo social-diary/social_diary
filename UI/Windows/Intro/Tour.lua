@@ -54,6 +54,7 @@ local addonName, ns = ...
 
 local Style = ns.Style
 local FONT = Style.FONT
+local L, Fmt = ns.L, ns.Fmt
 
 local Tour = {}
 ns.UI.Tour = Tour
@@ -149,26 +150,26 @@ local BLOT = { size = 5, alpha = 0.6, peak = 0.92, at = 0.35, from = 0.2 }
 -- foot: "Continue →" or the instruction. "30 days" is the live retention.
 -- Each link that leads on ends in an arrow the strip draws (the fonts have
 -- no "→": UI/Paper/Strip.lua's EXTRA.arrow), so its words end without one.
-local CONTINUE = "Continue"
+local CONTINUE = L["Continue"]
 local STEPS = {
-    { heading = "Social Diary",
-        words = function() return "Wherever you go, the diary marks your path. Each level you reach gets a page like this." end },
-    { heading = "What you did",
-        words = function() return "Red splats show where you've fought. Memorable moments, such as finding your first green item, are shown in cards." end },
-    { heading = "Who you met",
+    { heading = L["Social Diary"],
+        words = function() return L["Wherever you go, the diary marks your path. Each level you reach gets a page like this."] end },
+    { heading = L["What you did"],
+        words = function() return L["Red splats show where you've fought. Memorable moments, such as finding your first green item, are shown in cards."] end },
+    { heading = L["Who you met"],
         words = function()
-            return "Any player you interact with, is written down automatically, like Bram and Thex. After "
-                .. ns.UI.Journal.PencilDays() .. " their data is deleted."
+            return Fmt(L["Any player you interact with, is written down automatically, like Bram and Thex. After %s their data is deleted."],
+                ns.UI.Journal.PencilDays())
         end },
-    { heading = "Keep one",
-        words = function() return "To keep someone for good, add them to your diary." end,
-        todo = "Add Thex now." },
-    { heading = "Kept for good",
-        words = function() return "Thex is in your diary now. When you meet again, the diary will tell you." end,
-        todo = "Click him to see his page." },
+    { heading = L["Keep one"],
+        words = function() return L["To keep someone for good, add them to your diary."] end,
+        todo = L["Add Thex now."] },
+    { heading = L["Kept for good"],
+        words = function() return L["Thex is in your diary now. When you meet again, the diary will tell you."] end,
+        todo = L["Click him to see his page."] },
 }
 local WORDS = {
-    find = { heading = "Your first green!", item = "Wolfskin Bracers" },
+    find = { heading = "Your first green!", item = L["Wolfskin Bracers"] },
     -- Bram: a stranger who saved you from Hogger with 8% of your health
     -- left. As a witness the player writes in (Core/Custom.lua's moment
     -- "witnessed"), the record the card reads: the deed, who, the creature
@@ -178,11 +179,11 @@ local WORDS = {
     bram = { deed = "saved", name = "Bram Redfen", creature = "Hogger", rank = "elite", bare = "yes", pct = 8,
         level = 6 },
     thex = { minutes = 35 },
-    add = "+ Add",
-    progress = "%d of 5",
-    ending = { heading = "An Example",
-        words = "This is how the people you add will look.",
-        begin = "Begin your own diary" },
+    add = L["+ Add"],
+    progress = L["%d of 5"],
+    ending = { heading = L["An Example"],
+        words = L["This is how the people you add will look."],
+        begin = L["Begin your own diary"] },
 }
 -- The find card's item: a green leather bracer's picture from the client's
 -- icons (a typed name has no link, so it takes the card's fallbacks, the
@@ -505,7 +506,7 @@ local function Build(parent)
     -- left before his name).
     local function ThexNote(n)
         local note = { name = ns.Sample.NAME, seed = "intro-thex",
-            what = ns.UI.Format.Duration(WORDS.thex.minutes * 60) .. " together" }
+            what = Fmt(L["%s together"], ns.UI.Format.Duration(WORDS.thex.minutes * 60)) }
         if n == 4 then
             note.aside = { text = WORDS.add, font = FONT.body, onClick = function() Tour.Add() end }
         elseif n >= 5 then
@@ -696,7 +697,7 @@ local function Build(parent)
     end
     local function Progress(n)
         local P = PROGRESS
-        count:SetText(WORDS.progress:format(n))
+        count:SetText(Fmt(WORDS.progress, n))
         local left = K.PlaceText(count, SHEET.w - P.right, P.top, "RIGHT")
         for k, m in ipairs(marks) do
             local x = left - P.text - P.size / 2 - (5 - k) * (P.size + P.gap)

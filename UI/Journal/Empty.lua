@@ -19,6 +19,7 @@ local addonName, ns = ...
 local Style = ns.Style
 local FONT = Style.FONT
 local J = ns.UI.Journal
+local L, Fmt = ns.L, ns.Fmt
 
 local BOOK = ns.UI.Journal.BOOK
 local LEFT_X, LEFT_W, RIGHT_X, RIGHT_W = BOOK.LEFT_X, BOOK.LEFT_W, BOOK.RIGHT_X, BOOK.RIGHT_W
@@ -37,11 +38,11 @@ local MENU = { w = 160, row = 17, pad = 5, indent = 12, edge = 0.65,
 -- The strip on the right page: what it says, how far down its top lies
 -- (in the upper third, centred across the page), the turn it lies at
 -- (degrees) and the seed it is cut by, the same every time.
-local STRIP = { words = "This is where your diary entries will show up", top = 160, tilt = -1.1,
+local STRIP = { words = L["This is where your diary entries will show up"], top = 160, tilt = -1.1,
     seed = "welcome" }
 
 -- The key's way in, as the mouse's page says it.
-local KEY_WAY = { heading = "Or press a key", text = "Target them first." }
+local KEY_WAY = { heading = L["Or press a key"], text = L["Target them first."] }
 
 local welcome
 
@@ -58,7 +59,7 @@ end
 
 local function BuildMenu(parent)
     local M, INK = MENU, Style.INK
-    local items = { "Whisper", "Invite", "Remember this\226\128\166" }
+    local items = { L["Whisper"], L["Invite"], L["Remember this"] .. "\226\128\166" }
     local menu = CreateFrame("Frame", nil, parent)
     menu:SetSize(M.w, M.pad * 2 + M.row * (#items + 1) + 3)
     local wash = menu:CreateTexture(nil, "BACKGROUND")
@@ -89,17 +90,17 @@ end
 local function BuildLeft(w)
     w.intro = Paragraph(w, FONT.body, LEFT_W)
     w.intro:SetPoint("TOPLEFT", LEFT_X, -WAYS.top)
-    w.intro:SetText("Nobody is in the diary yet. There are three ways in.")
+    w.intro:SetText(L["Nobody is in the diary yet. There are three ways in."])
 
     -- 1. The right-click menu.
     w.menuHeading = Style.Rubric(w, LEFT_W)
     w.menuHeading:SetPoint("TOPLEFT", w.intro, "BOTTOMLEFT", 0, -WAYS.gap)
-    w.menuHeading:SetText("Right-click them", false)
+    w.menuHeading:SetText(L["Right-click them"], false)
     w.menu = BuildMenu(w)
     w.menu:SetPoint("TOPLEFT", w.menuHeading, "BOTTOMLEFT", 6, -WAYS.under - 2)
     w.menuWhere = Paragraph(w, FONT.faded, LEFT_W)
     w.menuWhere:SetPoint("TOPLEFT", w.menu, "BOTTOMLEFT", -6, -WAYS.under)
-    w.menuWhere:SetText("In the world, in chat, or in your group.")
+    w.menuWhere:SetText(L["In the world, in chat, or in your group."])
 
     -- 2. The key.
     w.keyHeading = Style.Rubric(w, LEFT_W)
@@ -120,7 +121,7 @@ local function BuildLeft(w)
     -- 3. Later, from Recently nearby.
     w.laterHeading = Style.Rubric(w, LEFT_W)
     w.laterHeading:SetPoint("TOPLEFT", w.keyStatus, "BOTTOMLEFT", 0, -WAYS.gap + 4)
-    w.laterHeading:SetText("Or add them later", false)
+    w.laterHeading:SetText(L["Or add them later"], false)
     w.laterText = Paragraph(w, FONT.body, LEFT_W)
     w.laterText:SetPoint("TOPLEFT", w.laterHeading, "BOTTOMLEFT", 0, -WAYS.under)
     w.nearby = Style.Link(w, FONT.body, function() J.TurnTo("nearby") end)
@@ -134,7 +135,7 @@ end
 
 -- The heading and line the key's way in takes with the pad, and the
 -- book's room beside its name.
-local PAD_WAY = { heading = "Or press a button", gap = 14 }
+local PAD_WAY = { heading = L["Or press a button"], gap = 14 }
 
 -- Remember this's book, its name beside it, under the line saying what to
 -- do with it; its status line is the key's. Made once, the first time the
@@ -201,8 +202,15 @@ local function Refresh()
     local w = welcome
     local days = J.PencilDays()
     local n = ns.People.PencilledCount()
-    local already = n == 0 and "" or (n == 1 and " One is there already." or (" %d are there already."):format(n))
-    w.laterText:SetText(("Everyone you cross paths with is saved for %s.%s"):format(days, already))
+    local text
+    if n == 0 then
+        text = Fmt(L["Everyone you cross paths with is saved for %s."], days)
+    elseif n == 1 then
+        text = Fmt(L["Everyone you cross paths with is saved for %s. One is there already."], days)
+    else
+        text = Fmt(L["Everyone you cross paths with is saved for %1$s. %2$d are there already."], days, n)
+    end
+    w.laterText:SetText(text)
     w.key:Refresh()
     if w.book then w.book:Refresh() end
     J.RefreshWelcomeRight()

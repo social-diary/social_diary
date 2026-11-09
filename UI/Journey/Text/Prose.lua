@@ -12,6 +12,8 @@ local Text = ns.UI.JourneyText
 local List = ns.UI.Format.List
 local Spoken, Capital, MapName, Who = Text.Spoken, Text.Capital, Text.MapName, Text.Who
 local Day, Place, Short = Text.Day, Text.Place, Text.Short
+local Upper = Text.Upper
+local L, Fmt = ns.L, ns.Fmt
 
 --------------------------------------------------------------------------
 -- The prologue (JRN-13)
@@ -22,20 +24,23 @@ local Day, Place, Short = Text.Day, Text.Place, Text.Short
 function Text.Prologue(prologue)
     if not prologue then return nil end
     local zone = MapName(prologue.mapID)
-    return ("This diary began at level %d%s, on %s."):format(prologue.level,
-        zone and (", in " .. zone) or "", Day(prologue.at))
+    if zone then
+        return Fmt(L["This diary began at level %1$d, in %2$s, on %3$s."], prologue.level, zone, Day(prologue.at))
+    end
+    return Fmt(L["This diary began at level %1$d, on %2$s."], prologue.level, Day(prologue.at))
 end
 
 --------------------------------------------------------------------------
 -- An entry (JRN-11, JRN-12)
 --------------------------------------------------------------------------
 
--- "LEVEL 12", "WEEK OF 6 OCTOBER": the rubric over the entry.
+-- "LEVEL 12", "WEEK OF 6 OCTOBER": the rubric over the entry, written in
+-- sentence case and set in capitals here (the copywriter's §4).
 function Text.Title(e, now)
     if e.kind == "week" then
-        return ("WEEK OF %s"):format(Day(e.week, now):upper())
+        return Upper(Fmt(L["Week of %s"], Day(e.week, now)))
     end
-    return ("LEVEL %d"):format(e.level)
+    return Upper(Fmt(L["Level %d"], e.level))
 end
 
 -- How the entry opens: where and when it began.
@@ -44,20 +49,25 @@ local function Opening(e, now)
         local r = e.reached
         if r then
             local where = r.dungeon or Place(r.mapID, r.subZone)
-            return ("Reached level %d%s, on %s. The road goes on."):format(
-                e.level or 0, where and (" in " .. where) or "", Day(r.at, now))
+            if where then
+                return Fmt(L["Reached level %1$d in %2$s, on %3$s. The road goes on."], e.level or 0, where,
+                    Day(r.at, now))
+            end
+            return Fmt(L["Reached level %1$d, on %2$s. The road goes on."], e.level or 0, Day(r.at, now))
         end
         return nil
     end
     if not e.known then return nil end
     if e.first then
         local place = e.places[1] and (e.places[1].name or MapName(e.places[1].mapID))
-        return ("Your road begins here, on %s%s."):format(Day(e.from, now), place and (", in " .. place) or "")
+        if place then return Fmt(L["Your road begins here, on %1$s, in %2$s."], Day(e.from, now), place) end
+        return Fmt(L["Your road begins here, on %s."], Day(e.from, now))
     end
     local r = e.reached
     if not r then return nil end
     local where = r.dungeon or Place(r.mapID, r.subZone)
-    return ("Reached on %s%s."):format(Day(r.at, now), where and (" in " .. where) or "")
+    if where then return Fmt(L["Reached on %1$s in %2$s."], Day(r.at, now), where) end
+    return Fmt(L["Reached on %s."], Day(r.at, now))
 end
 
 -- The zones and their times are not told here: the ledger under the entry
@@ -67,18 +77,21 @@ end
 -- Where the longest stops' time went, as a diary puts it, in a sentence or
 -- two that vary from entry to entry so a long road does not read as a log.
 -- The stops come in the order made. `first`: the earliest, by what was done
--- there, two ways of saying it (`D` the time spoken and capitalised, `d` as
--- is, `W` the place). `later`: the stops after it, named, with their deed
--- only where it differs from the first's, after one of the `openers`.
+-- there, two ways of saying it, each a whole sentence taking the same three
+-- values (%1$s the time spoken and capitalised, %2$s as is, %3$s the place),
+-- of which it uses those it needs, so a translation can put them where
+-- its own sentence wants them. `later`: the stops after it, named (%s),
+-- with their deed only where it differs from the first's, listed in one
+-- of the `openers`' sentences.
 local STOPS = {
     first = {
-        fighting = { "%D of fighting at %W.", "%W kept you fighting for %d." },
-        questing = { "%D of quests round %W.", "Quests kept you at %W for %d." },
-        resting = { "%D resting at %W.", "You rested %d at %W." },
-        none = { "%D at %W.", "You lingered at %W for %d." },
+        fighting = { L["%1$s of fighting at %3$s."], L["%3$s kept you fighting for %2$s."] },
+        questing = { L["%1$s of quests round %3$s."], L["Quests kept you at %3$s for %2$s."] },
+        resting = { L["%1$s resting at %3$s."], L["You rested %2$s at %3$s."] },
+        none = { L["%1$s at %3$s."], L["You lingered at %3$s for %2$s."] },
     },
-    later = { fighting = "fighting near %W", questing = "quests at %W", resting = "a rest at %W" },
-    openers = { "Later, ", "Then ", "After that, " },
+    later = { fighting = L["fighting near %s"], questing = L["quests at %s"], resting = L["a rest at %s"] },
+    openers = { L["Later, %s."], L["Then %s."], L["After that, %s."] },
 }
 
 -- Which way an entry says it: the same every time for the same entry, and
@@ -95,9 +108,7 @@ local function Stops(e)
     if not where then return nil end
     local ways = STOPS.first[first.main or "none"] or STOPS.first.none
     local d = Spoken(first.seconds)
-    local text = ways[seed % #ways + 1]:gsub("%%(%a)", function(k)
-        if k == "D" then return Capital(d) elseif k == "d" then return d elseif k == "W" then return where end
-    end)
+    local text = Fmt(ways[seed % #ways + 1], Capital(d), d, where)
 
     local later, seen = {}, { [where] = true }
     for i = 2, #e.stops do
@@ -106,11 +117,11 @@ local function Stops(e)
         if name and not seen[name] then
             seen[name] = true
             local deed = stop.main ~= first.main and stop.main and STOPS.later[stop.main]
-            later[#later + 1] = deed and deed:gsub("%%W", function() return name end) or name
+            later[#later + 1] = deed and Fmt(deed, name) or name
         end
     end
     if #later > 0 then
-        text = text .. " " .. STOPS.openers[seed % #STOPS.openers + 1] .. List(later) .. "."
+        text = text .. " " .. Fmt(STOPS.openers[seed % #STOPS.openers + 1], List(later))
     end
     return text
 end
@@ -126,11 +137,11 @@ local function Flights(e)
         end
     end
     local list = List(names, { max = 3, shown = 2 })
-    return list and ("Flew to " .. list .. ".") or nil
+    return list and Fmt(L["Flew to %s."], list) or nil
 end
 
 -- "With Tester Testerson for four hours and Kaelith Dawnsong briefly."
-local PEOPLE = { max = 4, shown = 3, more = "others" }
+local PEOPLE = { max = 4, shown = 3, more = L["others"] }
 -- On Text too, for the meeting's tooltip (UI/Journey/Text/Tips.lua) to
 -- list people the same way.
 Text.PEOPLE = PEOPLE
@@ -140,11 +151,12 @@ local function People(e)
     for _, person in ipairs(e.people) do
         local name = Who(person.guid)
         if name then
-            parts[#parts + 1] = name .. (person.seconds >= 300 and (" for " .. Spoken(person.seconds)) or " briefly")
+            parts[#parts + 1] = person.seconds >= 300 and Fmt(L["%1$s for %2$s##with"], name, Spoken(person.seconds))
+                or Fmt(L["%s briefly"], name)
         end
     end
     local list = List(parts, PEOPLE)
-    return list and ("With " .. list .. ".") or nil
+    return list and Fmt(L["With %s."], list) or nil
 end
 
 -- A fight in a few words. A stranger the buffer has let go is "a fight",
@@ -153,17 +165,17 @@ function Text.Fight(mark, index)
     local guid = ns.Journey.FightWho(mark, index)
     local name = guid and Who(guid)
     if mark.outcome == "won" then
-        return name and ("beat " .. name) or "won a fight"
+        return name and Fmt(L["beat %s"], name) or L["won a fight"]
     end
-    return name and ("lost to " .. name) or "lost a fight"
+    return name and Fmt(L["lost to %s"], name) or L["lost a fight"]
 end
 
 local function Fights(e, index)
     local parts = {}
     for _, mark in ipairs(e.fights) do parts[#parts + 1] = Text.Fight(mark, index) end
-    local list = List(parts, { max = 4, shown = 3, more = "more" })
+    local list = List(parts, { max = 4, shown = 3, more = L["more"] })
     if not list then return nil end
-    return Capital(list) .. "."
+    return Fmt(L["%s."], Capital(list))
 end
 
 -- Two sentences as one paragraph, either may be missing.
@@ -175,7 +187,7 @@ end
 -- A quiet stretch still says something, briefly.
 local function Quiet(e)
     if e.kind == "week" then return nil end
-    if e.seconds <= 0 then return "Nothing on the road at this level." end
+    if e.seconds <= 0 then return L["Nothing on the road at this level."] end
     return nil
 end
 
@@ -262,17 +274,17 @@ end
 
 -- "so far" under the level being played now.
 function Text.Current(e)
-    return e.current and "so far" or nil
+    return e.current and L["so far"] or nil
 end
 
 -- JRN-23: the line under a level's prose for a first sighting in
 -- hindsight. "You first saw Koko in Mulgore. You'd meet again at level 4."
 function Text.Hindsight(f)
-    local name = Short(f.guid) or "someone"
+    local name = Short(f.guid) or L["someone##whom"]
     local zone = MapName(f.mapID)
-    local line = "You first saw " .. name .. (zone and (" in " .. zone) or "") .. "."
+    local line = zone and Fmt(L["You first saw %1$s in %2$s."], name, zone) or Fmt(L["You first saw %s."], name)
     if f.metLevel and f.level and f.metLevel > f.level then
-        return line .. " You'd meet again at level " .. f.metLevel .. "."
+        return line .. " " .. Fmt(L["You'd meet again at level %d."], f.metLevel)
     end
-    return line .. " You'd meet again before the level was out."
+    return line .. " " .. L["You'd meet again before the level was out."]
 end

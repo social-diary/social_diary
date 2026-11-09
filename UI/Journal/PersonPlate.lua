@@ -149,7 +149,7 @@ local function Moment(c, s, guid)
         m.met = First(s, session.startedAt)
         m.tip = function(_, now)
             if m.met then
-                local words = session.source == "group" and (session.raid and "Raided together" or "Grouped")
+                local words = session.source == "group" and (session.raid and ns.L["Raided together"] or ns.L["Grouped"])
                     or PersonText.TogetherTip(seconds, session.startedAt, now)
                 return PersonText.MetTip(words, session.startedAt, now)
             end
@@ -173,7 +173,10 @@ local function Moment(c, s, guid)
         m.tip = function(_, now)
             if m.met then
                 local text = spec.text and spec.text(row, guid) or nil
-                if text and row.zone then text = text:gsub(" in " .. row.zone:gsub("%p", "%%%0") .. "$", "") end
+                if text and row.zone then
+                    local place = ns.Fmt(ns.L[" in %s"], row.zone)
+                    if text:sub(-#place) == place then text = text:sub(1, -#place - 1) end
+                end
                 return PersonText.MetTip(text, row.time, now)
             end
             return PersonText.RowTip(row, guid, now)
@@ -181,7 +184,7 @@ local function Moment(c, s, guid)
     else
         -- A rare killed, a while seen around: its timeline words.
         local _, words = ns.UI.DescribeItem(item, guid)
-        if words and item.kind == "around" then words = "Seen around" end
+        if words and item.kind == "around" then words = ns.L["Seen around"] end
         m.kind = "dot"
         m.tip = function(_, now) return PersonText.ItemTip(words, c.t, now) end
     end

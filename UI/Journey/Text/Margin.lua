@@ -9,6 +9,7 @@ local addonName, ns = ...
 
 local Text = ns.UI.JourneyText
 local Glue, Duration, NUMBER, Short = Text.Glue, Text.Duration, Text.NUMBER, Text.Short
+local L, Fmt = ns.L, ns.Fmt
 
 -- What happened with one person on one plate, for their margin note:
 -- "35 min together and a note", "killed you", "first seen · you'd meet
@@ -34,34 +35,38 @@ function Text.MarginWhat(moments, level)
     for _, m in ipairs(moments) do
         if m.person and m.person.say then parts[#parts + 1] = m.person.say(m) end
     end
-    if together > 0 then parts[#parts + 1] = (together >= 60 and Duration(together) or "a moment") .. " together" end
+    if together > 0 then
+        parts[#parts + 1] = Fmt(L["%s together"], together >= 60 and Duration(together) or L["a moment"])
+    end
     if notes > 0 and quoted then
-        parts[#parts + 1] = Glue(notes == 1 and "one more note" or (NUMBER[notes] or notes) .. " more notes")
+        parts[#parts + 1] = Glue(notes == 1 and L["one more note"] or Fmt(L["%s more notes"], NUMBER[notes] or notes))
     elseif notes > 0 then
-        parts[#parts + 1] = Glue(notes == 1 and "a note" or (NUMBER[notes] or notes) .. " notes")
+        parts[#parts + 1] = Glue(notes == 1 and L["a note"] or Fmt(L["%s notes"], NUMBER[notes] or notes))
     end
     for _, m in ipairs(moments) do
         if m.kind == "fight" then
             if m.outcome == "lost" then
-                parts[#parts + 1] = m.guid and Glue("killed you") or "a fight, lost"
+                parts[#parts + 1] = m.guid and Glue(L["killed you"]) or L["a fight, lost"]
             else
-                parts[#parts + 1] = m.guid and "you won the fight" or "a fight, won"
+                parts[#parts + 1] = m.guid and L["you won the fight"] or L["a fight, won"]
             end
         end
     end
     for _, m in ipairs(moments) do
         if m.kind == "first" then
             local again = m.metLevel and level and m.metLevel > level
-                and ("you'd meet again at level " .. m.metLevel) or "you'd meet again"
-            parts[#parts + 1] = "first seen  \194\183  " .. again
+                and Fmt(L["you'd meet again at level %d"], m.metLevel) or L["you'd meet again"]
+            parts[#parts + 1] = Fmt(L["first seen  \194\183  %s"], again)
         end
     end
-    return table.concat(parts, " and ")
+    return table.concat(parts, L[" and "])
 end
 
 -- The name a margin note is headed by, so the note reads as who you were
 -- with: "with Koko", or "with someone" for a stranger whose name the
 -- buffer no longer has.
 function Text.MarginWho(guid)
-    return "with " .. (guid and Short(guid) or "someone")
+    local name = guid and Short(guid)
+    if not name then return L["with someone"] end
+    return Fmt(L["with %s"], name)
 end

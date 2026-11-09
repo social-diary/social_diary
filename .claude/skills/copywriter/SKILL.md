@@ -11,8 +11,9 @@ personal, timeworn; a diary, quiet, never shouts during
 play.** This skill turns that into rules per surface. The changelog has its
 own rule (`.claude/rules/changelog.md`); follow that one there.
 
-All copy is English-only, hard-coded (there is no localisation table).
-Write British English: *pencilled*, *colour*, *grey*, *levelling*.
+Every string a player reads goes through the translation table
+(`Locales/Locale.lua`, §7): the English is the key. Write British English:
+*pencilled*, *colour*, *grey*, *levelling*.
 
 ## 1. Find the register first
 
@@ -180,3 +181,39 @@ format), *polish*. Don't edit until the user picks what to apply.
 
 When the user settles a wording question these rules don't cover, add it
 here.
+
+## 7. Translation
+
+**The mechanics** (`Locales/Locale.lua` has the details):
+
+- Wrap every player-facing string: `L["Keep my own route"]`, and for
+  values `ns.Fmt(L["Quested together for %s"], d)` (or `ns.T(key, ...)`).
+  `local L, Fmt = ns.L, ns.Fmt` at the file's top. The key is always one
+  plain double-quoted literal, never built (`L[name]`, `L["a" .. b]` are
+  invisible to the extractor).
+- **Whole sentences, never fragments.** `"Met " .. name .. " in " .. zone`
+  can't be translated: German puts the verb elsewhere. Write one template
+  per sentence shape (`"Met %1$s in %2$s"`); where code glues optional
+  parts, give each combination its own template rather than gluing
+  translated pieces. Fragments are fine only when they are whole units
+  (a label, a list joiner).
+- **Positional placeholders** (`%1$s`, `%2$d`) whenever a template has two
+  or more values, so a translation can reorder them. In one template all
+  positional or none. `%%` for a literal percent.
+- **One English word, two meanings**: add a context, `L["May##short"]`;
+  the English shown is the part before `##`.
+- **Never translate data**: saved values, table keys, event and setting
+  names, slash-command tokens, sound/texture paths, strings matched against
+  game text (chat patterns, combat log, tooltips), creature/zone/item names
+  used to look up data. Translate the label shown for them instead.
+- Text the game supplies (zone, creature, item, class, race names) is
+  already in the client's language: leave it as it comes.
+- Grammar that differs by language (plurals, articles, ordinals, the
+  shared diary's "{you}") is a function in `ns.Locale.grammar` a locale may
+  replace (`Locales/<id>/Grammar.lua`). The English helpers in
+  `UI/Journey/Text/Grammar.lua` and `UI/Words/Format.lua` ask it first.
+- After changing keys: `luajit Dev/Locale/extract.lua` (rewrites
+  `Locales/enUS.lua`), then `luajit tests/run.lua` (tests/locale.lua checks
+  every locale in the TOC has words for every key, with matching
+  placeholders) and `luajit tests/run.lua --locale <id>` (the whole suite
+  under that locale: no addon errors).

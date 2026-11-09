@@ -38,6 +38,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local LevelUps = {}
 ns.LevelUps = LevelUps
 
@@ -58,6 +60,6 @@ ns.Rows.Register("level_up", { observed = true, climb = true,
     text = function(row, guid)
         local first = guid and ns.Characters.Name(guid)
         local level = tostring(row.context and row.context.level or "?")
-        return first and (first .. " is now level " .. level) or ("Now level " .. level)
+        return first and Fmt(L["%1$s is now level %2$s"], first, level) or Fmt(L["Now level %s"], level)
     end,
     icon = "levelup" })

@@ -13,6 +13,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 -- Every surface the PRD asks for that exists in this build. Battle.net menus
 -- are left out: PRV-5 keeps real IDs out of the diary, and a BNet friend has
 -- no character GUID until they are on one.
@@ -114,11 +116,11 @@ local function OnMenu(tag, _, rootDescription, contextData)
     rootDescription:CreateDivider()
 
     if ns.Diary.IsDiary(guid) then
-        rootDescription:CreateButton("Social Diary: open entry", function()
+        rootDescription:CreateButton(L["Social Diary: open entry"], function()
             ns.UI.ShowEntry(guid)
         end)
     else
-        rootDescription:CreateButton("Social Diary: remember this", function()
+        rootDescription:CreateButton(L["Social Diary: remember this"], function()
             -- The token only while it is still them: the party slots or the
             -- target can move while the menu is open.
             local still = unit and ns.Plain(UnitGUID(unit)) == guid and unit or nil

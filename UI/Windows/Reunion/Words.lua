@@ -9,29 +9,30 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
 
 local Style = ns.Style
 local Toast = ns.UI.Toast
 
 -- The heading, rubricated like a day on the timeline, by what brought them.
 local HEADINGS = {
-    group = "Joined your group",
-    nearby = "Nearby",
-    mixed = "Nearby and in your group",
+    group = L["Joined your group"],
+    nearby = L["Nearby"],
+    mixed = L["Nearby and in your group"],
 }
 -- The last card of a flood goes on from "AND 3 MORE".
 local MORE = {
-    group = "from your diary joined your group too.",
-    nearby = "from your diary are nearby too.",
-    mixed = "from your diary are about too.",
+    group = L["from your diary joined your group too."],
+    nearby = L["from your diary are nearby too."],
+    mixed = L["from your diary are about too."],
 }
 -- A warning: someone tagged foe or avoid. Their card says so in its
 -- heading, its paraph is red (lapis on the others), and a double rule is
 -- inked round it in red, like a notice: never colour alone. The tags in
 -- the order they matter: in the group, the person to avoid; nearby, the foe.
 local WARNINGS = {
-    foe = { group = "A foe joined your group", nearby = "A foe, nearby" },
-    avoid = { group = "Someone to avoid joined your group", nearby = "Someone to avoid, nearby" },
+    foe = { group = L["A foe joined your group"], nearby = L["A foe, nearby"] },
+    avoid = { group = L["Someone to avoid joined your group"], nearby = L["Someone to avoid, nearby"] },
 }
 local WARNING_ORDER = { group = { "avoid", "foe" }, nearby = { "foe", "avoid" } }
 
@@ -74,7 +75,7 @@ end
 -- "3 days ago", but "on 12 Sep 2025".
 local function When(time)
     local when = Format.Ago(time)
-    if when:match("^%d") and not when:find("ago$") then when = "on " .. when end
+    if when:match("^%d") and not when:find("ago$") then when = Fmt(L["on %s"], when) end
     return when
 end
 
@@ -84,11 +85,11 @@ end
 -- fits.
 local function FightStories(fights)
     local score = Format.FightsText(fights, Em, true)
-    if not score then return { "No blood between you yet." } end
-    local last = "Last fight " .. Em(When(fights.last))
+    if not score then return { L["No blood between you yet."] } end
+    local last = Em(When(fights.last))
     local stories = {}
-    if fights.zone then stories[1] = score .. " " .. last .. " in " .. Em(fights.zone) .. "." end
-    stories[#stories + 1] = score .. " " .. last .. "."
+    if fights.zone then stories[1] = Fmt(L["%1$s Last fight %2$s in %3$s."], score, last, Em(fights.zone)) end
+    stories[#stories + 1] = Fmt(L["%1$s Last fight %2$s."], score, last)
     stories[#stories + 1] = score
     return stories
 end
@@ -101,18 +102,21 @@ end
 local function Story(snap, place)
     if snap.timesMet == 0 then
         if snap.reason == "nearby" then
-            return "You've only seen them in passing so far."
+            return L["You've only seen them in passing so far."]
         end
-        return "Your first time together since you wrote them in."
+        return L["Your first time together since you wrote them in."]
     end
 
-    local when = When(snap.lastMet)
-    local where = place and snap.lastZone and (" in " .. Em(snap.lastZone)) or ""
+    local when = Em(When(snap.lastMet))
+    local zone = place and snap.lastZone and Em(snap.lastZone)
 
     if snap.timesMet == 1 then
-        return ("You've met once, %s%s."):format(Em(when), where)
+        if zone then return Fmt(L["You've met once, %1$s in %2$s."], when, zone) end
+        return Fmt(L["You've met once, %s."], when)
     end
-    return ("You've crossed paths %s, last %s%s."):format(Em(snap.timesMet .. " times"), Em(when), where)
+    local times = Em(Fmt(L["%d times"], snap.timesMet))
+    if zone then return Fmt(L["You've crossed paths %1$s, last %2$s in %3$s."], times, when, zone) end
+    return Fmt(L["You've crossed paths %1$s, last %2$s."], times, when)
 end
 
 -- The record without some of what it says.
@@ -155,15 +159,15 @@ function ns.UI.ReunionText(snap)
     -- on as one sentence, the way "AND 3 MORE" does.
     if snap.place then
         return {
-            heading = "Placing the toast",
-            name = "Your toasts",
-            stories = { "will appear where you leave this card." },
+            heading = L["Placing the toast"],
+            name = L["Your toasts"],
+            stories = { L["will appear where you leave this card."] },
         }
     end
     if snap.more then
         return {
             heading = HEADINGS[snap.reason] or HEADINGS.mixed,
-            name = ("and %d more"):format(snap.more),
+            name = Fmt(L["and %d more"], snap.more),
             stories = { MORE[snap.reason] or MORE.mixed },
         }
     end
@@ -171,7 +175,7 @@ function ns.UI.ReunionText(snap)
     local tags, has = {}, {}
     for i, tag in ipairs(snap.tags or {}) do
         local colour = Style.TAG_COLORS[tag] or Style.TAG_DEFAULT
-        tags[i] = "|cff" .. Style.HexOf(colour) .. tag:upper() .. "|r"
+        tags[i] = "|cff" .. Style.HexOf(colour) .. Style.Upper(tag) .. "|r"
         has[tag] = true
     end
     local reason = snap.reason == "nearby" and "nearby" or "group"

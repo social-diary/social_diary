@@ -18,6 +18,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Met = {}
 ns.Met = Met
 
@@ -38,21 +40,23 @@ end
 ns.JourneyRecap.RegisterMoment("met", { order = 85, entry = "met", field = "met", rank = 1,
     gather = function() end,
     custom = {
-        label = "Someone You Met",
-        heading = "Someone you met",
+        label = L["Someone You Met"],
+        heading = L["Someone you met"],
         group = "social",
         -- A menu's line, where a spot merges several: the name alone will not
         -- tell apart two meetings with one person.
         describe = function(rec)
-            local name = Met.Name(rec) or "Someone you met"
-            return rec.what and (name .. ", " .. rec.what) or name
+            local name = Met.Name(rec) or L["Someone you met"]
+            return rec.what and Fmt(L["%1$s, %2$s"], name, rec.what) or name
         end,
         -- Only these: the strip shows a name and a line of what happened. Both
         -- may stay empty, a stranger's strip being "with someone" already. The
         -- line's length is the base's: three lines of a strip hold about that,
         -- and what its narrowest column cuts the tooltip keeps (Strip.lua).
         fields = {
-            { key = "who", type = "person", label = "Who", hint = "Someone in your diary, or any name" },
-            { key = "what", type = "text", label = "Description", hint = "What you did, in a line" },
+            { key = "who", type = "person", label = L["Who"],
+                hint = L["Someone in your diary, or any name"] },
+            { key = "what", type = "text", label = L["Description"],
+                hint = L["What you did, in a line"] },
         },
     } })

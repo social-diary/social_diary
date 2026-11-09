@@ -19,6 +19,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local FONT = Style.FONT
 local Text = ns.UI.JourneyText
@@ -44,13 +46,13 @@ local function FillHeader()
     local name = table.concat({ own.first or ns.Plain(UnitName("player")) or "", own.surname or "" }, " ")
         :gsub("%s+$", "")
     page.name:SetFontObject(FONT.title)
-    page.name:SetText(name:upper())
+    page.name:SetText(Text.Upper(name))
     if (page.name:GetUnboundedStringWidth() or 0) > LEFT_W then page.name:SetFontObject(FONT.titleSmall) end
 
     local level = ns.Plain(UnitLevel("player"))
     local race, class = ns.Plain(UnitRace("player")), ns.Plain(UnitClass("player"))
     local parts = {}
-    if type(level) == "number" and level > 0 then parts[#parts + 1] = "Level " .. level end
+    if type(level) == "number" and level > 0 then parts[#parts + 1] = Fmt(L["Level %d"], level) end
     if type(race) == "string" and race ~= "" then parts[#parts + 1] = race end
     if type(class) == "string" and class ~= "" then parts[#parts + 1] = class end
     page.who:SetText(table.concat(parts, " "))
@@ -197,7 +199,7 @@ local function EntryItems(recap, now, fights)
                     Add({ sitting = k, label = Text.SittingLabel(p, now), aside = Text.Current(p), entry = i,
                         chosen = k == at, current = k == at and page.mode == "plates", height = SITTINGS.row })
                     for _, visit in ipairs(p.runs) do
-                        Add({ run = visit, label = visit.name or "An instance", entry = i, height = SITTINGS.runRow,
+                        Add({ run = visit, label = visit.name or L["An instance"], entry = i, height = SITTINGS.runRow,
                             current = page.mode == "run" and page.runVisit == visit.id })
                     end
                 end
@@ -664,7 +666,7 @@ local function UpdateEntryRow(row, item)
         local place = item.zone
         row.zone:SetFontObject(FONT.small)
         row.zone:SetWidth(0)
-        row.zone:SetText(place.dungeon and (place.name or "An instance") or Text.ZoneName(place))
+        row.zone:SetText(place.dungeon and (place.name or L["An instance"]) or Text.ZoneName(place))
         row.time:SetText((place.seconds or 0) >= 60 and Text.LedgerTime(place.seconds) or "")
         -- The name never crowds out the leaders: past its share of the row
         -- it is cut short (the client adds the ellipsis).

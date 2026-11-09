@@ -39,6 +39,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 
@@ -46,19 +48,19 @@ local function Journal() return Pad.Scope("journal") end
 local function Page() return ns.UI.NearbyPage end
 
 local PROMPT = {
-    title = { { "PADDUP", "PADDDOWN" }, "Go to the days", main = true },
-    day = { "PAD1", "See this day", main = true },
-    people = { "PAD1", "Go to the people", main = true },
-    write = { "PAD1", "Write", main = true },
-    done = { "PAD1", "Done writing", main = true },
-    stop = { "PAD2", "Stop writing" },
-    choose = { "PAD1", "Choose", main = true },
-    sort = { "PAD1", "Sort by this", main = true },
-    reverse = { "PAD1", "Sort the other way", main = true },
-    latest = { "PAD1", "Sort by last seen", main = true },
-    add = { "PAD1", "Add to the diary", main = true },
-    open = { "PAD1", "Open their page", main = true },
-    back = { "PAD2", "Back to the days" },
+    title = { { "PADDUP", "PADDDOWN" }, L["Go to the days"], main = true },
+    day = { "PAD1", L["See this day"], main = true },
+    people = { "PAD1", L["Go to the people"], main = true },
+    write = { "PAD1", L["Write"], main = true },
+    done = { "PAD1", L["Done writing"], main = true },
+    stop = { "PAD2", L["Stop writing"] },
+    choose = { "PAD1", L["Choose"], main = true },
+    sort = { "PAD1", L["Sort by this"], main = true },
+    reverse = { "PAD1", L["Sort the other way"], main = true },
+    latest = { "PAD1", L["Sort by last seen"], main = true },
+    add = { "PAD1", L["Add to the diary"], main = true },
+    open = { "PAD1", L["Open their page"], main = true },
+    back = { "PAD2", L["Back to the days"] },
 }
 
 local function Run(frame, script, ...)

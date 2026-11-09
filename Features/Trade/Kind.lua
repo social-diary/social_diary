@@ -54,6 +54,7 @@ ns.Trade = Trade
 -- the window was empty.
 
 local Items = ns.UI.TimelineText.Items
+local L, Fmt = ns.L, ns.Fmt
 
 ns.Rows.Register("trade", { proximity = true, plate = 7, opens = true, meeting = true, dealt = "trade", matters = true,
     activity = "trade",
@@ -61,11 +62,11 @@ ns.Rows.Register("trade", { proximity = true, plate = 7, opens = true, meeting =
     text = function(row)
         local c = row.context or {}
         local parts = {}
-        if c.given then parts[#parts + 1] = "gave " .. Items(c.given) end
-        if c.moneyGiven then parts[#parts + 1] = "gave " .. ns.UI.Format.Money(c.moneyGiven) end
-        if c.received then parts[#parts + 1] = "got " .. Items(c.received) end
-        if c.moneyReceived then parts[#parts + 1] = "got " .. ns.UI.Format.Money(c.moneyReceived) end
-        if #parts == 0 then return "Traded" end
-        return "Traded: " .. table.concat(parts, "; ")
+        if c.given then parts[#parts + 1] = Fmt(L["gave %s"], Items(c.given)) end
+        if c.moneyGiven then parts[#parts + 1] = Fmt(L["gave %s"], ns.UI.Format.Money(c.moneyGiven)) end
+        if c.received then parts[#parts + 1] = Fmt(L["got %s"], Items(c.received)) end
+        if c.moneyReceived then parts[#parts + 1] = Fmt(L["got %s"], ns.UI.Format.Money(c.moneyReceived)) end
+        if #parts == 0 then return L["Traded"] end
+        return Fmt(L["Traded: %s"], table.concat(parts, L["; "]))
     end,
     icon = "trade" })

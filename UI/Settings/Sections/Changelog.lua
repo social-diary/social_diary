@@ -30,13 +30,22 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
 local Style = ns.Style
 local FONT = Style.FONT
 local BOOK = ns.UI.Journal.BOOK
 local SettingsUI = ns.UI.Settings
 
-local FOOTER = "The full history is on CurseForge and GitHub."
-local THANKS = "Thanks to %s"
+local FOOTER = L["The full history is on CurseForge and GitHub."]
+local THANKS = L["Thanks to %s"]
+local VERSION = L["Version %s"]
+-- The groups' headings, as CHANGELOG.md names them (.claude/rules/changelog.md):
+-- the data stays English, the heading shown is the reader's.
+local GROUP = {
+    ["Shiny new Things"] = L["Shiny new Things"],
+    ["Changes"] = L["Changes"],
+    ["Fixes"] = L["Fixes"],
+}
 
 -- The column: the list's own width less its scrollbar.
 local LIST_W = BOOK.RIGHT_W
@@ -108,7 +117,7 @@ end
 -- words, any thanks, and the room round them).
 local function Line(kind, text, thanks)
     local L = LINE[kind]
-    local line = { kind = kind, text = text, thanks = thanks and THANKS:format(thanks) or nil }
+    local line = { kind = kind, text = text, thanks = thanks and Fmt(THANKS, thanks) or nil }
     local width = TEXT_W - (L.indent or 0)
     local height = L.pad + Measure(L.font, width, text, L.leading) + L.after
     if line.thanks then
@@ -126,11 +135,11 @@ local function Lines(releases)
     local function Add(line) lines[#lines + 1] = line end
     for i, release in ipairs(releases or {}) do
         if i > 1 then Add({ kind = "divider", height = DIVIDER.height }) end
-        Add(Line("version", "Version " .. release.version))
+        Add(Line("version", Fmt(VERSION, release.version)))
         if release.summary and release.summary ~= "" then Add(Line("summary", Emphasis(release.summary))) end
         for g, group in ipairs(release.groups or {}) do
             -- (its paraph red, then lapis, by turns, as the timeline's days)
-            local heading = Line("group", group.heading:upper())
+            local heading = Line("group", Style.Upper(GROUP[group.heading] or group.heading))
             heading.lapis = g % 2 == 0
             Add(heading)
             for _, entry in ipairs(group.entries or {}) do
@@ -281,8 +290,8 @@ end
 
 SettingsUI.ChangelogLines = Lines
 
-SettingsUI.RegisterSection("changelog", { order = 57, label = "Changelog", parent = "about",
-    about = "What changed in the latest versions", build = BuildChangelog,
+SettingsUI.RegisterSection("changelog", { order = 57, label = L["Changelog"], parent = "about",
+    about = L["What changed in the latest versions"], build = BuildChangelog,
     open = function()
         if ns.Hints and ns.Hints.UpdateRead then ns.Hints.UpdateRead() end
         local list = SettingsUI.page and SettingsUI.page.changelog
