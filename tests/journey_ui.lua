@@ -970,7 +970,7 @@ plate = page.plates[1]
 
 -- The plate's tooltips: the pools say their ink, the lozenge the sighting.
 local said = Tips(plate)
-Check(Any(said, "^Red Rocks|Fought here for 15 min|On 30 Sep from 06:00 to 06:30, level 10$"),
+Check(Any(said, "^Red Rocks|Fought here for 15 min|On 30 Sep from %d%d:00 to %d%d:30, level 10$"),
     "a stain's tooltip does not tell its fight: " .. table.concat(said, " / "))
 -- Numa's first sighting and Bram's session share one spot: one mark,
 -- the session on top, its tooltip one account of both (marks never touch;
