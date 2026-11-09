@@ -64,10 +64,49 @@ local title, lines = Close.Tip({ name = "Kolkar Stormer", rank = "elite", foeLev
 Eq(title, "A close call", "a close call's tooltip title")
 Eq(lines[1], "4% health left, against a Kolkar Stormer and another", "the close call's line")
 Eq(lines[2], "Lv 14 (Elite)", "the close call's level and rank")
-Check(lines[3]:find("at level 12$") and #lines == 3, "the close call's when, last: " .. tostring(lines[3]))
+Check(lines[3]:find(", level 12$") and #lines == 3, "the close call's when, last: " .. tostring(lines[3]))
 title, lines = Close.Tip({ pct = 8, seconds = 20, level = 3, t = now }, now)
 Eq(lines[1], "8% health left", "a nameless close call's line")
 Eq(#lines, 2, "the fight's length is told")
+
+-- Several on one spot (the mark's `tips`): one account, never each again.
+local PLAIN = { name = "Plainstrider", foeLevel = 7, pct = 9, level = 10, t = now - 7200 }
+local function Call(extra)
+    local call = {}
+    for key, value in pairs(PLAIN) do call[key] = value end
+    for key, value in pairs(extra or {}) do call[key] = value end
+    return call
+end
+title, lines = Close.Tips({ Call() }, now)
+local lone = { Close.Tip(Call(), now) }
+Eq(title, lone[1], "a lone close call's title, as its own tooltip")
+Eq(table.concat(lines, "|"), table.concat(lone[2], "|"), "and its lines")
+Eq(table.concat(lines, "|"), "9% health left, against a Plainstrider|Lv 7|" .. date("Today at %H:%M", now - 7200)
+    .. ", level 10", "a lone close call, its time and level told once")
+title, lines = Close.Tips({ Call(), Call({ pct = 4, t = now - 6000, level = 11 }) }, now)
+Eq(title, "Two close calls", "two on a spot: counted in the title")
+Eq(lines[1], "Down to 4% health at worst", "the lowest health of them")
+Eq(lines[2], "Against a Plainstrider both times", "the creature once")
+Eq(lines[3], "Lv 7", "its tag, the one creature's")
+Eq(lines[4], date("Today from %H:%M", now - 7200) .. date(" to %H:%M", now - 6000) .. ", levels 10 to 11",
+    "a span and a level range, not a time each")
+Eq(#lines, 4, "four lines")
+title, lines = Close.Tips({ Call(), Call({ t = now - 7100 }), Call({ name = "Hogger", rank = "rare", t = now - 7000 }),
+    Call({ name = false, t = now - 6900 }) }, now)
+Eq(title, "Four close calls", "four")
+Eq(lines[2], "Against a Plainstrider twice and Hogger once", "creatures grouped, counted where one came twice")
+Eq(#lines, 3, "no tag for creatures of two kinds")
+_, lines = Close.Tips({ Call(), Call({ name = "Hogger", rank = "rare" }), Call({ name = "Kolkar Stormer" }) }, now)
+Eq(lines[2], "Against a Plainstrider, Hogger and others", "two creatures named, then others")
+_, lines = Close.Tips({ Call(), Call({ name = "Hogger", rank = "rare" }) }, now)
+Eq(lines[2], "Against a Plainstrider and Hogger", "once each: no counts")
+_, lines = Close.Tips({ Call(), Call({ t = now - 7100 }), Call({ name = "Hogger", rank = "rare" }) }, now)
+Eq(lines[2], "Against a Plainstrider twice and Hogger once", "counted where one came twice")
+_, lines = Close.Tips({ Call({ name = false }), Call({ name = false }) }, now)
+Eq(#lines, 2, "no creatures: no line for them")
+local mark = ns.UI.JourneyPlate.MARKS.close
+Eq(mark.tips({ { kind = "close", call = Call() }, { kind = "close", call = Call({ pct = 4 }) } }, now), "Two close calls",
+    "the mark tells its spot with Tips")
 title, lines = Close.FoeTip({ name = "Plainstrider", pct = 6, seconds = 42, foes = 3, level = 6, t = now }, now)
 Eq(title, "Plainstrider", "the foe card's tooltip title")
 Eq(lines[1], "Left you with 6% health", "the foe card's line")
@@ -87,7 +126,7 @@ Eq(ns.Hunts.Words({ kills = 12, need = 1, item = "Kobold Candle" }), "12" .. NB 
 title, lines = ns.Hunts.Tip(MEAT, now)
 Eq(title, ns.Hunts.Words(MEAT), "the tally's tooltip title")
 Eq(lines[1], "For Break Sharptusk!", "the tally names the quest")
-Check(lines[2]:find("at level 6$"), "the tally's when: " .. tostring(lines[2]))
+Check(lines[2]:find(", level 6$"), "the tally's when: " .. tostring(lines[2]))
 
 -- The level's prose: each close call, then each hunt, in one paragraph
 -- (the two kinds' `run`, "combat"); past two, counted.
@@ -204,7 +243,8 @@ Check(spots >= 2, "the marks claimed no room")
 local tips = Tips(plate)
 Check(Any(tips, "^A close call|6%% health left, against a Plainstrider and two others|Lv 7|"),
     "the cross's tooltip: " .. table.concat(tips, "; "))
-Check(Any(tips, "^31" .. NB .. "Plainstriders for 7" .. NB .. "Plainstrider Meat|For Break Sharptusk!|"),
+Check(Any(tips, "^7" .. NB .. "Plainstrider Meat|Killed 31" .. NB .. "Plainstriders|For \226\128\156Break Sharptusk!"
+    .. "\226\128\157|[^|]*, level 10$"),
     "the tally's tooltip: " .. table.concat(tips, "; "))
 
 -- The prose says both.
@@ -482,7 +522,7 @@ Open(10)
 Eq(#Cards(), 0, "a close call with no creature has a card")
 Eq(page.plates[1].counts.closeCalls, 1, "a close call with no creature has no cross")
 tips = Tips(page.plates[1])
-Check(Any(tips, "^A close call|6%% health left|[^|]*at level 10$"), "the nameless cross's tooltip: "
+Check(Any(tips, "^A close call|6%% health left|[^|]*, level 10$"), "the nameless cross's tooltip: "
     .. table.concat(tips, "; "))
 
 -- Another level's are not on this one's plate (only the open level).
@@ -540,10 +580,12 @@ do
     -- its tooltip the hunt's; never a tally. Levels 11, 12 and 13 have one
     -- each, for the lucky card's sizes (Features/Hunts/LuckyCard.lua, 13 Oct).
     Eq(table.concat(stars, ","), "11x1,12x1,13x1,14x2", "the good luck's stars")
-    Check(Any(marked, "^14: 4" .. NB .. "Kolkar Marauders for 7" .. NB .. "Kolkar Booty Keys, 54" .. NB
-        .. "fewer than expected|For Counterattack!|"), "the star's tooltip: " .. table.concat(marked, "; "))
-    Check(Any(marked, "^14: 1" .. NB .. "Hezrul Bloodmark for one" .. NB .. "Hezrul's Head, 9" .. NB
-        .. "fewer than expected|For Hezrul's Head|"), "the first-kill star's tooltip: " .. table.concat(marked, "; "))
+    Check(Any(marked, "^14: 7" .. NB .. "Kolkar Booty Keys|Killed 4" .. NB .. "Kolkar Marauders|54" .. NB
+        .. "fewer kills than expected|For \226\128\156Counterattack!\226\128\157|"), "the star's tooltip: "
+        .. table.concat(marked, "; "))
+    Check(Any(marked, "^14: Hezrul's Head|Dropped by the first Hezrul Bloodmark|9" .. NB
+        .. "fewer kills than expected|For \226\128\156Hezrul's Head\226\128\157|"), "the first-kill star's tooltip: "
+        .. table.concat(marked, "; "))
     -- A chain's end (JRN-28): a tailpiece at levels 10 and 13, its tooltip
     -- the chain's, where it began when the diary saw it.
     Eq(table.concat(tailpieces, ","), "10x1,13x1", "the chains' tailpieces")

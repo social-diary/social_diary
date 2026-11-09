@@ -102,6 +102,39 @@ local title, lines = ns.Campfire.Tip(Fire("Lushwater Oasis"), now)
 Eq(title, "Sat by a campfire", "the tooltip's title")
 Eq(lines[1], "In Lushwater Oasis", "the tooltip's place")
 Eq(#lines, 2, "the tooltip's lines")
+Eq(lines[2], "Today at " .. date("%H:%M", now - 600), "a lone fire: when, once")
+
+-- A fire sat by again, one account on its mark (spec.tips, 9 Nov): how
+-- often, the place once, every time with its day once.
+do
+    local spec = Plate.MARKS.campfire
+    local function C(fire) return { kind = "campfire", campfire = fire } end
+    local first, second, third = Fire("Lushwater Oasis", now - 900), Fire("Lushwater Oasis", now - 600),
+        Fire("Lushwater Oasis", now - 300)
+    local t, l = spec.tips({ C(first) }, now)
+    Eq(t, "Sat by a campfire", "a lone fire's mark: the title")
+    Eq(l[1], "In Lushwater Oasis", "a lone fire's mark: where")
+    Eq(#l, 2, "a lone fire's mark: nothing doubled")
+    t, l = spec.tips({ C(first), C(second), C(third) }, now)
+    Eq(t, "Sat by a campfire 3 times", "sat by three times: how often")
+    Eq(l[1], "In Lushwater Oasis", "sat by three times: the place once")
+    Eq(l[2], "Today at " .. date("%H:%M", now - 900) .. ", " .. date("%H:%M", now - 600) .. " and "
+        .. date("%H:%M", now - 300), "sat by three times: each time, the day once")
+    Eq(#l, 2, "sat by three times: no line repeated")
+    local yesterday = Fire("Lushwater Oasis", now - ns.DAY)
+    t, l = spec.tips({ C(yesterday), C(second) }, now)
+    Eq(t, "Sat by a campfire twice", "two days: twice")
+    Eq(l[2], "Yesterday at " .. date("%H:%M", now - ns.DAY) .. " and today at " .. date("%H:%M", now - 600),
+        "two days: each day named")
+    local many = {}
+    for i = 5, 1, -1 do many[#many + 1] = C(Fire("Lushwater Oasis", now - i * 60)) end
+    t, l = spec.tips(many, now)
+    Eq(t, "Sat by a campfire 5 times", "five times")
+    Eq(l[2], "Today from " .. date("%H:%M", now - 300) .. " to " .. date("%H:%M", now - 60),
+        "past four, from the first to the last")
+    t, l = spec.tips({ C(first), C(Fire("The Stagnant Oasis", now - 300)) }, now)
+    Eq(l[1], "In Lushwater Oasis and The Stagnant Oasis", "two places, each once")
+end
 
 --------------------------------------------------------------------------
 Section("the slip: one a plate, its leader to the nearest fire")
@@ -126,7 +159,8 @@ do
     slip:Layout(250, 90, 100)
     Check(slip.overfull, "a slip wider than its box is not overfull")
     local tip = slip.tip()
-    Eq(#tip, 3 * 2, "the slip's tooltip tells each sitting")
+    Eq(tip[1][1], "Sat by a campfire 3 times", "the slip's tooltip tells every sitting, once")
+    Eq(#tip, 2, "the slip's tooltip: one account, no sitting told twice")
     ns.SetSetting("flatSheets", true)
     slip:Layout(250, 90, 176)
     Eq(slip.turn, 0, "laid flat, the slip turns")

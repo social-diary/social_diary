@@ -121,6 +121,40 @@ do
     Eq(title, "Duelled Bram", "the flag's tooltip names the opponent")
     Eq(lines[1], "Won 3, lost 1", "the flag's tooltip tells the outcome")
     Eq(lines[2], "In Raptor Grounds", "the flag's tooltip tells where")
+
+    -- Every series on one spot, one account (spec.tips, 9 Nov): a title,
+    -- totals, each time once, no repeats.
+    local function D(rec) return { kind = "duel", duel = rec } end
+    local function Clock(t) return date("%H:%M", t) end
+    local lone = Rec({ won = 1, last = "won" }, { guid = BRAM })
+    title, lines = spec.tips({ D(lone) }, now)
+    Eq(title, "Duelled Bram", "a lone flag: who")
+    Eq(lines[1], "You won", "a lone flag: the outcome")
+    Eq(lines[2], "In Raptor Grounds", "a lone flag: where")
+    Eq(lines[3], "Today at " .. Clock(lone.t), "a lone flag: when, once")
+    Eq(#lines, 3, "a lone flag: nothing doubled")
+    Eq(select(2, Duels.Tip(lone, now))[3], lines[3], "the note's tooltip, the lone flag's")
+    -- A rematch on the same spot: both series added up, both times.
+    local again = Rec({ won = 1, lost = 2, last = "lost" }, { guid = BRAM, t = now - 300 })
+    title, lines = spec.tips({ D(lone), D(again) }, now)
+    Eq(title, "Duelled Bram", "a rematch: the name once")
+    Eq(lines[1], "Lost 2, won 2", "a rematch: the series added up")
+    Eq(lines[2], "In Raptor Grounds", "a rematch: the place once")
+    Eq(lines[3], "Today at " .. Clock(lone.t) .. " and " .. Clock(again.t), "a rematch: each time, the day once")
+    Eq(#lines, 3, "a rematch: no line doubled")
+    -- Two opponents and one the diary no longer knows: each named, the
+    -- note's words for each, the flights added up.
+    local tom = Rec({ lost = 1, last = "lost" }, { name = "Old Tom", t = now - 200 })
+    local gone = Rec({ won = 2, theyFled = 1, last = "they_fled" }, { t = now - 100 })
+    title, lines = spec.tips({ D(lone), D(tom), D(gone) }, now)
+    Eq(title, "Duelled Bram, Old Tom and others", "several: everyone named once")
+    Eq(lines[1], "Beat Bram in a duel, lost a duel to Old Tom, won 3 duels", "several: a tally for each")
+    Eq(lines[2], "They fled once", "several: the flights together")
+    Check(#lines <= 4, "several: four lines at most")
+    for _, line in ipairs(lines) do Check(not line:find("more"), "no count of more: " .. line) end
+    -- Only strangers: counted, not named.
+    title = spec.tips({ D(Rec({ won = 1, last = "won" })), D(Rec({ lost = 1, last = "lost" }, { t = now - 60 })) }, now)
+    Eq(title, "2 duels", "nobody known: the duels counted")
 end
 
 --------------------------------------------------------------------------

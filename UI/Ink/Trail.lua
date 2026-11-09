@@ -803,7 +803,9 @@ end
 -- with `n`, its place as made, and `part`, "road" or "pool"), the counts
 -- { quads, dots, dabs, pools, droplets, stops, roads, step, length, brisk },
 -- and the pools, longest first: { seg, segs (every stop drawn as it, its
--- own first), kind, e, T, seconds, deaths, more, droplet, tint }.
+-- own first), kind, e, T, seconds, deaths, more, droplet, tint; a stain's
+-- also stains, ground, combat (its stops' and roads' fighting) and roads
+-- (the fought roads it took in, or nil) }.
 function Ink.Build(sheet, box, opts)
     opts = opts or {}
     local out = {}
@@ -979,6 +981,8 @@ function Ink.Build(sheet, box, opts)
             or ends[i].last and ends[i].last.stains and ends[i].last
         if combat > 0 and stain then
             stain.combat = stain.combat + combat
+            stain.roads = stain.roads or {}
+            stain.roads[#stain.roads + 1] = road
             intoStain[i] = true
         end
     end
@@ -1033,4 +1037,41 @@ function Ink.Build(sheet, box, opts)
         return a.n < b.n
     end)
     return out, counts, pools, pressure
+end
+
+-- What a pool of Ink.Build stands for, all its stops (and a stain's fought
+-- roads) together, for its tooltip (Text.Fought for a stain, else
+-- Text.Stayed, UI/Journey/Text/Tips.lua),
+-- so the words need not know how the ink was merged. (9 Nov, in the client:
+-- a stain of five stops told only its longest one, "6 min" of a stay and
+-- "1 min" of fighting, and "4 more short stays" for the rest.) Returns
+-- { place (the first stop's subzone, longest first, that has one), mapID,
+-- from, to (the first start and the last end), combat (seconds fought,
+-- what the stain's ink is made from), deaths, questsIn, questsOut (its
+-- stops' only: a death on a road is its own cross there), levelFrom,
+-- levelTo, parts (how many stops and roads), kind (the pool's ink:
+-- "fighting", "questing", "resting", "stayed") and seconds (its stops'
+-- time, in all: a pool that is not a fight's says it, Text.Stayed) }.
+function Ink.Account(pool)
+    local a = { combat = 0, deaths = 0, questsIn = 0, questsOut = 0, parts = 0, seconds = 0, kind = pool.kind }
+    local function Span(seg)
+        a.parts = a.parts + 1
+        if seg.from and (not a.from or seg.from < a.from) then a.from = seg.from end
+        if seg.to and (not a.to or seg.to > a.to) then a.to = seg.to end
+        local lo, hi = seg.levelFrom or seg.levelTo, seg.levelTo or seg.levelFrom
+        if lo and (not a.levelFrom or lo < a.levelFrom) then a.levelFrom = lo end
+        if hi and (not a.levelTo or hi > a.levelTo) then a.levelTo = hi end
+        a.combat = a.combat + (seg.act and seg.act.combat or 0)
+    end
+    for _, seg in ipairs(pool.segs or { pool.seg }) do
+        Span(seg)
+        local act = seg.act or {}
+        a.deaths = a.deaths + (act.deaths or 0)
+        a.questsIn, a.questsOut = a.questsIn + (act.questsIn or 0), a.questsOut + (act.questsOut or 0)
+        a.seconds = a.seconds + (seg.seconds or ((seg.to or 0) - (seg.from or 0)))
+        a.place = a.place or seg.subZone
+        a.mapID = a.mapID or seg.mapID
+    end
+    for _, road in ipairs(pool.roads or {}) do Span(road) end
+    return a
 end

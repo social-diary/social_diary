@@ -7,7 +7,7 @@ local addonName, ns = ...
 
 local Campfire = ns.Campfire
 local Text = ns.UI.JourneyText
-local Capital, MapName, When = Text.Capital, Text.MapName, Text.When
+local Capital, List, MapName = Text.Capital, Text.List, Text.MapName
 
 -- The margin's slip for a campfire on a plate (Slip.lua): the user's own
 -- words (14 Oct), exactly, lower case and all, however many fires the
@@ -28,17 +28,52 @@ function Campfire.At(fires, zone)
     return at
 end
 
--- The fire's mark and its slip, under the mouse: "Sat by a campfire", then
--- where ("In Lushwater Oasis", where there is a subzone that is not the
--- zone's name) and when ("Yesterday, 21:40, at level 12").
-function Campfire.Tip(fire, now)
-    local lines = {}
-    local sub = fire.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = "In " .. sub end
+-- When the sittings were, and at what level, as every mark's tooltip on the
+-- plates ends (the core's Text.Foot and Text.Moments, UI/Journey/Text/
+-- Tips.lua): each time, a day said once for the times on it, past four
+-- the first to the last, then the levels after a comma, "Today at 12:47
+-- and 15:10, level 20", "Today from 12:47 to 19:02, levels 19 to 20".
+-- The tames' tooltip says its times the same way, without the level.
+local function Foot(ts, lo, hi, now)
+    return Text.Foot({ times = ts, levelFrom = lo, levelTo = hi }, now)
+end
+
+-- The fire's mark and the slip, under the mouse: one account of every
+-- sitting it stands for (a list of one for a fire sat by once). "Sat by a
+-- campfire", or how often, "Sat by a campfire twice", "... 3 times"; where,
+-- each place once ("In Lushwater Oasis", "In Lushwater Oasis and The
+-- Stagnant Oasis", only a subzone that is not its zone's name); then the
+-- times and the level: "Yesterday at 21:40 and today at 08:10, levels 11
+-- to 12". (9 Nov: a fire sat by three times told "Sat by a campfire" and
+-- its place three times over.)
+function Campfire.Tips(fires, now)
+    local places, seen = {}, {}
+    local ts, lo, hi = {}, nil, nil
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
-    local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
-    lines[#lines + 1] = When(fire.t or 0, level, now)
-    return Capital(Campfire.WORDS), lines
+    for _, fire in ipairs(fires) do
+        local sub = fire.subZone
+        if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) and not seen[sub] then
+            seen[sub] = true
+            places[#places + 1] = sub
+        end
+        ts[#ts + 1] = fire.t or 0
+        local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
+        if level then
+            lo = (not lo or level < lo) and level or lo
+            hi = (not hi or level > hi) and level or hi
+        end
+    end
+    local lines = {}
+    if places[1] then lines[1] = "In " .. List(places) end
+    lines[#lines + 1] = Foot(ts, lo, hi, now)
+    local title = Capital(Campfire.WORDS)
+    if #fires > 1 then title = title .. " " .. ns.UI.Format.Times(#fires) end
+    return title, lines
+end
+
+-- One sitting's tooltip, as its fire's alone (Campfire.Tips).
+function Campfire.Tip(fire, now)
+    return Campfire.Tips({ fire }, now)
 end
 
 -- A line of a menu, where a spot merges several fires or one is hidden (the

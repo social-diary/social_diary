@@ -2,7 +2,7 @@
 -- UI/Journey/Plate.lua), drawn on every plate and the full zone page
 -- through the plate's kit: a drawstring pouch where each first was found,
 -- firsts on one spot (a green bag is a first bag and a first green) one
--- pouch, in the ink of the best of them, its tooltip telling each. A gift
+-- pouch, in the ink of the best of them, its tooltip telling them together. A gift
 -- from someone in the diary is that person's moment as well (`join`):
 -- kept with their marks (plate.where, plate.people), so it joins their
 -- margin note ("gave you your first blue", Text.lua's Firsts.PERSON) and
@@ -50,6 +50,9 @@ ns.UI.JourneyPlate.RegisterMark("find", {
         local title, line = Firsts.Tip(m, now)
         return title, (line and line ~= "") and { line } or nil
     end,
+    -- Every first in the pouch told once together, the best first (`arg`
+    -- has sorted the list so before the mouse comes): Firsts.Tips.
+    tips = function(list, now) return Firsts.Tips(list, now) end,
     keep = "findMarks",
     -- The best of them first (by quality, then the oldest), and the ink
     -- the pouch is drawn in: plain ink, or the best one's part way.

@@ -342,7 +342,8 @@ Check(rubric.faces[1] and rubric.faces[1]:IsShown() and rubric.faces[2]:IsShown(
 GameTooltip.text = nil
 local faceOf = rubric.faces[1].guid == A and rubric.faces[1] or rubric.faces[2]
 faceOf.scripts.OnEnter(faceOf)
-Eq(GameTooltip.text, "Bram Redfen  \194\183  15 min together", "a face's tooltip")
+Eq(GameTooltip.text, "Bram Redfen", "a face's tooltip: the name, as its title")
+Eq(GameTooltip.lines and GameTooltip.lines[1] and GameTooltip.lines[1][1], "15 min together", "then what they were, on a line of its own")
 Check(not faceOf.ring:IsShown(), "a face not tagged foe has a rival's ring")
 
 -- A name in the prose opens their page in People.
@@ -446,7 +447,7 @@ end
 Check(Any(notes, "^with Bram: 15\194\160min together$"), "Bram's note: " .. table.concat(notes, "; "))
 Check(Any(notes, "^with someone: a fight, won$"), "a stranger is not someone: " .. table.concat(notes, "; "))
 -- Wrapped on its strip a line at a time; the lines joined here.
-Check(Any(notes, "^with Numa: first seen  \194\183 +you'd meet again at"), "Numa's note: " .. table.concat(notes, "; "))
+Check(Any(notes, "^with Numa: first seen, and +you'd meet again at"), "Numa's note: " .. table.concat(notes, "; "))
 Check(page.leaderPool.used >= 1, "the notes have no leaders")
 
 -- Over the plate, the caption leaves the page under it to the notes: a
@@ -701,7 +702,7 @@ do
     local whats = {
         Text.MarginWhat({ { kind = "session", seconds = 12000 }, { kind = "note" } }, 5),
         "twenty minutes together and you won the fight",
-        "first seen  \194\183  you'd meet again at level 14",
+        "first seen, and you'd meet again at level 14",
     }
     local orphaned, laid, alone, taped = 0, 0, {}, {}
     for _, what in ipairs(whats) do
@@ -969,11 +970,14 @@ plate = page.plates[1]
 
 -- The plate's tooltips: the pools say their ink, the lozenge the sighting.
 local said = Tips(plate)
-Check(Any(said, "^Red Rocks|Fought here, 30 min"), "a pool's tooltip does not say its ink: " .. table.concat(said, " / "))
+Check(Any(said, "^Red Rocks|Fought here for 15 min|On 30 Sep from 06:00 to 06:30, level 10$"),
+    "a stain's tooltip does not tell its fight: " .. table.concat(said, " / "))
 -- Numa's first sighting and Bram's session share one spot: one mark,
--- the session on top, its tooltip telling both (marks never touch).
+-- the session on top, its tooltip one account of both (marks never touch;
+-- 9 Nov 2026: the sighting is a line, the time and level said once).
 Eq(plate.counts.marks, 2, "the people's spots: the shared one and the fight")
-Check(Any(said, "^With Bram Redfen.*|First seen: Numa Pompilius|"), "the shared mark's tooltip: " .. table.concat(said, " / "))
+Check(Any(said, "^With Bram Redfen|Together for 15 min|First saw Numa Pompilius|[^|]*, level 10$"),
+    "the shared mark's tooltip: " .. table.concat(said, " / "))
 Check(Any(said, "^With Bram Redfen"), "the session mark's tooltip does not say who")
 Check(Any(said, "^Won a fight") or Any(said, "^Beat"), "the fight mark's tooltip")
 
@@ -1392,7 +1396,8 @@ end
 said = Tooltips(plate)
 -- At this scale the fight and the session are one spot: the fight on top.
 Check(Any(said, "^Won a fight") or Any(said, "^Beat"), "the fight mark's tooltip")
-Check(Any(Tips(plate), "|With Bram Redfen|"), "the shared mark's tooltip does not say who")
+Check(Any(Tips(plate), "^[^|]*|With Bram Redfen for 15 min|"), "the shared mark's tooltip does not say who: "
+    .. table.concat(Tips(plate), " / "))
 -- Only the open level is drawn, and the next level where it ended.
 Check(Any(said, "^Level 11"), "the pin at level 10's end has no tooltip")
 Check(not Any(said, "^Flew to The Barrens"), "level 11's flight is on level 10's map")
@@ -1601,9 +1606,13 @@ Check(Any(said, "^Quest Giver Camp"), "the droplet has no tooltip")
 Check(Any(said, "^Razor Hill$") and Any(said, "^Razor Hill Inn"), "the pools have no tooltips")
 -- No key on the plates: each pool's ink in words (Decision 7).
 local tips = Tips(plate)
-Check(Any(tips, "^Razor Hill Inn|Rested here, 10 min|"), "a rested pool's tooltip: " .. table.concat(tips, " / "))
-Check(Any(tips, "^Quest Giver Camp|Quested here, under a minute|"), "a droplet's tooltip says its ink")
-Check(Any(tips, "^Long grind|Fought here, 1 h"), "a fought pool's tooltip")
+Check(Any(tips, "^Razor Hill Inn|Rested here for 10 min|"), "a rested pool's tooltip: " .. table.concat(tips, " / "))
+-- The droplet is two quest givers passed on the way: one account of both,
+-- their quests summed, no "one more short stay" (9 Nov 2026).
+Check(Any(tips, "^Quest Giver Camp|Quested here on and off, 1 min in all|Took a quest, handed in 1|"),
+    "a droplet's tooltip says its ink")
+Check(not Any(tips, "short stay"), "a pool's tooltip counts its stays")
+Check(Any(tips, "^Long grind|Fought here for 40 min|"), "a fought pool's tooltip: " .. table.concat(tips, " / "))
 
 -- Ground sets the size, at true scale: 2 sigma of the spread in pixels,
 -- and r over root 2 at the map's yards for an old stop.
@@ -1751,10 +1760,33 @@ Check(mark.host and mark.host.seg == stayed, "the pin's pool")
 Check(Ink.Reach(mark.host.e, mark.x, mark.y) > 1, "the moved pin still lies on its pool")
 
 -- The words for the tooltips.
-Eq(ns.UI.JourneyText.StopLabel(fought, 200), "Razor Hill \194\183 3 min", "a stop's short form")
-local _, lines = ns.UI.JourneyText.Stop(quest, now, 1)
+Eq(ns.UI.JourneyText.StopLabel(fought, 200), "Razor Hill, 3 min", "a stop's short form")
+-- A stop alone: its quests, never a count of other stays.
+local _, lines = ns.UI.JourneyText.Stop(quest, now)
 local joined = table.concat(lines, "|")
-Check(joined:find("Took a quest") and joined:find("one more short stay"), "the droplet's tooltip: " .. joined)
+Check(joined:find("^Quested here briefly|Took a quest") and not joined:find("short stay"),
+    "the droplet's tooltip: " .. joined)
+-- Back to the grind after a while, dying there: one stain on the plate, and
+-- its tooltip tells both stops as one (9 Nov, in the client: it told the
+-- longest alone, "Fought here" twice and "4 more short stays close by").
+local again = Seg({ kind = "stop", from = hour.to + 900, to = hour.to + 1200, mapID = 1411, x = hour.x + 0.002,
+    y = hour.y + 0.002, r = 20, seconds = 300, act = { combat = 120, deaths = 1 }, levelFrom = 12, levelTo = 13,
+    sdx = 0.01, sdy = 0.01, rho = 0 })
+ns.Journey.Touch()
+ns.UI.OpenZoneSheet(1411)
+local grind
+for _, pool in ipairs(plate.pools) do
+    if pool.seg == hour then grind = pool end
+    Check(pool.seg ~= again, "going back to a grind is a stain of its own")
+end
+Check(grind and #grind.segs == 2, "going back to a grind is not one stain")
+local told = Tips(plate)
+Check(Any(told, "^Long grind|Fought here on and off, 42 min in all|Died here|[^|]*, levels 12 to 13$"),
+    "a stain's tooltip does not tell all its stops: " .. table.concat(told, " / "))
+Check(not Any(told, "^Long grind|.*short stay"), "a stain's tooltip counts its stays")
+table.remove(j.segments)
+ns.Journey.Touch()
+ns.UI.OpenZoneSheet(1411)
 
 -- A busy zone: hundreds of stops and a dense road stay within the caps.
 mock.mapNames[1441] = "Thousand Needles"
@@ -2233,10 +2265,13 @@ do
     Eq(p.counts.dashes, dashed, "the dashes counted")
     local tips = Tips(p)
     Eq(#tips, 1, "the ring has no tooltip")
-    local _, out = (tips[1] or ""):gsub("Flew to The Barrens", "")
-    local _, back = (tips[1] or ""):gsub("Flew in from The Barrens", "")
-    Check(out == 2 and back == 1, "the ring's tooltip does not tell each flight: " .. tostring(tips[1]))
-    Check((tips[1] or ""):find("^Flew to The Barrens|"), "the ring's tooltip is not in time order")
+    -- One account of the three (9 Nov 2026): how often, each way once with
+    -- its count, one span; not a title and a time for every flight.
+    Check((tips[1] or ""):find("^Flew 3 times|To The Barrens twice|In from The Barrens|Today from %d+:%d+ to %d+:%d+, level 12$"),
+        "the ring's tooltip does not tell the flights as one: " .. tostring(tips[1]))
+    -- One flight alone: its way is the title, its time the line.
+    Eq(table.concat({ ns.UI.JourneyText.Flight(flights[1], mapID, ns.Now()) }, "", 1, 1), "Flew to The Barrens",
+        "one flight's tooltip title")
 
     -- A second flight master 300 yards off, flown to within the zone: its
     -- own ring, and the flight's dashes from one ring into the other.
@@ -2250,7 +2285,8 @@ do
         "the flight within the zone is not dashed from ring to ring")
     Check(line and line.dashes > 0, "the flight within the zone has no dashes")
     tips = Tips(p)
-    Check(Any(tips, "|A flight|") or Any(tips, "^A flight|"), "the flight within the zone is not told at its ring")
+    Check(Any(tips, "^Flew 4 times|.*|Within the zone|") and Any(tips, "^Flew within the zone|"),
+        "the flight within the zone is not told at its rings: " .. table.concat(tips, " / "))
 
     -- A third master just past FLIGHT.node yards: its own ring, which
     -- lands on the first and steps aside (Apart); its flight's dashes

@@ -515,7 +515,7 @@ local function VisitText(episode, guid)
     local wipes = ns.DungeonRun.Wipes(visit)
     if wipes > 0 then facts[#facts + 1] = Count(wipes, "wipe", "wipes") end
     facts[#facts + 1] = Members(visit, guid)
-    if #bosses > 0 then facts[#facts + 1] = "killed " .. table.concat(bosses, ", ") end
+    if #bosses > 0 then facts[#facts + 1] = "killed " .. Format.List(bosses) end
     return text, facts
 end
 
@@ -623,9 +623,11 @@ local function EpisodeText(episode, guid)
     end
 
     local text = visitText or sessionText or Headline(episode, episode.headline)
-    local sub = #shown > 0 and table.concat(shown, "  ·  ") or nil
+    -- The row's details run on with commas; the tooltip gives each fact a
+    -- line of its own (never a middle dot: the copywriter skill).
+    local sub = #shown > 0 and table.concat(shown, ", ") or nil
     local full = visitText or sessionText or Headline(episode, episode.activities)
-    if #facts > 0 then full = full .. "\n" .. table.concat(facts, "  ·  ") end
+    if #facts > 0 then full = full .. "\n" .. table.concat(facts, "\n") end
 
     local icon = (episode.kind == "session" and "together") or (episode.kind == "visit" and "dungeon")
         or ACTIVITY_ICON[episode.headline[1]] or "talk"

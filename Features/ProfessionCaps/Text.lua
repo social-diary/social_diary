@@ -7,7 +7,7 @@ local addonName, ns = ...
 
 local ProfessionCaps = ns.ProfessionCaps
 local Text = ns.UI.JourneyText
-local Capital, When, NUMBER = Text.Capital, Text.When, Text.NUMBER
+local Capital, NUMBER = Text.Capital, Text.NUMBER
 
 -- Who a cap is as far as the training goes: each rank's trainer's title,
 -- with its article. Any other number (a cap the client adds later) is
@@ -67,7 +67,7 @@ function ProfessionCaps.Tip(cap, now)
     local lines = {}
     local far = AsFar(cap)
     if far then lines[#lines + 1] = Capital(far) end
-    lines[#lines + 1] = When(cap.t, cap.level, now)
+    lines[#lines + 1] = Text.Foot({ from = cap.t, levelFrom = cap.level }, now)
     return Capital(ProfessionCaps.Words(cap)), lines
 end
 
@@ -99,3 +99,55 @@ Text.RegisterCaption("skill", {
     lead = { at = 40, say = function(caps) return Capital(Capped(caps)) end },
     tail = { at = 30, say = Capped },
 })
+
+-- A tooltip's last line for everything under one mark, as the core says
+-- it for every mark (Text.Foot, UI/Journey/Text/Tips.lua): when, from the
+-- first to the last ("Today at 12:47", "Today from 12:47 to 13:20"), then
+-- the level or levels ("Level 20", "Levels 19 to 20"). `list` is records
+-- with `t` and `level`.
+local function Foot(list, now)
+    local a = {}
+    for _, r in ipairs(list) do
+        if r.t then a.from, a.to = math.min(a.from or r.t, r.t), math.max(a.to or r.t, r.t) end
+        if r.level then
+            a.levelFrom, a.levelTo = math.min(a.levelFrom or r.level, r.level), math.max(a.levelTo or r.level, r.level)
+        end
+    end
+    return Text.Foot(a, now)
+end
+
+-- The tooltip of a flight of stairs (Mark.lua's `tips`): every cap
+-- reached on the spot told once together (9 Nov 2026; before, each cap's
+-- ProfessionCaps.Tip was stacked under the last, its time again each
+-- time). One profession: its caps in the order reached, as the caption
+-- says them ("First Aid at 75, then 150"), how far the training goes at
+-- the last, when and at what level. Several: "Two professions at their
+-- cap", each profession's caps on a line of its own ("First Aid at 75,
+-- then 150"; never run on with a middle dot, the copywriter skill), then
+-- from when to when.
+function ProfessionCaps.Tips(caps, now)
+    caps = { unpack(caps) }
+    table.sort(caps, function(a, b)
+        if (a.t or 0) ~= (b.t or 0) then return (a.t or 0) < (b.t or 0) end
+        return (tonumber(a.rank) or 0) < (tonumber(b.rank) or 0)
+    end)
+    local trades, by = {}, {}
+    for _, cap in ipairs(caps) do
+        local key = cap.skillLine or cap.name or cap
+        if not by[key] then
+            by[key] = {}
+            trades[#trades + 1] = by[key]
+        end
+        table.insert(by[key], cap)
+    end
+    local lines = {}
+    if #trades == 1 then
+        local far = AsFar(caps[#caps])
+        if far then lines[1] = Capital(far) end
+        lines[#lines + 1] = Foot(caps, now)
+        return Capital(Capped(caps)), lines
+    end
+    for _, list in ipairs(trades) do lines[#lines + 1] = Capital(Capped(list)) end
+    lines[#lines + 1] = Foot(caps, now)
+    return Capital((NUMBER[#trades] or tostring(#trades)) .. " professions at their cap"), lines
+end

@@ -48,7 +48,7 @@ local sheet
 -- The form
 --------------------------------------------------------------------------
 
--- "Added 6 October in Mulgore  ·  6 interactions on record". On a draft,
+-- "Added 6 October in Mulgore, 6 interactions on record". On a draft,
 -- that it is not added yet.
 function Entry.Meta(guid, draft)
     local entry = (draft or ns.Diary).Get(guid)
@@ -57,7 +57,7 @@ function Entry.Meta(guid, draft)
     local count = rows == 0 and "no interactions yet" or (Format.Count(rows, "interaction", "interactions") .. " on record")
     if draft then return "  " .. count end
     local place = entry.addedContext and entry.addedContext.zone
-    return ("Added %s%s  ·  %s"):format(Format.DayMonth(entry.addedAt, ns.Now()), place and (" in " .. place) or "", count)
+    return ("Added %s%s, %s"):format(Format.DayMonth(entry.addedAt, ns.Now()), place and (" in " .. place) or "", count)
 end
 
 local function Label(parent, text)

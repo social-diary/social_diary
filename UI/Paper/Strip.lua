@@ -441,8 +441,8 @@ function ns.UI.PaperStrip(parent, card)
     end
 
     -- `text` broken into lines no wider than `width` in `font` (FONT.small,
-    -- the probe, unless said), its own spacing kept within a line (the wide
-    -- space round a "·").
+    -- the probe, unless said), its own spacing kept within a line (a wide
+    -- space the words hold).
     local function Wrap(text, width, font)
         font = font or probe
         local lines, line, space = {}, "", ""

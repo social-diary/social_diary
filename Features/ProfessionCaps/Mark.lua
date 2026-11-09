@@ -29,6 +29,12 @@ ns.UI.JourneyPlate.RegisterMark("skill", {
     order = 20, cap = 10, count = "skills",
     radius = MARK.steps * MARK.w / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return ProfessionCaps.Tip(m.cap, now) end,
+    -- Every cap reached on the spot told once together (ProfessionCaps.Tips).
+    tips = function(list, now)
+        local caps = {}
+        for _, m in ipairs(list) do caps[#caps + 1] = m.cap end
+        return ProfessionCaps.Tips(caps, now)
+    end,
     arg = function(list)
         local rank
         for _, m in ipairs(list) do

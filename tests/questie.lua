@@ -365,6 +365,29 @@ Eq(Finales.Words(finale), "the end of " .. OPEN .. "Samophlange Manual" .. CLOSE
 tip, lines = Finales.Tip(finale, mock.now)
 Eq(tip, "The end of " .. OPEN .. "Samophlange Manual" .. CLOSE, "the tooltip's heading")
 Eq(lines[1], "A chain of 8 quests", "the tooltip's length")
+-- The tailpiece's tooltip (Finales.Tips, the mark's `tips`): a lone
+-- finale reads as its own tooltip does; several on one spot are counted
+-- in the title and each told once, then one span and level range.
+do
+    local title, said = Finales.Tips({ finale }, mock.now)
+    local lone = { Finales.Tip(finale, mock.now) }
+    Eq(title, lone[1], "a lone finale's title, as its own tooltip")
+    Eq(table.concat(said, "|"), table.concat(lone[2], "|"), "and its lines")
+    Check(said[#said]:find(", level %d+$"), "its when and level, once: " .. said[#said])
+    local seed = { title = "The Demon Seed", n = 7, t = mock.now - 600, level = 21 }
+    local f = { title = finale.title, n = finale.n, t = mock.now - 60, level = 22 }
+    title, said = Finales.Tips({ seed, f }, mock.now)
+    Eq(title, "Two chains finished", "two on a spot: counted in the title")
+    Eq(said[1], OPEN .. "The Demon Seed" .. CLOSE .. ", a chain of 7 quests", "each chain once, with its length")
+    Eq(said[2], OPEN .. "Samophlange Manual" .. CLOSE .. ", a chain of 8 quests", "then the next")
+    Check(said[3]:find("from") and said[3]:find(", levels 21 to 22$") and #said == 3,
+        "a span and a level range: " .. tostring(said[3]))
+    local four = { seed, f, { title = "A", t = mock.now }, { title = "B", t = mock.now } }
+    title, said = Finales.Tips(four, mock.now)
+    Eq(said[1], OPEN .. "The Demon Seed" .. CLOSE .. ", " .. OPEN .. "Samophlange Manual" .. CLOSE .. ", " .. OPEN
+        .. "A" .. CLOSE .. " and " .. OPEN .. "B" .. CLOSE, "past three, every title on one line")
+    Eq(#said, 2, "and when")
+end
 
 -- A chain whose first quest the diary never saw taken, one quest of it
 -- not down as done (the server let it be handed in all the same).

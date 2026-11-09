@@ -102,6 +102,7 @@ local FILES = {
     "pages",
     "paper_strip",
     "ui_layout",
+    "copy_rules",
     "toast_fight",
     "fonts",
 }

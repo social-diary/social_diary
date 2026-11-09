@@ -232,7 +232,9 @@ grammar:
   **"Open"** for a new page or view, **"Put the … away"** to close,
   **"Back to the …"** to go back.
 - Reuse the settled labels: Choose, Write, Done writing, Stop writing,
-  Tick / Untick, Less · more, Turn the page, Close the book.
+  Tick / Untick, Less or more, Earlier or later, Turn the page, Close the
+  book. A pair on one pad's two sides joins with "or", never a middle dot
+  (the copywriter skill).
 
 ## Input detection (settled, found in the client)
 

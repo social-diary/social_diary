@@ -103,7 +103,7 @@ local PROMPT = {
     nav = { "PAD1", "Go to the page", main = true },
     intro = { "PAD1", "Choose", main = true },
     link = { "PAD1", "Choose", main = true },
-    step = { { "PADDLEFT", "PADDRIGHT" }, "Less · more", main = true },
+    step = { { "PADDLEFT", "PADDRIGHT" }, "Less or more", main = true },
     back = { "PAD2", "Back to the sections" },
     key = { "PAD1", "Choose a keyboard key", main = true },
     book = { "PAD1", "Pick it up", main = true },

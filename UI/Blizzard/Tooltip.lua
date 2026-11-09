@@ -47,7 +47,7 @@ function ns.UI.SeenLine(guid, now)
     -- A single earlier sighting is too thin to be worth a line.
     if count < 2 then return nil, "seen only once before" end
 
-    return ("Seen %s  ·  last %s"):format(Times(count), Format.At(last, now))
+    return ("Seen %s, last %s"):format(Times(count), Format.At(last, now))
 end
 
 local function SeenLine(tooltip, guid)
@@ -74,7 +74,9 @@ local function OnUnitTooltip(tooltip, data)
     local entry = s.entry
 
     local head = entry.tags[1] and table.concat(entry.tags, ", ") or "in your diary"
-    if entry.relationship then head = head .. "  ·  " .. entry.relationship end
+    -- What they are to you, after their tags with a comma (never a middle
+    -- dot: the copywriter skill), "friend, questing buddy".
+    if entry.relationship then head = head .. ", " .. entry.relationship end
     tooltip:AddLine("|cffffd100Diary:|r " .. head, 1, 1, 1)
 
     local note = NoteLine(entry.note)
@@ -83,7 +85,7 @@ local function OnUnitTooltip(tooltip, data)
     end
 
     if s.timesMet > 0 then
-        tooltip:AddLine(("Met %s  ·  last %s"):format(Format.Count(s.timesMet, "time", "times"),
+        tooltip:AddLine(("Met %s, last %s"):format(Format.Count(s.timesMet, "time", "times"),
             Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
     else
         -- Before this encounter, as SeenLine: hovering them has just moved

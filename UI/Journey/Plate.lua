@@ -312,7 +312,13 @@ local function Clamp(v, lo, hi) return v < lo and lo or (v > hi and hi or v) end
 --   tip      function(m, now) → title, lines: each moment's words under
 --            the mouse (the feature's Text.lua's, looked up when asked:
 --            it loads after this file).
---   keep     optional: the plate field its marks are kept in, a list of
+--   tips     optional function(list, now) → title, lines: the words for
+--            every moment merged on one spot together, one account of
+--            them all (as a fight's stain tells its stops, 9 Nov 2026).
+--            Where set it is used for every spot, a lone moment's too
+--            (a list of one); where nil, each moment's `tip` is told in
+--            turn.
+--   keep    optional: the plate field its marks are kept in, a list of
 --            { x, y (on the card), list (the moments on it), at = { px, py }
 --            (on the page, for a margin card's leader), arg (draw's) }:
 --            plate.<keep>.
@@ -573,6 +579,89 @@ local function Tip(title, lines)
     local list = { { title } }
     for _, line in ipairs(lines or {}) do list[#list + 1] = { line, 1, 1, 1, true } end
     return list
+end
+
+-- The accounts the marks' tooltips are told from (UI/Journey/Text/Tips.lua):
+-- what is drawn as one mark, gathered here into one plain table, so the
+-- words need not know how the marks were merged (as Ink.Account does a
+-- pool's; 9 Nov 2026). Each widens `a`'s from, to, levelFrom and levelTo.
+local function Widen(a, from, to, lo, hi)
+    if from and (not a.from or from < a.from) then a.from = from end
+    to = to or from
+    if to and (not a.to or to > a.to) then a.to = to end
+    lo, hi = lo or hi, hi or lo
+    if lo and (not a.levelFrom or lo < a.levelFrom) then a.levelFrom = lo end
+    if hi and (not a.levelTo or hi > a.levelTo) then a.levelTo = hi end
+end
+
+-- A flight ring's flights (Text.Flights): which way each went from this
+-- map, and when they took off.
+local function FlightAccount(segs, mapID)
+    local a = { flights = {} }
+    for _, seg in ipairs(segs) do
+        local f = { other = seg.mapID1 == mapID and seg.mapID2 or seg.mapID1 }
+        if seg.mapID1 ~= seg.mapID2 then f.out = seg.mapID1 == mapID end
+        a.flights[#a.flights + 1] = f
+        Widen(a, seg.from, seg.from, seg.levelFrom, seg.levelFrom)
+    end
+    return a
+end
+
+-- A door's visits (Text.Dungeon): its name, how many, the time inside.
+local function DoorAccount(segs)
+    local a = { name = segs[1].name, visits = #segs, seconds = 0 }
+    for _, seg in ipairs(segs) do
+        local seconds = seg.seconds or ((seg.to or seg.from) - seg.from)
+        a.seconds = a.seconds + seconds
+        Widen(a, seg.from, seg.to or (seg.from + seconds), seg.levelFrom, seg.levelTo)
+    end
+    return a
+end
+
+-- A people's spot (Text.Company): its sessions (each once, with the
+-- longest share of anyone's time in it this entry, Recap's `seconds`),
+-- fights, notes and first sightings; the entry's level, or a sighting's.
+local function CompanyAccount(list, entry, fights)
+    local a = { sessions = {}, fights = {}, notes = {}, firsts = {}, index = fights }
+    local level = entry and entry.level
+    -- Each thing once: a session is a moment of each of its people, a note
+    -- of each it is about.
+    local held, seen = {}, {}
+    for _, m in ipairs(list) do
+        local key = m.mark or m.note or m.first
+        if m.kind == "session" and m.session then
+            local s = m.session
+            local seconds = m.seconds or ns.Sessions.Duration(s)
+            local h = held[s]
+            if not h then
+                -- From when it began (in this entry), not where its mark
+                -- was settled.
+                local from = s.startedAt or m.t
+                if entry and entry.from and from < entry.from then from = entry.from end
+                h = { session = s, seconds = seconds, from = from }
+                held[s] = h
+                a.sessions[#a.sessions + 1] = h
+            elseif seconds > h.seconds then
+                h.seconds = seconds
+            end
+            Widen(a, h.from, h.from + h.seconds, level, level)
+        elseif key and not seen[key] then
+            seen[key] = true
+            if m.kind == "fight" then
+                a.fights[#a.fights + 1] = m.mark
+                Widen(a, m.t, m.t, level, level)
+            elseif m.kind == "note" then
+                a.notes[#a.notes + 1] = m.note
+                Widen(a, m.t, m.t, level, level)
+            elseif m.kind == "first" then
+                a.firsts[#a.firsts + 1] = m.first
+                local t = m.first.t or m.t
+                Widen(a, t, t, level or m.first.level, level or m.first.level)
+            end
+        end
+    end
+    table.sort(a.notes, function(x, y) return (x.time or 0) < (y.time or 0) end)
+    return a
 end
 
 --------------------------------------------------------------------------
@@ -1671,14 +1760,8 @@ local function New(parent, slot)
                 Dot(markPool, x, y, FLIGHT.ring, Style.ACCENT, 0.95)
                 Dot(markInnerPool, x, y, FLIGHT.ring - 4, P, 1)
                 local segs = node.flights
-                hoverPool:Next(x, y, function()
-                    local tip = {}
-                    for _, seg in ipairs(segs) do
-                        local title, lines = Text.Flight(seg, mapID, now)
-                        Style.TipList(title, lines, tip)
-                    end
-                    return tip
-                end, nil, "flight")
+                hoverPool:Next(x, y, function() return Tip(Text.Flights(FlightAccount(segs, mapID), now)) end,
+                    nil, "flight")
             end
         end
 
@@ -1830,16 +1913,35 @@ local function New(parent, slot)
         local deaths = {}
         local function CoreMarks()
             -- Dungeons: the arch of their door; their name is in its tooltip.
+            -- The visits of one instance through one door (within
+            -- MARK.merge) are one door, its tooltip telling them all (9 Nov
+            -- 2026: two arches stepped apart for a run and its retry).
             doors = 0
+            local doorsAt = {}
             for _, h in ipairs(here) do
-                if h.m.kind == "dungeon" and doors < CAP.dungeons then
-                    doors = doors + 1
-                    local seg = h.m.seg
-                    local x, y = Apart(h.x, h.y, Radius("dungeon"))
-                    Halo(x, y, MARK.door + 5, true)
-                    SHAPES.dungeon(markPool, markInnerPool, x, y)
-                    hoverPool:Next(x, y, function() return Tip(Text.Dungeon(seg, now)) end, nil, "door")
+                if h.m.kind == "dungeon" then
+                    local seg, into = h.m.seg, nil
+                    for _, d in ipairs(doorsAt) do
+                        if d.name == seg.name and math.abs(d.x - h.x) <= MARK.merge
+                            and math.abs(d.y - h.y) <= MARK.merge then
+                            into = d
+                            break
+                        end
+                    end
+                    if not into and #doorsAt < CAP.dungeons then
+                        into = { x = h.x, y = h.y, name = seg.name, segs = {} }
+                        doorsAt[#doorsAt + 1] = into
+                    end
+                    if into then into.segs[#into.segs + 1] = seg end
                 end
+            end
+            for _, d in ipairs(doorsAt) do
+                doors = doors + 1
+                local segs = d.segs
+                local x, y = Apart(d.x, d.y, Radius("dungeon"))
+                Halo(x, y, MARK.door + 5, true)
+                SHAPES.dungeon(markPool, markInnerPool, x, y)
+                hoverPool:Next(x, y, function() return Tip(Text.Dungeon(DoorAccount(segs), now)) end, nil, "door")
             end
 
             -- The levels reached in its time (the entry's own, and in a week
@@ -1940,14 +2042,21 @@ local function New(parent, slot)
                     Halo(x, y, size + 4, true)
                 end
                 SHAPES[top.kind](markPool, markInnerPool, x, y)
+                -- One account of all on it (Text.Company, 9 Nov 2026: the
+                -- spot stacked each moment's tooltip, its title and time
+                -- over again); a person's page's moments, which bring their
+                -- own words (`tip`), each in turn.
+                local own = top.tip ~= nil
+                local list = c.list
                 hoverPool:Next(x, y, function()
-                    local list = Tip(MomentTip(top, entry, now, fights)) or {}
+                    if not own then return Tip(Text.Company(CompanyAccount(list, entry, fights), now)) end
+                    local tip = Tip(MomentTip(top, entry, now, fights)) or {}
                     for k = 2, #what do
                         local title, lines = MomentTip(what[k], entry, now, fights)
-                        if title and title ~= "" then list[#list + 1] = { title } end
-                        for _, line in ipairs(lines or {}) do list[#list + 1] = { line, 1, 1, 1, true } end
+                        if title and title ~= "" then tip[#tip + 1] = { title } end
+                        for _, line in ipairs(lines or {}) do tip[#tip + 1] = { line, 1, 1, 1, true } end
                     end
-                    return #list > 0 and list or nil
+                    return #tip > 0 and tip or nil
                 end, nil, "person")
                 local px, py = OnPage(x, y)
                 for _, m in ipairs(c.list) do
@@ -2002,7 +2111,9 @@ local function New(parent, slot)
                 if spec.halo then Halo(x, y, spec.halo, true) end
                 local arg = spec.arg and spec.arg(c.list) or nil
                 spec.draw(kit, x, y, arg)
-                hoverPool:Next(x, y, spec.tip and Tell(c.list, spec.tip) or nil, hover, spec.kind).spot =
+                local words = spec.tips and function() return Tip(spec.tips(c.list, now)) end
+                    or spec.tip and Tell(c.list, spec.tip) or nil
+                hoverPool:Next(x, y, words, hover, spec.kind).spot =
                     { kind = spec.kind, list = c.list }
                 local px, py = OnPage(x, y)
                 marks[#marks + 1] = { x = x, y = y, list = c.list, at = { px, py }, arg = arg }
@@ -2100,9 +2211,10 @@ local function New(parent, slot)
                 hovered = hovered + 1
                 local size = pool.droplet and HS[1] or math.max(HS[1], math.min(HS[2], 2 * pool.e.a1))
                 hoverPool:Next(pool.e.x, pool.e.y, function()
-                    local title, lines = Text.Stop(pool.seg, now, pool.more)
-                    lines[1] = Text.Pool(pool.seg)
-                    return Tip(title, lines)
+                    -- A stain (a fight's stops merged, and the fought roads
+                    -- it took in) is told whole, from its account (9 Nov);
+                    -- so is any pool, every stop drawn as it.
+                    return Tip((pool.stains and Text.Fought or Text.Stayed)(Trail.Account(pool), now))
                 end, size, "pool")
             end
         end

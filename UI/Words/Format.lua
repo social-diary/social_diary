@@ -31,7 +31,7 @@ function Format.Ago(time, now)
     if days < 2 then return "yesterday" end
     if days < 14 then return days .. " days ago" end
     if days < 60 then return math.floor(days / 7) .. " weeks ago" end
-    return date("%d %b %Y", time)
+    return tonumber(date("%d", time)) .. date(" %b %Y", time)
 end
 
 -- "1 time", "3 times".
@@ -108,10 +108,12 @@ function Format.At(time, now)
 
     if back == 0 then return "today at " .. clock end
     if back == 1 then return "yesterday at " .. clock end
+    -- The day unpadded, "on 6 Oct" (the copy rules: no zero padding).
+    local day = tonumber(date("%d", time))
     if date("%Y", time) == date("%Y", now) then
-        return date("on %d %b at ", time) .. clock
+        return "on " .. day .. date(" %b at ", time) .. clock
     end
-    return date("on %d %b %Y at ", time) .. clock
+    return "on " .. day .. date(" %b %Y at ", time) .. clock
 end
 
 -- The profile's "last seen" line, from a character record's `seen`.
@@ -244,7 +246,7 @@ function Format.ClassName(record)
     return token:sub(1, 1) .. token:sub(2):lower()
 end
 
--- "Level 6 Tauren Druid  ·  Horde  <Guild>", inked for the page. With
+-- "Level 6 Tauren Druid, Horde  <Guild>", inked for the page. With
 -- dropOwn the faction goes when it is the player's own, as it nearly
 -- always is out in the world; with "always" it goes whoever's it is (the
 -- person's page: the portrait and the book say enough).
@@ -259,7 +261,7 @@ function Format.WhoLine(record, guild, dropOwn)
     local own = dropOwn == "always" or (dropOwn and record.faction == UnitFactionGroup("player"))
     if not own and (record.faction == "Horde" or record.faction == "Alliance") then
         local hex = record.faction == "Horde" and ns.Style.HEX.horde or ns.Style.HEX.alliance
-        text = text .. (text ~= "" and "  ·  " or "") .. "|cff" .. hex .. record.faction .. "|r"
+        text = text .. (text ~= "" and ", " or "") .. "|cff" .. hex .. record.faction .. "|r"
     end
 
     if guild then text = text .. "  |cff" .. ns.Style.HEX.faded .. "<" .. guild .. ">|r" end

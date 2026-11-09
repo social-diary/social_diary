@@ -196,14 +196,14 @@ local function TimelineLines(items, guid)
             -- One tall entry; the details it leaves out are in the tooltip.
             local visit = item.visit
             local aside = Format.Duration(item.seconds)
-            if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. "  ·  " .. visit.difficulty end
+            if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. ", " .. visit.difficulty end
             local losses = {}
             if (visit.deaths or 0) > 0 then losses[#losses + 1] = Count(visit.deaths, "death", "deaths") end
             local wipes = ns.DungeonRun.Wipes(visit)
             if wipes > 0 then losses[#losses + 1] = Count(wipes, "wipe", "wipes") end
             lines[#lines + 1] = { item = item, when = when, text = visit.name or "An instance",
                 font = FONT.runTitle, depth = item.depth, full = full, height = VISIT.height,
-                visit = { visit = visit, aside = aside, losses = table.concat(losses, "  ·  "),
+                visit = { visit = visit, aside = aside, losses = table.concat(losses, ", "),
                     members = OtherMembers(visit, guid) } }
             sub = nil
             head = #lines
@@ -278,7 +278,7 @@ end
 
 -- A visit's duration, then its deaths and wipes, under its name.
 local function VisitAside(info)
-    return info.losses ~= "" and (info.aside .. "  ·  " .. info.losses) or info.aside
+    return info.losses ~= "" and (info.aside .. ", " .. info.losses) or info.aside
 end
 
 -- The `i`th of a visit's party as its card writes it: their first name,

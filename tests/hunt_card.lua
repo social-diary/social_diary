@@ -55,10 +55,69 @@ Eq(table.concat(ns.Hunts.KillLines(four, true), "|"), "killed 30" .. NB .. "As a
     "without the rates the short line counts them all")
 local title, tip = ns.Hunts.CardTip(BANDANAS, now, 2.2)
 Eq(title, ns.Hunts.Line(BANDANAS), "the card's tooltip title")
-Check(tip[1] == "For Red Linen Goods" and tip[2] == "Usually 2 each" and tip[3]:find("at level 9$"),
+Check(tip[1] == "For Red Linen Goods" and tip[2] == "Usually 2 each" and tip[3]:find(", level 9$"),
     "the card's tooltip without the rates: " .. table.concat(tip, "; "))
 _, tip = ns.Hunts.CardTip(HORNS, now, 2.2)
 for _, line in ipairs(tip) do Check(not line:find("^Usually"), "the rates' card says the usual") end
+
+--------------------------------------------------------------------------
+Section("the tally's tooltip: every hunt on it told once")
+
+-- Hunts.Tips (the marks' `tips`). A lone hunt: what it was for, the kills
+-- each with "Killed" (no figure bare), how far off the rates, the quest,
+-- when and the level, each once.
+local DOT = ", "
+local function At(t) return (ns.UI.Format.At(t, now):gsub("^%l", string.upper)) end
+title, tip = ns.Hunts.Tips({ HORNS }, now)
+Eq(title, "5" .. NB .. "Intact Raptor Horns", "a lone hunt's title: what it was for")
+Eq(tip[1], "Killed 17" .. NB .. "Sunscale Scytheclaws and 9" .. NB .. "Sunscale Lashtails", "its kills by kind")
+Eq(tip[2], "14" .. NB .. "more kills than expected", "how far off the rates")
+Eq(tip[3], "For \226\128\156Raptor Horns\226\128\157", "the quest, quoted")
+Eq(tip[4], At(HORNS.t) .. DOT .. "level 15", "when and the level, once")
+Eq(#tip, 4, "four lines")
+title, tip = ns.Hunts.Tips({ BANDANAS }, now)
+Eq(title, "6" .. NB .. "Red Linen Bandanas", "without the rates")
+Eq(tip[1], "Killed 37" .. NB .. "Defias Rogue Wizards", "one kind")
+Eq(tip[2], "For \226\128\156Red Linen Goods\226\128\157", "no rates, no line for them")
+title, tip = ns.Hunts.Tips({ { kills = 12, need = 1, item = "Kobold Candle", t = now, level = 7 } }, now)
+Eq(title, "Kobold Candle", "one item, named as one")
+Eq(tip[1], "12" .. NB .. "kills", "kills of no named creature: never \"Killed 12 kills\"")
+
+-- Two hunts on one spot: counted in the title, the kills summed by kind
+-- across them, the items, how far off in all, one span and level range.
+local SCYTHES = { kills = 20, need = 3, item = "Scytheclaw Talon", name = "Sunscale Scytheclaw", npcID = 3256,
+    title = "Talons", expected = 8, level = 16, t = now - 1800 }
+title, tip = ns.Hunts.Tips({ HORNS, SCYTHES }, now)
+Eq(title, "Two slow hunts", "two on a spot: counted in the title")
+Eq(tip[1], "Killed 37" .. NB .. "Sunscale Scytheclaws and 9" .. NB .. "Sunscale Lashtails",
+    "the kills summed by kind, most first")
+Eq(tip[2], "For 5" .. NB .. "Intact Raptor Horns and 3" .. NB .. "Scytheclaw Talons", "each item once")
+Eq(tip[3], "26" .. NB .. "more kills than expected in all", "how far off, in all")
+Eq(tip[4], At(HORNS.t):gsub(" at ", " from ") .. os.date(" to %H:%M", SCYTHES.t) .. DOT .. "levels 15 to 16",
+    "a span and a level range, not a time each")
+Eq(#tip, 4, "four lines")
+for _, line in ipairs(tip) do Check(not line:find(" more [a-z]+ hunts?"), "no count of the rest: " .. line) end
+-- One without the rates: no sum that would not be the whole.
+title, tip = ns.Hunts.Tips({ HORNS, BANDANAS }, now)
+Check(not table.concat(tip, "|"):find("expected"), "a sum over some is not told: " .. table.concat(tip, "|"))
+Eq(#tip, 3, "the kills, the items, when")
+-- Past three kinds, the rest together, every kill counted.
+title, tip = ns.Hunts.Tips({ { kills = 30, need = 5, item = "Fang", name = "A", byKind = { [1] = { n = 12,
+    name = "Raptor" }, [2] = { n = 9, name = "Wolf" }, [3] = { n = 6, name = "Boar" }, [4] = { n = 3,
+    name = "Bear" } }, t = now }, HORNS }, now)
+Eq(tip[1], "Killed 17" .. NB .. "Sunscale Scytheclaws, 12" .. NB .. "Raptors and 27" .. NB .. "others",
+    "past three kinds, the rest together")
+-- Good luck: the star's title says so.
+title, tip = ns.Hunts.Tips({ { kills = 4, need = 7, expected = 58.3, name = "Plainstrider", item = "Plainstrider Meat",
+    t = now, level = 6 }, { kills = 1, need = 1, expected = 10, name = "Sharptalon", item = "Sharptalon's Claw",
+    t = now, level = 6 } }, now, true)
+Eq(title, "Two lucky hunts", "two lucky hunts' title")
+Eq(tip[1], "Killed 4" .. NB .. "Plainstriders and 1" .. NB .. "Sharptalon", "a kill of one beside others is counted")
+Eq(tip[3], "63" .. NB .. "fewer kills than expected in all", "fewer in all")
+Eq(tip[4], At(now) .. DOT .. "level 6", "one time, one level")
+_, tip = ns.Hunts.Tips({ { kills = 1, need = 1, expected = 10, name = "Sharptalon", item = "Sharptalon's Claw", t = now } },
+    now, true)
+Eq(tip[1], "Dropped by the first Sharptalon", "one kill alone: no figure")
 
 --------------------------------------------------------------------------
 Section("which hunt")

@@ -41,12 +41,18 @@ Duels.MARK = MARK
 -- every mark that tells something keeps its place and a flag landing on
 -- one steps aside (Apart, with its tether); the campfire stays last, as it
 -- says less than a duel, which names a person. Two series on one spot are
--- one flag (the plate's own MARK.merge), its tooltip telling each. Kept
+-- one flag (the plate's own MARK.merge), its tooltip telling them as one. Kept
 -- (plate.duelMarks) for the plate's one note (Slip.lua, plate.duel).
 ns.UI.JourneyPlate.RegisterMark("duel", {
     order = 65, cap = 20, count = "duels",
     radius = MARK.h / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return Duels.Tip(m.duel, now) end,
+    -- Every series on the spot in one account (Text.lua's Duels.Tips).
+    tips = function(list, now)
+        local recs = {}
+        for _, m in ipairs(list) do recs[#recs + 1] = m.duel end
+        return Duels.Tips(recs, now)
+    end,
     keep = "duelMarks", chosen = "duel",
     choose = function(marks) return Duels.Slip.Choose(marks) end,
     -- The pole and its dot, then the cloth: two quads split at the

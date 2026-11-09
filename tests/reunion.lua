@@ -36,7 +36,7 @@ local lines = mock.UnitTooltip(A)
 Eq(#lines, 3, "tooltip line count")
 Check(lines[1]:find("friend") and lines[1]:find("questing buddy"), "tags line: " .. tostring(lines[1]))
 Eq(lines[2], "helped me with Nagas", "the note's first line only")
-Eq(lines[3], "Met 1 time  ·  last 3 days ago", "times met and last met")
+Eq(lines[3], "Met 1 time, last 3 days ago", "times met and last met")
 Eq(#mock.UnitTooltip(C), 0, "tooltip lines for somebody outside the diary")
 Eq(#mock.UnitTooltip(mock.secret(A)), 0, "tooltip lines for a secret GUID")
 Eq(#mock.UnitTooltip(nil), 0, "tooltip lines with no GUID")
@@ -1092,14 +1092,14 @@ mock.RunTimers()
 mock.now = mock.now + DAY
 Eq(UnitFactionGroup("player"), "Horde", "the player is not Horde")
 -- Guild names run to 24 characters in the client. Each case: the race and
--- class, the guild, and the line the card should take. The mock counts
--- "·" as two characters, so the whole Night Elf line is 234 px to the
--- 230 there is: it loses the race, and keeps the faction.
+-- class, the guild, and the line the card should take. The Night Elf line
+-- without its guild is 216 px (36 characters) to the 230 there is: it
+-- keeps the race and the faction, and the guild goes.
 local WHO = {
     { { race = "NightElf", class = "WARRIOR", faction = "Alliance" }, "Knights of the Ashen Vow",
-        "Level 60 Warrior  ·  Alliance" },
+        "Level 60 Night Elf Warrior, Alliance" },
     { { race = "NightElf", class = "WARRIOR", faction = "Alliance" }, nil,
-        "Level 60 Warrior  ·  Alliance" },
+        "Level 60 Night Elf Warrior, Alliance" },
     { { race = "Tauren", class = "WARRIOR", faction = "Horde" }, "Brotherhood of the Plain",
         "Level 60 Tauren Warrior" },
     { { race = "Troll", class = "SHAMAN", faction = "Horde" }, "Kin", "Level 60 Troll Shaman  <Kin>" },
@@ -1134,9 +1134,9 @@ local text = ns.UI.ReunionText({
     record = { level = 60, race = "NightElf", class = "WARRIOR", faction = "Alliance" },
 })
 Eq(#text.who, 4, "who lines to choose from")
-Eq(Plain(text.who[1]), "Level 60 Night Elf Warrior  ·  Alliance  <Knights of the Ashen Vow>", "the whole who line")
-Eq(Plain(text.who[3]), "Level 60 Warrior  ·  Alliance", "the who line without the race")
-Eq(Plain(text.who[4]), "Warrior  ·  Alliance", "the shortest who line")
+Eq(Plain(text.who[1]), "Level 60 Night Elf Warrior, Alliance  <Knights of the Ashen Vow>", "the whole who line")
+Eq(Plain(text.who[3]), "Level 60 Warrior, Alliance", "the who line without the race")
+Eq(Plain(text.who[4]), "Warrior, Alliance", "the shortest who line")
 
 --------------------------------------------------------------------------
 Section("the last-seen throttle counts from the last read")

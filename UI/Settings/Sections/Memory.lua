@@ -14,8 +14,8 @@ local Number = Kit.Number
 local function SizeText(bytes)
     local rows = ns.Interactions.Totals()
 
-    return ("%d in the diary  ·  %d characters known  ·  %d sessions  ·  %d interactions"
-        .. "  ·  %d sightings.  About %d KB on disk.")
+    return ("%d in the diary, %d characters known, %d sessions, %d interactions"
+        .. " and %d sightings.  About %d KB on disk.")
         :format(ns.Diary.Count(), ns.Characters.Count(), ns.CountKeys(ns.db.sessions), rows,
             ns.CountKeys(ns.db.sightings), math.ceil(bytes / 1024))
 end

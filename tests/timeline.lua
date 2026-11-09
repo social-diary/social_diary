@@ -136,7 +136,7 @@ Eq(ex.hidden, 9, "folded-away count")
 local _, text, sub, icon, story = ns.UI.DescribeItem(ex, PAL)
 local zone = ex.zones[1]
 Eq(text, "Traded for 1 min" .. (zone and (" in " .. zone) or ""), "exchange headline")
-Eq(sub, "2 trades: gave 3x " .. JERKY_LINK .. "; got 3x " .. JERKY_LINK .. "  ·  7 messages", "exchange details")
+Eq(sub, "2 trades: gave 3x " .. JERKY_LINK .. "; got 3x " .. JERKY_LINK .. ", 7 messages", "exchange details")
 Eq(icon, "trade", "exchange icon is its headline's")
 Check(story:find("and chatted\n"), "the tooltip does not name every activity: " .. story)
 
@@ -190,7 +190,7 @@ Eq(short.lines[2].row.context.given[1].link, SWORD_LINK, "the green trade is a m
 Eq(short.hidden, 2, "the white trade and the whisper fold away")
 _, text, sub = ns.UI.DescribeItem(short, PAL)
 Eq(text, "Hunted Mor\226\128\153Ladim together in Duskwood over 20 min", "short session headline: the rare is its story")
-Eq(sub, "1 quest  ·  1 trade", "short session details count only the chatter, and not one message")
+Eq(sub, "1 quest, 1 trade", "short session details count only the chatter, and not one message")
 _, text, _, icon = ns.UI.DescribeItem(short.lines[1], PAL)
 Eq(text, "Killed Mor'Ladim", "rare moment line")
 Eq(icon, "rare", "rare moment icon")
@@ -217,7 +217,7 @@ Eq(#long.lines, 0, "named moments repeated as lines")
 _, text, sub = ns.UI.DescribeItem(long, PAL)
 Eq(text, "Hunted Mor\226\128\153Ladim together in Westfall and Duskwood over 3 h 5 min; Trade reached lv 24",
     "long session headline: the rare, and past an hour the level after it")
-Eq(sub, "18 quests  ·  gave " .. SWORD_LINK .. "  ·  2 deaths  ·  5 messages",
+Eq(sub, "18 quests, gave " .. SWORD_LINK .. ", 2 deaths, 5 messages",
     "long session details: nothing the headline says")
 
 -- Facts past the budget go to the tooltip only.
@@ -229,8 +229,8 @@ for i = 1, 3 do Row("whisper_in", t0 + 1100 + i, { excerpt = "x" .. i }, SHORT) 
 Row("trade", t0 + 1200, { context = { given = JERKY } }, SHORT)
 _, text, sub, _, story = ns.UI.DescribeItem(ns.Timeline.For(PAL)[1], PAL)
 Eq(text, "Trade reached lv 6 with you in Duskwood", "a short session's level is its story")
-Eq(sub, "1 quest  ·  1 trade  ·  1 death", "details not cut to the budget")
-Check(story:find("1 death  ·  3 messages", 1, true), "the tooltip lost the cut fact: " .. story)
+Eq(sub, "1 quest, 1 trade, 1 death", "details not cut to the budget")
+Check(story:find("1 death\n3 messages", 1, true), "the tooltip lost the cut fact: " .. story)
 
 -- The page: folded by default, a click opens it, another folds it.
 Fresh(t0, {
@@ -357,7 +357,7 @@ Eq(rfk.visit.name, "Razorfen Kraul", "the dungeon-only session did not give way"
 Eq(rfk.hidden, 3, "the session's chat did not go with the visit")
 local _, text, sub = ns.UI.DescribeItem(rfk, G)
 Eq(text, "Razorfen Kraul, 35 min, 4 of 6 bosses", "visit headline")
-Check(sub:find("^6 deaths  ·  1 wipe  ·  with Brom, Kaelith and Zuri"), "visit details: " .. sub)
+Check(sub:find("^6 deaths, 1 wipe, with Brom, Kaelith and Zuri"), "visit details: " .. sub)
 
 -- Inside a session, the visit is always shown and only counted on the
 -- session's details.
@@ -421,7 +421,7 @@ Eq(entry.text, "Razorfen Kraul", "the visit name is not as written")
 Eq(entry.font, ns.Style.FONT.runTitle, "the visit name is not in the run card's title")
 Check(entry.height and entry.height > 20, "the visit entry is not taller than a line")
 Eq(entry.visit.aside, "35 min", "the visit's duration")
-Eq(entry.visit.losses, "6 deaths  ·  1 wipe", "the visit's deaths and wipes")
+Eq(entry.visit.losses, "6 deaths, 1 wipe", "the visit's deaths and wipes")
 Eq(#entry.visit.members, 3, "the party, less the user and the page's person")
 for i = 1, #lines do
     Check(not (lines[i].item == entry.item and lines[i] ~= entry and lines[i].text),

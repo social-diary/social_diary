@@ -608,20 +608,17 @@ function FindCard.New(parent)
     return card
 end
 
--- The slip's tooltip, as the pouch's: each first the item was, and how
--- and when it came.
+-- The slip's tooltip, as the pouch's (Firsts.Tips): every first the item
+-- was, told once, and how and when it came.
 function FindCard.Tip(item, now)
-    local list = {}
-    for _, m in ipairs(item.moments) do
-        local title, line = ns.Firsts.Tip(m, now)
-        list[#list + 1] = { title }
-        if line and line ~= "" then list[#list + 1] = { line, 1, 1, 1, true } end
-    end
+    local title, lines = ns.Firsts.Tips(item.moments, now)
+    local list = { { title } }
+    for _, line in ipairs(lines) do list[#list + 1] = { line, 1, 1, 1, true } end
     return list
 end
 
 -- The box's tooltip on `owner`: the item's own (its link), and under it
--- how and when each first came, in flavour gold. The name alone where the
+-- the firsts it was, how and when it came, once, in flavour gold. The name alone where the
 -- client will not show the link.
 function FindCard.ShowTip(owner, item, now)
     if not item then return end
@@ -631,10 +628,13 @@ function FindCard.ShowTip(owner, item, now)
         and pcall(GameTooltip.SetHyperlink, GameTooltip, item.link)
     if not shown then GameTooltip:SetText(Firsts.ItemName(item.link) or Firsts.Name(item.rec) or "?") end
     local C = TIP.colour
-    for _, m in ipairs(item.moments) do
-        local title, line = Firsts.Tip(m, now, true)
-        GameTooltip:AddLine(line ~= "" and (title .. ", " .. line) or title, C[1], C[2], C[3], true)
-    end
+    -- The firsts and how it came on one line ("Your first bag and first
+    -- green, looted"), then when: Firsts.Tips, its name left to the link.
+    local title, lines = Firsts.Tips(item.moments, now, true)
+    local how = #lines > 1 and table.remove(lines, 1)
+    GameTooltip:AddLine(how and (title .. ", " .. how:sub(1, 1):lower() .. how:sub(2)) or title, C[1], C[2], C[3],
+        true)
+    for _, line in ipairs(lines) do GameTooltip:AddLine(line, C[1], C[2], C[3], true) end
     GameTooltip:Show()
 end
 

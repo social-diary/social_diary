@@ -223,7 +223,7 @@ local CREASE = {
 local MAKERS = {
     gnome = { sender = { "WIZZLEBOLT & DAUGHTER", "Diarywrights, Tinker Town" },
         address = {}, postmark = { "TINKER", "TOWN" } },
-    goblin = { sender = { "GRIZZIK'S DIARIES", "Ratchet \194\183 no refunds" },
+    goblin = { sender = { "GRIZZIK'S DIARIES", "Ratchet, no refunds" },
         address = { "To the new owner", "(paid in full)" }, aside = true, postmark = { "RATCHET" } },
 }
 

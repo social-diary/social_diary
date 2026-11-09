@@ -9,8 +9,9 @@
 -- 14 px, not a person's 16, so it fits the narrowest column (122 px); the
 -- tag's small tape slanted over its top left corner, clear of the words. No
 -- heading, icon, count or struck words: one slip a plate however many fires
--- (each keeps its own mark), and its tooltip lists every sitting there. A
--- left click opens nothing; a right click opens the form (Core/Custom.lua).
+-- (each keeps its own mark), and its tooltip tells every sitting there as one
+-- account (Campfire.Tips). A left click opens nothing; a right click opens
+-- the form (Core/Custom.lua).
 --
 -- A fire the player changed or wrote is outside that one slip: it has a slip of
 -- its own, the same slip in the same pool, that is not filler (Slip.Customs and
@@ -122,13 +123,12 @@ function Slip.New(parent)
 
     function slip:SetCampfire(chosen, seed, now)
         self.chosen = chosen
+        -- Every sitting on the plate in one account, as a fire's mark
+        -- tells its own (Campfire.Tips).
         local function Tip()
-            local tip = {}
-            for _, m in ipairs(chosen.list) do
-                local title, lines = Campfire.Tip(m.campfire or m, now)
-                Style.TipList(title, lines, tip)
-            end
-            return tip
+            local fires = {}
+            for _, m in ipairs(chosen.list) do fires[#fires + 1] = m.campfire or m end
+            return Style.TipList(Campfire.Tips(fires, now))
         end
         local rand = ns.UI.Pen.Random(Seed(seed .. ":tape"))
         local T = SLIP.tape

@@ -918,7 +918,7 @@ local m2 = Meeting("session", "session", s2)
 Eq(m2 and m2.x, 0.5, "a session on a road goes to the point nearest in time")
 local title, mlines = Text.Meeting(m1, t + 5000)
 Check(title:find("Tester Testerson"), "the session mark says who: " .. title)
-Check(mlines[#mlines]:find("level 11"), "the session mark says at what level")
+Check(mlines[#mlines]:find(", level 11$"), "the session mark says at what level: " .. mlines[#mlines])
 
 -- A note at its own position on the zone's map; one on a cave's map by time.
 local n1 = ns.Notes.Add(TESTER, "By the lake.", { time = t + 100, where = { mapID = MULGORE, x = 0.7, y = 0.7 } })
@@ -2229,7 +2229,7 @@ local what = Text.MarginWhat({ { kind = "session", seconds = 2100 }, { kind = "n
 -- never left alone on a strip's last line.
 Eq(what, "35\194\160min together and a\194\160note", "a margin note")
 Eq(Text.MarginWhat({ { kind = "fight", guid = KOKO, outcome = "lost" } }, 5), "killed\194\160you", "killed by them")
-Eq(Text.MarginWhat({ { kind = "first", metLevel = 4 } }, 1), "first seen  \194\183  you'd meet again at level 4",
+Eq(Text.MarginWhat({ { kind = "first", metLevel = 4 } }, 1), "first seen, and you'd meet again at level 4",
     "a first sighting's margin note")
 Eq(Text.MarginWho(nil), "with someone", "a stranger's margin note")
 -- Their own note on the strip (11 Oct, the user: not "a note" but what it
@@ -2273,9 +2273,10 @@ Eq(Text.Hindsight({ guid = KOKO, mapID = MULGORE, level = 1, metLevel = 4 }),
     "You first saw Koko in Mulgore. You'd meet again at level 4.", "the hindsight line")
 local tip = Text.FirstSeen({ guid = KOKO, t = d0, level = 1 }, now)
 Eq(tip, "First seen: Koko Skybluff", "the lozenge's tooltip")
-Eq(Text.Pool({ seconds = 1500, act = { questsOut = 2 }, from = 0, to = 1500 }), "Quested here, 25 min", "a pool's tooltip")
+Eq((select(2, Text.Stop({ seconds = 1500, act = { questsOut = 2 }, from = 0, to = 1500 })))[1], "Quested here for 25 min",
+    "a pool's tooltip")
 Eq(Text.ZoneFoot({ levelMin = 1, levelMax = 5, seconds = 6 * 3600 }, { "Dos", "Koko" }, 2),
-    "levels 1 to 5  \194\183  6 h  \194\183  with Dos and Koko  \194\183  2 fights", "the full page's foot line")
+    "levels 1 to 5, 6 h, with Dos and Koko, 2 fights", "the full page's foot line")
 
 -- On their People page: one faded line, where they were first seen.
 ns.db.characters[KOKO].firstSeen = d0 + 600

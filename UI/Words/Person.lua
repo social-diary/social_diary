@@ -286,7 +286,7 @@ PersonText.GLIMPSE = {
     daysLater = "%d days later", daysEarlier = "%d days earlier",
     levels = "you at level %d, they at %d", mine = "at level %d",
     beside = "in %s", stood = "you were in %s",
-    joinLevels = "%s  \194\183  %s",
+    joinLevels = "%s, %s",
     more = "and %d more",
     seenDays = "Seen on %d days since %s. ",
     ["until"] = "Pencilled in until %s",

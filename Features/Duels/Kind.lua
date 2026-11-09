@@ -106,8 +106,9 @@ end
 -- fled", "Fled a duel with Bram"; a series by its balance, flights counted
 -- with their side, "Lost 3 duels to Bram and won 2" (the user's own, 15
 -- Oct), "Won 3 duels against Bram"; each " in Sentinel Hill, Westfall".
--- A series with a flight in it says so after the place: "  ·  they fled
--- once", "  ·  you fled twice". Figures, as the timeline counts.
+-- A series with a flight in it says so after the place: ", and they fled
+-- once", ", and you fled twice and they fled once". Figures, as the
+-- timeline counts.
 local function Line(row, guid)
     local c = row.context or {}
     local them = guid and ns.Characters.Name(guid) or nil
@@ -130,7 +131,7 @@ local function Line(row, guid)
     local flights = {}
     if (c.fled or 0) > 0 then flights[#flights + 1] = ns.UI.Format.You(row.me, "{you} fled ") .. Times(c.fled) end
     if (c.theyFled or 0) > 0 then flights[#flights + 1] = "they fled " .. Times(c.theyFled) end
-    if #flights > 0 then where = where .. "  \194\183  " .. table.concat(flights, ", ") end
+    if #flights > 0 then where = where .. ", and " .. ns.UI.Format.List(flights) end
     return text .. where
 end
 

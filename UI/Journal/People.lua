@@ -116,7 +116,7 @@ local function RefreshList(keepScroll)
     local filters = ActiveFilters()
     J.journal.sortButton:SetText(SortLabel())
     J.journal.filterButton:SetText(#filters == 0 and "All people" or Count(#filters, "filter", "filters"))
-    J.journal.filters:SetText(#filters > 0 and table.concat(filters, "  ·  ") or "")
+    J.journal.filters:SetText(#filters > 0 and table.concat(filters, ", ") or "")
     -- The pad's rows were handed round (UI/Journal/PeoplePad.lua); with
     -- the pad down this does nothing.
     ns.UI.Pad.Refresh()

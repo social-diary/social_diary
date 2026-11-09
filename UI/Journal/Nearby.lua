@@ -188,7 +188,7 @@ local function TooltipLines(row)
     who[#who + 1] = Format.RaceName(record)
     who[#who + 1] = Format.ClassName(record)
     local line = table.concat(who, " ")
-    if record.faction then line = line .. "  ·  " .. record.faction end
+    if record.faction then line = line .. ", " .. record.faction end
     lines[#lines + 1] = { line, 1, 1, 1 }
 
     local now = ns.Now()

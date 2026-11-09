@@ -417,6 +417,93 @@ do
         end
     end
 
+    -- The stain's account, for its tooltip (9 Nov, in the client: it told
+    -- only its longest stop): every stop and fought road in it, its deaths
+    -- and quests summed, the levels across them, from the first start to
+    -- the last end.
+    local sheet = Grind(20)
+    for i, seg in ipairs(sheet.stops) do
+        seg.subZone, seg.mapID = "Raptor Grounds", 1413
+        seg.levelFrom, seg.levelTo = i < 4 and 19 or 20, i < 3 and 19 or 20
+    end
+    local _, _, apools = Ink.Build(sheet, box, { kind = Kinds })
+    local a = Ink.Account(apools[1])
+    Eq(a.combat, 550 + 20 + 6 * 20, "the account's fighting is not the stain's")
+    Eq(a.deaths, 1, "the account lost the stain's death")
+    Eq(a.questsOut, 2, "the account lost the quests handed in on the stain")
+    Eq(a.parts, 7 + 6, "the account does not hold every stop and road")
+    Eq(a.from, 1000, "the account does not start at the first stop")
+    Eq(a.to, 1900 + 120, "the account does not end at the last stop")
+    Eq(a.levelFrom, 19, "the account's first level")
+    Eq(a.levelTo, 20, "the account's last level")
+    Eq(a.place, "Raptor Grounds", "the account's place")
+    -- In words: one account, the fighting once, no bookkeeping.
+    local Text = ns.UI.JourneyText
+    local title, lines = Text.Fought(a, a.from + 3000)
+    local clock = function(t) return os.date("%H:%M", t) end
+    Eq(title, "Raptor Grounds", "a stain's tooltip title")
+    Eq(lines[1], "Fought here on and off, 11 min in all", "a stain's fighting")
+    Eq(lines[2], "Died here", "a stain's death")
+    Eq(lines[3], "Handed in 2 quests", "a stain's quests")
+    Eq(lines[4], "Today from " .. clock(1000) .. " to " .. clock(2020) .. ", levels 19 to 20",
+        "a stain's span and levels")
+    Eq(#lines, 4, "a stain's tooltip is longer than four lines")
+    -- Two deaths, quests both ways, a level up, on one stop.
+    title, lines = Text.Fought({ place = "Lushwater Oasis", from = 1000, to = 1600, combat = 400, deaths = 2,
+        questsIn = 1, questsOut = 3, levelFrom = 15, levelTo = 16, parts = 1 }, 4000)
+    Eq(table.concat(lines, "|"), "Fought here for 6 min|Died here twice|Took a quest, handed in 3|Today from "
+        .. clock(1000) .. " to " .. clock(1600) .. ", levels 15 to 16", "a fight with deaths and a level up")
+    -- A single short fight on its own: "Fought here" once.
+    title, lines = Text.Stop({ kind = "stop", subZone = "Razor Hill", from = 1000, to = 1120, seconds = 120,
+        act = { combat = 40 }, levelFrom = 12, levelTo = 12 }, 4000, 0)
+    Eq(table.concat(lines, "|"), "Fought here briefly|Today from " .. clock(1000) .. " to " .. clock(1120)
+        .. ", level 12", "a short fight's tooltip")
+    -- Within a minute, only its start.
+    _, lines = Text.Fought({ from = 1020, to = 1030, combat = 10, parts = 1, mapID = 1413 }, 4000)
+    Eq(lines[#lines], "Today at " .. clock(1020), "a fight within a minute is a span")
+    -- Over days, both ends told with their day, never "From on 1 Oct" nor
+    -- a padded "01 Oct" (9 Nov: Format.At's "on 01 Oct at 06:00" was let
+    -- through).
+    local day = os.time({ year = 2026, month = 10, day = 1, hour = 6, min = 0 })
+    local today = os.time({ year = 2026, month = 10, day = 9, hour = 12, min = 0 })
+    Eq(Text.Span(day, today - 3600, today), "From 1 Oct at 06:00 to today at 11:00", "a span over days")
+    Eq(Text.Span(today - 13 * 3600, today - 3600, today), "From yesterday at 23:00 to today at 11:00",
+        "a span over midnight")
+    Eq(Text.Span(day, day + 1800, today), "On 1 Oct from 06:00 to 06:30", "a span on an old day")
+    Eq(Text.Foot({ from = day, to = day + 1800, levelFrom = 20, levelTo = 19 }, today),
+        "On 1 Oct from 06:00 to 06:30, levels 19 to 20", "a foot's levels in order")
+
+    -- A pool that is not a fight's: how long in all, fighting and deaths on
+    -- one line, its quests, the foot; four lines at most.
+    title, lines = Text.Stayed({ place = "The Crossroads", kind = "questing", seconds = 1500, parts = 3, combat = 200,
+        deaths = 2, questsIn = 2, questsOut = 3, from = day, to = day + 1500, levelFrom = 13, levelTo = 13 }, today)
+    Eq(title .. "|" .. table.concat(lines, "|"), "The Crossroads|Quested here on and off, 25 min in all|Fought for 3 min"
+        .. " and died twice|Took 2 quests, handed in 3|On 1 Oct from 06:00 to 06:25, level 13", "a pool's account")
+
+    -- A door's visits: the second visit counted, the time in all.
+    title, lines = Text.Dungeon({ name = "Wailing Caverns", visits = 2, seconds = 5220, from = day, to = day + 7200,
+        levelFrom = 16, levelTo = 17 }, today)
+    Eq(title .. "|" .. table.concat(lines, "|"), "Wailing Caverns|Went in twice, 1 h 27 min in all|On 1 Oct from"
+        .. " 06:00 to 08:00, levels 16 to 17", "a door's visits")
+    -- A person's page's door (no level, no end): its time inside and when.
+    _, lines = Text.Dungeon({ name = "Ragefire Chasm", seconds = 1800, from = day }, today)
+    Eq(table.concat(lines, "|"), "Inside for 30 min|On 1 Oct from 06:00 to 06:30", "a lone door")
+
+    -- A people's spot: the fight titles it (its mark is on top), the rest a
+    -- line each, two notes and a first sighting cut to four lines, the
+    -- second note going before the sighting.
+    local session = { startedAt = day, participants = { ["Player-1-A"] = {} } }
+    title, lines = Text.Company({ sessions = { { session = session, seconds = 2700 } },
+        fights = { { outcome = "won" }, { outcome = "won" } },
+        notes = { { text = "First note.", about = { ["Player-1-A"] = true } }, { text = "Second note." } },
+        firsts = { { guid = "Player-1-B" } }, from = day, to = day + 2700, levelFrom = 20, levelTo = 20 }, today)
+    Eq(title, "Won 2 fights", "a spot's fights are its title, counted")
+    Eq(#lines, 4, "a spot's tooltip is longer than four lines: " .. table.concat(lines, "|"))
+    Eq(lines[1], "With someone for 45 min", "a spot's company under its fight")
+    Eq(lines[2], "First note.", "a spot's note")
+    Eq(lines[3], "First saw someone", "a spot's first sighting kept over a second note")
+    Eq(lines[4], "On 1 Oct from 06:00 to 06:45, level 20", "a spot's foot")
+
     -- The same ground fought on a minute and an hour: the hour's larger. And a
     -- fight with no room for its blot is its ground once, in rust.
     local function Lone(seconds)

@@ -135,6 +135,41 @@ do
 end
 
 --------------------------------------------------------------------------
+Section("the mark's tooltip: every card on its spot, one account")
+
+do
+    local spec = ns.UI.JourneyPlate.MARKS.met
+    local function M(rec) return { kind = "met", t = rec.t, met = rec } end
+    local function Clock(t) return date("%H:%M", t) end
+    local tom = { t = now - 900, who = "Old Tom", what = "fished off the pier", level = 10 }
+    local title, lines = spec.tips({ M(tom) }, now)
+    Eq(title, "With Old Tom", "a lone card: who")
+    Eq(lines[1], "fished off the pier", "a lone card: what")
+    Eq(lines[2], "Today at " .. Clock(tom.t) .. ", level 10", "a lone card: when, and the level")
+    Eq(#lines, 2, "a lone card: nothing doubled")
+    title, lines = Met.Tip({ t = now - 900, who = "Old Tom", what = "" }, now)
+    Eq(#lines, 1, "an empty line is no line")
+
+    local again = { t = now - 300, who = "Old Tom", what = "fished off the pier", level = 11 }
+    title, lines = spec.tips({ M(tom), M(again) }, now)
+    Eq(title, "With Old Tom", "met twice: the name once")
+    Eq(lines[1], "fished off the pier", "met twice: the line once")
+    Eq(lines[2], "Today at " .. Clock(tom.t) .. " and " .. Clock(again.t) .. ", levels 10 to 11",
+        "met twice: both times, the levels spanned")
+    Eq(#lines, 2, "met twice: no repeats")
+
+    local wenna = { t = now - 600, whoGuid = OTHER, who = "Wenna", what = "shared a camp", level = 10 }
+    local stranger = { t = now - 500, level = 10 }
+    title, lines = spec.tips({ M(tom), M(wenna), M(stranger) }, now)
+    Eq(title, "With Old Tom, Wenna and someone", "several: each named once, a stranger last")
+    Eq(lines[1], "Old Tom, fished off the pier", "several: whose line it is")
+    Eq(lines[2], "Wenna, shared a camp", "several: each line once")
+    Eq(lines[3], "Today at " .. Clock(tom.t) .. ", " .. Clock(wenna.t) .. " and " .. Clock(stranger.t)
+        .. ", level 10", "several: every time, the level once")
+    Eq(#lines, 3, "several: four lines at most")
+end
+
+--------------------------------------------------------------------------
 Section("on the page, a person's strip")
 
 ns.UI.ShowJournal()

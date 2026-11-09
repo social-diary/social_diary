@@ -186,7 +186,7 @@ function ns.UI.ReunionText(snap)
     local text = {
         heading = warning and WARNINGS[warning][reason] or HEADINGS[reason],
         name = snap.name,
-        tags = tags[1] and table.concat(tags, "  ·  ") or nil,
+        tags = tags[1] and table.concat(tags, ", ") or nil,
         relationship = snap.relationship,
         stories = has.foe and FightStories(snap.fights) or { Story(snap, true), Story(snap, false) },
         warning = warning,

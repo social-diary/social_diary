@@ -16,6 +16,12 @@ Plate.RegisterMark("met", {
     order = 36, cap = 20, count = "acquaintances",
     radius = MARK.together / 2 + 1, halo = MARK.together + 4,
     tip = function(m, now) return Met.Tip(m.met, now) end,
+    -- Every card on the spot in one account (Text.lua's Met.Tips).
+    tips = function(list, now)
+        local recs = {}
+        for _, m in ipairs(list) do recs[#recs + 1] = m.met end
+        return Met.Tips(recs, now)
+    end,
     keep = "metMarks",
     draw = function(kit, x, y) Plate.SHAPE.session(kit, x, y) end,
 })

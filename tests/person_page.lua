@@ -338,7 +338,7 @@ local inner = info.cardW - (V.padX + V.medallion + V.gutter) - V.padX
 Check(titleW + V.overhang + (pipsW > 0 and pipsW + V.spread or 0) <= inner + 0.5,
     "the run's title and its marks do not fit their card")
 m:SetFontObject(ns.Style.FONT.small)
-m:SetText(info.aside .. "  ·  " .. info.losses)
+m:SetText(info.aside .. ", " .. info.losses)
 Check(m:GetStringWidth() <= inner + 0.5, "the run's time and losses do not fit their card")
 
 --------------------------------------------------------------------------

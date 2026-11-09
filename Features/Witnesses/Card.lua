@@ -985,6 +985,12 @@ ns.UI.JourneyPlate.RegisterMark("witnessed", {
     order = 34, cap = 20, count = "witnesses",
     radius = ns.CloseCalls.MARK.stem.h / 2 + 1, halo = false, hover = ns.CloseCalls.MARK.dot,
     tip = function(m, now) return Witnesses.Tip(Witnesses.Written(m.witnessed), now) end,
+    -- Those on one spot told together (Text.lua's Tips).
+    tips = function(list, now)
+        local ws = {}
+        for i, m in ipairs(list) do ws[i] = Witnesses.Written(m.witnessed) end
+        return Witnesses.Tips(ws, now)
+    end,
     keep = "witnessedMarks",
     -- Chosen with the marks rather than in a pass: nothing here depends on what
     -- another pass leaves, and nothing else clears it.

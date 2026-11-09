@@ -8,7 +8,7 @@ local addonName, ns = ...
 
 local QuestFinales = ns.QuestFinales
 local Text = ns.UI.JourneyText
-local Capital, MapName, When, Spoken = Text.Capital, Text.MapName, Text.When, Text.Spoken
+local Capital, MapName, Spoken = Text.Capital, Text.MapName, Text.Spoken
 local NUMBER, WORDS = Text.NUMBER, Text.WORDS
 
 -- A quest's title as the diary quotes it: “Crown of the Earth”.
@@ -74,8 +74,58 @@ function QuestFinales.Tip(f, now)
         local zone = MapName(start.mapID)
         lines[#lines + 1] = "Begun " .. (zone and ("in " .. zone .. ", ") or "") .. ns.UI.Format.At(start.t, now)
     end
-    lines[#lines + 1] = When(f.t, f.level, now)
+    lines[#lines + 1] = Text.Foot({ from = f.t, levelFrom = f.level }, now)
     return Capital(QuestFinales.Words(f)), lines
+end
+
+-- A tooltip's last line for everything under one mark, as the core says
+-- it for every mark (Text.Foot, UI/Journey/Text/Tips.lua): when, from the
+-- first to the last ("Today at 12:47", "Today from 12:47 to 13:20"), then
+-- the level or levels ("Level 20", "Levels 19 to 20"). `list` is records
+-- with `t` and `level`.
+local function Foot(list, now)
+    local a = {}
+    for _, r in ipairs(list) do
+        if r.t then a.from, a.to = math.min(a.from or r.t, r.t), math.max(a.to or r.t, r.t) end
+        if r.level then
+            a.levelFrom, a.levelTo = math.min(a.levelFrom or r.level, r.level), math.max(a.levelTo or r.level, r.level)
+        end
+    end
+    return Text.Foot(a, now)
+end
+
+-- The tooltip of a tailpiece (Mark.lua's `tips`): every chain that ended
+-- on the spot told once together (9 Nov 2026; before, each finale's
+-- QuestFinales.Tip was stacked under the last, its time again each time).
+-- One: "The end of “Crown of the Earth”", how long the chain was, where
+-- and when it began, when it ended and at what level. Several: "Two chains
+-- finished", each chain once with its length ("“The Demon Seed”, a chain
+-- of 7 quests"; more than three, their titles on one line), then from
+-- when to when.
+function QuestFinales.Tips(finales, now)
+    local lines = {}
+    if #finales == 1 then
+        local f = finales[1]
+        if (f.n or 0) > 1 then lines[#lines + 1] = "A chain of " .. f.n .. " quests" end
+        local start = f.started
+        if start and start.t then
+            local zone = MapName(start.mapID)
+            lines[#lines + 1] = "Begun " .. (zone and ("in " .. zone .. ", ") or "") .. ns.UI.Format.At(start.t, now)
+        end
+        lines[#lines + 1] = Foot(finales, now)
+        return Capital(QuestFinales.Words(f)), lines
+    end
+    if #finales <= 3 then
+        for _, f in ipairs(finales) do
+            lines[#lines + 1] = Quoted(f.title) .. ((f.n or 0) > 1 and (", a chain of " .. f.n .. " quests") or "")
+        end
+    else
+        local titles = {}
+        for i, f in ipairs(finales) do titles[i] = Quoted(f.title) end
+        lines[1] = Text.List(titles)
+    end
+    lines[#lines + 1] = Foot(finales, now)
+    return Capital((NUMBER[#finales] or tostring(#finales)) .. " chains finished"), lines
 end
 
 -- Its paragraph in the level's prose: the chains finished, a sentence
