@@ -55,6 +55,8 @@ Core/Pace/Deadmines.lua
 Core/Pace/RazorfenKraul.lua
 Core/Pace/RazorfenDowns.lua
 Core/Pace/StormwindStockade.lua
+Core/Pace/WailingCaverns.lua
+Core/Pace/ShadowfangKeep.lua
 Core/DungeonPace.lua
 Core/RunPage.lua
 Core/Roster.lua

@@ -1,0 +1,219 @@
+{
+  "map_id": 33,
+  "slug": "shadowfang_keep",
+  "lua_name": "ShadowfangKeep",
+  "exclude": [
+    "Arugal",
+    "Sorcerer Ashcrombe",
+    "Deathstalker Adamant",
+    "Deathstalker Vincent"
+  ],
+  "no_pull": [],
+  "normal_pulls": [],
+  "boss_names": {},
+  "pieces": {
+    "800331": [
+      {
+        "name": "the kitchen and the dining hall (Razorclaw, Silverlaine)",
+        "rects": [
+          [
+            0.02,
+            0.15,
+            0.17,
+            0.35
+          ],
+          [
+            0.09,
+            0.04,
+            0.32,
+            0.16
+          ]
+        ],
+        "z": [
+          0,
+          90
+        ],
+        "game": [
+          -138.761,
+          0.0,
+          -445.247,
+          2321.797,
+          -333.935,
+          -0.0
+        ]
+      },
+      {
+        "name": "Springvale's floor",
+        "rects": [
+          [
+            0.15,
+            0.13,
+            0.52,
+            0.48
+          ]
+        ],
+        "z": [
+          90,
+          104
+        ],
+        "game": [
+          -102.633,
+          0.0,
+          -438.965,
+          2392.14,
+          -329.224,
+          -0.0
+        ]
+      },
+      {
+        "name": "the way in and the courtyard (Rethilgore)",
+        "rects": [
+          [
+            0.45,
+            0.04,
+            0.98,
+            0.37
+          ]
+        ],
+        "z": [
+          0,
+          90
+        ],
+        "game": [
+          -115.145,
+          0.0,
+          -407.048,
+          2389.238,
+          -305.286,
+          -0.0
+        ]
+      },
+      {
+        "name": "the wall walk (Odo)",
+        "rects": [
+          [
+            0.33,
+            0.33,
+            0.9,
+            0.7
+          ],
+          [
+            0.45,
+            0.7,
+            0.9,
+            0.76
+          ]
+        ],
+        "z": [
+          90,
+          104
+        ],
+        "game": [
+          -25.593,
+          0.0,
+          -312.457,
+          2305.633,
+          -234.342,
+          -0.0
+        ]
+      },
+      {
+        "name": "the den",
+        "rects": [
+          [
+            0.08,
+            0.62,
+            0.26,
+            0.85
+          ]
+        ],
+        "z": [
+          90,
+          120
+        ],
+        "game": [
+          225.725,
+          0.0,
+          -511.544,
+          2235.655,
+          -383.658,
+          -0.0
+        ]
+      },
+      {
+        "name": "Fenrus's tower",
+        "rects": [
+          [
+            0.27,
+            0.72,
+            0.44,
+            0.9
+          ]
+        ],
+        "z": [
+          120,
+          135
+        ],
+        "game": [
+          270.403,
+          0.0,
+          -511.544,
+          2312.263,
+          -383.658,
+          -0.0
+        ]
+      },
+      {
+        "name": "the observatory",
+        "rects": [
+          [
+            0.46,
+            0.78,
+            0.63,
+            0.92
+          ]
+        ],
+        "z": [
+          135,
+          150
+        ],
+        "game": [
+          308.441,
+          0.0,
+          -511.544,
+          2379.671,
+          -383.658,
+          -0.0
+        ]
+      },
+      {
+        "name": "the top (Nandos, Arugal)",
+        "rects": [
+          [
+            0.64,
+            0.79,
+            0.86,
+            0.99
+          ]
+        ],
+        "z": [
+          135,
+          200
+        ],
+        "game": [
+          313.409,
+          40.387,
+          -508.701,
+          2487.808,
+          -381.526,
+          -53.85
+        ]
+      }
+    ]
+  },
+  "drop_spawns": [
+    "20018696"
+  ],
+  "summons": {},
+  "notes": "9 Nov 2026 (2026-11-09), not yet checked in the client. Spawns: ref/shadowfangkeep.csv, row for row the local spawn table. DCF draws the keep as one picture (800331, 'all floors', no bounds) of eight pieces at their own scales, which the usual way crosses at its seven linked steps (Markers.lua MarkerLinks): each piece is a floor of its own here (`pieces`, keys 8003311 to 8003318), with its rectangles on the picture and an affine to game yards. How they were found: the courtyard, the kitchen and dining hall, Springvale's floor and the wall walk drawn upright like Blizzard's floors (picture x from game y, y from game x), one scale and offset each, by least squares over the bosses on them and the linked steps (each the same place on two pieces): bosses and links within 7 yd. The four towers (den, Fenrus, observatory, the top) are spirals whose steps stack, so links cannot scale them: the top by Nandos and Arugal (0.25 yd a pixel, turned 6 degrees), the other three at its scale, placed by Fenrus and by the steps in from the wall walk and up to the top. Checked by eye with Dev/pace/overview.py. Heights, after the user's note (the keep runs from z 76 to 156, Springvale and Odo above the courtyard): below 90 the courtyard and the halls; 90 to 104 Springvale's floor, the wall walk and the den; 104 to 120 the den; 120 to 135 Fenrus; 135 to 150 the observatory or the top; above, the top. Dropped: one Shadowfang Ragetooth (20018696, z 138) that projects onto no drawn piece. Excluded: Arugal (20301719, npc 10000: the scripted appearance in the courtyard; Archmage Arugal, 20016255, is the boss), the prisoners Sorcerer Ashcrombe and Deathstalker Adamant in Rethilgore's room, and Deathstalker Vincent (friendly). Fel Steeds and Shadow Chargers stand on the same three spots (alternatives, as are a Tormented Officer and the Deathsworn Captain at one spot): kept, so a death to either finds the pull, though the pack counts six. Forever's new secret boss (through the new book) is in neither the table nor DCF's list; deaths there fall back to time. No entrance given. Check: fit by pieces, DCF's pins within 7.2 yd (Odo the worst), 41 of 53 packs within 15 yd of the way (median 8.2 yd), the whole run about 46 minutes in the model."
+}

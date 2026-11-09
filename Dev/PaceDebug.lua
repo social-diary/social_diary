@@ -186,10 +186,13 @@ local function Report()
         Say("  no fit: the data's bosses and way in do not match the map (FIT.most %d yd)", Pace.FIT.most)
         return
     end
-    if fit.method == "bounds" then
+    if fit.method == "bounds" or fit.method == "pieces" then
         local floors = {}
-        for _, f in ipairs(fit.order or { fit.floor }) do floors[#floors + 1] = tostring(f) end
-        Say("  fit: floor %s by %s art bounds; DCF's pins against the spawns: worst %s, %.1f yd (%d compared; a note on the map's icons, not the fit)",
+        for _, f in ipairs(fit.order or { fit.floor }) do
+            local pieces = fit.floors[f] and fit.floors[f].pieces
+            floors[#floors + 1] = tostring(f) .. (pieces and (" (%d pieces)"):format(#pieces) or "")
+        end
+        Say("  fit: floor %s by %s " .. (fit.method == "pieces" and "pieces" or "art bounds") .. "; DCF's pins against the spawns: worst %s, %.1f yd (%d compared; a note on the map's icons, not the fit)",
             table.concat(floors, ", "), #floors > 1 and "their" or "its", tostring(fit.worstName or "-"), fit.worst,
             fit.anchors)
     else

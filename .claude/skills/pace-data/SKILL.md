@@ -27,7 +27,8 @@ starting:
 |---|---|---|
 | One floor with bounds | Ragefire Chasm, Stormwind Stockade, Razorfen Kraul, Razorfen Downs (all shipped 4 Nov 2026); Zul'Farrak (held: its packs lie off DCF's way) | config only |
 | Several floors, each with bounds | Deadmines (shipped 4 Nov 2026), Blackfathom Deeps, Uldaman, Stratholme, Maraudon, Blackrock Depths, Scholomance, Scarlet Monastery | config, plus `heights` where the floors' pictures overlap |
-| Combined maps (floor IDs 80xxxx) | Shadowfang Keep, Wailing Caverns, Gnomeregan, Sunken Temple, Blackrock Spire | not yet: needs a fit per piece |
+| DCF's own art over one Blizzard floor (80xxxx, no bounds) | Wailing Caverns (800431 over 279, shipped 9 Nov 2026) | config plus `bounds`: the Blizzard floor's rectangle, after checking the bosses' pins land where those bounds put their spawns |
+| DCF's "all floors" overviews (80xxxx, pieces at their own scales) | Shadowfang Keep (800331, shipped 9 Nov 2026); Gnomeregan, Sunken Temple, Blackrock Spire to do | config plus `pieces`, registered by hand (below) |
 | No public spawns | the seven new Forever dungeons | no |
 
 A file for a dungeon that cannot fit does no harm (the fit is refused and
@@ -66,6 +67,9 @@ Start from `Dev/pace/ragefire_chasm.json`.
 | `normal_pulls` | non-elite creatures that are a real pull (by default a pack of non-elites only, mostly critters, is left out) |
 | `summons` | `{ "npc": { "by": npc, "name", "note" } }`: an NPC in no pack (a pet, a summoned add) to the NPC that brings it, so a death to it goes to its summoner's pull |
 | `heights` | several floors only: `{ "<uiMapID>": [zmin, zmax] }`. Each spawn goes on the floor whose art bounds hold it; where two floors' pictures overlap, the floor whose height range holds its `z` (zmin inclusive, zmax not). A spawn no rule settles stops the build and is listed: widen or add a range. Spawns link into packs only on one floor, and a guard is only a guard on its boss's floor (Deadmines: the foundry is a spiral, its ledge on the mines' floor and Gilnid 30 yd under it on the cove's, at the same x and y) |
+| `bounds` | `{ "<uiMapID>": [x1, y1, x2, y2] }` for a floor DCF drew as its own art without bounds (ArtCustom), where that art is a Blizzard floor's picture redrawn: that floor's `bounds` from `Art.lua`. Check first: project each anchored boss's spawn through them (picture x = (y2 − y)/(y2 − y1), y = (x2 − x)/(x2 − x1)) and compare with DCF's pins; most should agree within a few percent (Wailing Caverns: 7 of 8 within 2%, Kresh's pin is in another part of the lake). DCF's own bounds win where a floor has them |
+| `pieces` | `{ "<uiMapID>": [ { name, rects, z, game } ] }` for an overview: each piece's rectangles on the picture (fractions; pieces are tried in list order, so list a piece before one whose rectangle overlaps it), its height range `z` [min, max) and `game` [g1..g6], the affine gx = g1 + g2·fx + g3·fy, gy = g4 + g5·fx + g6·fy. Each spawn goes on the first piece whose `z` holds it and whose rectangles hold it once projected; none stops the build (`drop_spawns`: GUIDs, the reason in `notes`). How to find them: below |
+| `drop_spawns` | spawn GUIDs left out (a spawn no piece holds) |
 | `notes` | what was decided and checked, with the date |
 
 To look at a dungeon's spawns: `awk -F, '$1==<map_id>' <csv> | cut -d, -f4-7 | sort | uniq -c -f1` (npc,
@@ -81,6 +85,34 @@ bounds settle it, not the height). A pack's floor is written into the data
 (`floor = <uiMapID>`); in the client, `/sd pace map` draws each pack on its
 own floor's sheet.
 
+Bosses the table cannot anchor: one with several spawn rows (alternative
+spawn points, one active a run: Lady Anacondra's four) is left out by the
+build by itself, no config needed; one missing from the table (summoned by
+an event: Mutanus) can take a creature standing where he is fought by
+`boss_names` (Naralex). Build only the dungeon you are working on
+(`Dev/pace/*.json` also writes held dungeons such as Zul'Farrak: delete
+what should not ship).
+
+### An overview's pieces
+
+DCF's way crosses the overview's pieces at its linked steps
+(`Markers.lua`, `MarkerLinks`: the same stair drawn on two pieces), so the
+way's stretches between them are the pieces. For each:
+
+- Look first: `python3 -I Dev/pace/overview.py Dev/pace/<slug>.json out.png --spawns`
+  draws the art (DCF's BLPs decoded), the way, the built packs and, with
+  `--spawns`, every spawn through its piece. Keep PNGs out of the repo.
+- Big pieces drawn like Blizzard's floors (picture x from game y, y from
+  game x, not turned): one scale and offset each (gx = a − b·py, gy = c −
+  b·px in picture pixels), least squares over the bosses on it and the
+  links (both ends one game point). Shadowfang Keep: within 7 yd.
+- Towers and spirals: their steps stack, so links pull the scale to
+  nothing. Fit a piece with two bosses on it as a similarity (scale and
+  turn); give the others its scale, placed by one boss or one link each.
+- Rectangles: every point of DCF's way must land on its own stretch's
+  piece (`tests/pace_data.lua` fails a point on none); then the packs by
+  eye, and the usual check.
+
 ## 3. Build and check
 
 ```
@@ -91,7 +123,7 @@ PACE_EXTRA=Core/Pace/<LuaName>.lua PACE_ONLY=<map_id> PACE_SHOW=1 luajit tests/r
 `PACE_EXTRA` loads the file before it is in the TOC. What to read in the
 output, and what is wrong when it fails:
 
-- **fit … by bounds**: the floors' art bounds were used (several floors
+- **fit … by bounds**: the floors' art bounds (or the config's `bounds`) were used (several floors
   are listed). "by anchors" means the one floor has none (the pins decide,
   12 yd limit); several floors with one lacking bounds: no fit.
 - **DCF's pins: worst …**: how far DCF drew each pin from its boss's

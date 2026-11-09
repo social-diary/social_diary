@@ -61,7 +61,9 @@ for _, id in ipairs(ids) do
         Check(#(p.names or {}) >= 1 and #(p.npcs or {}) >= 1, tag .. ": who is in it")
         for _, npc in ipairs(p.npcs) do npcs[npc] = true end
         if p.boss then Check(D.Boss(id, p.boss), tag .. ": guards a boss the map does not know") end
-        if p.floor then Check(D.Floor(id, p.floor), tag .. ": drawn on a floor the map does not know") end
+        -- A floor of the map's, or a piece of one (an overview's: uiMapID * 10 + n).
+        local sheet = p.floor and data.pieces and data.pieces[math.floor(p.floor / 10)] and math.floor(p.floor / 10) or p.floor
+        if p.floor then Check(D.Floor(id, sheet), tag .. ": drawn on a floor the map does not know") end
     end
     for npc, by in pairs(data.summons or {}) do
         Check(npcs[by], ("%s: summon %d's summoner %d in no pack"):format(name, npc, by))
@@ -75,7 +77,7 @@ for _, id in ipairs(ids) do
         if p.floor then Check(fit.floors[p.floor], name .. " pack " .. k .. ": on a floor not fitted") end
     end
     -- On several floors, every pack says which; on one, none does.
-    local several = fit.order and #fit.order > 1
+    local several = fit.order and (#fit.order > 1 or (fit.floors[fit.order[1]] or {}).pieces ~= nil)
     for k, p in ipairs(data.packs) do
         Check((p.floor ~= nil) == (several == true), name .. " pack " .. k .. (several and ": no floor" or ": a floor on a one-floor map"))
     end
@@ -84,6 +86,11 @@ for _, id in ipairs(ids) do
     local course = Pace.Course({ instanceID = id }, route)
     Check(course, name .. ": no course on the usual way")
     Check(#course.pulls >= 1, name .. ": no pull on the usual way")
+    -- An overview's pieces: every point of the usual way on one of them.
+    for i, f in ipairs(course.floors) do
+        Check(course.game[i], ("%s: point %d of the usual way on no piece"):format(name, i))
+    end
+    Check(#course.floors == #route, name .. ": a point of the usual way on no fitted floor")
     -- How near the way drawn (on the pack's own floor) each pack lies, in yards.
     local near, dists = 0, {}
     for _, p in ipairs(data.packs) do

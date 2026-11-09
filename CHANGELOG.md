@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changes
+
+- _Dungeon View_ now places deaths, wipes and rolls by the packs in Wailing Caverns and Shadowfang Keep
+
 ### Fixes
 
 - Dungeons, battlegrounds and boss fights no longer cause repeated Lua errors

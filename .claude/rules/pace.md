@@ -30,7 +30,7 @@ Ragefire Chasm on the dev machine.
 | The clock | `DungeonRun.Active` | time inside (`spans`) less, for each pause between fights (`visit.pauses`), what lies beyond `IDLE.most` (120 s) |
 | The fights | `Core/Instances.lua` `Combat`, `Capture/Instances.lua` | `PLAYER_REGEN_*` inside a run; only pauses of `PAUSE.least` (30 s) or more are saved, `PAUSE.most` (200) a run |
 | Wipes and near wipes | `DungeonRun.Notes` | half the group (near: half less one) dead to trash within `WIPE_WINDOW` (60 s) of the first death |
-| The data on the map | `Core/DungeonPace.lua` `Fit` | each floor the bosses stand on by its **art bounds** (DCF `Art.lua` `bounds = {x1, y1, x2, y2}`: picture x from game y2→y1, picture y from game x2→x1), all in one frame of game yards (`fit.floors[uiMapID]`, `fit.order`, `fit.floor` the first); DCF's pins only compared (`worst`, `worstName`). Several floors with one lacking bounds: no fit. One floor without bounds: least squares through the pins and entrance, refused past `FIT.most` (12 yd) or under `FIT.least` (4) |
+| The data on the map | `Core/DungeonPace.lua` `Fit` | each floor the bosses stand on by its **art bounds** (DCF `Art.lua`; for DCF's own art without them, the data's `bounds`, or its `pieces` for an overview, each piece a floor `uiMapID * 10 + n`; `{x1, y1, x2, y2}`: picture x from game y2→y1, picture y from game x2→x1), all in one frame of game yards (`fit.floors[uiMapID]`, `fit.order`, `fit.floor` the first); DCF's pins only compared (`worst`, `worstName`). Several floors with one lacking bounds: no fit. One floor without bounds: least squares through the pins and entrance, refused past `FIT.most` (12 yd) or under `FIT.least` (4) |
 | The packs laid on the way | `DungeonPace.Course` | each pack a pull on the first stretch of its own floor (`pack.floor`, from the build; a stretch from one floor to the next takes either) passing within `PULL.radius` (15 yd); a boss's guard (`boss`) at that boss's stop |
 | A leg as the model takes it | `DungeonPace.Leg` | from point i0 (or an anchor's yards) to the boss at i1; nil backwards, across a broken stretch, to a point that is no boss |
 | Time → yards | `Core/Pace/Model.lua` (the handover's, unchanged) | effort profile (walk 5 yd/s, pull 20 s + 12 s an elite, boss 60 s), pace spread, deaths weighted to pulls; never past the boss |
@@ -87,6 +87,16 @@ Ragefire Chasm on the dev machine.
   Gilnid's. Heights are not enough on their own (the ship's deck lies at
   the mines' height), nor are bounds (the pictures overlap for 280 yd):
   bounds first, then height.
+- **An overview's pieces are floors** (9 Nov 2026, Shadowfang Keep). DCF
+  draws some dungeons as one picture of pieces at their own scales, the
+  way jumping between them at linked steps. Each piece (`pieces[uiMapID]`:
+  rectangles on the picture, an affine to game yards) becomes a floor of
+  its own in the fit, keyed uiMapID * 10 + n with `sheet` the picture's;
+  `Course` puts each point of the way on the piece holding it, and packs
+  carry their piece (by height, then the piece's rectangles, at build
+  time), so a pull lies only on its own piece's stretches, as on the
+  Deadmines' floors. The pieces are not Blizzard's data: they were
+  registered from the bosses and links, checked over the art.
 - **No kill counts.** `PARTY_KILL` inside an instance comes with the victim
   and the killer secret (probe, 3 Nov: 30 of 31 hidden). Counting kills
   along the way was dropped; the dev probe (`/sd pace`) still counts them.
@@ -106,9 +116,11 @@ Ragefire Chasm on the dev machine.
   corridor took a wipe there). The spawn table has `z`; the way has none.
   Across floors the build's `heights` cure it where the floors are drawn
   apart.
-- **Drawn floors only.** Combined maps (pieces at their own scales, floor
-  IDs 80xxxx) need the bounds per piece; until then they keep Plan A
-  (`.claude/pace-plan.md`, local). A moment on the walk between two floors
+- **Drawn floors only.** DCF's own art over one Blizzard floor takes that
+  floor's rectangle from the data's `bounds` (Wailing Caverns, 9 Nov 2026:
+  800431 over 279). An "all floors" overview takes the data's `pieces`
+  (Shadowfang Keep, 9 Nov 2026), registered by hand; Gnomeregan, Sunken
+  Temple and Blackrock Spire keep Plan A until theirs are. A moment on the walk between two floors
   is drawn at the nearer end.
 - **The way through the pins.** A route stop is the boss's pin: where a pin
   is drawn away from the boss, the way bends to it, and packs by the real
@@ -143,7 +155,10 @@ Adding a dungeon: `.claude/skills/pace-data/`.
 - `tests/pace.lua`: fit, course, legs, the killer, wipes, pauses, the clock,
   anchors, the real sheet, `/sd pace`; real runs replayed with invented
   names; the Deadmines' two floors (the course down, pulls on their own
-  floor, a death drawn on one floor's sheet only).
+  floor, a death drawn on one floor's sheet only); Wailing Caverns' data
+  bounds; Shadowfang Keep's pieces (each a floor, the way on them, the
+  jumps short, guards on their boss's piece).
+- `Dev/pace/overview.py`: the data over DCF's own art (a PNG, local).
 - `tests/pace_data.lua`: every `ns.PaceData` file (`PACE_EXTRA`, `PACE_ONLY`,
   `PACE_SHOW` env vars): a fit, the bosses DCF's, packs whole, legs with
   pulls, and at least `ON_WAY` (40%) of the packs within 15 yd of the way.

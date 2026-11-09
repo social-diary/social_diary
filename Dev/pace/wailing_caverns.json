@@ -1,0 +1,28 @@
+{
+  "map_id": 43,
+  "slug": "wailing_caverns",
+  "lua_name": "WailingCaverns",
+  "exclude": [
+    "Disciple of Naralex",
+    "Naralex"
+  ],
+  "no_pull": [],
+  "normal_pulls": [
+    "Deviate Crocolisk",
+    "Deviate Python",
+    "Deviate Lasher"
+  ],
+  "boss_names": {
+    "Mutanus the Devourer": "Naralex"
+  },
+  "summons": {},
+  "notes": "9 Nov 2026 (2026-11-09), not yet checked in the client. Spawns: ref/wailingcaverns.csv, row for row the local spawn table. DCF draws Wailing Caverns as its own art (uiMap 800431, no bounds); that art lies over Blizzard's floor 279 (Art.lua bounds -410.1, -375.9, 214.2, 560.5, the same 3:2 picture): through those bounds seven of the eight anchored bosses land within 2% of the picture of their DCF pins, so `bounds` gives 800431 the 279 rectangle. Kresh's pin is 105 yd from his spawn (he swims the lake; DCF pins him elsewhere): a note only. Lady Anacondra has four alternative spawn points (spawn guids 20027366, 20300999 to 20301001), one active a run: no anchor, and no guards of hers; the way still runs to her pin. Mutanus the Devourer is not in the table (Naralex's event summons him at the end): Naralex stands in for him by boss_names (he fights at Naralex's side). Excluded: the Disciple of Naralex (friendly, the escort, at the way in) and Naralex. normal_pulls: Deviate Crocolisk, Deviate Python, Deviate Lasher (non-elite, but real pulls that kill; 16 packs back in); Snakes and Biletoads (critters) stay out. No entrance given (the Disciple stands by it, but no checked position). Event spawns not in the table (the murlocs and deviates that attack in the escort, Mutanus) fall back to time. Check: fit by bounds, 66 of 112 packs within 15 yd of the way (median 9.7 yd), the whole run about 68 minutes in the model.",
+  "bounds": {
+    "800431": [
+      -410.1,
+      -375.9,
+      214.2,
+      560.5
+    ]
+  }
+}
