@@ -196,7 +196,7 @@ local function TooltipLines(row)
         lines[#lines + 1] = { Fmt(L["Level %d when you first saw them"], e.firstLevel), 0.66, 0.66, 0.66 }
     end
     if e.dealt and DEALT_TEXT[e.dealt] then
-        lines[#lines + 1] = { Fmt(L["%1$s at %2$s##time"], DEALT_TEXT[e.dealt], date("%H:%M", e.dealtAt)), 1, 0.82, 0 }
+        lines[#lines + 1] = { Fmt(L["%1$s at %2$s##time"], DEALT_TEXT[e.dealt], Format.Clock(e.dealtAt)), 1, 0.82, 0 }
     end
     -- Where they were seen, in full, worded as the profile's line will be
     -- once they are added: "in Goldshire, Elwynn Forest". DayEntries has

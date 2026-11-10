@@ -396,7 +396,7 @@ function Hunts.LuckyTag(hunt, form)
     end
     local D = Hunts.LUCKY_DROPPED
     if LUCKY_LINES[form] == 2 then return { { text = D, under = D }, { text = soon } } end
-    return { { text = Fmt(L["%1$s %2$s"], D, soon), under = D } }
+    return { { text = Fmt(L["%1$s %2$s##dropped when"], D, soon), under = D } }
 end
 
 -- Who dropped it, under the struck words at XL: "Kolkar Marauders", one

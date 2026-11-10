@@ -232,7 +232,7 @@ function Duels.Tips(recs, now)
     if #flights > 0 and (all.won + all.lost + all.fled + all.theyFled) > 1 then
         lines[#lines + 1] = Capital(Join(flights))
     end
-    if places[1] then lines[#lines + 1] = Capital(ns.ZoneIn(nil, List(places))) end
+    if places[1] then lines[#lines + 1] = Capital(ns.ZonesIn(places, "in", List)) end
     lines[#lines + 1] = Foot(ts, lo, hi, now)
     return Capital(title), lines
 end

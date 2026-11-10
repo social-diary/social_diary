@@ -96,8 +96,8 @@ Text.DayPart = Part
 function Text.SittingLabel(p, now)
     local t = p.at or p.from
     local day = ns.JourneyRecap.SittingDay(t) + 12 * 3600
-    local text = Fmt(L["%1$s %2$s##month day"], Format.MonthShort(day), Ordinal(tonumber(date("%d", day))))
-    if date("%Y", day) ~= date("%Y", now or ns.Now()) then text = Fmt(L["%1$s %2$s"], text, date("%Y", day)) end
+    local text = Fmt(L["%1$s %2$s##month day"], Format.MonthShort(day), Format.Day(tonumber(date("%d", day)), true))
+    if date("%Y", day) ~= date("%Y", now or ns.Now()) then text = Fmt(L["%1$s %2$s##date and year"], text, date("%Y", day)) end
     text = Glue(text)
     if p.many then text = Fmt(L["%1$s, %2$s"], text, Part(t)) end
     return text

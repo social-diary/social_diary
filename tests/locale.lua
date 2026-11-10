@@ -35,7 +35,11 @@ local RULES = {
     deDE = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     esES = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     esMX = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
-    frFR = { forms = 2, [0] = 1, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
+    -- French takes the singular for 0 as for 1, so CLDR's "one" is two
+    -- numbers and could never leave the count out ("une fois"). The diary
+    -- splits it: 1 alone, then 0 (singular, with its count: "0 combat"),
+    -- then the rest.
+    frFR = { forms = 3, [0] = 2, [1] = 1, [2] = 3, [5] = 3, [11] = 3, [21] = 3, [101] = 3 },
     ruRU = { forms = 3, [0] = 3, [1] = 1, [2] = 2, [4] = 2, [5] = 3, [11] = 3, [12] = 3, [14] = 3,
              [21] = 1, [22] = 2, [25] = 3, [101] = 1, [111] = 3, [112] = 3 },
 }
@@ -67,6 +71,60 @@ do
     Eq(ns.ZoneIn(1411, "Durotar"), "in Durotar", "else the locale's default")
     Eq(ns.ZoneIn(1413, "Brachland", "near"), "near Brachland", "a role a locale left out falls back to English")
     G.ZONES, G.PLACE = zones, place
+end
+
+do
+    local G = ns.Locale.grammar
+    local zones, place = G.ZONES, G.PLACE
+    -- A phrase may be a function of the bare name: a preposition that
+    -- contracts or elides with what follows.
+    G.PLACE = {
+        ["in"] = "en %s",
+        from = function(name) return (name:gsub("^El ", "del ", 1)) end,
+    }
+    G.ZONES = { [1413] = { near = function(name) return "cerca de " .. name end } }
+    Eq(ns.ZoneIn(nil, "El Cruce", "from"), "del Cruce", "a locale's default as a function")
+    Eq(ns.ZoneIn(1413, "Los Baldíos", "near"), "cerca de Los Baldíos", "a zone's own as a function")
+    Eq(ns.ZoneIn(nil, "Durotar"), "en Durotar", "a text beside them still fills")
+    local function And(names) return table.concat(names, " y ") end
+    Eq(ns.ZonesIn({ "Mulgore", "Durotar" }, "in", And), "en Mulgore y Durotar", "a list after one preposition")
+    G.EACH_PLACE = true
+    Eq(ns.ZonesIn({ "Mulgore", "Durotar" }, "in", And), "en Mulgore y en Durotar", "or one for every name")
+    G.ZONES, G.PLACE, G.EACH_PLACE = zones, place, nil
+end
+
+Section("the grammar hooks")
+do
+    local G, Format = ns.Locale.grammar, ns.UI.Format
+    local noon = os.time({ year = 2026, month = 10, day = 1, hour = 18, min = 5 })
+    Eq(Format.Day(1), "1", "a date's day is the figure")
+    Eq(Format.Day(25, true), "25th", "and an ordinal where the English says one")
+    Eq(Format.Clock(noon), "18:05", "the clock")
+    Eq(Format.Decimal(3.24, 1), "3.2", "a decimal")
+    Eq(Format.Pad("sí", 3), "sí ", "padding counts characters, not bytes")
+    Eq(Format.Pad("off", 3), "off", "nothing to add at the width")
+    Eq(Format.Ordinal(13, "death"), "13th", "English ordinals take no noun")
+    Eq(Format.List({ "Ana", "Inés" }), "Ana and Inés", "the list's own and")
+    local _, dated = Format.Ago(noon, noon + 400 * 86400)
+    Eq(dated, true, "Ago says when its answer is a date")
+    Eq(select(2, Format.Ago(noon, noon + 3 * 86400)), nil, "and not when it is words")
+
+    G.Day = function(n) return n == 1 and "1er" or tostring(n) end
+    G.Clock = function(h, m) return ("%d h %02d"):format(h, m) end
+    G.DECIMAL = ","
+    G.Ordinal = function(n, context) return n .. (context == "death" and ".ª" or ".º") end
+    G.ListEnd = function(head, last) return head .. (last:find("^I") and " e " or " y ") .. last end
+    G.Agree = function(text) return (text:gsub("deux<f>", "deux (f)")) end
+    Eq(Format.Day(1), "1er", "a locale's day")
+    Eq(Format.Day(1, true), "1er", "for the sitting label too")
+    Eq(Format.Clock(noon), "18 h 05", "a locale's clock")
+    Eq(Format.Decimal(3.24, 1), "3,2", "a locale's decimal mark")
+    Eq(Format.Nth(13, { "first", context = "death" }), "13.ª", "an ordinal past its words takes the list's noun")
+    Eq(Format.Nth(13, Format.NTH_MATCH), "13.º", "a match's")
+    Eq(Format.List({ "Ana", "Inés" }), "Ana e Inés", "a locale joins the last name")
+    Eq(ns.Fmt("%s<f> morts", "deux"), "deux (f) morts", "Agree passes over a filled template")
+    Eq(ns.Plural(2, "une mort|%s<f> morts", "deux"), "deux (f) morts", "a plural form too")
+    G.Day, G.Clock, G.DECIMAL, G.Ordinal, G.ListEnd, G.Agree = nil, nil, nil, nil, nil, nil
 end
 
 local keys, order = Extract.Keys(".")
@@ -156,8 +214,16 @@ Check(#badKey == 0, "plural keys need two English forms that take the same value
 -- colour by its code, each close, texture, link and atlas, and the line
 -- breaks ("\n" and the client's "|n"). A translation may move them, never
 -- drop, add or recolour one.
-local function Markup(text)
+--
+-- `plural`: the text is a "##plural" value. Its bars split the forms and
+-- it can hold none of the client's escapes (the plural keys' own check),
+-- so only its line breaks count: "une note|notes" has no "|n".
+local function Markup(text, plural)
     local found = {}
+    if plural then
+        local _, n = text:gsub("\n", "")
+        return ("line"):rep(n, ", ")
+    end
     local function Count(name, pattern)
         local _, n = text:gsub(pattern, "")
         for _ = 1, n do found[#found + 1] = name end
@@ -188,7 +254,8 @@ end
 -- diary, "du hast" where another character's name belongs.
 local function Carried(key, value, forms)
     local english = ns.Locale.English(key)
-    local a, b = Markup(english), Markup(value)
+    local plural = key:find("##plural$") ~= nil
+    local a, b = Markup(english, plural), Markup(value, plural)
     if a ~= b then return ("markup differs: [%s] in the key, [%s] in the words"):format(a, b) end
     local mine, theirs = Braced(english), Braced(value)
     if (#mine == 0) ~= (#theirs == 0) then
@@ -217,6 +284,8 @@ do
     Check(Carried("Killed them", "{Du hast} sie getötet", DE) ~= nil, "braces the key has not")
     Check(Carried("%s saw {you} die##context", "%s sah {dich} sterben", DE) == nil, "a key's context is not its text")
     Check(Carried("a fight|%d fights##plural", "ein Kampf|%d Kämpfe", DE) == nil, "a plural's bar is no markup")
+    Check(Carried("a note|%d notes##plural", "une note|%d notes|nos %d notes", DE) == nil,
+        "nor is a bar before a form that starts like an escape")
     -- The code's own keys against the English forms.
     local bad = {}
     local all, list = Extract.Keys(".")

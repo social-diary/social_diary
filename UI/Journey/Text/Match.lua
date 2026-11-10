@@ -40,7 +40,7 @@ end
 -- own words, as an ordinal follows its noun in most languages.
 local NTH_DEATH = { L["first##death"], L["second##death"], L["third##death"], L["fourth##death"],
     L["fifth##death"], L["sixth##death"], L["seventh##death"], L["eighth##death"], L["ninth##death"],
-    L["tenth##death"], L["eleventh##death"], L["twelfth##death"] }
+    L["tenth##death"], L["eleventh##death"], L["twelfth##death"], context = "death" }
 
 local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV",
     "XVI", "XVII", "XVIII", "XIX", "XX" }

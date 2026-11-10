@@ -488,7 +488,7 @@ function WitnessCard.New(parent)
         local name = card.nameWords or ""
         Hand(card.name, F.name)
         local others = Witnesses.Others(w.others)
-        local line = others and ns.Fmt(L["%1$s %2$s"], name, others) or name
+        local line = others and ns.Fmt(L["%1$s %2$s##name and others"], name, others) or name
         card.name:SetText(line)
         if others and Width(card.name) + 2 > room then
             line, others = name, nil

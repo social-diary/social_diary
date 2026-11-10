@@ -57,7 +57,7 @@ end
 -- A day and a time with no "on" before the date, for a span over days:
 -- "yesterday at 21:40", "12 Sep at 18:02".
 local function AtDay(t, now)
-    local clock, back = date("%H:%M", t), DayBack(t, now)
+    local clock, back = Format.Clock(t), DayBack(t, now)
     if back == 0 then return Fmt(L["today at %s"], clock) end
     if back == 1 then return Fmt(L["yesterday at %s"], clock) end
     return Fmt(L["%1$s at %2$s##date"], Format.ShortDate(t, date("%Y", t) ~= date("%Y", now)), clock)
@@ -76,7 +76,7 @@ local function Span(from, to, now)
     if date("%Y-%m-%d", to) ~= date("%Y-%m-%d", from) then
         return Fmt(L["From %1$s to %2$s##days"], AtDay(from, now), AtDay(to, now))
     end
-    local a, b, back = date("%H:%M", from), date("%H:%M", to), DayBack(from, now)
+    local a, b, back = Format.Clock(from), Format.Clock(to), DayBack(from, now)
     if back == 0 then return Fmt(L["Today from %1$s to %2$s"], a, b) end
     if back == 1 then return Fmt(L["Yesterday from %1$s to %2$s"], a, b) end
     return Fmt(L["On %1$s from %2$s to %3$s"], Format.ShortDate(from, date("%Y", from) ~= date("%Y", now)), a, b)
@@ -96,7 +96,7 @@ local function Moments(ts, now)
     if #sorted > 4 then return Span(sorted[1], sorted[#sorted], now) end
     local parts, day, last = {}, nil, nil
     for _, t in ipairs(sorted) do
-        local d, clock = date("%Y-%m-%d", t), date("%H:%M", t)
+        local d, clock = date("%Y-%m-%d", t), Format.Clock(t)
         if d ~= day then
             parts[#parts + 1], day, last = Format.At(t, now), d, clock
         elseif clock ~= last then

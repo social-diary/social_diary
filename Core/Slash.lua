@@ -219,9 +219,12 @@ local function SightingRecent(text)
             local entry = group[i]
             local row = entry.row
             -- Wide enough for "yesterday at 18:02" and "on 12 Sep at 18:02".
+            -- Padded here by characters (Format.Pad): the template's own
+            -- "%-22s" counts bytes, and a name may hold letters of two.
+            local Pad = ns.UI.Format.Pad
             DEFAULT_CHAT_FRAME:AddMessage("      " .. Fmt(L["%1$-22s lvl %2$-3s %3$-18s %4$s%5$s%6$s"],
-                ns.Characters.FullName(entry.guid) or entry.guid,
-                tostring(row.level or "?"), ns.UI.Format.At(ns.Sightings.Last(row), now), row.src or "",
+                Pad(ns.Characters.FullName(entry.guid) or entry.guid, 22),
+                Pad(row.level or "?", 3), Pad(ns.UI.Format.At(ns.Sightings.Last(row), now), 18), row.src or "",
                 row.hostile and ("  |cffc04040" .. L["hostile##chat"] .. "|r") or "",
                 ns.Diary.IsDiary(entry.guid) and ("  |cffffd100[" .. L["diary##chat tag"] .. "]|r") or ""))
         end
@@ -304,7 +307,8 @@ local function SightingCity(text)
     for _, city in ipairs(Capture.Cities()) do
         local key = city.key
         DEFAULT_CHAT_FRAME:AddMessage(("   %s %-8s %s%s"):format(
-            city.on and ("|cff40c040%-3s|r"):format(L["on##switch"]) or ("|cff808080%-3s|r"):format(L["off##switch"]),
+            city.on and ("|cff40c040%s|r"):format(ns.UI.Format.Pad(L["on##switch"], 3))
+                or ("|cff808080%s|r"):format(ns.UI.Format.Pad(L["off##switch"], 3)),
             tostring(key), type(key) == "number" and (MapName(key) or "") or "",
             here == key and ("  |cffffd100" .. L["<- you are here"] .. "|r") or ""))
     end
