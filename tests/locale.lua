@@ -157,6 +157,8 @@ do
     Eq(Format.You(nil, "{ты} <you:погиб/погибла>"), "ты погиб", "he")
     _G.UnitSex = was
     Eq(Locale.You("<you:погиб/погибла/—>", nil), "—", "the reader's sex not known")
+    Eq(Locale.They("<they:спас/спасла> тебя", 3), "спасла тебя", "words about one character, picked by the code")
+    Eq(ns.Fmt("%s <they:спас/спасла/спасает> тебя", "Numa"), "Numa спасает тебя", "a <they> no code picked takes no one's form")
     Locale.gendered = false
 end
 
@@ -293,7 +295,7 @@ local function Forms(key, value)
     end
     for who, forms in value:gmatch("<([^<>:/|]*):([^<>]*)>") do
         local n = tonumber(who)
-        if who ~= "you" and not n then return ("<%s:...> names neither a value nor the reader"):format(who) end
+        if who ~= "you" and who ~= "they" and not n then return ("<%s:...> names neither a value nor the reader"):format(who) end
         if n and (n < 1 or n > takes) then return ("<%d:...> but the key takes %d values"):format(n, takes) end
         local _, slashes = forms:gsub("/", "")
         if slashes < 1 or slashes > 2 then return ("<%s:%s> needs two forms or three, split by /"):format(who, forms) end
@@ -347,6 +349,7 @@ do
     Check(Carried("%s died", "%s <1:умер/умерла", DE) ~= nil, "a form left open")
     Check(Carried("%s died", "%s <him:умер/умерла>", DE) ~= nil, "a form by no one")
     Check(Carried("Died here", "<you:Погиб/Погибла/Смерть> здесь", DE) == nil, "the reader's, with a third")
+    Check(Carried("saved you", "<they:спас/спасла/спасает> тебя", DE) == nil, "the one the words are about")
     Check(Carried("a note|%d notes##plural", "une note|%d notes|nos %d notes", DE) == nil,
         "nor is a bar before a form that starts like an escape")
     -- The code's own keys against the English forms.
