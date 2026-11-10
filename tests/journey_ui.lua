@@ -2433,7 +2433,9 @@ do
     end
     Check(line ~= nil, "a run has no line")
     local above = line and line - 1
-    while above and above > 0 and page.items[above].run do above = above - 1 end
+    -- (a battleground's line may lie between: runs and matches are listed
+    -- together in the order they began, UI/Journey/Left.lua)
+    while above and above > 0 and (page.items[above].run or page.items[above].bg) do above = above - 1 end
     Eq(above and page.items[above].sitting, holder, "a run's line is not under its sitting")
     for _, item in ipairs(runs) do
         Check(ns.JourneyRecap.RunWorthy(item.run), "a run with no boss killed has a line")

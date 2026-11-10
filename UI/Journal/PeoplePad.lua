@@ -98,6 +98,7 @@ local PROMPT = {
     fold = { "PAD1", "Fold it up", main = true },
     run = { "PAD1", "Open the map", main = true },
     runSheet = { "PAD1", "Open the sheet", main = true },
+    match = { "PAD1", "Open the match", main = true },
     story = { "PAD1", "See their story", main = true },
     seen = { "PAD1", "See where you saw them", main = true },
     tabs = { "PADDRIGHT", "Go to the tabs" },
@@ -338,6 +339,11 @@ local function BuildTimeline(f, p)
             item = { key = key, kind = "line", index = index, line = line, clip = list, available = Reading }
             if line.visit then
                 item.press = function() Run(item.frame, "OnMouseUp", "LeftButton") end
+            elseif line.match then
+                -- (its page on Your Diary, where that page offers it)
+                item.press = function()
+                    if J.CanOpenMatch(line.match) then Run(item.frame, "OnMouseUp", "LeftButton") end
+                end
             elseif line.note then
                 -- (its click: the note's sheet, NotePad.lua's scope)
                 item.press = function() Run(item.frame, "OnMouseUp", "LeftButton") end
@@ -757,6 +763,8 @@ function scope.legend()
         if line.visit then
             local floors = ns.Dungeons.Floors(line.visit.visit.instanceID)
             out[1] = floors and PROMPT.run or PROMPT.runSheet
+        elseif line.match then
+            if J.CanOpenMatch(line.match) then out[1] = PROMPT.match end
         elseif line.note then
             out[1] = PROMPT.note
         elseif Folds(line) then

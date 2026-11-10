@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- _Your Diary_ now keeps your battleground matches, with an evening's overview
+  - _Toasts_ and timelines tell of diary people you meet there
+  - New _Battlegrounds_ settings choose how many full scoreboards stay
+
 ## [3.0.2]
 
 This Updates brings small but important UX fixes. Especially the red ink spills that mark your combat zones in _Your Diary_ are now more clearly computed and displayed.

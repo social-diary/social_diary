@@ -83,10 +83,31 @@ local DayLabel = Format.DayLabel
 local openEpisodes = setmetatable({}, { __mode = "k" })
 
 -- A visit never folds open: a click lays its run out on the table over
--- the book instead (TLN-12, UI/Dungeon/Spread.lua).
+-- the book instead (TLN-12, UI/Dungeon/Spread.lua). Nor does a
+-- battleground match: a click opens its page on Your Diary.
 local function Openable(item)
-    return IsEpisode(item) and item.hidden > 0 and item.kind ~= "visit"
+    return IsEpisode(item) and item.hidden > 0 and item.kind ~= "visit" and item.kind ~= "match"
 end
+
+-- Opens a match's page on Your Diary's right page, where the page's own
+-- file offers it (UI/Journey/, looked up when clicked: it loads later,
+-- and may not be there yet). True when it did.
+local function CanOpenMatch(match)
+    local YD = ns.UI.YourDiary
+    -- (Your Diary is the character playing: another's match has no page there.)
+    return YD ~= nil and YD.OpenMatch ~= nil and match ~= nil and (match.me == nil or match.me == ns.ownGUID)
+end
+J.CanOpenMatch = CanOpenMatch
+
+local function OpenMatch(match)
+    if not CanOpenMatch(match) then return false end
+    local YD = ns.UI.YourDiary
+    -- The book turns to Your Diary first: the match's page is drawn there.
+    ns.UI.SetJournalView("journey")
+    YD.OpenMatch(match.id)
+    return true
+end
+J.OpenMatch = OpenMatch
 
 -- What a click on a visit's card does, for its tooltip: lays the run's map
 -- out, or, with that run out already, puts it away.
@@ -174,6 +195,8 @@ local function TimelineLines(items, guid)
                 or ("Click to show all %d."):format(#item.all))
         elseif isVisit then
             full = full .. "\n" .. VisitHint(item.visit)
+        elseif item.kind == "match" and CanOpenMatch(item.match) then
+            full = full .. "\n" .. "Click to open the match."
         end
 
         -- Each line draws its own piece of the bracket, inked a little
@@ -215,7 +238,8 @@ local function TimelineLines(items, guid)
             end
         else
             lines[#lines + 1] = { item = item, when = when, text = text, icon = icon, font = font,
-                depth = item.depth, full = full, note = item.note, slip = item.kind == "note" or nil }
+                depth = item.depth, full = full, note = item.note, slip = item.kind == "note" or nil,
+                match = item.match }
             head = #lines
         end
         local function Details()
@@ -509,6 +533,13 @@ local function BuildTimelineRow(list)
         if self.item and self.item.visit then
             GameTooltip:Hide()
             ns.UI.OpenVisit(self.item.visit.visit.id, J.selected)
+            return
+        end
+        -- A match's line, or its details: its page on Your Diary.
+        local ep = self.item and self.item.item
+        if ep and ep.kind == "match" then
+            GameTooltip:Hide()
+            OpenMatch(ep.match)
             return
         end
         local item = self.item and (self.item.fold or self.item.item)

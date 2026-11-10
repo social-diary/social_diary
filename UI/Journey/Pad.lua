@@ -98,6 +98,21 @@
 --   No Y: the run's page has no right click.
 --   B: back to the left page's row.
 --
+-- A battleground's pages (group `match`, spatial; UI/Journey/Match.lua's
+-- hits, YourDiary.MatchParts), opened by A on a battleground's line (the pad
+-- goes with it, onto the title), walked as the run's page is, with no new
+-- grammar (battleground-page.md §4): the overview's tickets (outlined, as a
+-- pasted thing), its people by hand, the turn link, your note; the match
+-- page's back link, the rows of the people in your diary, the margin's
+-- strips, the turn link, your note.
+--   A on a ticket opens its match (the pad on its title); on "Back to the
+--     evening's battlegrounds" the overview comes back, the pad on the
+--     ticket it left from; on a diary person's row their page; on "Turn …
+--     over" the next face, the pad staying on the link. Anything else shows
+--     its tooltip only.
+--   B: on a match opened from its evening, back to the overview onto its
+--     ticket; otherwise back to the left page's line.
+--
 -- The list is virtual, so a row's frame is found as the pad lands on its
 -- item (Find, the group's `reveal`): scrolled into view, then its words.
 
@@ -137,6 +152,12 @@ local PROMPT = {
     layout = { "PAD1", "Open the map", main = true },
     keep = { "PAD1", "Add to the diary", main = true },
     others = { "PAD1", "See the others", main = true },
+    -- A battleground's pages (battleground-page.md §4).
+    match = { "PAD1", "Open the match", main = true },
+    evening = { "PAD1", "Back to the battlegrounds", main = true },
+    turnBoard = { "PAD1", "Turn the board over", main = true },
+    turnRoll = { "PAD1", "Turn the roll over", main = true },
+    backEvening = { "PAD2", "Back to the battlegrounds" },
 }
 
 -- The whole map with the pad: `speed` card px a second the right stick
@@ -151,13 +172,16 @@ local function KeyOf(data, zone)
     if data.title then return "rubric" end
     if data.sitting then return "sitting:" .. data.sitting end
     if data.run then return "run:" .. tostring(data.run.id) end
+    if data.bg then
+        return data.match and ("match:" .. tostring(data.match.id)) or ("evening:" .. tostring(data.bg.key))
+    end
     if data.zone then return "zone:" .. zone end
     if data.later then return "later:" .. tostring(data.later.guid) end
 end
 
 local function WordsOf(row, data)
     if data.title then return row.header end
-    if data.sitting or data.run or data.zone then return row.zone end
+    if data.sitting or data.run or data.bg or data.zone then return row.zone end
     return row.text
 end
 
@@ -218,13 +242,14 @@ end
 -- The right page's things: its plates and their notes (group `page`), and
 -- the marks of the plate the pad went into (group `marks`). Centres are on
 -- the page with y up, as Focus measures.
-local BuildFull, BuildRun
+local BuildFull, BuildRun, BuildMatch
 
 local function BuildRight(f, page)
     -- (where X was pressed is only kept while its whole map is open)
     if page.mode ~= "full" then scope.from, scope.fullOf, scope.fullAt = nil, nil, nil end
     if page.mode == "full" then BuildFull(f, page) end
     BuildRun(f, page)
+    BuildMatch(f, page)
     local plates = Plates(page)
     if scope.inPlate and not plates[scope.inPlate] then
         scope.inPlate = nil
@@ -346,6 +371,47 @@ function BuildRun(f, page)
             item.press = function() end
         end
         f:Add("run", item)
+    end
+end
+
+-- A battleground's page: its parts (UI/Journey/Match.lua's hits,
+-- YourDiary.MatchParts), as the run's are found.
+function BuildMatch(f, page)
+    if page.mode ~= "match" and page.mode ~= "matches" then return end
+    for _, part in ipairs(YourDiary.MatchParts()) do
+        local hit, b, pad = part.frame, part.box, part.pad
+        local strip = pad.strip
+        local item = {
+            key = pad.key, frame = hit, kind = pad.kind, kept = pad.kept,
+            available = function() return hit:IsShown() end,
+            center = function() return b.x + b.w / 2, -(b.y + b.h / 2) end,
+        }
+        if strip then
+            item.heading = pad.heading
+            item.outline = function()
+                local now = strip:Focus()
+                return { anchor = strip:GetParent(), corners = now.corners, level = strip:GetFrameLevel() }
+            end
+        else
+            item.words = pad.words
+        end
+        local kind = pad.kind
+        if kind == "back" then
+            -- (the overview comes back with the pad on the ticket it left)
+            local id = page.matchId
+            item.press = function()
+                local ticket = "ticket:" .. tostring(id)
+                f:Remember("match", ticket)
+                hit:Click("LeftButton")
+                local now = scope.focus
+                if now then now:Focus(ticket, "match") end
+            end
+        elseif not (kind == "ticket" or kind == "turn" or ((kind == "row" or kind == "hand") and pad.kept)) then
+            -- (the title, a strip, a stranger by hand, your note, the lost
+            -- records: only the tooltip)
+            item.press = function() end
+        end
+        f:Add("match", item)
     end
 end
 
@@ -472,6 +538,7 @@ function scope.build(f)
     f:Group("marks", { mode = "spatial" })
     f:Group("full", { mode = "spatial", reveal = RevealOnMap })
     f:Group("run", { mode = "spatial" })
+    f:Group("match", { mode = "spatial" })
     f:Group("title", { mode = "list" })
 
     -- (a ribbon just turned: the title alone, until the first D-pad press)
@@ -529,6 +596,11 @@ end
 -- the level's (the rubric), or its sitting ticked; or the run's page it
 -- opens.
 local function Showing(page, data)
+    if page.mode == "match" or page.mode == "matches" then
+        if not data.bg then return false end
+        if data.match then return page.mode == "match" and page.matchId == data.match.id end
+        return page.mode == "matches" and page.session == data.bg.key
+    end
     if page.mode == "run" then
         local id = RunOf(data)
         return id ~= nil and id == page.runVisit
@@ -553,6 +625,7 @@ function scope.Cross(data)
         if f then
             f:Remember("page", nil)
             f:Remember("run", nil)
+            f:Remember("match", nil)
         end
         if J.visit then return end
     end
@@ -561,6 +634,8 @@ function scope.Cross(data)
         f:EnterGroup("page")
     elseif page.mode == "run" then
         f:EnterGroup("run")
+    elseif page.mode == "match" or page.mode == "matches" then
+        f:EnterGroup("match")
     end
 end
 
@@ -618,7 +693,19 @@ function scope.back()
         f:EnterGroup("page")
         return true
     end
-    if at and (at.group == "page" or at.group == "run") then
+    if at and at.group == "match" and page.mode == "match" and page.matchBack then
+        -- (a match of an evening: back to its overview, onto its ticket)
+        local ticket = "ticket:" .. tostring(page.matchId)
+        f:Remember("match", ticket)
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenMatches(page.matchBack)
+        -- (the title is on both pages: the pad is put on the ticket, not
+        -- kept on the title by its key)
+        local now = scope.focus
+        if now then now:Focus(ticket, "match") end
+        return true
+    end
+    if at and (at.group == "page" or at.group == "run" or at.group == "match") then
         f:EnterGroup("left")
         return true
     end
@@ -771,6 +858,21 @@ function scope.legend()
             out[1] = PROMPT.others
         end
         out[#out + 1] = PROMPT.backLeft
+        return out
+    end
+    if at.group == "match" then
+        local out = {}
+        local k = at.kind
+        if k == "ticket" then
+            out[1] = PROMPT.match
+        elseif k == "back" then
+            out[1] = PROMPT.evening
+        elseif (k == "row" or k == "hand") and at.kept then
+            out[1] = PROMPT.person
+        elseif k == "turn" then
+            out[1] = page and page.mode == "matches" and PROMPT.turnRoll or PROMPT.turnBoard
+        end
+        out[#out + 1] = (page and page.mode == "match" and page.matchBack) and PROMPT.backEvening or PROMPT.backLeft
         return out
     end
     if at.group == "marks" then

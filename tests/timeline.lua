@@ -345,14 +345,17 @@ Check(_G.SocialDiaryJournalFrame:IsShown(), "the journal did not open on the tes
 local tl = ns.Timeline.For(G)
 local kinds = {}
 for i = 1, #tl do kinds[i] = tl[i].kind end
-Eq(table.concat(kinds, ","), "row,around,note,session,visit,session,session,added,exchange", "test timeline")
+-- (The test data's battleground evening: Tester on your side in three
+-- matches, Dev/TestMatches.lua.)
+Eq(table.concat(kinds, ","), "row,around,note,session,match,match,match,visit,session,session,added,exchange",
+    "test timeline")
 Eq(tl[3].note.text, "Promised to help with Sludge Fen tomorrow.", "the test data's loose note")
-Eq(tl[7].notes and tl[7].notes[1].text, "Tester knows every Kolkar camp by heart.",
+Eq(tl[10].notes and tl[10].notes[1].text, "Tester knows every Kolkar camp by heart.",
     "the test data's note in the first session")
 
 -- A session that was only the dungeon run gives way to the visit, rows
 -- and all.
-local rfk = tl[5]
+local rfk = tl[8]
 Eq(rfk.visit.name, "Razorfen Kraul", "the dungeon-only session did not give way")
 Eq(rfk.hidden, 3, "the session's chat did not go with the visit")
 local _, text, sub = ns.UI.DescribeItem(rfk, G)
@@ -361,7 +364,7 @@ Check(sub:find("^6 deaths, 1 wipe, with Brom, Kaelith and Zuri"), "visit details
 
 -- Inside a session, the visit is always shown and only counted on the
 -- session's details.
-local long = tl[6]
+local long = tl[9]
 local wc
 for _, line in ipairs(long.lines) do
     if line.kind == "visit" then wc = line end
@@ -426,6 +429,10 @@ Eq(#entry.visit.members, 3, "the party, less the user and the page's person")
 for i = 1, #lines do
     Check(not (lines[i].item == entry.item and lines[i] ~= entry and lines[i].text),
         "the visit still has a details line")
+end
+-- (Scrolled to: the test data's matches stand above it.)
+for i = 1, #lines do
+    if lines[i] == entry then _G.SocialDiaryJournalFrame.profile.timeline:Reveal(i) end
 end
 local drawn
 for _, row in ipairs(_G.SocialDiaryJournalFrame.profile.timeline.rows) do

@@ -519,6 +519,59 @@ local function VisitText(episode, guid)
     return text, facts
 end
 
+-- A battleground match (Core/Matches.lua): the map by the name the client
+-- gave it, else these.
+local MATCH_MAPS = {
+    warsong = "Warsong Gulch",
+    arathi = "Arathi Basin",
+    alterac = "Alterac Valley",
+}
+local function MatchName(m)
+    if m.mapName and m.mapName ~= "" then return m.mapName end
+    local map = ns.Matches.MAPS[m.map]
+    return map and MATCH_MAPS[map.key] or "A battleground"  -- (a match whose map went unread)
+end
+
+-- "third", "11th": how many matches you have met in.
+local NTH = { "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth" }
+local function Nth(n)
+    if NTH[n] then return NTH[n] end
+    local last, tens = n % 10, n % 100
+    local suffix = (tens >= 11 and tens <= 13) and "th" or ({ "st", "nd", "rd" })[last] or "th"
+    return n .. suffix
+end
+
+-- "Warsong Gulch, on your side" ("on Thessaly's side" for another of the
+-- user's characters in a shared diary: Format.You) with the result, how often you have met in
+-- a match on this side, how long it took and their killing blows.
+local MATCH_SIDE = {
+    with = "%s, on {your} side",
+    against = "%s, against {you}",
+}
+local function MatchText(episode, guid)
+    local m, row = episode.match, episode.row or {}
+    local text = Format.You(m.me, (MATCH_SIDE[episode.side] or "%s"):format(MatchName(m)))  -- (side unknown: the map alone)
+
+    local facts = {}
+    local won = ns.Matches.Won(m)
+    if m.state == "left" then
+        facts[#facts + 1] = Format.You(m.me, "{you} left before the end")
+    elseif won == true then
+        facts[#facts + 1] = Format.You(m.me, "{you} won")
+    elseif won == false then
+        facts[#facts + 1] = Format.You(m.me, "{you} lost")
+    end
+    local n = episode.side and ns.Matches.Meetings(guid, m, episode.side) or 0
+    if n > 1 then
+        facts[#facts + 1] = Format.You(m.me, ("{your} %s match %s"):format(Nth(n),  -- "your third match together"
+            episode.side == "with" and "together" or "against them"))
+    end
+    if m.state ~= "open" and (episode.seconds or 0) >= 60 then facts[#facts + 1] = Format.Duration(episode.seconds) end
+    if (row.kb or 0) > 0 then facts[#facts + 1] = Count(row.kb, "killing blow", "killing blows") end
+    if m.state == "open" then facts[#facts + 1] = "still going" end
+    return text, facts
+end
+
 -- TLN-6: every trade in the episode, summed, once the headline says "traded".
 local function TradeFact(t)
     local parts = {}
@@ -607,6 +660,9 @@ local function EpisodeText(episode, guid)
     if episode.kind == "visit" then
         visitText, facts = VisitText(episode, guid)
         for _, fact in ipairs(Facts(episode, guid)) do facts[#facts + 1] = fact end
+    elseif episode.kind == "match" then
+        visitText, facts = MatchText(episode, guid)
+        for _, fact in ipairs(Facts(episode, guid)) do facts[#facts + 1] = fact end
     elseif episode.kind == "session" and episode.session then
         sessionText, said = SessionHeadline(episode, guid)
         facts = Facts(episode, guid, said)
@@ -630,7 +686,7 @@ local function EpisodeText(episode, guid)
     if #facts > 0 then full = full .. "\n" .. table.concat(facts, "\n") end
 
     local icon = (episode.kind == "session" and "together") or (episode.kind == "visit" and "dungeon")
-        or ACTIVITY_ICON[episode.headline[1]] or "talk"
+        or (episode.kind == "match" and "match") or ACTIVITY_ICON[episode.headline[1]] or "talk"
     return text, sub, icon, full
 end
 
@@ -737,5 +793,11 @@ end
 -- alone; Place(row) " in Hillsbrad Foothills", or ""; Foe(row) the
 -- creature in a witness's row as Your Diary names a killer ("a Kobold
 -- Vermin"), or nil.
+-- MatchName(match) a battleground match's map ("Warsong Gulch"), and
+-- Nth(n) "third", for the reunion toast in a match (UI/Windows/Reunion/).
 ns.UI.TimelineText = { IsEpisode = IsEpisode, OtherMembers = OtherMembers, DescribeNote = DescribeNote,
-    Items = Items, Quote = Quote, Place = Place, Foe = Foe }
+    Items = Items, Quote = Quote, Place = Place, Foe = Foe, MatchName = MatchName, Nth = Nth }
+
+-- A match's line on the timeline: crossed swords from the battlemasters'
+-- gossip, like the other gossip icons the timeline draws.
+ns.Style.AddArt("match", { "Interface\\GossipFrame\\BattleMasterGossipIcon", "Interface\\Icons\\Ability_DualWield" })

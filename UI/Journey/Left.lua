@@ -31,6 +31,11 @@ local SCROLLBAR_WIDTH = ns.UI.SCROLLBAR_WIDTH
 
 local ENTRY, LEDGER, PARAPHS, FACES = YourDiary.ENTRY, YourDiary.LEDGER, YourDiary.PARAPHS, YourDiary.FACES
 local SITTINGS, SOLO = YourDiary.SITTINGS, YourDiary.SOLO
+-- A battleground's line under its sitting (UI/Journey/Match.lua) hangs a
+-- pennant where a run's hangs its doorway, in the doorway's ink
+-- (LEDGER.door): its pole `pole` by `h` px, its flag `w` px out and `flag`
+-- px deep at the pole, drawn in `pieces` bands narrowing to its point.
+local BATTLE = { pole = 1.2, h = 10, w = 7, flag = 5, pieces = 4 }
 
 --------------------------------------------------------------------------
 -- The character
@@ -196,9 +201,38 @@ local function EntryItems(recap, now, fights)
                 for k, p in ipairs(e.pieces) do
                     Add({ sitting = k, label = Text.SittingLabel(p, now), aside = Text.Current(p), entry = i,
                         chosen = k == at, current = k == at and page.mode == "plates", height = SITTINGS.row })
-                    for _, visit in ipairs(p.runs) do
-                        Add({ run = visit, label = visit.name or "An instance", entry = i, height = SITTINGS.runRow,
-                            current = page.mode == "run" and page.runVisit == visit.id })
+                    -- Its runs and its battlegrounds together, in the order
+                    -- they began (battleground-page.md §3): a session of three
+                    -- matches or more one line (its overview), else a line a
+                    -- match (its page).
+                    local subs = {}
+                    for _, visit in ipairs(p.runs) do subs[#subs + 1] = { t = visit.startedAt or 0, visit = visit } end
+                    for _, session in ipairs(p.battlegrounds or {}) do
+                        if ns.Matches.HasOverview(session) then
+                            subs[#subs + 1] = { t = session.startedAt or 0, session = session }
+                        else
+                            for _, m in ipairs(session.matches) do
+                                subs[#subs + 1] = { t = m.startedAt or 0, session = session, match = m }
+                            end
+                        end
+                    end
+                    table.sort(subs, function(a, b) return a.t < b.t end)
+                    for _, sub in ipairs(subs) do
+                        local visit, session, m = sub.visit, sub.session, sub.match
+                        if visit then
+                            Add({ run = visit, label = visit.name or "An instance", entry = i, height = SITTINGS.runRow,
+                                current = page.mode == "run" and page.runVisit == visit.id })
+                        elseif m then
+                            Add({ bg = session, match = m, label = Text.MatchLine(m), entry = i,
+                                height = SITTINGS.runRow, current = page.mode == "match" and page.matchId == m.id })
+                        else
+                            local open = page.mode == "matches" and page.session == session.key
+                            if page.mode == "match" then
+                                for _, x in ipairs(session.matches) do open = open or x.id == page.matchId end
+                            end
+                            Add({ bg = session, label = Text.EveningLine(#session.matches), entry = i,
+                                height = SITTINGS.runRow, current = open })
+                        end
                     end
                 end
                 Add({ height = SITTINGS.after })
@@ -409,6 +443,15 @@ local function OpenItem(item)
     elseif item.run then
         Style.PlaySound("pageTurn")
         YourDiary.OpenRun(item.run.id, item.entry)
+    elseif item.bg then
+        -- A battleground's line: its match's page, or the evening's overview
+        -- (UI/Journey/Match.lua).
+        Style.PlaySound("pageTurn")
+        if item.match then
+            YourDiary.OpenMatch(item.match.id, item.entry)
+        else
+            YourDiary.OpenMatches(item.bg.key, item.entry)
+        end
     elseif item.zone and item.zone.dungeon and ns.JourneyRecap.RunWorthy(item.zone.dungeon.visit) then
         -- A run that earned a page opens it (UI/Journey/Run.lua); any
         -- other dungeon's row, its map as a zone's does.
@@ -427,7 +470,7 @@ end
 -- without doing it.
 local function Opens(item)
     if not item then return false end
-    if item.title or item.sitting or item.run then return true end
+    if item.title or item.sitting or item.run or item.bg then return true end
     return item.zone ~= nil and (item.mapID ~= nil or LiveRun(item) ~= nil)
 end
 
@@ -504,6 +547,24 @@ local function BuildEntryRow(list)
     head.dy = -s * A.head.y
     Style.Disc(head, I[1], I[2], I[3], D.alpha)
     row.door = { body, head }
+    -- A battleground's line has a pennant where a run's has its doorway
+    -- (BATTLE): a pole, and its flag in pieces narrowing to the point.
+    local B = BATTLE
+    row.pennant = {}
+    local pole = row:CreateTexture(nil, "ARTWORK")
+    pole:SetSize(B.pole, B.h)
+    pole:SetColorTexture(I[1], I[2], I[3], D.alpha)
+    pole.dx, pole.dy = 0, 0
+    row.pennant[1] = pole
+    for k = 1, B.pieces do
+        local piece = row:CreateTexture(nil, "ARTWORK")
+        local w = B.w * (1 - (k - 1) / B.pieces)
+        piece:SetSize(w, B.flag / B.pieces + 0.3)
+        piece:SetColorTexture(I[1], I[2], I[3], D.alpha)
+        piece.dx = B.pole / 2 + w / 2
+        piece.dy = B.h / 2 - (k - 0.5) * B.flag / B.pieces
+        row.pennant[#row.pennant + 1] = piece
+    end
 
     -- A sitting's "so far", and the tick in the margin at the sitting
     -- open (SITTINGS): the paraph's lozenge, smaller, in rubric.
@@ -532,7 +593,7 @@ local function BuildEntryRow(list)
     -- marked (LEDGER.mark).
     local function Hot(self, on)
         local item = self.item
-        if item and (item.sitting or item.run) then
+        if item and (item.sitting or item.run or item.bg) then
             self.hot = on
             Marked(self, item)
             return
@@ -551,6 +612,15 @@ local function BuildEntryRow(list)
     return row
 end
 
+-- A battleground's pennant hung `at` px in from the row's left: its pole
+-- centred there.
+local function PlacePennant(row, at)
+    for _, piece in ipairs(row.pennant) do
+        piece:ClearAllPoints()
+        piece:SetPoint("CENTER", row, "LEFT", at - BATTLE.w / 4 + piece.dx, piece.dy)
+    end
+end
+
 -- The doorway hung `at` px in from the row's left, centred there.
 local function PlaceDoor(row, at)
     for _, piece in ipairs(row.door) do
@@ -561,8 +631,11 @@ end
 
 local function UpdateEntryRow(row, item)
     local isTitle, isZone = item.title ~= nil, item.zone ~= nil
-    local isSitting, isRun = item.sitting ~= nil, item.run ~= nil
-    local isSub = isSitting or isRun
+    local isSitting, isRun, isBg = item.sitting ~= nil, item.run ~= nil, item.bg ~= nil
+    -- (a battleground's line is set as a run's, its pennant for the door)
+    local isSub = isSitting or isRun or isBg
+    for _, piece in ipairs(row.pennant) do piece:SetShown(isBg) end
+    if isBg then isRun = true end
     row.header:SetShown(isTitle)
     row.paraph:SetShown(isTitle)
     row.rule:SetShown(isTitle)
@@ -574,7 +647,7 @@ local function UpdateEntryRow(row, item)
     row.dots:SetShown(isZone)
     row.so:SetShown(isSitting and item.aside ~= nil)
     row.tick:SetShown(isSitting and item.chosen == true)
-    for _, piece in ipairs(row.door) do piece:SetShown(isRun or (isZone and item.zone.dungeon ~= nil)) end
+    for _, piece in ipairs(row.door) do piece:SetShown((isRun and not isBg) or (isZone and item.zone.dungeon ~= nil)) end
     row.underline:SetShown(false)
     row.lip:SetShown(false)
     if not (isSub or (isZone and (item.mapID or LiveRun(item)))) then row.hot = nil end
@@ -591,6 +664,7 @@ local function UpdateEntryRow(row, item)
         row.zone:ClearAllPoints()
         row.zone:SetPoint("LEFT", x, 0)
         if isRun or isZone then PlaceDoor(row, isRun and x - SITTINGS.tickX or ENTRY.indent / 2 - 1) end
+        if isBg then PlacePennant(row, x - SITTINGS.tickX) end
         if isSitting then
             row.tick:ClearAllPoints()
             row.tick:SetPoint("CENTER", row, "LEFT", x - SITTINGS.tickX, 0)
