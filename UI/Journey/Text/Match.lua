@@ -14,6 +14,7 @@ local addonName, ns = ...
 
 local Text = ns.UI.JourneyText
 local L, Fmt = ns.L, ns.Fmt
+local Format = ns.UI.Format
 local Capital, Upper = Text.Capital, Text.Upper
 
 local SAID = { L["one"], L["two"], L["three"], L["four"], L["five"], L["six"], L["seven"], L["eight"], L["nine"],
@@ -31,12 +32,15 @@ local function Times(n)
 end
 
 -- "second", "third", ... for "your fourth match against them".
-local ORDINAL = { L["first##match"], L["second##match"], L["third##match"], L["fourth##match"], L["fifth##match"],
-    L["sixth##match"], L["seventh##match"], L["eighth##match"], L["ninth##match"], L["tenth##match"],
-    L["eleventh##match"], L["twelfth##match"] }
 local function Ordinal(n)
-    return ORDINAL[n] or Fmt(L["%dth##match"], n)
+    return Format.Nth(n, Format.NTH_MATCH)
 end
+
+-- "First", "Second", ... for a death in a match (Text.MatchDeathLine): its
+-- own words, as an ordinal follows its noun in most languages.
+local NTH_DEATH = { L["first##death"], L["second##death"], L["third##death"], L["fourth##death"],
+    L["fifth##death"], L["sixth##death"], L["seventh##death"], L["eighth##death"], L["ninth##death"],
+    L["tenth##death"], L["eleventh##death"], L["twelfth##death"] }
 
 local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV",
     "XVI", "XVII", "XVIII", "XIX", "XX" }
@@ -264,7 +268,12 @@ function Text.MatchRowTip(p, match)
     if side then lines[#lines + 1] = side == "with" and L["With you"] or L["Against you"] end
     if p.kb or p.deaths then
         -- (the honourable kills, said without the honour word: Jan)
-        lines[#lines + 1] = Fmt(L["%1$d killing blows, %2$d deaths, a hand in %3$d kills"], p.kb or 0, p.deaths or 0, p.hk or 0)
+        -- Each count is its own plural (Russian has three forms a count),
+        -- set in one line by a template a locale may reorder.
+        lines[#lines + 1] = Fmt(L["%1$s, %2$s, %3$s##board row"],
+            ns.Plural(p.kb or 0, L["%d killing blow|%d killing blows##plural"]),
+            ns.Plural(p.deaths or 0, L["%d death|%d deaths##plural"]),
+            ns.Plural(p.hk or 0, L["a hand in %d kill|a hand in %d kills##plural"]))
     end
     if p.damage or p.healing then
         lines[#lines + 1] = Fmt(L["%1$s damage, %2$s healing"], BreakUpLargeNumbers and BreakUpLargeNumbers(p.damage or 0)
@@ -322,8 +331,8 @@ end
 -- Your note's tooltip: each death's minute into the match, "Second, 12
 -- min in, killed by Feivel Ashgrove" (a ledger's "min": no "1 minutes").
 function Text.MatchDeathLine(k, minute, killer)
-    if killer then return Fmt(L["%1$s, %2$d min in, killed by %3$s"], Capital(Ordinal(k)), minute, killer) end
-    return Fmt(L["%1$s, %2$d min in"], Capital(Ordinal(k)), minute)
+    if killer then return Fmt(L["%1$s, %2$d min in, killed by %3$s"], Capital(Format.Nth(k, NTH_DEATH)), minute, killer) end
+    return Fmt(L["%1$s, %2$d min in"], Capital(Format.Nth(k, NTH_DEATH)), minute)
 end
 
 Text.MatchSaid, Text.MatchTimes, Text.MatchOrdinal = Said, Times, Ordinal

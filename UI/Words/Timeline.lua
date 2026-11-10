@@ -622,30 +622,26 @@ local function VisitText(episode, guid)
     return text, facts
 end
 
--- A battleground match (Core/Matches.lua): the map by the name the client
--- gave it, else these.
+-- A battleground match (Core/Matches.lua): the map by these names, which a
+-- locale translates (as Your Diary's ticket does, UI/Journey/Text/Match.lua),
+-- so a diary kept on one client reads right on another; a map not listed by
+-- the name the client gave it when the match was recorded.
 local MATCH_MAPS = {
     warsong = L["Warsong Gulch"],
     arathi = L["Arathi Basin"],
     alterac = L["Alterac Valley"],
 }
 local function MatchName(m)
-    if m.mapName and m.mapName ~= "" then return m.mapName end
     local map = ns.Matches.MAPS[m.map]
-    return map and MATCH_MAPS[map.key] or L["A battleground"]  -- (a match whose map went unread)
+    if map and MATCH_MAPS[map.key] then return MATCH_MAPS[map.key] end
+    if m.mapName and m.mapName ~= "" then return m.mapName end
+    return L["A battleground"]  -- (a match whose map went unread)
 end
 
--- "third", "11th": how many matches you have met in. An ordinal is the
--- locale's grammar (grammar.Nth) where it has its own.
-local NTH = { L["first##ordinal"], L["second##ordinal"], L["third##ordinal"], L["fourth##ordinal"],
-    L["fifth##ordinal"], L["sixth##ordinal"], L["seventh##ordinal"], L["eighth##ordinal"], L["ninth##ordinal"],
-    L["tenth##ordinal"] }
+-- "third", "11th": how many matches you have met in, in words up to the
+-- tenth (Format.Nth, the match's words).
 local function Nth(n)
-    if G.Nth then return G.Nth(n) end
-    if NTH[n] then return NTH[n] end
-    local last, tens = n % 10, n % 100
-    local suffix = (tens >= 11 and tens <= 13) and "th" or ({ "st", "nd", "rd" })[last] or "th"
-    return n .. suffix
+    return n <= 10 and Format.Nth(n, Format.NTH_MATCH) or Format.Ordinal(n)
 end
 
 -- "Warsong Gulch, on your side" ("on Thessaly's side" for another of the

@@ -230,6 +230,14 @@ here.
   an article fills `grammar.SUBZONES[name][role]` by the client's name
   ("Wegekreuz" -> "am Wegekreuz"). The English wording never changes to
   suit a translation: the English is the golden copy.
+- **Ordinals in words** ("your third match") go through
+  `Format.Nth(n, words)` (`UI/Words/Format.lua`), with a word list per noun
+  counted (`Format.NTH_MATCH`, or a file's own with its own context,
+  `L["first##death"]`): an ordinal takes its noun's gender and case in
+  most languages. Past the list it is the number's, `Format.Ordinal(n)`
+  ("13th"; a locale's `grammar.Ordinal`).
+- **Several counts in one line** are a plural each, set in a template:
+  `Fmt(L["%1$s, %2$s##board row"], ns.Plural(a, ...), ns.Plural(b, ...))`.
 - **One English word, two meanings**: add a context, `L["May##short"]`;
   the English shown is the part before `##`.
 - **Never translate data**: saved values, table keys, event and setting

@@ -81,13 +81,7 @@ local PARTS = {
     { 5, L["Morning"] }, { 11, L["Noon"] }, { 14, L["Afternoon"] }, { 18, L["Evening"] }, { 22, L["Night"] },
 }
 
-local function Ordinal(n)
-    if G.Ordinal then return G.Ordinal(n) end
-    local tail = n % 100
-    if tail >= 11 and tail <= 13 then return n .. "th" end
-    local last = n % 10
-    return n .. (last == 1 and "st" or last == 2 and "nd" or last == 3 and "rd" or "th")
-end
+local Ordinal = Format.Ordinal
 
 local function Part(t)
     local hour = date("*t", t).hour

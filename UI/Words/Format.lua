@@ -161,6 +161,29 @@ function Format.SeenText(seen, now)
     return Fmt(L["Last seen %s"], at)
 end
 
+-- "25th": a number as an ordinal (a locale's own, grammar.Ordinal:
+-- German "25.").
+function Format.Ordinal(n)
+    if G.Ordinal then return G.Ordinal(n) end
+    local tail = n % 100
+    if tail >= 11 and tail <= 13 then return n .. "th" end
+    local last = n % 10
+    return n .. (last == 1 and "st" or last == 2 and "nd" or last == 3 and "rd" or "th")
+end
+
+-- "third": an ordinal said as a word, from `words` (its words in order,
+-- "first" on); past them, the number's ("13th"). The words are a list
+-- per noun they count, as an ordinal takes its noun's gender and case in
+-- most languages ("dein drittes Match", but "beim dritten Versuch"):
+-- Format.NTH_MATCH for a match, a file's own for anything else.
+function Format.Nth(n, words)
+    return words[n] or Format.Ordinal(n)
+end
+
+Format.NTH_MATCH = { L["first##match"], L["second##match"], L["third##match"], L["fourth##match"],
+    L["fifth##match"], L["sixth##match"], L["seventh##match"], L["eighth##match"], L["ninth##match"],
+    L["tenth##match"], L["eleventh##match"], L["twelfth##match"] }
+
 -- "once", "twice", "5 times". "twice" is a word English has for 2, not a
 -- plural form: a locale without one leaves it empty, and 2 takes the
 -- plural like any other number.
