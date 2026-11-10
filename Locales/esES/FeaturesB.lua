@@ -65,6 +65,7 @@ ns.Locale.Add("esES", {
     -- Features/Hunts/Text.lua
     ["%d kill|%d kills##plural"] = "%d baja|%d bajas",
     ["drop"] = "botín",
+    ["one drop|%d drops##plural"] = "un objeto|%d objetos",
     ["%s and others"] = "%s y otros",
     ["%1$s for %2$s"] = "%1$s por %2$s",
     ["%d more than expected|%d more than expected##plural"] = "%d más de lo esperado|%d más de lo esperado",

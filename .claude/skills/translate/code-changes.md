@@ -98,6 +98,9 @@ Open:
 **D1 is decided and built** (Jan, 10 Nov: the game's own sex of a
 character, no field for the player to set). A locale's words hold the
 forms, `<1:he/she/neither>` by a value's character and `<you:he/she>` by
-the reader (`Locales/Locale.lua`, "A person's gender"). No word uses them
+the reader (`Locales/Locale.lua`, "A person's gender"). `<they:he/she>`
+goes by the one a deed is about (the witness deeds, picked in
+`Witnesses.Deed`); the Russian deeds use it. A hunt's nameless item is
+its own plural (`one drop|%d drops##plural`). No word uses them
 yet: writing the past tense back into the Russian, and the participles into
 the French and Spanish, is part of the second pass.
