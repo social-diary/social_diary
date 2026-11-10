@@ -61,4 +61,4 @@ local function BuildBattlegrounds(pane, c)
 end
 
 SettingsUI.RegisterSection("battlegrounds", { order = 45, label = L["Battlegrounds"],
-    about = L["How many whole scoreboards are kept"], build = BuildBattlegrounds })
+    build = BuildBattlegrounds })

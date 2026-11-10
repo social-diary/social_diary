@@ -27,4 +27,4 @@ local function BuildDungeons(pane, c)
 end
 
 SettingsUI.RegisterSection("dungeons", { order = 26, label = L["Dungeons and Raids"], parent = "interface",
-    about = L["How a run’s map is drawn, and when it opens"], build = BuildDungeons })
+    build = BuildDungeons })

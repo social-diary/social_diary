@@ -1272,7 +1272,6 @@ ns.Locale.Add("enUS", {
     ["Warnings"] = "Warnings",
     ["Warn me before old scoreboards lose their strangers"] = "Warn me before old scoreboards lose their strangers",
     ["A hint in the diary 25 matches before, and again as it nears. Applies to every character."] = "A hint in the diary 25 matches before, and again as it nears. Applies to every character.",
-    ["How many whole scoreboards are kept"] = "How many whole scoreboards are kept",
     -- UI/Settings/Sections/Changelog.lua
     ["The full history is on CurseForge and GitHub."] = "The full history is on CurseForge and GitHub.",
     ["Thanks to %s"] = "Thanks to %s",
@@ -1281,7 +1280,6 @@ ns.Locale.Add("enUS", {
     ["Changes"] = "Changes",
     ["Fixes"] = "Fixes",
     ["Changelog"] = "Changelog",
-    ["What changed in the latest versions"] = "What changed in the latest versions",
     -- UI/Settings/Sections/Credits.lua
     ["Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License."] = "Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License.",
     ["Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later."] = "Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later.",
@@ -1294,7 +1292,6 @@ ns.Locale.Add("enUS", {
     ["Willing impromptu Beta Testers:"] = "Willing impromptu Beta Testers:",
     ["Licensing"] = "Licensing",
     ["Credits"] = "Credits",
-    ["Testers, sources and licences"] = "Testers, sources and licences",
     -- UI/Settings/Sections/Dungeons.lua
     ["Dungeon maps"] = "Dungeon maps",
     ["Show the usual way through on each map"] = "Show the usual way through on each map",
@@ -1302,7 +1299,6 @@ ns.Locale.Add("enUS", {
     ["Open the diary on the map of the run you’re in"] = "Open the diary on the map of the run you’re in",
     ["Only inside a dungeon or raid. Anywhere else, the diary opens where you left it."] = "Only inside a dungeon or raid. Anywhere else, the diary opens where you left it.",
     ["Dungeons and Raids"] = "Dungeons and Raids",
-    ["How a run’s map is drawn, and when it opens"] = "How a run’s map is drawn, and when it opens",
     -- UI/Settings/Sections/Feedback.lua
     ["Bugs and ideas"] = "Bugs and ideas",
     ["Report a bug or suggest an idea on GitHub."] = "Report a bug or suggest an idea on GitHub.",
@@ -1313,7 +1309,6 @@ ns.Locale.Add("enUS", {
     ["If something breaks, try to write down what happened as precisely as possible!"] = "If something breaks, try to write down what happened as precisely as possible!",
     ["Reporting a bug"] = "Reporting a bug",
     ["Feedback"] = "Feedback",
-    ["Bugs, ideas and comments"] = "Bugs, ideas and comments",
     -- UI/Settings/Sections/Integrations.lua
     ["Questie installed"] = "Questie installed",
     ["Mobs get their real names and quest drops are checked against real drop rates. Social Diary only reads from it."] = "Mobs get their real names and quest drops are checked against real drop rates. Social Diary only reads from it.",
@@ -1323,7 +1318,6 @@ ns.Locale.Add("enUS", {
     ["Total RP 3 installed"] = "Total RP 3 installed",
     ["Adds RP profile data to diary entries. Not available until it's ported to Forever."] = "Adds RP profile data to diary entries. Not available until it's ported to Forever.",
     ["Integrations"] = "Integrations",
-    ["Other addons it can read"] = "Other addons it can read",
     -- UI/Settings/Sections/Interface.lua
     ["Tooltips"] = "Tooltips",
     ["Add diary lines to player tooltips"] = "Add diary lines to player tooltips",
@@ -1345,23 +1339,21 @@ ns.Locale.Add("enUS", {
     ["Show a hint after a big update"] = "Show a hint after a big update",
     ["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."] = "When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character.",
     ["Interface"] = "Interface",
-    ["Tooltips, minimap, how the book looks, hints"] = "Tooltips, minimap, how the book looks, hints",
     -- UI/Settings/Sections/Language.lua
     ["The game's language"] = "The game's language",
     ["The game's language (%s)"] = "The game's language (%s)",
     ["Write the diary in %s?\n\nThe interface reloads, and the diary's own words are then in that language. Your notes stay as you wrote them."] = "Write the diary in %s?\n\nThe interface reloads, and the diary's own words are then in that language. Your notes stay as you wrote them.",
-    ["Write the diary in"] = "Write the diary in",
+    ["Change the Diary's Language"] = "Change the Diary's Language",
     ["Switching requires a reload. Applies to every character."] = "Switching requires a reload. Applies to every character.",
     ["Names the game supplies, such as zones, classes and items, stay in the game's language."] = "Names the game supplies, such as zones, classes and items, stay in the game's language.",
     ["The diary has no words for the game's language yet, so it is written in English."] = "The diary has no words for the game's language yet, so it is written in English.",
     ["Reload"] = "Reload",
     ["Translations"] = "Translations",
-    ["Every language but English was translated by a machine, so some lines may read oddly or wrongly. Corrections are welcome."] = "Every language but English was translated by a machine, so some lines may read oddly or wrongly. Corrections are welcome.",
+    ["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."] = "Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome.",
     ["Go to Feedback"] = "Go to Feedback",
     ["The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language."] = "The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language.",
     ["The diary is written in %s once the interface reloads."] = "The diary is written in %s once the interface reloads.",
     ["Language"] = "Language",
-    ["The language the diary is written in"] = "The language the diary is written in",
     -- UI/Settings/Sections/Memory.lua
     ["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."] = "%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk.",
     ["%d character known|%d characters known##plural"] = "%d character known|%d characters known",
@@ -1394,7 +1386,6 @@ ns.Locale.Add("enUS", {
     ["this character's road deleted."] = "this character's road deleted.",
     ["Delete this character's road..."] = "Delete this character's road...",
     ["Memory"] = "Memory",
-    ["How long it keeps things, and deleting"] = "How long it keeps things, and deleting",
     -- UI/Settings/Sections/Recording.lua
     ["Data needed for the 'Your Diary' Page: Where you go and what you do."] = "Data needed for the 'Your Diary' Page: Where you go and what you do.",
     ["Chat"] = "Chat",
@@ -1407,7 +1398,6 @@ ns.Locale.Add("enUS", {
     ["Sightings"] = "Sightings",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds.",
     ["Enable sightings in cities - performance warning:"] = "Enable sightings in cities - performance warning:",
-    ["Your route, chat, sightings"] = "Your route, chat, sightings",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Open the journal",
     ["Opens the journal"] = "Opens the journal",
@@ -1421,14 +1411,12 @@ ns.Locale.Add("enUS", {
     ["On your action bar"] = "On your action bar",
     ["Slash commands"] = "Slash commands",
     ["Keybinds & Shortcuts"] = "Keybinds & Shortcuts",
-    ["Keys, macros, and /sd"] = "Keys, macros, and /sd",
     -- UI/Settings/Sections/Sounds.lua
     ["World PvP"] = "World PvP",
     ["Sound a raid warning when a foe comes into view"] = "Sound a raid warning when a foe comes into view",
     ["Tag someone foe in your diary, e.g. for World PVP."] = "Tag someone foe in your diary, e.g. for World PVP.",
     ["Hear it"] = "Hear it",
     ["Sounds"] = "Sounds",
-    ["A warning when a foe comes into view"] = "A warning when a foe comes into view",
     -- UI/Settings/Sections/Toasts.lua
     ["When they show"] = "When they show",
     ["Show a toast when someone from your diary joins your group"] = "Show a toast when someone from your diary joins your group",
@@ -1440,7 +1428,6 @@ ns.Locale.Add("enUS", {
     ["Nearby Toast Blacklist"] = "Nearby Toast Blacklist",
     ["Toasts can get annoying for people you play with all the time."] = "Toasts can get annoying for people you play with all the time.",
     ["Toasts"] = "Toasts",
-    ["Who gets one, how often, and where"] = "Who gets one, how often, and where",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "no interactions yet",
     ["%d interaction on record|%d interactions on record##plural"] = "%d interaction on record|%d interactions on record",

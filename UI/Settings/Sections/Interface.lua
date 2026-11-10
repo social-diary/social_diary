@@ -61,7 +61,7 @@ local function BuildInterface(pane, c)
 end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = L["Interface"],
-    about = L["Tooltips, minimap, how the book looks, hints"], build = BuildInterface })
+    build = BuildInterface })
 
 -- The saved grain, as soon as the saved settings are there (Core/Events.lua
 -- loads first, so its handler has run) and before anything is built with it.

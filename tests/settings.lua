@@ -59,7 +59,7 @@ P:ShowSection("nonsense")
 Eq(P:Section(), "memory", "an unknown section was opened")
 P:ShowSection("credits")
 Check(P.panes.credits:IsShown() and not P.panes.memory:IsShown(), "the Credits page did not open")
-Eq(P.panes.credits.about:GetText(), "Testers, sources and licences", "the Credits page's small print")
+Eq(P.panes.credits.about:GetText() or "", "", "the Credits page has small print beside its title (the pages have none)")
 Eq(#P.testers, 4, "the Credits page does not thank the four testers")
 Eq(P.testers[4]:GetText(), "Koko Skybluff", "a tester's name")
 Eq(P.nav.about.about, nil, "the About row carries small print")
@@ -129,7 +129,7 @@ Eq(P.quietSearch.holder.parent, P.panes.toasts, "the blacklist's search is not o
 for _, name in ipairs({ "tooltips", "tooltipSeen", "bookStack", "flatSheets", "revealMap" }) do
     Eq(P[name].parent, P.panes.interface, name .. " left the Interface page")
 end
-Check(not P.panes.interface.about:GetText():find("[Tt]oast"), "Interface still says it holds the toasts")
+Eq(P.panes.interface.about:GetText() or "", "", "Interface has small print beside its title (the pages have none)")
 
 -- Move the toast comes back to Toasts, whatever was opened meanwhile.
 P:ShowSection("toasts")
@@ -162,7 +162,7 @@ local function NavY(key) return P.nav[key].recorded.points[1].args[2] end
 Check(NavY("sounds") > NavY("integrations") and NavY("integrations") > NavY("memory"),
     "Integrations is not listed between Sounds and Memory")
 Eq(P.nav.integrations.label:GetText(), "Integrations", "the Integrations row's name")
-Eq(P.nav.integrations.about:GetText(), "Other addons it can read", "the Integrations row's small print")
+Eq(P.nav.integrations.about, nil, "the Integrations row carries small print (the pages have none)")
 P.nav.integrations:Click()
 Eq(P:Section(), "integrations", "clicking Integrations did not open it")
 Check(P.panes.integrations:IsShown() and not P.panes.sounds:IsShown(), "the Integrations page did not open")

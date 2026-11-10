@@ -55,4 +55,4 @@ local function BuildIntegrations(pane, c)
 end
 
 SettingsUI.RegisterSection("integrations", { order = 40, label = L["Integrations"],
-    about = L["Other addons it can read"], build = BuildIntegrations })
+    build = BuildIntegrations })

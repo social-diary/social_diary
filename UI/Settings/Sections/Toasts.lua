@@ -51,4 +51,4 @@ local function BuildToasts(pane, c)
 end
 
 SettingsUI.RegisterSection("toasts", { order = 22, label = L["Toasts"], parent = "interface",
-    about = L["Who gets one, how often, and where"], build = BuildToasts })
+    build = BuildToasts })

@@ -59,7 +59,7 @@ local function BuildLanguage(pane, c)
     local page = SettingsUI.page
     local ACCENT = Style.ACCENT
 
-    page.language = Kit.Choice(c, L["Write the diary in"], "language", Choices, nil, L["Write the diary in"])
+    page.language = Kit.Choice(c, L["Change the Diary's Language"], "language", Choices, nil, L["Change the Diary's Language"])
     page.languageHint = c:Hint(L["Switching requires a reload. Applies to every character."])
     page.languageNames = c:Hint(L["Names the game supplies, such as zones, classes and items, stay in the game's language."])
     if not Locale.Offers(Locale.client) then
@@ -94,7 +94,7 @@ local function BuildLanguage(pane, c)
     page.languageAbout = Style.Text(rest, FONT.body)
     page.languageAbout:SetWidth(c.width)
     page.languageAbout:SetWordWrap(true)
-    page.languageAbout:SetText(L["Every language but English was translated by a machine, so some lines may read oddly or wrongly. Corrections are welcome."])
+    page.languageAbout:SetText(L["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."])
     r:Place(page.languageAbout, page.languageAbout:GetStringHeight(), 0, 8)
 
     -- Feedback's page, and with the pad in hand the pad on its row: that
@@ -143,4 +143,4 @@ local function BuildLanguage(pane, c)
 end
 
 SettingsUI.RegisterSection("language", { order = 28, label = L["Language"], parent = "interface",
-    about = L["The language the diary is written in"], build = BuildLanguage })
+    build = BuildLanguage })

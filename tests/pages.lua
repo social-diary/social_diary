@@ -194,7 +194,8 @@ Check(P.nav.test.about ~= nil, "a section's row without its small print")
 local function Y(key) return -P.nav[key].recorded.points[1].args[2] end
 Check(Y("sounds") < Y("test") and Y("test") < Y("integrations"), "the section's row is out of order: "
     .. Y("sounds") .. " " .. Y("test") .. " " .. Y("integrations"))
-Eq(Y("integrations") - Y("test"), Y("test") - Y("sounds"), "the rows are not evenly spaced round it")
+-- Its row has small print and the shipped ones have none, so it is the taller.
+Check(Y("integrations") - Y("test") > Y("test") - Y("sounds"), "a row with small print is no taller than a plain one")
 
 Eq(P:Section(), "recording", "the first section is not open to begin with")
 P.nav.test:Click()

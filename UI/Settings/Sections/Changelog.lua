@@ -291,7 +291,7 @@ end
 SettingsUI.ChangelogLines = Lines
 
 SettingsUI.RegisterSection("changelog", { order = 57, label = L["Changelog"], parent = "about",
-    about = L["What changed in the latest versions"], build = BuildChangelog,
+    build = BuildChangelog,
     open = function()
         if ns.Hints and ns.Hints.UpdateRead then ns.Hints.UpdateRead() end
         local list = SettingsUI.page and SettingsUI.page.changelog

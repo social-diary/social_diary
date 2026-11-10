@@ -69,4 +69,4 @@ local function BuildCredits(pane, c)
 end
 
 SettingsUI.RegisterSection("credits", { order = 58, label = L["Credits"], parent = "about",
-    about = L["Testers, sources and licences"], build = BuildCredits })
+    build = BuildCredits })

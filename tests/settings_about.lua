@@ -85,7 +85,7 @@ Eq(Font(P.nav.about), Style.FONT.body, "About's name still dark")
 ns.UI.ShowSettings("changelog")
 Eq(P:Section(), "changelog", "ShowSettings did not open the Changelog")
 Check(Listed("changelog") and Listed("credits"), "the group not listed for the Changelog")
-Eq(P.panes.changelog.about:GetText(), "What changed in the latest versions", "the Changelog's small print")
+Eq(P.panes.changelog.about:GetText() or "", "", "the Changelog has small print beside its title (the pages have none)")
 ns.UI.CloseJournal()
 
 --------------------------------------------------------------------------

@@ -61,4 +61,4 @@ local function BuildFeedback(pane, c)
 end
 
 SettingsUI.RegisterSection("feedback", { order = 56, label = L["Feedback"], parent = "about",
-    about = L["Bugs, ideas and comments"], build = BuildFeedback })
+    build = BuildFeedback })

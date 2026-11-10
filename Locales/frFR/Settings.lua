@@ -38,7 +38,6 @@ ns.Locale.Add("frFR", {
     ["Warnings"] = "Avertissements",
     ["Warn me before old scoreboards lose their strangers"] = "Me prévenir avant que d’anciens tableaux perdent leurs inconnus",
     ["A hint in the diary 25 matches before, and again as it nears. Applies to every character."] = "Une astuce dans le journal 25 parties avant, puis de nouveau à l’approche. S’applique à tous les personnages.",
-    ["How many whole scoreboards are kept"] = "Combien de tableaux sont gardés en entier",
     -- UI/Settings/Sections/Changelog.lua
     ["The full history is on CurseForge and GitHub."] = "L’historique complet est sur CurseForge et GitHub.",
     ["Thanks to %s"] = "Merci à %s",
@@ -47,7 +46,6 @@ ns.Locale.Add("frFR", {
     ["Changes"] = "Changements",
     ["Fixes"] = "Corrections",
     ["Changelog"] = "Notes de version",
-    ["What changed in the latest versions"] = "Ce qui a changé dans les dernières versions",
     -- UI/Settings/Sections/Credits.lua
     ["Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License."] = "Social Diary est publié sous la licence GNU General Public License v3 ou ultérieure. Les versions jusqu’à la 1.7.0 étaient sous licence MIT.",
     ["Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later."] = "Cartes de donjon, boss, itinéraires et tables de butin : Dungeon Crawler Forever, par Per, GPL v3 ou ultérieure.",
@@ -60,7 +58,6 @@ ns.Locale.Add("frFR", {
     ["Willing impromptu Beta Testers:"] = "Bêta-testeurs volontaires et improvisés :",
     ["Licensing"] = "Licences",
     ["Credits"] = "Crédits",
-    ["Testers, sources and licences"] = "Testeurs, sources et licences",
     -- UI/Settings/Sections/Dungeons.lua
     ["Dungeon maps"] = "Cartes de donjon",
     ["Show the usual way through on each map"] = "Montrer le trajet habituel sur chaque carte",
@@ -68,7 +65,6 @@ ns.Locale.Add("frFR", {
     ["Open the diary on the map of the run you’re in"] = "Ouvrir le journal sur la carte de l’instance en cours",
     ["Only inside a dungeon or raid. Anywhere else, the diary opens where you left it."] = "Seulement dans un donjon ou un raid. Ailleurs, le journal s’ouvre là où tu l’as laissé.",
     ["Dungeons and Raids"] = "Donjons et raids",
-    ["How a run’s map is drawn, and when it opens"] = "Comment la carte d’une instance est tracée, et quand elle s’ouvre",
     -- UI/Settings/Sections/Feedback.lua
     ["Bugs and ideas"] = "Bugs et idées",
     ["Report a bug or suggest an idea on GitHub."] = "Signale un bug ou propose une idée sur GitHub.",
@@ -79,7 +75,6 @@ ns.Locale.Add("frFR", {
     ["If something breaks, try to write down what happened as precisely as possible!"] = "Si quelque chose se casse, essaie de noter ce qui s’est passé aussi précisément que possible !",
     ["Reporting a bug"] = "Signaler un bug",
     ["Feedback"] = "Retours",
-    ["Bugs, ideas and comments"] = "Bugs, idées et commentaires",
     -- UI/Settings/Sections/Integrations.lua
     ["Questie installed"] = "Questie installé",
     ["Mobs get their real names and quest drops are checked against real drop rates. Social Diary only reads from it."] = "Les monstres reçoivent leur vrai nom et les butins de quête sont vérifiés d’après les vrais taux de butin. Social Diary ne fait que le lire.",
@@ -89,7 +84,6 @@ ns.Locale.Add("frFR", {
     ["Total RP 3 installed"] = "Total RP 3 installé",
     ["Adds RP profile data to diary entries. Not available until it's ported to Forever."] = "Ajoute les données de profil RP aux entrées du journal. Indisponible tant qu’il n’est pas porté sur Forever.",
     ["Integrations"] = "Intégrations",
-    ["Other addons it can read"] = "Autres addons qu’il peut lire",
     -- UI/Settings/Sections/Interface.lua
     ["Tooltips"] = "Infobulles",
     ["Add diary lines to player tooltips"] = "Ajouter des lignes du journal aux infobulles des joueurs",
@@ -111,7 +105,6 @@ ns.Locale.Add("frFR", {
     ["Show a hint after a big update"] = "Afficher une astuce après une grosse mise à jour",
     ["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."] = "Quand une nouvelle version majeure comme la 3.0 est installée, le livre t’indique ce qui a changé. S’applique à tous les personnages.",
     ["Interface"] = "Interface",
-    ["Tooltips, minimap, how the book looks, hints"] = "Infobulles, minicarte, apparence du livre, astuces",
     -- UI/Settings/Sections/Memory.lua
     ["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."] = "%1$d dans le journal, %2$s, %3$s, %4$s et %5$s.  Environ %6$d Ko sur le disque.",
     ["%d character known|%d characters known##plural"] = "%d personnage connu|%d personnage connu|%d personnages connus",
@@ -145,7 +138,6 @@ ns.Locale.Add("frFR", {
     ["this character's road deleted."] = "la route de ce personnage a été supprimée.",
     ["Delete this character's road..."] = "Supprimer la route de ce personnage…",
     ["Memory"] = "Mémoire",
-    ["How long it keeps things, and deleting"] = "Combien de temps il garde les choses, et la suppression",
     -- UI/Settings/Sections/Recording.lua
     ["Data needed for the 'Your Diary' Page: Where you go and what you do."] = "Données nécessaires à la page « Ton journal » : où tu vas et ce que tu fais.",
     ["Chat"] = "Chat",
@@ -158,7 +150,6 @@ ns.Locale.Add("frFR", {
     ["Sightings"] = "Aperçus",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Ne fonctionne que si les barres d’identité sont activées. Ne fonctionne pas en donjon, en raid ni en champ de bataille.",
     ["Enable sightings in cities - performance warning:"] = "Activer les aperçus en ville, attention aux performances :",
-    ["Your route, chat, sightings"] = "Ta route, ton chat, tes aperçus",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Ouvrir le journal",
     ["Opens the journal"] = "Ouvre le journal",
@@ -172,14 +163,12 @@ ns.Locale.Add("frFR", {
     ["On your action bar"] = "Sur ta barre d’action",
     ["Slash commands"] = "Commandes slash",
     ["Keybinds & Shortcuts"] = "Raccourcis",
-    ["Keys, macros, and /sd"] = "Touches, macros et /sd",
     -- UI/Settings/Sections/Sounds.lua
     ["World PvP"] = "JcJ en monde ouvert",
     ["Sound a raid warning when a foe comes into view"] = "Alerte de raid sonore quand un adversaire apparaît",
     ["Tag someone foe in your diary, e.g. for World PVP."] = "Marque quelqu’un comme adversaire dans ton journal, par ex. pour le JcJ en monde ouvert.",
     ["Hear it"] = "L’écouter",
     ["Sounds"] = "Sons",
-    ["A warning when a foe comes into view"] = "Une alerte quand un adversaire apparaît",
     -- UI/Settings/Sections/Toasts.lua
     ["When they show"] = "Quand elles s’affichent",
     ["Show a toast when someone from your diary joins your group"] = "Alerte quand quelqu’un de ton journal rejoint ton groupe",
@@ -191,11 +180,9 @@ ns.Locale.Add("frFR", {
     ["Nearby Toast Blacklist"] = "Liste noire des alertes de proximité",
     ["Toasts can get annoying for people you play with all the time."] = "Les alertes peuvent lasser pour les personnes avec qui tu joues tout le temps.",
     ["Toasts"] = "Alertes",
-    ["Who gets one, how often, and where"] = "Pour qui, à quelle fréquence, et où",
     -- UI/Settings/Sections/Language.lua
     ["Language"] = "Langue",
-    ["The language the diary is written in"] = "La langue dans laquelle le journal est écrit",
-    ["Write the diary in"] = "Langue du journal",
+    ["Change the Diary's Language"] = "Changer la langue du journal",
     ["The game's language"] = "La langue du jeu",
     ["The game's language (%s)"] = "La langue du jeu (%s)",
     ["Switching requires a reload. Applies to every character."] = "Le changement demande un rechargement. Il vaut pour tous tes personnages.",
@@ -205,6 +192,6 @@ ns.Locale.Add("frFR", {
     ["Write the diary in %s?\n\nThe interface reloads, and the diary's own words are then in that language. Your notes stay as you wrote them."] = "Changer la langue du journal : %s ?\n\nL’interface se recharge, et les mots du journal passent dans cette langue. Tes notes restent telles que tu les as écrites.",
     ["The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language."] = "Le journal ne peut pas changer de langue sur ce client du jeu, car ton choix lui parvient trop tard. Il reste dans la langue du jeu.",
     ["Translations"] = "Traductions",
-    ["Every language but English was translated by a machine, so some lines may read oddly or wrongly. Corrections are welcome."] = "Toutes les langues sauf l’anglais ont été traduites par une machine, certaines lignes peuvent donc sonner bizarrement ou être fausses. Les corrections sont les bienvenues.",
+    ["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."] = "Toutes les langues sauf l’anglais ont été traduites automatiquement, certaines lignes peuvent donc sonner bizarrement ou être fausses. Il est aussi probable que du texte soit tronqué. Les corrections sont les bienvenues.",
     ["Go to Feedback"] = "Aller aux Retours",
 })

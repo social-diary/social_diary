@@ -52,7 +52,7 @@ end
 Check(spec, "no section called language")
 Eq(spec.parent, "interface", "not under Interface")
 Eq(spec.label, "Language", "its name")
-Check(type(spec.about) == "string" and spec.about ~= "", "it does not say what it covers")
+Eq(spec.about, nil, "it has a subtitle (the pages have none)")
 Eq(lastSub, "language", "not the last of Interface's subpages")
 Eq(SettingsUI.Sections()[at - 1].key, "dungeons", "not after Dungeons and Raids")
 Check(P.nav.language:IsShown(), "its row is not listed (Interface's subpages always are)")

@@ -161,4 +161,4 @@ end
 SettingsUI.SizeText, SettingsUI.SizeWarning, SettingsUI.DataText = SizeText, SizeWarning, DataText
 
 SettingsUI.RegisterSection("memory", { order = 50, label = L["Memory"],
-    about = L["How long it keeps things, and deleting"], build = BuildMemory })
+    build = BuildMemory })

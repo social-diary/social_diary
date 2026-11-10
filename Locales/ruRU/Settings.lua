@@ -36,7 +36,6 @@ ns.Locale.Add("ruRU", {
     ["Warnings"] = "Предупреждения",
     ["Warn me before old scoreboards lose their strangers"] = "Предупреждать, пока в старых таблицах не стёрлись незнакомцы",
     ["A hint in the diary 25 matches before, and again as it nears. Applies to every character."] = "Совет в дневнике за 25 матчей до этого и снова по мере приближения. Действует для всех персонажей.",
-    ["How many whole scoreboards are kept"] = "Сколько таблиц хранится целиком",
     -- UI/Settings/Sections/Changelog.lua
     ["The full history is on CurseForge and GitHub."] = "Вся история есть на CurseForge и GitHub.",
     ["Thanks to %s"] = "Спасибо: %s",
@@ -45,7 +44,6 @@ ns.Locale.Add("ruRU", {
     ["Changes"] = "Изменения",
     ["Fixes"] = "Исправления",
     ["Changelog"] = "Список изменений",
-    ["What changed in the latest versions"] = "Что изменилось в последних версиях",
     -- UI/Settings/Sections/Credits.lua
     ["Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License."] = "Social Diary распространяется по лицензии GNU General Public License версии 3 или новее. Версии до 1.7.0 выходили под лицензией MIT.",
     ["Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later."] = "Карты подземелий, боссы, маршруты и таблицы добычи: Dungeon Crawler Forever, автор Per, GPL v3 или новее.",
@@ -58,7 +56,6 @@ ns.Locale.Add("ruRU", {
     ["Willing impromptu Beta Testers:"] = "Бета-тестеры, откликнувшиеся по первому зову:",
     ["Licensing"] = "Лицензии",
     ["Credits"] = "Авторы",
-    ["Testers, sources and licences"] = "Тестеры, источники и лицензии",
     -- UI/Settings/Sections/Dungeons.lua
     ["Dungeon maps"] = "Карты подземелий",
     ["Show the usual way through on each map"] = "Показывать обычный путь на каждой карте",
@@ -66,7 +63,6 @@ ns.Locale.Add("ruRU", {
     ["Open the diary on the map of the run you’re in"] = "Открывать дневник на карте текущего прохождения",
     ["Only inside a dungeon or raid. Anywhere else, the diary opens where you left it."] = "Только внутри подземелья или рейда. В других местах дневник открывается на той странице, где он остался.",
     ["Dungeons and Raids"] = "Подземелья и рейды",
-    ["How a run’s map is drawn, and when it opens"] = "Как рисуется карта прохождения и когда она открывается",
     -- UI/Settings/Sections/Feedback.lua
     ["Bugs and ideas"] = "Ошибки и идеи",
     ["Report a bug or suggest an idea on GitHub."] = "Сообщи об ошибке или предложи идею на GitHub.",
@@ -77,7 +73,6 @@ ns.Locale.Add("ruRU", {
     ["If something breaks, try to write down what happened as precisely as possible!"] = "Если что-то сломается, постарайся как можно точнее записать, что произошло!",
     ["Reporting a bug"] = "Как сообщить об ошибке",
     ["Feedback"] = "Обратная связь",
-    ["Bugs, ideas and comments"] = "Ошибки, идеи и отзывы",
     -- UI/Settings/Sections/Integrations.lua
     ["Questie installed"] = "Questie установлен",
     ["Mobs get their real names and quest drops are checked against real drop rates. Social Diary only reads from it."] = "Существа получают настоящие имена, а добыча с заданий сверяется с реальными шансами выпадения. Social Diary только читает данные Questie.",
@@ -87,7 +82,6 @@ ns.Locale.Add("ruRU", {
     ["Total RP 3 installed"] = "Total RP 3 установлен",
     ["Adds RP profile data to diary entries. Not available until it's ported to Forever."] = "Добавляет данные ролевого профиля в записи дневника. Недоступно, пока аддон не перенесут на Forever.",
     ["Integrations"] = "Интеграции",
-    ["Other addons it can read"] = "Другие аддоны, из которых он может читать",
     -- UI/Settings/Sections/Interface.lua
     ["Tooltips"] = "Всплывающие подсказки",
     ["Add diary lines to player tooltips"] = "Добавлять строки дневника во всплывающие подсказки игроков",
@@ -109,7 +103,6 @@ ns.Locale.Add("ruRU", {
     ["Show a hint after a big update"] = "Совет после крупного обновления",
     ["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."] = "Когда устанавливается новая крупная версия, например 3.0, книга подскажет, что изменилось. Действует для всех персонажей.",
     ["Interface"] = "Интерфейс",
-    ["Tooltips, minimap, how the book looks, hints"] = "Подсказки, миникарта, вид книги, советы",
     -- UI/Settings/Sections/Memory.lua
     ["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."] = "Людей в дневнике: %1$d; %2$s, %3$s, %4$s и %5$s.  Около %6$d КБ на диске.",
     ["%d character known|%d characters known##plural"] = "%d известный персонаж|%d известных персонажа|%d известных персонажей",
@@ -143,7 +136,6 @@ ns.Locale.Add("ruRU", {
     ["this character's road deleted."] = "путь этого персонажа удалён.",
     ["Delete this character's road..."] = "Удалить путь персонажа…",
     ["Memory"] = "Память",
-    ["How long it keeps things, and deleting"] = "Как долго дневник хранит данные, и удаление",
     -- UI/Settings/Sections/Recording.lua
     ["Data needed for the 'Your Diary' Page: Where you go and what you do."] = "Данные для страницы «Твой дневник»: куда ты идёшь и чем занимаешься.",
     ["Chat"] = "Чат",
@@ -156,7 +148,6 @@ ns.Locale.Add("ruRU", {
     ["Sightings"] = "Замеченные",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Работает, только если включены индикаторы здоровья. Не работает в подземельях, рейдах и на полях боя.",
     ["Enable sightings in cities - performance warning:"] = "Замечать людей в городах (снижает производительность):",
-    ["Your route, chat, sightings"] = "Маршрут, чат, замеченные",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Открыть дневник",
     ["Opens the journal"] = "Открывает дневник",
@@ -170,14 +161,12 @@ ns.Locale.Add("ruRU", {
     ["On your action bar"] = "На панели команд",
     ["Slash commands"] = "Слэш-команды",
     ["Keybinds & Shortcuts"] = "Клавиши и команды",
-    ["Keys, macros, and /sd"] = "Клавиши, макросы и /sd",
     -- UI/Settings/Sections/Sounds.lua
     ["World PvP"] = "PvP в открытом мире",
     ["Sound a raid warning when a foe comes into view"] = "Подавать сигнал рейдового оповещения, когда в поле зрения недруг",
     ["Tag someone foe in your diary, e.g. for World PVP."] = "Отметь человека недругом в дневнике, например для PvP в открытом мире.",
     ["Hear it"] = "Послушать",
     ["Sounds"] = "Звуки",
-    ["A warning when a foe comes into view"] = "Сигнал, когда в поле зрения недруг",
     -- UI/Settings/Sections/Toasts.lua
     ["When they show"] = "Когда они появляются",
     ["Show a toast when someone from your diary joins your group"] = "Показывать уведомление, когда кто-то из дневника вступает в твою группу",
@@ -189,11 +178,9 @@ ns.Locale.Add("ruRU", {
     ["Nearby Toast Blacklist"] = "Чёрный список уведомлений о тех, кто рядом",
     ["Toasts can get annoying for people you play with all the time."] = "Уведомления могут надоесть, если речь о тех, с кем играешь постоянно.",
     ["Toasts"] = "Уведомления",
-    ["Who gets one, how often, and where"] = "Кто их получает, как часто и где",
     -- UI/Settings/Sections/Language.lua
     ["Language"] = "Язык",
-    ["The language the diary is written in"] = "Язык, на котором написан дневник",
-    ["Write the diary in"] = "Язык дневника",
+    ["Change the Diary's Language"] = "Сменить язык дневника",
     ["The game's language"] = "Язык игры",
     ["The game's language (%s)"] = "Язык игры (%s)",
     ["Switching requires a reload. Applies to every character."] = "Для смены нужна перезагрузка интерфейса. Действует для всех персонажей.",
@@ -203,6 +190,6 @@ ns.Locale.Add("ruRU", {
     ["Write the diary in %s?\n\nThe interface reloads, and the diary's own words are then in that language. Your notes stay as you wrote them."] = "Сменить язык дневника: %s?\n\nИнтерфейс перезагрузится, и слова дневника будут на этом языке. Твои заметки останутся такими, как ты их <you:написал/написала>.",
     ["The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language."] = "Дневник не может сменить язык в этом клиенте игры: твой выбор доходит до него слишком поздно. Он остаётся на языке игры.",
     ["Translations"] = "Переводы",
-    ["Every language but English was translated by a machine, so some lines may read oddly or wrongly. Corrections are welcome."] = "Все языки, кроме английского, перевела машина, поэтому некоторые строки могут звучать странно или неверно. Исправления приветствуются.",
+    ["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."] = "Все языки, кроме английского, переведены машинно, поэтому некоторые строки могут звучать странно или неверно. Вероятно, текст местами будет обрезан. Исправления приветствуются.",
     ["Go to Feedback"] = "Перейти к обратной связи",
 })

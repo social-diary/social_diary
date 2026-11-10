@@ -27,4 +27,4 @@ local function BuildSounds(pane, c)
 end
 
 SettingsUI.RegisterSection("sounds", { order = 30, label = L["Sounds"],
-    about = L["A warning when a foe comes into view"], build = BuildSounds })
+    build = BuildSounds })

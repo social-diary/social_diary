@@ -76,4 +76,4 @@ local function BuildRecording(pane, c)
 end
 
 SettingsUI.RegisterSection("recording", { order = 10, label = L["Recording"],
-    about = L["Your route, chat, sightings"], build = BuildRecording })
+    build = BuildRecording })

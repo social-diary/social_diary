@@ -33,7 +33,7 @@ Eq(P:Section(), "feedback", "clicking About did not open Feedback")
 local function NavY(key) return P.nav[key].recorded.points[1].args[2] end
 Check(NavY("memory") > NavY("about") and NavY("about") > NavY("feedback"),
     "the Feedback row is not placed under About")
-Eq(P.panes.feedback.about:GetText(), "Bugs, ideas and comments", "the Feedback page's small print")
+Eq(P.panes.feedback.about:GetText() or "", "", "the Feedback page has small print beside its title (the pages have none)")
 P.nav.memory:Click()
 P.nav.about:Click()
 P.nav.feedback:Click()
