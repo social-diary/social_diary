@@ -82,10 +82,37 @@ end
 local title, lines = P.Tip(AID, now)
 Eq(title, "First Aid at 75", "the tooltip's heading")
 Eq(lines[1], "As far as an Apprentice goes", "the tooltip's rank")
-Check(#lines == 2 and lines[2]:find("at level 11$"), "the tooltip's when, last: " .. tostring(lines[2]))
+Check(#lines == 2 and lines[2]:find(", level 11$"), "the tooltip's when, last: " .. tostring(lines[2]))
 title, lines = P.Tip({ rank = 375, t = now, level = 60 }, now)
 Eq(title, "A profession at 375", "a nameless cap's heading")
-Check(#lines == 1 and lines[1]:find("at level 60$"), "a cap with no title says only when")
+Check(#lines == 1 and lines[1]:find(", level 60$"), "a cap with no title says only when")
+
+-- The stairs' tooltip (P.Tips, the mark's `tips`): every cap on the spot
+-- told once. A lone cap reads as its own tooltip does.
+local DOT = ", "
+local function At(t) return (ns.UI.Format.At(t, now):gsub("^%l", string.upper)) end
+title, lines = P.Tips({ AID }, now)
+local lone = { P.Tip(AID, now) }
+Eq(title, lone[1], "a lone cap's title, as its own tooltip")
+Eq(table.concat(lines, "|"), table.concat(lone[2], "|"), "and its lines")
+Eq(table.concat(lines, "|"), "As far as an Apprentice goes|" .. At(AID.t) .. DOT .. "level 11",
+    "a lone cap: its rank and when, once")
+-- One profession twice on a spot (at the trainer): its caps in order, how
+-- far it goes at the last, one span.
+local AID2 = { t = now - 3000, level = 12, skillLine = FIRST_AID, name = "First Aid", rank = 150 }
+title, lines = P.Tips({ AID2, AID }, now)
+Eq(title, "First Aid at 75, then 150", "one profession: its caps in the order reached")
+Eq(lines[1], "As far as a Journeyman goes", "how far the training goes at the last")
+Eq(lines[2], At(AID.t):gsub(" at ", " from ") .. os.date(" to %H:%M", AID2.t) .. DOT .. "levels 11 to 12",
+    "a span and a level range, not a time each")
+Eq(#lines, 2, "two lines")
+-- Two professions: counted in the title, each once with its caps.
+title, lines = P.Tips({ AID, ORE, AID2 }, now)
+Eq(title, "Two professions at their cap", "two professions' title")
+Eq(lines[1], "First Aid at 75, then 150", "the first profession once")
+Eq(lines[2], "Mining at 150", "then the next")
+Check(#lines == 3 and lines[3]:find(DOT .. "levels 11 to 12$"), "then when: " .. tostring(lines[3]))
+for _, line in ipairs(lines) do Check(not line:find("more"), "no count of the rest: " .. line) end
 
 --------------------------------------------------------------------------
 Section("the captions")
@@ -175,7 +202,7 @@ Eq(#e.skillCaps, 1, "the level's cap")
 local plate = page.plates[1]
 Eq(plate.counts.skills, 1, "the cap's stairs are not drawn")
 local tips = Tips(plate)
-Check(Any(tips, "^First Aid at 75|As far as an Apprentice goes|[^|]*at level 10$"),
+Check(Any(tips, "^First Aid at 75|As far as an Apprentice goes|[^|]*, level 10$"),
     "the stairs' tooltip: " .. table.concat(tips, "; "))
 -- It claims its room, apart from the other marks.
 local spots = 0
@@ -228,9 +255,9 @@ do
     end
     -- One flight of stairs each, on the plate of the zone it was reached in.
     Eq(table.concat(flights, ","), "11:1454x1,12:1442x1", "the caps' stairs")
-    Check(Any(marked, "^11: First Aid at 75|As far as an Apprentice goes|[^|]*at level 11$"),
+    Check(Any(marked, "^11: First Aid at 75|As far as an Apprentice goes|[^|]*, level 11$"),
         "level 11's stairs' tooltip: " .. table.concat(marked, "; "))
-    Check(Any(marked, "^12: Mining at 150|As far as a Journeyman goes|[^|]*at level 12$"),
+    Check(Any(marked, "^12: Mining at 150|As far as a Journeyman goes|[^|]*, level 12$"),
         "level 12's stairs' tooltip: " .. table.concat(marked, "; "))
     Check(Any(words, "^11: .*First Aid at 75"), "the cap is not in level 11's words: " .. table.concat(words, "; "))
     Check(Any(words, "^12: .*Mining at 150"), "the cap is not in level 12's words: " .. table.concat(words, "; "))

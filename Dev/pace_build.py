@@ -36,6 +36,17 @@ What it writes, all in game yards (x north, y west):
              the mines' floor, its bottom on the cove's, 30 yd below).
   summons    the config's: an NPC in no pack (a pet, an add) to the NPC
              that brings it
+  pieces     the config's: { uiMapID: [ { name, rects, z: [zmin, zmax],
+             game: [g1..g6] } ] } for a floor DCF drew as one picture of
+             several pieces at their own scales (Shadowfang Keep's
+             overview); each spawn goes on the first piece whose heights
+             hold it and whose rectangles hold it (by `game`, inverted); a
+             spawn on none stops the build (`drop_spawns`: GUIDs to leave
+             out, with the reason in `notes`)
+  bounds     the config's: { uiMapID: [x1, y1, x2, y2] } for a floor DCF
+             drew as its own art, without bounds, over a Blizzard floor's
+             rectangle (Wailing Caverns: 800431 over 279); DCF's own bounds,
+             where a floor has them, win
 """
 import argparse
 import csv
@@ -102,6 +113,40 @@ def floor_of(r, floors, heights):
     return by_height[0] if len(by_height) == 1 else None
 
 
+def pieces_of(cfg):
+    """The config's pieces: [(key, floor, name, rects, (zmin, zmax), game)],
+    in the order they are tried. A piece's key is its floor's uiMapID * 10
+    plus its place in the list (1 on)."""
+    out = []
+    for f, ps in sorted(cfg.get("pieces", {}).items()):
+        if len(ps) > 9:
+            sys.exit("floor %s: more than 9 pieces" % f)
+        for n, pc in enumerate(ps, 1):
+            out.append((int(f) * 10 + n, int(f), pc["name"], pc["rects"], pc["z"], pc["game"]))
+    return out
+
+
+def to_picture(game, gx, gy):
+    """Game yards to a piece's picture (fractions): the inverse of its affine
+    gx = g1 + g2 fx + g3 fy, gy = g4 + g5 fx + g6 fy."""
+    g1, g2, g3, g4, g5, g6 = game
+    det = g2 * g6 - g3 * g5
+    dx, dy = gx - g1, gy - g4
+    return (g6 * dx - g3 * dy) / det, (g2 * dy - g5 * dx) / det
+
+
+def piece_of(r, pieces):
+    """The first piece whose heights hold spawn `r` and whose picture holds
+    it; None where none does."""
+    x, y, z = float(r["x"]), float(r["y"]), float(r["z"])
+    for key, _, _, rects, (zmin, zmax), game in pieces:
+        if zmin <= z < zmax:
+            fx, fy = to_picture(game, x, y)
+            if any(a <= fx <= c and b <= fy <= d for a, b, c, d in rects):
+                return key
+    return None
+
+
 def packs_of(cfg, rows):
     """The dungeon's name, its anchoring bosses [(name, x, y)], its packs, how
     many non-elite packs were left out, and notes on bosses with no anchor."""
@@ -121,17 +166,37 @@ def packs_of(cfg, rows):
     exclude = set(cfg.get("exclude", [])) | set(cfg.get("no_pull", []))
     keep_normal = set(cfg.get("normal_pulls", []))
 
+    pieces = pieces_of(cfg)
+    if pieces:
+        # Drawn as pieces of one picture (an overview): each spawn on its
+        # piece, which stands for a floor from here on; a boss's floor is
+        # its spawn's piece.
+        several = True
     bosses, notes = [], []
     for b in dcf_bosses:
         spawns = [r for r in rows if r["name"] == db_name.get(b, b)]
         if len(spawns) == 1:
             bosses.append((b, float(spawns[0]["x"]), float(spawns[0]["y"])))
+            if pieces:
+                boss_floor[b] = piece_of(spawns[0], pieces)
+                if boss_floor[b] is None:
+                    sys.exit("%s: %s on no piece" % (name, b))
         else:
             notes.append("%s: %d spawns, no anchor" % (b, len(spawns)))
 
-    trash = [r for r in rows if r["name"] not in boss_db and r["name"] not in exclude]
+    drop = set(str(g) for g in cfg.get("drop_spawns", []))
+    trash = [r for r in rows if r["name"] not in boss_db and r["name"] not in exclude and r["spawn_guid"] not in drop]
     floor = {}
-    if several:
+    if pieces:
+        lost = []
+        for r in trash:
+            floor[r["spawn_guid"]] = piece_of(r, pieces)
+            if floor[r["spawn_guid"]] is None:
+                lost.append("%s %s (%s, %s, z %s)" % (r["spawn_guid"], r["name"], r["x"], r["y"], r["z"]))
+        if lost:
+            sys.exit("%s: %d spawns on no piece (widen a piece, or list them in `drop_spawns`):\n  %s"
+                     % (name, len(lost), "\n  ".join(lost)))
+    elif several:
         lost = []
         for r in trash:
             floor[r["spawn_guid"]] = floor_of(r, floors, heights)
@@ -224,6 +289,27 @@ def build(cfg, rows):
     L.append("    source = %s," % lua_str(SOURCE))
     if cfg.get("entrance"):
         L.append("    entrance = { x = %s, y = %s }," % (num(float(cfg["entrance"][0])), num(float(cfg["entrance"][1]))))
+    if cfg.get("bounds"):
+        # A floor DCF drew without bounds (its own art, laid over a Blizzard
+        # floor's rectangle): the bounds the fit takes for it.
+        L.append("    bounds = {")
+        for f, b in sorted(cfg["bounds"].items()):
+            L.append("        [%d] = { %s }," % (int(f), ", ".join(num(float(v)) for v in b)))
+        L.append("    },")
+    if cfg.get("pieces"):
+        # A floor DCF drew as one picture of several pieces (an overview):
+        # each piece's rectangles on it (fractions, tried in this order) and
+        # its affine to game yards (gx = g1 + g2 fx + g3 fy, gy = g4 + g5 fx
+        # + g6 fy). A pack's `floor` is its piece's key (uiMapID * 10 + n).
+        L.append("    pieces = {")
+        for f, ps in sorted(cfg["pieces"].items()):
+            L.append("        [%d] = {" % int(f))
+            for pc in ps:
+                rects = ", ".join("{ %s }" % ", ".join(num(float(v)) for v in r) for r in pc["rects"])
+                L.append("            { name = %s, rects = { %s }," % (lua_str(pc["name"]), rects))
+                L.append("                game = { %s } }," % ", ".join("%.6g" % float(v) for v in pc["game"]))
+            L.append("        },")
+        L.append("    },")
     L.append("    bosses = {")
     for b, bx, by in bosses:
         L.append("        { name = %s, x = %s, y = %s }," % (lua_str(b), num(bx), num(by)))

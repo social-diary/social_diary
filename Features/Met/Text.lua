@@ -4,7 +4,7 @@ local addonName, ns = ...
 
 local Met = ns.Met
 local Text = ns.UI.JourneyText
-local List, Short, When = Text.List, Text.Short, Text.When
+local Capital, List, Short = Text.Capital, Text.List, Text.Short
 local L, Fmt = ns.L, ns.Fmt
 
 -- Who the card names: a diary entry's current name, so a rename shows here as it
@@ -20,12 +20,62 @@ function Met.Who(rec)
     return Fmt(L["with %s"], Met.Name(rec) or L["someone##with"])
 end
 
--- The mark's tooltip, as a meeting's reads (Text.Meeting): who, what, when.
+-- When the meetings were, and at what level, as every mark's tooltip on the
+-- plates ends (the core's Text.Foot and Text.Moments, UI/Journey/Text/
+-- Tips.lua): each time, a day said once for the times on it, past four
+-- the first to the last, then the levels after a comma, "Today at 12:47
+-- and 15:10, level 20", "Today from 12:47 to 19:02, levels 19 to 20".
+-- The tames' tooltip says its times the same way, without the level.
+local function Foot(ts, lo, hi, now)
+    return Text.Foot({ times = ts, levelFrom = lo, levelTo = hi }, now)
+end
+
+-- The mark's tooltip: one account of every card on its spot (a list of one
+-- for a lone card). Who, all of them named once, "With Old Tom", "With Old Tom
+-- and Wenna", "With Old Tom and someone" (a stranger last); what happened, the
+-- player's own lines, each once and each on its own line, with whose it was
+-- where several are named ("Old Tom, fished off the pier", the menu's form,
+-- Kind.lua's `describe`), and past three run on in one line; then when, and
+-- at what level. A card with no line has none ("" is none).
+function Met.Tips(recs, now)
+    local names, seen, someone = {}, {}, false
+    local whats, said = {}, {}
+    local ts, lo, hi = {}, nil, nil
+    for _, rec in ipairs(recs) do
+        local name = Met.Name(rec)
+        if not name then
+            someone = true
+        elseif not seen[name] then
+            seen[name] = true
+            names[#names + 1] = name
+        end
+        ts[#ts + 1] = rec.t or 0
+        local level = rec.level
+        if level then
+            lo = (not lo or level < lo) and level or lo
+            hi = (not hi or level > hi) and level or hi
+        end
+    end
+    if someone then names[#names + 1] = L["someone##with"] end
+    for _, rec in ipairs(recs) do
+        local what = rec.what
+        if type(what) == "string" and what ~= "" then
+            local line = #names > 1 and Fmt(L["%1$s, %2$s"], Met.Name(rec) or L["someone##with"], what) or what
+            if not said[line] then
+                said[line] = true
+                whats[#whats + 1] = line
+            end
+        end
+    end
+    local lines = whats
+    if #whats > 3 then lines = { ns.UI.TimelineText.Join(whats, L["%1$s; %2$s##list"]) } end
+    lines[#lines + 1] = Foot(ts, lo, hi, now)
+    return Fmt(L["With %s"], List(names)), lines
+end
+
+-- One card's tooltip, as its mark's alone (Met.Tips).
 function Met.Tip(rec, now)
-    local lines = {}
-    if rec.what then lines[1] = rec.what end
-    lines[#lines + 1] = When(rec.t, rec.level, now)
-    return Fmt(L["With %s"], Met.Name(rec) or L["someone##with"]), lines
+    return Met.Tips({ rec }, now)
 end
 
 --------------------------------------------------------------------------

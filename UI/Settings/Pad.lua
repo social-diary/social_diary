@@ -105,7 +105,7 @@ local PROMPT = {
     nav = { "PAD1", L["Go to the page"], main = true },
     intro = { "PAD1", L["Choose"], main = true },
     link = { "PAD1", L["Choose"], main = true },
-    step = { { "PADDLEFT", "PADDRIGHT" }, L["Less · more"], main = true },
+    step = { { "PADDLEFT", "PADDRIGHT" }, L["Less or more"], main = true },
     back = { "PAD2", L["Back to the sections"] },
     key = { "PAD1", L["Choose a keyboard key"], main = true },
     book = { "PAD1", L["Pick it up"], main = true },

@@ -45,15 +45,14 @@ function Text.Title(e, now)
 end
 
 -- Where a level was reached, as the opening says it: the phrase for a
--- zone or a dungeon ("in The Barrens", ns.ZoneIn / ns.DungeonIn), or a
--- subzone with its zone ("Crossroads, The Barrens"), which has no id for a
--- locale's preposition and so is never put after one: the sentence names
--- it after a middle dot. Returns the words and whether they are a subzone's.
+-- zone or a dungeon ("in The Barrens", ns.ZoneIn / ns.DungeonIn). A
+-- subzone, which has no id, is asked of the locale by its name ("in The
+-- Crossroads") and its zone named after it: the second value, else nil.
 local function Where(r)
-    if r.dungeon then return ns.DungeonIn(r.instanceID, r.dungeon), false end
+    if r.dungeon then return ns.DungeonIn(r.instanceID, r.dungeon) end
     local zone = MapName(r.mapID)
-    if r.subZone and r.subZone ~= zone then return Place(r.mapID, r.subZone), true end
-    if zone then return ns.ZoneIn(r.mapID, zone), false end
+    if r.subZone and r.subZone ~= "" and r.subZone ~= zone then return ns.ZoneIn(nil, r.subZone), zone end
+    if zone then return ns.ZoneIn(r.mapID, zone) end
     return nil
 end
 
@@ -62,10 +61,10 @@ local function Opening(e, now)
     if e.kind == "week" then
         local r = e.reached
         if r then
-            local where, sub = Where(r)
-            if sub then
-                return Fmt(L["Reached level %1$d on %2$s \194\183 %3$s. The road goes on."], e.level or 0,
-                    Day(r.at, now), where)
+            local where, zone = Where(r)
+            if zone then
+                return Fmt(L["Reached level %1$d %2$s, %3$s, on %4$s. The road goes on.##zone"], e.level or 0,
+                    where, zone, Day(r.at, now))
             elseif where then
                 return Fmt(L["Reached level %1$d %2$s, on %3$s. The road goes on.##zone"], e.level or 0, where,
                     Day(r.at, now))
@@ -88,8 +87,8 @@ local function Opening(e, now)
     end
     local r = e.reached
     if not r then return nil end
-    local where, sub = Where(r)
-    if sub then return Fmt(L["Reached on %1$s \194\183 %2$s."], Day(r.at, now), where) end
+    local where, zone = Where(r)
+    if zone then return Fmt(L["Reached on %1$s %2$s, %3$s.##zone"], Day(r.at, now), where, zone) end
     if where then return Fmt(L["Reached on %1$s %2$s.##zone"], Day(r.at, now), where) end
     return Fmt(L["Reached on %s."], Day(r.at, now))
 end
@@ -104,31 +103,26 @@ end
 -- there, two ways of saying it, each a whole sentence taking the same three
 -- values (%1$s the time spoken and capitalised, %2$s as is, %3$s the place),
 -- of which it uses those it needs, so a translation can put them where
--- its own sentence wants them. `later`: the stops after it, named (%s),
--- with their deed where it differs from the first's (`again` where it is
--- the same, `idle` where there is none), listed in one of the `openers`'
--- sentences.
+-- its own sentence wants them. `later`: the stops after it, named, with
+-- their deed only where it differs from the first's, listed in one of the
+-- `openers`' sentences.
 --
--- The place leads every one of them, never after a preposition (10 Nov,
--- the maintainer's rule for translations): it is mostly a subzone
--- ("Red Cloud Mesa"), which has no map id, so no locale could give it the
--- right preposition, article or case ("am Wegekreuz", Russian endings).
--- As the subject, or ahead of "for", it stands on its own: "Red Cloud
--- Mesa meant half an hour of fighting.", "Later, Windshear Crag, and The
--- Crossroads for quests."
+-- A way is its template and the place's job in it (ns.ZoneIn's role: the
+-- place's phrase, "at Red Cloud Mesa", is the locale's), or no role where
+-- the place stands bare, as the subject. Values: the time capitalised, the
+-- time, the place.
 local STOPS = {
     first = {
-        fighting = { L["%3$s meant %2$s of fighting."], L["%3$s kept you fighting for %2$s."] },
-        questing = { L["%3$s had %2$s of quests for you."], L["%3$s kept you questing for %2$s."] },
-        resting = { L["%3$s gave you %2$s of rest."], L["%3$s let you rest for %2$s."] },
-        none = { L["%3$s held you for %2$s."], L["%3$s was where %2$s went."] },
+        fighting = { { L["%1$s of fighting %3$s.##zone"], "at" }, { L["%3$s kept you fighting for %2$s."] } },
+        questing = { { L["%1$s of quests %3$s.##zone"], "round" }, { L["Quests kept you %3$s for %2$s.##zone"], "at" } },
+        resting = { { L["%1$s resting %3$s.##zone"], "at" }, { L["You rested %2$s %3$s.##zone"], "at" } },
+        none = { { L["%1$s %3$s.##zone"], "at" }, { L["You lingered %3$s for %2$s.##zone"], "at" } },
     },
-    later = { fighting = L["%s for the fighting"], questing = L["%s for quests"], resting = L["%s for a rest"] },
-    -- A later stop doing what the first did, and one with no deed: each
-    -- with its own "for" too, as a bare name beside one would seem to
-    -- share its deed ("Windshear Crag and The Crossroads for quests").
-    again = L["%s for more"],
-    idle = L["%s for a while"],
+    later = {
+        fighting = { L["fighting %s##zone"], "near" },
+        questing = { L["quests %s##zone"], "at" },
+        resting = { L["a rest %s##zone"], "at" },
+    },
     openers = { L["Later, %s."], L["Then %s."], L["After that, %s."] },
 }
 
@@ -138,6 +132,13 @@ local function Seed(e)
     return (e.level or 0) + math.floor((e.week or 0) / ns.DAY)
 end
 
+-- A stop's place for a way: its phrase by the way's role, or bare. A
+-- stop is a subzone where the client gave one (no id), else its zone.
+local function StopPlace(seg, name, role)
+    if not role then return name end
+    return ns.ZoneIn(not seg.subZone and seg.mapID or nil, name, role)
+end
+
 local function Stops(e)
     local first = e.stops[1]
     if not first then return nil end
@@ -145,8 +146,9 @@ local function Stops(e)
     local where = first.seg.subZone or MapName(first.seg.mapID)
     if not where then return nil end
     local ways = STOPS.first[first.main or "none"] or STOPS.first.none
+    local way = ways[seed % #ways + 1]
     local d = Spoken(first.seconds)
-    local text = Fmt(ways[seed % #ways + 1], Capital(d), d, where)
+    local text = Fmt(way[1], Capital(d), d, StopPlace(first.seg, where, way[2]))
 
     local later, seen = {}, { [where] = true }
     for i = 2, #e.stops do
@@ -154,8 +156,8 @@ local function Stops(e)
         local name = stop.seg.subZone
         if name and not seen[name] then
             seen[name] = true
-            local deed = stop.main and (stop.main == first.main and STOPS.again or STOPS.later[stop.main])
-            later[#later + 1] = Fmt(deed or STOPS.idle, name)
+            local deed = stop.main ~= first.main and stop.main and STOPS.later[stop.main]
+            later[#later + 1] = deed and Fmt(deed[1], StopPlace(stop.seg, name, deed[2])) or name
         end
     end
     if #later > 0 then

@@ -56,15 +56,78 @@ function CloseCalls.Heading()
     return L["A close call"]
 end
 
--- A close call's cross on a plate, for its tooltip: "A close call", then
--- what with, its level and rank, when.
+-- A close call's cross on a plate, for its tooltip: every close call on
+-- the spot together (Mark.lua's `tips`; 9 Nov 2026, as a fight's stain
+-- tells its stops: two on one spot each said "A close call" and its own
+-- time again). One: "A close call", its health and what with, the
+-- creature's level and rank, then when and at what level (Deaths.Foot,
+-- the ending the death-side marks share). Several: "Three close calls",
+-- the lowest health of them, the creatures each once with how often
+-- ("Against a Plainstrider twice and Hogger once"; FOES of them, then "and
+-- others"), the creature's tag where they were all the one, then from
+-- when to when. Four lines at most.
+local FOES = 2
+
+local function Against(calls)
+    local by, names = {}, {}
+    for _, call in ipairs(calls) do
+        local name = Text.KillerName(call)
+        if name then
+            if not by[name] then
+                by[name] = { name = name, n = 0, call = call }
+                names[#names + 1] = by[name]
+            end
+            by[name].n = by[name].n + 1
+        end
+    end
+    if #names == 0 then return nil end
+    if #names == 1 then
+        local one = names[1]
+        if one.n == #calls then
+            return (#calls == 2 and Fmt(L["Against %s both times"], one.name) or Fmt(L["Against %s each time"], one.name)), one.call
+        end
+        return Fmt(L["Against %1$s %2$s##times"], one.name, ns.UI.Format.Times(one.n)), one.call
+    end
+    local many = false
+    for _, f in ipairs(names) do many = many or f.n > 1 end
+    local parts = {}
+    for i = 1, math.min(#names, FOES) do
+        parts[i] = many and Fmt(L["%1$s %2$s##times"], names[i].name, ns.UI.Format.Times(names[i].n)) or names[i].name
+    end
+    if #names > FOES then
+        local head = parts[1]
+        for i = 2, #parts do head = Fmt(L["%1$s, %2$s##list"], head, parts[i]) end
+        return Fmt(L["Against %s and others"], head)
+    end
+    return Fmt(L["Against %s"], Text.List(parts))
+end
+
+function CloseCalls.Tips(calls, now)
+    local n = #calls
+    if n == 1 then
+        local call = calls[1]
+        local foes = Foes(call)
+        local pct = tostring(call.pct or 0)
+        local lines = { foes and Fmt(L["%1$s%% health left, against %2$s"], pct, foes) or Fmt(L["%s%% health left"], pct) }
+        if foes then lines[#lines + 1] = CloseCalls.Tag(call) end
+        lines[#lines + 1] = ns.Deaths.Foot(calls, now)
+        return CloseCalls.Heading(), lines
+    end
+    local low
+    for _, call in ipairs(calls) do
+        if not low or (call.pct or 0) < low then low = call.pct or 0 end
+    end
+    local lines = { Fmt(L["Down to %s%% health at worst"], tostring(low)) }
+    local against, one = Against(calls)
+    if against then lines[#lines + 1] = against end
+    if one then lines[#lines + 1] = CloseCalls.Tag(one) end
+    lines[#lines + 1] = ns.Deaths.Foot(calls, now)
+    return Capital(ns.Plural(n, L["%s close call|%s close calls##plural"], NUMBER[n] or tostring(n))), lines
+end
+
+-- One close call's tooltip, as its mark tells it alone.
 function CloseCalls.Tip(call, now)
-    local foes = Foes(call)
-    local pct = tostring(call.pct or 0)
-    local lines = { foes and Fmt(L["%1$s%% health left, against %2$s"], pct, foes) or Fmt(L["%s%% health left"], pct) }
-    if foes then lines[#lines + 1] = CloseCalls.Tag(call) end
-    lines[#lines + 1] = When(call.t, call.level, now)
-    return CloseCalls.Heading(), lines
+    return CloseCalls.Tips({ call }, now)
 end
 
 -- The card of the creature that nearly got you (Card.lua's SetFoe):

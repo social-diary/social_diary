@@ -112,7 +112,7 @@ Eq(death.killer.npcID, 2955, "the recap's NPC id")
 Eq(death.killer.attackers, 3, "everyone who hit")
 Eq(Pending(), 0, "a resolved death is still waiting")
 
-Eq(DeathLines(GUID)[1], "You died to Plainstrider (3 attackers)  ·  Red Cloud Mesa, Mulgore",
+Eq(DeathLines(GUID)[1], "You died to Plainstrider (3 attackers) near Red Cloud Mesa",
     "the user's death on their profile")
 
 --------------------------------------------------------------------------
@@ -139,7 +139,7 @@ death = s.deathLog[3]
 for _ = 1, 12 do mock.RunTimers() end
 Eq(death.killer.source, "target", "a stale recap replaced the guess")
 Eq(Pending(), 0, "a death kept waiting past its tries")
-Eq(DeathLines(GUID)[3], "You died, probably to Plainstrider  ·  Red Cloud Mesa, Mulgore", "a guessed death's line")
+Eq(DeathLines(GUID)[3], "You died, probably to Plainstrider near Red Cloud Mesa", "a guessed death's line")
 
 -- A secret recap is skipped without touching it.
 mock.now = mock.now + 300

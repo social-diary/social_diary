@@ -83,10 +83,31 @@ local DayLabel = Format.DayLabel
 local openEpisodes = setmetatable({}, { __mode = "k" })
 
 -- A visit never folds open: a click lays its run out on the table over
--- the book instead (TLN-12, UI/Dungeon/Spread.lua).
+-- the book instead (TLN-12, UI/Dungeon/Spread.lua). Nor does a
+-- battleground match: a click opens its page on Your Diary.
 local function Openable(item)
-    return IsEpisode(item) and item.hidden > 0 and item.kind ~= "visit"
+    return IsEpisode(item) and item.hidden > 0 and item.kind ~= "visit" and item.kind ~= "match"
 end
+
+-- Opens a match's page on Your Diary's right page, where the page's own
+-- file offers it (UI/Journey/, looked up when clicked: it loads later,
+-- and may not be there yet). True when it did.
+local function CanOpenMatch(match)
+    local YD = ns.UI.YourDiary
+    -- (Your Diary is the character playing: another's match has no page there.)
+    return YD ~= nil and YD.OpenMatch ~= nil and match ~= nil and (match.me == nil or match.me == ns.ownGUID)
+end
+J.CanOpenMatch = CanOpenMatch
+
+local function OpenMatch(match)
+    if not CanOpenMatch(match) then return false end
+    local YD = ns.UI.YourDiary
+    -- The book turns to Your Diary first: the match's page is drawn there.
+    ns.UI.SetJournalView("journey")
+    YD.OpenMatch(match.id)
+    return true
+end
+J.OpenMatch = OpenMatch
 
 -- What a click on a visit's card does, for its tooltip: lays the run's map
 -- out, or, with that run out already, puts it away.
@@ -174,6 +195,8 @@ local function TimelineLines(items, guid)
                 or Fmt(L["Click to show all %d."], #item.all))
         elseif isVisit then
             full = full .. "\n" .. VisitHint(item.visit)
+        elseif item.kind == "match" and CanOpenMatch(item.match) then
+            full = full .. "\n" .. L["Click to open the match."]
         end
 
         -- Each line draws its own piece of the bracket, inked a little
@@ -196,14 +219,14 @@ local function TimelineLines(items, guid)
             -- One tall entry; the details it leaves out are in the tooltip.
             local visit = item.visit
             local aside = Format.Duration(item.seconds)
-            if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. "  ·  " .. visit.difficulty end
+            if visit.difficulty and visit.difficulty ~= "Normal" then aside = Fmt(L["%1$s, %2$s"], aside, visit.difficulty) end
             local losses = {}
             if (visit.deaths or 0) > 0 then losses[#losses + 1] = ns.Plural(visit.deaths, L["%d death|%d deaths##plural"]) end
             local wipes = ns.DungeonRun.Wipes(visit)
             if wipes > 0 then losses[#losses + 1] = ns.Plural(wipes, L["%d wipe|%d wipes##plural"]) end
             lines[#lines + 1] = { item = item, when = when, text = visit.name or L["An instance"],
                 font = FONT.runTitle, depth = item.depth, full = full, height = VISIT.height,
-                visit = { visit = visit, aside = aside, losses = table.concat(losses, "  ·  "),
+                visit = { visit = visit, aside = aside, losses = ns.UI.TimelineText.Join(losses),
                     members = OtherMembers(visit, guid) } }
             sub = nil
             head = #lines
@@ -215,7 +238,8 @@ local function TimelineLines(items, guid)
             end
         else
             lines[#lines + 1] = { item = item, when = when, text = text, icon = icon, font = font,
-                depth = item.depth, full = full, note = item.note, slip = item.kind == "note" or nil }
+                depth = item.depth, full = full, note = item.note, slip = item.kind == "note" or nil,
+                match = item.match }
             head = #lines
         end
         local function Details()
@@ -278,7 +302,7 @@ end
 
 -- A visit's duration, then its deaths and wipes, under its name.
 local function VisitAside(info)
-    return info.losses ~= "" and (info.aside .. "  ·  " .. info.losses) or info.aside
+    return info.losses ~= "" and Fmt(L["%1$s, %2$s"], info.aside, info.losses) or info.aside
 end
 
 -- The `i`th of a visit's party as its card writes it: their first name,
@@ -509,6 +533,13 @@ local function BuildTimelineRow(list)
         if self.item and self.item.visit then
             GameTooltip:Hide()
             ns.UI.OpenVisit(self.item.visit.visit.id, J.selected)
+            return
+        end
+        -- A match's line, or its details: its page on Your Diary.
+        local ep = self.item and self.item.item
+        if ep and ep.kind == "match" then
+            GameTooltip:Hide()
+            OpenMatch(ep.match)
             return
         end
         local item = self.item and (self.item.fold or self.item.item)

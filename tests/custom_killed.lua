@@ -156,6 +156,28 @@ do
     local tip, told = ns.UI.JourneyPlate.MARKS.killedBy.tip(plate.killedMarks[1].list[1])
     Eq(tip, "Died here", "its cross is told as the route's is")
     Eq(told[1], "Old Tom", "and what did it")
+    Check(told[2] and told[2]:find(", level %d+$"), "then when and at what level: " .. tostring(told[2]))
+    Eq(#told, 2, "nothing told twice")
+
+    -- Two inserted on one spot: one mark, one account (its `tips`).
+    local again = Custom.Insert("killedBy", { name = "Old Tom", rank = "rare" }, WHERE)
+    local other = Custom.Insert("killedBy", { name = "Kolkar Stormer" }, WHERE)
+    local _, both = Draw()
+    Eq(both.counts.insertedDeaths, 1, "three on one spot: one cross")
+    local list
+    for i = 1, both.hover.used do
+        local b = both.hover[i]
+        if b.spot and b.spot.kind == "killedBy" then list = b.tip() end
+    end
+    local said = {}
+    for i, line in ipairs(list or {}) do said[i] = line[1] end
+    Eq(said[1], "Died here 3 times", "counted once, in the title")
+    Eq(said[2], "Old Tom, twice", "each killer once, the most first")
+    Eq(said[3], "Kolkar Stormer", "then the other")
+    Check(said[4] and said[4]:find(", level %d+$"), "when, once: " .. tostring(said[4]))
+    Eq(#said, 4, "no repeats")
+    Custom.Remove(again)
+    Custom.Remove(other)
 
     -- A name the records know brings its picture, and renames nothing.
     j.deaths = { { t = t0 - 100, mapID = 1412, x = 0.1, y = 0.1, npcID = 3255, name = "Sunscale Lashtail", display = 1234 } }

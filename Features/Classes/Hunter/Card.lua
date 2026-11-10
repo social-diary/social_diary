@@ -15,7 +15,7 @@
 --   the name     beside it, in the diary's hand: the name the hunter gave
 --                the pet, else the beast's own (Hunter.Hand)
 --   the kind     under the name, printed (small Friz in ink): what the game
---                calls it, "Boar · Dire Mottled Boar" under a given name,
+--                calls it, "Boar, Dire Mottled Boar" under a given name,
 --                the family alone under the beast's (Hunter.Kind)
 --   the level    the pet's, on a small printed label pasted under them,
 --                the close call's tag (Features/CloseCalls/Card.lua's
@@ -233,7 +233,7 @@ function TameCard.New(parent)
         return lines
     end
 
-    -- The kind's lines in `room`: "Boar · Dire Mottled Boar" on one line;
+    -- The kind's lines in `room`: "Boar, Dire Mottled Boar" on one line;
     -- where it will not go, the family and the beast each on their own (the
     -- beast on two at most). Nil where they will not hold.
     local function Kind(room)

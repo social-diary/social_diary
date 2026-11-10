@@ -91,7 +91,7 @@ Witnesses.WATCHING = WATCHING
 -- (ns.UI.TimelineText.Foe).
 
 local TT = ns.UI.TimelineText
-local Foe, Place, Spot, Dot = TT.Foe, TT.Place, TT.Spot, TT.Dot
+local Foe, Place = TT.Foe, TT.Place
 local L, Fmt = ns.L, ns.Fmt
 
 local function Always() return true end
@@ -99,8 +99,7 @@ local function Always() return true end
 -- Each sentence is whole, one template for each of its optional parts:
 -- the creature (`foe`) and the place (`zone`, the zone's phrase), each
 -- template's values in the order they are named (them, foe, health,
--- zone). A subzone has no id to say "in" with: the sentence without a
--- place, the spot after a dot ("Sentinel Hill, Westfall").
+-- zone).
 local function Values(...)
     local values = {}
     for i = 1, select("#", ...) do
@@ -110,19 +109,19 @@ local function Values(...)
     return unpack(values)
 end
 
--- Where a witness's row was: the zone's phrase, or the spot of a subzone
--- (`sub`: only the row that keeps one), or neither.
+-- Where a witness's row was, as one phrase ("in Coldridge Valley"): the
+-- subzone where the row keeps one (`sub`, which has no id: ns.ZoneIn asks
+-- the locale by its name), else the zone; nil without a place.
 local function Where(row, sub, unplaced)
-    if unplaced then return nil, nil end
-    if sub == "" or sub == row.zone then sub = nil end
-    if sub then return nil, Spot(sub, row.zone) end
-    return Place(row), nil
+    if unplaced then return nil end
+    if sub and sub ~= "" then return ns.ZoneIn(nil, sub) end
+    return Place(row)
 end
 
 -- "Bram mercilessly watched you die to a Kobold Vermin in Coldridge
 -- Valley": by how long they watched (WATCHING), under 1.5 s only "saw you
--- die", from 5 s on "mercilessly". The subzone where there is one, after a
--- dot; a row kept before the watching was timed is plain "watched".
+-- die", from 5 s on "mercilessly". In the subzone where there is one; a
+-- row kept before the watching was timed is plain "watched".
 local WATCHED_WORDS = {
     watched = {
         foe = { zone = L["%1$s watched {you} die to %2$s %3$s##zone"], alone = L["%1$s watched {you} die to %2$s"] },
@@ -151,9 +150,9 @@ ns.Rows.Register(WATCHED, { witness = "watched", plate = 3, moment = Always, rea
             how = "merciless"
         end
         local foe = Foe(row)
-        local zone, spot = Where(row, c.subZone, unplaced)
+        local zone = Where(row, c.subZone, unplaced)
         local template = WATCHED_WORDS[how][foe and "foe" or "none"][zone and "zone" or "alone"]
-        return Dot(ns.UI.Format.You(row.me, Fmt(template, Values(them, foe, zone))), spot)
+        return ns.UI.Format.You(row.me, Fmt(template, Values(them, foe, zone)))
     end,
     icon = "around" })
 

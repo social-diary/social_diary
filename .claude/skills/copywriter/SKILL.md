@@ -23,7 +23,7 @@ yours in the same file before writing, and match them.
 | Register | Where | Sounds like |
 |---|---|---|
 | **Book prose** | Your Diary entries (`UI/Journey/Text/`, `Core/JourneyRecap.lua`), the profile story (`UI/Journal/Profile.lua`), the introduction's tour (`UI/Windows/Intro/Tour.lua`), empty states, map keys | “Reached level 12 on 6 October. The road goes on.” |
-| **Book ledger** | Timeline rows (`UI/Words/Timeline.lua`), People list, Nearby page, tooltips, card tags and margin words | “Quested together for 1 h 5 min” · “killed you twice” |
+| **Book ledger** | Timeline rows (`UI/Words/Timeline.lua`), People list, Nearby page, tooltips, card tags and margin words | “Quested together for 1 h 5 min”, “killed you twice” |
 | **Book furniture** | Settings, keybinds, link-choices, confirms, the Blizzard settings stub | “Keep my own route” / “Applies to every character.” |
 | **Chat** | `ns.Print` output, `/sd` help (`Core/Slash.lua`) | `Social Diary added Thex to the diary.` |
 
@@ -110,15 +110,20 @@ Use the helpers; don't hand-format numbers or dates.
   uppercased by the code. Proper names keep their case: *Social Diary*,
   *Your Diary*, *People*, *Recently nearby*, *Questie*, *World PvP*.
 - **Punctuation.** Curly quotes and apostrophes in the book (“ ” ’), the
-  ellipsis character (…), and a spaced middle dot for ledger joins
-  (`  ·  `). No “e.g.”, “fyi”, “&”, “(s)”, or a hyphen used as a dash.
+  ellipsis character (…). No “e.g.”, “fyi”, “&”, “(s)”, or a hyphen
+  used as a dash.
+- **No middle dots, ever** (the user, 9 Nov 2026). Never join words with
+  a dot (`·`, `\194\183`, spaced or not), not in tooltips, ledger rows,
+  tags, hints or headings. Say it as words instead: a comma (“Today at
+  12:47, level 20”), “and”, its own line, or its own sentence. A list of
+  separate things that needs a divider takes a line each.
   Sentences end with a full stop; labels, headings and link-choices don't.
 
 ## 5. Surface patterns
 
 - **Empty states**: say what's missing, how it fills, what will appear.
   “Nothing of your road is on this map yet.” + the one thing to do.
-- **Link-choices and buttons**: a verb for what happens. “Keep” · “Don’t”,
+- **Link-choices and buttons**: a verb for what happens. “Keep” and “Don’t”,
   “Tear it open”, “Put it back”. Never *OK*, *Submit*, *Yes/No*, *Dismiss*.
 - **Destructive confirms**: name exactly what goes, then “This cannot be
   undone.” The confirm link repeats the verb (“Delete”).
@@ -220,9 +225,11 @@ here.
   role)` the same for a dungeon. The locale writes the phrase ("im
   Brachland", "в Дуротаре"), so a `##zone` template never has its own
   preposition before the place. `role` picks it: "in" (default), "to",
-  "from", "into", "through", "near", "at", "around". A subzone has no id:
-  never put it after a preposition; let it follow a middle dot or comma
-  ("· Crossroads, The Barrens").
+  "from", "into", "through", "near", "at", "around", "round". A subzone has no id:
+  it goes through `ns.ZoneIn(nil, subZone, role)`, and a locale that needs
+  an article fills `grammar.SUBZONES[name][role]` by the client's name
+  ("Wegekreuz" -> "am Wegekreuz"). The English wording never changes to
+  suit a translation: the English is the golden copy.
 - **One English word, two meanings**: add a context, `L["May##short"]`;
   the English shown is the part before `##`.
 - **Never translate data**: saved values, table keys, event and setting

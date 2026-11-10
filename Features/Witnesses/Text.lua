@@ -84,11 +84,16 @@ end
 -- anyone watched or who joined which fight, and the tooltip must not claim it. Its
 -- mark's tooltip is this too, where the card may have found no room, so the deed
 -- and the creature are spelt out.
+-- What a written witness did, with its creature: "Saved you from Hogger".
+local function Did(w)
+    local foe = Witnesses.Foe(w)
+    local deed = Witnesses.Deed(w)
+    return foe and Fmt(L["%1$s %2$s"], deed, foe) or deed
+end
+
 function Witnesses.Tip(w, now)
     if w.written then
-        local foe = Witnesses.Foe(w)
-        local deed = Capital((Witnesses.Deed(w)))
-        local lines = { foe and Fmt(L["%1$s %2$s"], deed, foe) or deed }
+        local lines = { Capital(Did(w)) }
         if ns.Witnesses.Card.Evidence(w) then lines[#lines + 1] = Fmt(L["You came out of it with %s"], Health(w)) end
         lines[#lines + 1] = When(w.t, w.level, now)
         return Who(w.guid) or Witnesses.Name(w), lines
@@ -122,6 +127,73 @@ function Witnesses.Tip(w, now)
     local at = w.death or w.call
     lines[#lines + 1] = When(w.t, at and at.level, now)
     return Who(w.guid) or Witnesses.Name(w), lines
+end
+
+-- The written witnesses' mark on a plate (Card.lua's `witnessed`): every
+-- one on the spot together, `list` as Witnesses.Written reads them (9 Nov
+-- 2026: two on one spot each said their name and time again). Who, then
+-- what they did, each deed once with how often ("Saved you from Hogger
+-- twice"), then when and at what level (ns.Deaths.Foot, the ending the
+-- death-side marks share). One person: their name, a line a deed, the
+-- health a rescue left where there was one rescue (DEEDS of them, the last
+-- "And more besides" where there were more). Several: "Two
+-- witnesses", a line each ("Grisha saved you from Hogger"), PEOPLE of them,
+-- then "Others were there too". Four lines at most.
+local PEOPLE, DEEDS = 3, 3
+
+-- A person's deeds, each once: { text, n }, in the order first done.
+local function Deeds(ws)
+    local by, list = {}, {}
+    for _, w in ipairs(ws) do
+        local did = Did(w)
+        if not by[did] then
+            by[did] = { text = did, n = 0 }
+            list[#list + 1] = by[did]
+        end
+        by[did].n = by[did].n + 1
+    end
+    return list
+end
+
+local function Often(d)
+    return d.n > 1 and Fmt(L["%1$s %2$s##times"], d.text, ns.UI.Format.Times(d.n)) or d.text
+end
+
+function Witnesses.Tips(list, now)
+    local people, of = {}, {}
+    for _, w in ipairs(list) do
+        local key = w.guid or Witnesses.Name(w)
+        if not of[key] then
+            of[key] = {}
+            people[#people + 1] = of[key]
+        end
+        of[key][#of[key] + 1] = w
+    end
+    local lines = {}
+    if #people == 1 then
+        local ws = people[1]
+        local deeds = Deeds(ws)
+        for i = 1, math.min(#deeds, DEEDS) do lines[i] = Capital(Often(deeds[i])) end
+        if #deeds > DEEDS then lines[DEEDS] = L["And more besides"] end
+        if #ws == 1 and ns.Witnesses.Card.Evidence(ws[1]) then
+            lines[#lines + 1] = Fmt(L["You came out of it with %s"], Health(ws[1]))
+        end
+        lines[#lines + 1] = ns.Deaths.Foot(list, now)
+        return Who(ws[1].guid) or Witnesses.Name(ws[1]), lines
+    end
+    for i, ws in ipairs(people) do
+        if i == PEOPLE and #people > PEOPLE then
+            lines[i] = L["Others were there too"]
+            break
+        end
+        local deeds = Deeds(ws)
+        local said = {}
+        for k, d in ipairs(deeds) do said[k] = Often(d) end
+        lines[i] = Fmt(L["%1$s %2$s"], Witnesses.Name(ws[1]), ns.UI.TimelineText.Join(said, L["%1$s and %2$s"]))
+    end
+    lines[#lines + 1] = ns.Deaths.Foot(list, now)
+    return Capital(ns.Plural(#people, L["%s witness|%s witnesses##plural"],
+        NUMBER[#people] or tostring(#people))), lines
 end
 
 -- Someone who was there at a death or a close call on the plate

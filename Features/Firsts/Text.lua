@@ -130,22 +130,124 @@ end
 -- bag") and the line under it, the sentence without the heading's words
 -- ("Small Brown Pouch, bought at level 5, 6 October"); `bare` leaves the
 -- item's name out, for under the item's own tooltip (Card.lua).
+-- How a first came, for its tooltip: "looted", "bought", "from Koko
+-- Skybluff", "a gift"; "found" where it could not be told.
+local HOW = { quest = L["a quest's reward"], vendor = L["bought"], craft = L["made by hand"], mail = L["by mail"],
+    loot = L["looted"] }
+
+local function How(rec)
+    if rec.from == "trade" then
+        local giver = Giver(rec)
+        return giver and Fmt(L["from %s"], Who(giver)) or L["a gift"]
+    end
+    return HOW[rec.from] or L["found"]
+end
+
 function Firsts.Tip(m, now, bare)
     local rec = m.find or m
     local _, yours = Words(m.what or m.kind)
-    local how = ({ quest = L["a quest's reward"], vendor = L["bought"], craft = L["made by hand"], mail = L["by mail"],
-        loot = L["looted"] })[rec.from]
-    if rec.from == "trade" then
-        local giver = Giver(rec)
-        how = giver and Fmt(L["from %s"], Who(giver)) or L["a gift"]
-    end
-    local parts = { not bare and Name(rec) or nil, how or L["found"],
+    local how = How(rec)
+    local parts = { not bare and Name(rec) or nil, how,
         (rec.level and Fmt(L["at level %d"], rec.level) or nil), Day(rec.t, now) }
     local list = {}
     for i = 1, 4 do
         if parts[i] then list[#list + 1] = parts[i] end
     end
     return Capital(yours), ns.UI.TimelineText.Join(list)
+end
+
+-- The firsts on a tooltip's title, in the order given: "Your first bag",
+-- "Your first bag and first green" (a green bag), "Your first blue, first
+-- bag and first green". As the card's heading says them (Firsts.Heading)
+-- but quiet: no "item", no exclamation mark.
+-- The firsts after the first one, in the title's list ("... and first
+-- green"), whole as Words' are.
+local AFTER = { bag = L["first bag"], shoulder = L["first shoulders"], uncommon = L["first green"],
+    rare = L["first blue"], epic = L["first epic"] }
+
+function Firsts.TipHeading(whats)
+    local words = {}
+    for i, kind in ipairs(whats) do
+        if i == 1 then
+            local _, yours = Words(kind)
+            words[i] = yours
+        else
+            words[i] = AFTER[kind] or L["first find"]
+        end
+    end
+    return Capital(Text.List(words) or select(2, Words(nil)))
+end
+
+-- A tooltip's last line for everything under one mark, as the core says
+-- it for every mark (Text.Foot, UI/Journey/Text/Tips.lua): when, from the
+-- first to the last ("Today at 12:47", "Today from 12:47 to 13:20"), then
+-- the level or levels ("Level 20", "Levels 19 to 20"). `list` is records
+-- with `t` and `level`.
+local function Foot(list, now)
+    local a = {}
+    for _, r in ipairs(list) do
+        if r.t then a.from, a.to = math.min(a.from or r.t, r.t), math.max(a.to or r.t, r.t) end
+        if r.level then
+            a.levelFrom, a.levelTo = math.min(a.levelFrom or r.level, r.level), math.max(a.levelTo or r.level, r.level)
+        end
+    end
+    return Text.Foot(a, now)
+end
+
+-- The firsts of `list` (moments, or { what, find }) an item each, in the
+-- order given: { rec, whats }. A green bag is two firsts and one item.
+local ORDER = { bag = 1, shoulder = 2, uncommon = 3, rare = 4, epic = 5 }
+
+local function ByItem(list)
+    local items, by = {}, {}
+    for _, m in ipairs(list) do
+        local rec = m.find or m
+        local key = rec.link or rec
+        local item = by[key]
+        if not item then
+            item = { rec = rec, whats = {} }
+            by[key] = item
+            items[#items + 1] = item
+        end
+        item.whats[#item.whats + 1] = m.what or m.kind
+    end
+    for _, item in ipairs(items) do
+        table.sort(item.whats, function(a, b) return (ORDER[a] or 9) < (ORDER[b] or 9) end)
+    end
+    return items
+end
+
+-- What an item's line says: its name and how it came, "Small Brown
+-- Pouch, looted"; `bare` (under the item's own tooltip, which names it)
+-- how alone.
+local function ItemLine(rec, bare)
+    local name = not bare and Name(rec)
+    return name and Fmt(L["%1$s, %2$s"], name, How(rec)) or Capital(How(rec))
+end
+
+-- The tooltip of a pouch (Mark.lua's `tips`) and of a find card's slip
+-- (Card.lua): every first on it told once together (9 Nov 2026; before,
+-- each first's Firsts.Tip was stacked under the last, so a green bag said
+-- its name, how it came and when twice). The firsts it was, the best
+-- item's first (`list` comes sorted so); then each item once, its name
+-- and how it came (more than three, their names on one line); then when
+-- and at what level. `bare` leaves the item's name out where its own
+-- tooltip names it (one item: the slip's box).
+function Firsts.Tips(list, now, bare)
+    local items, whats, recs, lines = ByItem(list), {}, {}, {}
+    for _, item in ipairs(items) do
+        for _, what in ipairs(item.whats) do whats[#whats + 1] = what end
+        recs[#recs + 1] = item.rec
+    end
+    if #items <= 3 then
+        for _, item in ipairs(items) do lines[#lines + 1] = ItemLine(item.rec, bare and #items == 1) end
+    else
+        local names = {}
+        for _, item in ipairs(items) do names[#names + 1] = Name(item.rec) or L["an item"] end
+        lines[1] = Text.List(names)
+    end
+    lines[#lines + 1] = Foot(recs, now)
+    return Firsts.TipHeading(whats), lines
 end
 
 -- A gift is its giver's moment too (Kind.lua's moment: `person`): on

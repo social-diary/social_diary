@@ -142,6 +142,7 @@ function Format.At(time, now)
 
     if back == 0 then return Fmt(L["today at %s"], clock) end
     if back == 1 then return Fmt(L["yesterday at %s"], clock) end
+    -- The day unpadded, "on 6 Oct" (the copy rules: no zero padding).
     local sameYear = date("%Y", time) == date("%Y", now)
     return Fmt(L["on %1$s at %2$s"], Format.ShortDate(time, not sameYear), clock)
 end
@@ -150,12 +151,11 @@ end
 function Format.SeenText(seen, now)
     if not seen then return L["Not seen nearby yet."] end
 
-    -- A subzone has no phrase of its own after "in" (ns.ZoneIn): the place
-    -- follows a dot then, subzone first, as every place is written: "Last
-    -- seen today at 21:43 · Goldshire, Elwynn Forest".
+    -- Subzone first, as every place is written: "Last seen today at 21:43
+    -- in Goldshire, Elwynn Forest".
     local at = Format.At(seen.time, now)
     if seen.zone and seen.subZone and seen.subZone ~= seen.zone then
-        return Fmt(L["Last seen %1$s · %2$s"], at, Fmt(L["%1$s, %2$s"], seen.subZone, seen.zone))
+        return Fmt(L["Last seen %1$s %2$s, %3$s##zone"], at, ns.ZoneIn(nil, seen.subZone), seen.zone)
     end
     if seen.zone then return Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(seen.mapID, seen.zone)) end
     return Fmt(L["Last seen %s"], at)
@@ -283,7 +283,7 @@ function Format.ClassName(record)
     return token:sub(1, 1) .. token:sub(2):lower()
 end
 
--- "Level 6 Tauren Druid  ·  Horde  <Guild>", inked for the page. With
+-- "Level 6 Tauren Druid, Horde  <Guild>", inked for the page. With
 -- dropOwn the faction goes when it is the player's own, as it nearly
 -- always is out in the world; with "always" it goes whoever's it is (the
 -- person's page: the portrait and the book say enough).
@@ -298,8 +298,8 @@ function Format.WhoLine(record, guild, dropOwn)
     local own = dropOwn == "always" or (dropOwn and record.faction == UnitFactionGroup("player"))
     if not own and (record.faction == "Horde" or record.faction == "Alliance") then
         local hex = record.faction == "Horde" and ns.Style.HEX.horde or ns.Style.HEX.alliance
-        local faction = record.faction == "Horde" and L["Horde"] or L["Alliance"]
-        text = text .. (text ~= "" and "  ·  " or "") .. "|cff" .. hex .. faction .. "|r"
+        local faction = "|cff" .. hex .. (record.faction == "Horde" and L["Horde"] or L["Alliance"]) .. "|r"
+        text = text ~= "" and Fmt(L["%1$s, %2$s"], text, faction) or faction
     end
 
     if guild then text = text .. "  |cff" .. ns.Style.HEX.faded .. "<" .. guild .. ">|r" end

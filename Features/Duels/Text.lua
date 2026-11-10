@@ -12,8 +12,9 @@ local addonName, ns = ...
 
 local Duels = ns.Duels
 local Text = ns.UI.JourneyText
-local Capital, MapName, NUMBER, When = Text.Capital, Text.MapName, Text.NUMBER, Text.When
+local Capital, List, MapName, NUMBER = Text.Capital, Text.List, Text.MapName, Text.NUMBER
 local L, Fmt = ns.L, ns.Fmt
+local Join = ns.UI.TimelineText.Join
 
 -- The opponent of a series on the route (Kind.lua's records): the name the
 -- player wrote on the card, which only a custom one has (Core/Custom.lua), or
@@ -110,50 +111,136 @@ function Duels.Describe(rec)
     return Capital(Duels.Note(rec, true))
 end
 
--- The flag's and the note's tooltip: a title, and lines under it (where,
--- when, as the campfire's: Campfire.Tip). The title names the opponent,
--- "Duelled Bram", or counts the duels where the diary no longer knows
--- them, "A duel", "4 duels". Then the outcome, first: one duel "You won",
--- "You lost", "They fled", "You fled"; a series by its balance, "Won 3,
--- lost 1", "Lost 3, won 2", "Won both", "Lost all 3", and its flights on
--- a line of their own, "They fled once", "You fled once, they fled
--- twice". Figures, as tooltips count.
+-- When the series were, and at what level, as every mark's tooltip on the
+-- plates ends (the core's Text.Foot and Text.Moments, UI/Journey/Text/
+-- Tips.lua): each time, a day said once for the times on it, past four
+-- the first to the last, then the levels after a comma, "Today at 12:47
+-- and 15:10, level 20", "Today from 12:47 to 19:02, levels 19 to 20".
+-- The tames' tooltip says its times the same way, without the level.
+local function Foot(ts, lo, hi, now)
+    return Text.Foot({ times = ts, levelFrom = lo, levelTo = hi }, now)
+end
+
+-- The series with one opponent on a spot as one: their counts added, a
+-- single duel's outcome counted where only its latest says it (Single), and
+-- `last` the newest series' latest, so Duels.Score and Duels.Note read it as
+-- they read one series.
+local function Together(recs)
+    local c = { won = 0, lost = 0, fled = 0, theyFled = 0 }
+    local newest
+    for _, rec in ipairs(recs) do
+        local up = (rec.won or 0) + (rec.theyFled or 0)
+        local down = (rec.lost or 0) + (rec.fled or 0)
+        if up + down <= 1 then
+            local one = Single(rec)
+            if one then c[Duels.COUNT[one]] = c[Duels.COUNT[one]] + 1 end
+        else
+            for key in pairs(c) do c[key] = c[key] + (rec[key] or 0) end
+        end
+        if not newest or (rec.t or 0) >= (newest.t or 0) then newest = rec end
+    end
+    c.last = newest and Duels.Latest(newest) or nil
+    if c.won + c.lost + c.fled + c.theyFled == 1 then
+        for key, count in pairs(Duels.COUNT) do
+            if c[count] == 1 then c.last = key end
+        end
+    end
+    c.name, c.guid = newest and newest.name, newest and newest.guid
+    return c
+end
+
+-- The outcome of a series (or series together): one duel "You won", "You
+-- lost", "They fled", "You fled", nothing where a card says no result; more
+-- by their balance, "Won 3, lost 1", "Lost 3, won 2", "Won both", "Lost all
+-- 3". Figures, as tooltips count.
 local ONE = { won = L["You won"], lost = L["You lost"], they_fled = L["They fled"], fled = L["You fled"] }
 
-function Duels.Tip(rec, now)
+local function Outcome(rec)
     local balance, up, down = Duels.Score(rec)
-    local who = Duels.Who(rec)
-    local total = up + down
-    local lines = {}
-    if total <= 1 then
-        -- Nothing under the title where a card says no result.
-        lines[1] = ONE[Single(rec)]
-    else
-        local lead, rest = up, down
-        if balance == "lost" then lead, rest = down, up end
-        local won = balance == "won"
-        if rest > 0 then
-            lines[1] = Fmt(won and L["Won %1$d, lost %2$d"] or L["Lost %1$d, won %2$d"], lead, rest)
-        elseif lead == 2 then
-            lines[1] = won and L["Won both"] or L["Lost both"]
-        else
-            lines[1] = Fmt(won and L["Won all %d"] or L["Lost all %d"], lead)
-        end
-        local Times = ns.UI.Format.Times
-        local flights = {}
-        if (rec.fled or 0) > 0 then flights[#flights + 1] = Fmt(L["you fled %s"], Times(rec.fled)) end
-        if (rec.theyFled or 0) > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(rec.theyFled)) end
-        if #flights > 0 then lines[#lines + 1] = Capital(ns.UI.TimelineText.Join(flights)) end
-    end
-    -- Where: the subzone on a line of its own (it has no id to say "in"
-    -- with; the plate is its zone's map).
-    local sub = rec.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(rec.mapID) then lines[#lines + 1] = sub end
+    if up + down <= 1 then return ONE[Single(rec)] end
+    local lead, rest = up, down
+    if balance == "lost" then lead, rest = down, up end
+    local won = balance == "won"
+    if rest > 0 then return Fmt(won and L["Won %1$d, lost %2$d"] or L["Lost %1$d, won %2$d"], lead, rest) end
+    if lead == 2 then return won and L["Won both"] or L["Lost both"] end
+    return Fmt(won and L["Won all %d"] or L["Lost all %d"], lead)
+end
+
+-- The flag's tooltip: one account of every series on its spot (a list of
+-- one for a lone flag), four lines at most. The title names the opponents,
+-- "Duelled Bram", "Duelled Bram and Old Tom", "Duelled Bram and others"
+-- (those the diary no longer knows), or counts the duels where it knows
+-- none, "A duel", "4 duels". Then the outcome first: with one opponent all
+-- their series added up (Outcome: "Won 3, lost 1"); with several, the
+-- note's words for each, "Beat Bram 2 to 1, lost a duel to Old Tom". The
+-- flights on a line of their own, "They fled once", "You fled once, they
+-- fled twice"; where ("In Raptor Grounds", each place once, only a subzone
+-- that is not its zone's name); then when and at what level. (9 Nov: a
+-- rematch on the same spot told "Duelled Bram" and its time twice over.)
+function Duels.Tips(recs, now)
+    local by, order = {}, {}
+    local places, seen = {}, {}
+    local ts, lo, hi = {}, nil, nil
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
-    local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, rec.t or 0) or nil
-    lines[#lines + 1] = When(rec.t or 0, level, now)
-    local title = who and Fmt(L["Duelled %s"], who) or (total <= 1 and L["A duel"] or ns.Plural(total, L["%d duel|%d duels##plural"]))
+    for _, rec in ipairs(recs) do
+        local who = Duels.Who(rec) or false
+        if not by[who] then
+            by[who] = {}
+            order[#order + 1] = who
+        end
+        table.insert(by[who], rec)
+        local sub = rec.subZone
+        if type(sub) == "string" and sub ~= "" and sub ~= MapName(rec.mapID) and not seen[sub] then
+            seen[sub] = true
+            places[#places + 1] = sub
+        end
+        ts[#ts + 1] = rec.t or 0
+        local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, rec.t or 0) or nil
+        if level then
+            lo = (not lo or level < lo) and level or lo
+            hi = (not hi or level > hi) and level or hi
+        end
+    end
+    -- The known opponents first, in the order met; those not known last.
+    table.sort(order, function(a, b) return a ~= false and b == false end)
+    local all = Together(recs)
+    local lines = {}
+    local names = {}
+    for _, who in ipairs(order) do
+        if who then names[#names + 1] = who end
+    end
+    local title
+    if #order == 1 then
+        lines[1] = Outcome(Together(by[order[1]]))
+        if not order[1] then
+            local _, up, down = Duels.Score(all)
+            local n = math.max(up + down, #recs)
+            title = n <= 1 and L["A duel"] or ns.Plural(n, L["%d duel|%d duels##plural"])
+        end
+    else
+        local each = {}
+        for _, who in ipairs(order) do each[#each + 1] = Duels.Note(Together(by[who]), who ~= false) end
+        lines[1] = Capital(Join(each))
+    end
+    if not title then
+        title = by[false] and Fmt(L["Duelled %s and others"], Join(names)) or Fmt(L["Duelled %s"], List(names))
+    end
+    local Times = ns.UI.Format.Times
+    local flights = {}
+    if all.fled > 0 then flights[#flights + 1] = Fmt(L["you fled %s"], Times(all.fled)) end
+    if all.theyFled > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(all.theyFled)) end
+    if #flights > 0 and (all.won + all.lost + all.fled + all.theyFled) > 1 then
+        lines[#lines + 1] = Capital(Join(flights))
+    end
+    if places[1] then lines[#lines + 1] = Capital(ns.ZoneIn(nil, List(places))) end
+    lines[#lines + 1] = Foot(ts, lo, hi, now)
     return Capital(title), lines
+end
+
+-- One series' tooltip, the note's (Slip.lua), as its flag's alone
+-- (Duels.Tips).
+function Duels.Tip(rec, now)
+    return Duels.Tips({ rec }, now)
 end
 
 -- The caption's words for a plate's series (`recs`, oldest first), where
@@ -166,30 +253,46 @@ end
 -- a campfire"): "a duel won", "a duel lost", "two duels won", "three
 -- duels lost", "duels mostly won", "duels mostly lost", and level, "duels
 -- won and lost". `Lead` opens the words where nothing else does, the
--- same words and where (`spot`, the subzone they share, or nil). The spot
--- is a subzone, with no id, so it never follows a preposition (10 Nov, for
--- translations; "A duel won in Sentinel Hill" was one): it leads alone and
--- the phrase is handed back as the lead's `rest`, for its tail place, the
--- campfire's shape: "Sentinel Hill, and a duel won." Without one, "A duel
--- won", "Duels mostly lost".
-function Duels.Phrase(recs)
+-- same words and where (`spot`, the subzone they share, or nil): "A duel
+-- won in Sentinel Hill", "Duels mostly lost in Sentinel Hill". Each shape
+-- is its own template, with the place (`zone`, the subzone's phrase,
+-- ns.ZoneIn) and without (`alone`).
+local PHRASE = {
+    none = { alone = L["a duel"], zone = L["A duel %s##zone"] },
+    won = { alone = L["a duel won|%s duels won##plural"], zone = L["A duel won %2$s|%1$s duels won %2$s##zone##plural"] },
+    lost = { alone = L["a duel lost|%s duels lost##plural"], zone = L["A duel lost %2$s|%1$s duels lost %2$s##zone##plural"] },
+    even = { alone = L["duels won and lost"], zone = L["Duels won and lost %s##zone"] },
+    mostlyWon = { alone = L["duels mostly won"], zone = L["Duels mostly won %s##zone"] },
+    mostlyLost = { alone = L["duels mostly lost"], zone = L["Duels mostly lost %s##zone"] },
+}
+
+local function Words(recs, place)
     local up, down = 0, 0
     for _, rec in ipairs(recs) do
         local _, u, d = Duels.Score(rec)
         up, down = up + u, down + d
     end
     local n = up + down
-    if n == 0 then return L["a duel"] end
-    local count = NUMBER[n] or tostring(n)
-    if down == 0 then return ns.Plural(n, L["a duel won|%s duels won##plural"], count) end
-    if up == 0 then return ns.Plural(n, L["a duel lost|%s duels lost##plural"], count) end
-    if up == down then return L["duels won and lost"] end
-    return up > down and L["duels mostly won"] or L["duels mostly lost"]
+    local at = place and "zone" or "alone"
+    local shape = n == 0 and "none" or down == 0 and "won" or up == 0 and "lost"
+        or up == down and "even" or up > down and "mostlyWon" or "mostlyLost"
+    local words = PHRASE[shape][at]
+    if shape == "won" or shape == "lost" then
+        local count = NUMBER[n] or tostring(n)
+        if place then return ns.Plural(n, words, count, place) end
+        return ns.Plural(n, words, count)
+    end
+    if place then return Fmt(words, place) end
+    return words
+end
+
+function Duels.Phrase(recs)
+    return Words(recs)
 end
 
 function Duels.Lead(recs, spot)
-    if spot then return spot, Duels.Phrase(recs) end
-    return Capital(Duels.Phrase(recs))
+    if spot then return Capital(Words(recs, ns.ZoneIn(nil, spot))) end
+    return Capital(Words(recs))
 end
 
 -- The subzone a plate's series (route records) all started in, or nil
@@ -211,7 +314,7 @@ end
 -- `said.duel` (true): the plate's note (Slip.lua) found no room, in the
 -- margin nor on the print, so the words say it, after every other kind
 -- but the campfire (", a duel won, and a campfire"), or lead where nothing
--- else does ("Raptor Grounds, and a duel won."). With the note beside the
+-- else does ("A duel won in Raptor Grounds"). With the note beside the
 -- plate or on its print the words say nothing of it, but where the duels
 -- are all there is they name their place ("Raptor Grounds.") for the note
 -- to finish, as the campfire's do. Filler: where saying it would run the

@@ -146,17 +146,20 @@ Locale.grammar.Capital = function(text) return (text:gsub("^%l", string.upper)) 
 --   -- "Found Linen Cloth in The Barrens"
 --
 -- `role` is the preposition's job (default "in"; also "to", "from",
--- "into", "through", "near", "at", "around"). A locale fills:
+-- "into", "through", "near", "at", "around", "round"). A locale fills:
 --   grammar.ZONES[mapID][role]          "im Brachland" (only the zones that
 --   grammar.DUNGEONS[instanceID][role]   need it: articles, declension)
 --   grammar.PLACE[role]                  the rest: "in %s"
--- English needs no table. A subzone has no id: its template doesn't put
--- it after a preposition at all ("· Crossroads, The Barrens").
+--   grammar.SUBZONES[name][role]        a subzone, which has no id, by the
+--                                        name the client gives ("Wegekreuz"
+--                                        -> "am Wegekreuz")
+-- English needs no table. A subzone goes through ns.ZoneIn too, with no
+-- mapID: ns.ZoneIn(nil, subZone, "at") is "at The Crossroads".
 Locale.grammar.PLACE = {
     ["in"] = "in %s", to = "to %s", from = "from %s", into = "into %s",
-    through = "through %s", near = "near %s", at = "at %s", around = "around %s",
+    through = "through %s", near = "near %s", at = "at %s", around = "around %s", round = "round %s",
 }
-Locale.grammar.ZONES, Locale.grammar.DUNGEONS = {}, {}
+Locale.grammar.ZONES, Locale.grammar.DUNGEONS, Locale.grammar.SUBZONES = {}, {}, {}
 
 local ENGLISH_PLACE = Locale.grammar.PLACE
 
@@ -172,6 +175,7 @@ end
 -- kept on a row); `mapID` may be nil for rows that have none.
 function ns.ZoneIn(mapID, name, role)
     name = name or (mapID and ns.MapName and ns.MapName(mapID))
+    if not mapID then return Phrase(Locale.grammar.SUBZONES, name, name, role) end
     return Phrase(Locale.grammar.ZONES, mapID, name, role)
 end
 

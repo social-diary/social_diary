@@ -103,6 +103,38 @@ do
     Check(table.concat(saved, "|"):find("6%%"), "a rescue's health")
     local _, bare = W.Tip(W.Written({ deed = "saved", t = t0 }), now)
     Check(not table.concat(bare, "|"):find("came out"), "no health, no line about it")
+
+    -- On one spot, all of them told once (the mark's `tips`).
+    local function Written(fields)
+        local rec = { deed = "saw", name = "Old Friend", creature = "Young Wolf", t = t0, level = 10 }
+        for key, value in pairs(fields or {}) do rec[key] = value end
+        return W.Written(rec)
+    end
+    local lone
+    name, lone = W.Tips({ Written({ deed = "saved", pct = 6 }) }, now)
+    Eq(name, "Old Friend", "alone: their name")
+    Eq(table.concat(lone, "|"), "Saved you from a Young Wolf|You came out of it with 6%\194\160health|"
+        .. Text.When(t0, nil, now) .. ", level 10", "alone: the deed, the health, when once")
+    name, lone = W.Tips({ Written(), Written({ t = t0 + 600, level = 11 }) }, now)
+    Eq(name, "Old Friend", "one person twice: their name once")
+    Eq(lone[1], "Saw you die to a Young Wolf twice", "the deed once, counted")
+    Eq(lone[2], Text.When(t0, nil, now):gsub(" at ", " from ") .. date(" to %H:%M", t0 + 600) .. ","
+        .. " levels 10 to 11", "a span and a level range")
+    Eq(#lone, 2, "nothing doubled")
+    local lines
+    name, lines = W.Tips({ Written(), Written({ name = "Grisha", deed = "saved", creature = "Hogger", bare = "yes" }),
+        Written({ t = t0 + 60 }) }, now)
+    Eq(name, "Two witnesses", "two people: counted")
+    Eq(lines[1], "Old Friend saw you die to a Young Wolf twice", "each named once, with what they did")
+    Eq(lines[2], "Grisha saved you from Hogger", "the other")
+    Eq(#lines, 3, "and when")
+    name, lines = W.Tips({ Written({ name = "A" }), Written({ name = "B" }), Written({ name = "C" }),
+        Written({ name = "D" }) }, now)
+    Eq(name, "Four witnesses", "four")
+    Eq(lines[3], "Others were there too", "the rest not counted")
+    Eq(#lines, 4, "four lines at most")
+    Eq(ns.UI.JourneyPlate.MARKS.witnessed.tips({ { witnessed = { deed = "saw", name = "Old Friend", t = t0 } },
+        { witnessed = { deed = "saw", name = "Old Friend", t = t0 } } }, now), "Old Friend", "the mark tells its spot with Tips")
 end
 
 --------------------------------------------------------------------------

@@ -545,7 +545,7 @@ end
 
 local function Notable(p)
     if #p.people > 0 or #p.fights > 0 or #p.notes > 0 or #p.deaths > 0 or #p.runs > 0
-        or #p.hindsight > 0 then
+        or #p.hindsight > 0 or #(p.battlegrounds or {}) > 0 then
         return true
     end
     for _, spec in ipairs(MOMENTS) do
@@ -622,6 +622,9 @@ function Recap.Pieces(j, e, ctx)
             p.sitting, p.at = s, s and s.from or pa
             p.many = (perDay[Recap.SittingDay(p.at)] or 0) > 1 or nil
             p.runs = Recap.Runs(ctx, pa, pb)
+            -- The battleground sessions begun here (Core/Matches.lua): a
+            -- session belongs to the piece it began in, whole (Jan, 9 Nov).
+            p.battlegrounds = ctx.me and ns.Matches.Between(ctx.me, pa, pb) or {}
             p.hindsight = {}
             for _, f in ipairs(e.hindsight or {}) do
                 if f.t >= pa and f.t < pb then p.hindsight[#p.hindsight + 1] = f end
@@ -637,7 +640,10 @@ function Recap.Pieces(j, e, ctx)
         if not longest or p.seconds > longest.seconds then longest = p end
     end
     if #pieces == 0 and longest then pieces[1] = longest end
-    e.spliced = #pieces <= 1 and (not pieces[1] or #pieces[1].runs == 0)
+    -- (a piece with a battleground session is never spliced either, as one
+    -- with a run: its line under the sitting is the only way to its pages,
+    -- UI/Journey/Left.lua, and an entry drawn whole has no sessions)
+    e.spliced = #pieces <= 1 and (not pieces[1] or (#pieces[1].runs == 0 and #pieces[1].battlegrounds == 0))
     return pieces
 end
 
@@ -1191,7 +1197,7 @@ end
 -- judged from (JRN-23): the diary, the buffer, the records, and the user's
 -- own characters.
 function Recap.Context(guid, now)
-    local ctx = { now = now or ns.Now(), maxLevel = Journey.MaxLevel(), sessions = {}, notes = {}, visits = {},
+    local ctx = { me = guid, now = now or ns.Now(), maxLevel = Journey.MaxLevel(), sessions = {}, notes = {}, visits = {},
         diary = ns.db.diary, interactions = ns.db.interactions, characters = ns.db.characters,
         own = ns.OwnCharacters() }
     for _, session in pairs(ns.db.sessions) do

@@ -65,7 +65,7 @@ Eq(Line("tried_to_help", ALT), "Bram tried to save Thessaly in Mulgore", "tried_
 Eq(Line("saved_you", ALT, { pct = 6 }), "Bram saved Thessaly at 6%\194\160health in Mulgore", "saved_you")
 Eq(Line("campfire", ALT), "Thessaly and Bram sat by a campfire together in Mulgore", "campfire")
 Eq(Line("duel_series", ALT, { won = 2, fled = 1 }), "Won 2 duels against Bram and lost 1 in Mulgore"
-    .. "  \194\183  Thessaly fled once", "duel")
+    .. ", and Thessaly fled once", "duel")
 
 Eq(Death(ALT), "Thessaly died to Plainstrider near Mulgore", "a death on the timeline")
 Eq(Death(SELF.guid), "You died to Plainstrider near Mulgore", "a death on the timeline, the one playing")

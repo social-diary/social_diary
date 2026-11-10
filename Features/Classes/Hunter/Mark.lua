@@ -33,14 +33,20 @@ Hunter.MARK = MARK
 -- is the one that steps aside, with a tether: it anchors a leader and
 -- needs no exact spot (the user's, 4 Nov). Kept (plate.tameMarks) for the
 -- plate's one card (Card.lua's Choose: the newest tame, plate.tame) and
--- the player's own cards (Card.lua's Customs). Its tooltip is Hunter.Tip's
--- lines as they are, the first for its title, so the name is said once.
+-- the player's own cards (Card.lua's Customs). Its tooltip is Hunter.Tips's
+-- account of every tame on the spot, so each name is said once.
 ns.UI.JourneyPlate.RegisterMark("tame", {
     order = 67, cap = 10, count = "tames",
     radius = MARK.height / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now)
         local lines = Hunter.Tip(m.tame or m, now)
         return lines[1], { unpack(lines, 2) }
+    end,
+    -- Every tame on the spot in one account (Text.lua's Hunter.Tips).
+    tips = function(list, now)
+        local tames = {}
+        for _, m in ipairs(list) do tames[#tames + 1] = m.tame or m end
+        return Hunter.Tips(tames, now)
     end,
     keep = "tameMarks", chosen = "tame",
     choose = function(marks) return Hunter.Card.Choose(marks) end,

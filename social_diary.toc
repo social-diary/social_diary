@@ -2,7 +2,7 @@
 ## Title: Social Diary
 ## Notes: Remembers the people you meet in the open world.
 ## Author: social-diary
-## Version: 3.0.1
+## Version: 3.0.2
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
@@ -33,6 +33,9 @@ Core/Sessions.lua
 # The tour's example person, written through the stores above.
 Core/Sample.lua
 Core/Instances.lua
+# Battleground matches (Core/Matches.lua has the record); after Instances,
+# as the run's store it mirrors.
+Core/Matches.lua
 # Dungeon Crawler Forever's data (GPL-3.0-or-later, Vendor/DungeonCrawlerForever/
 # VERSION): the table it loads into first, then its files as they ship,
 # then the one reader of them.
@@ -60,8 +63,12 @@ Core/Pace/Deadmines.lua
 Core/Pace/RazorfenKraul.lua
 Core/Pace/RazorfenDowns.lua
 Core/Pace/StormwindStockade.lua
+Core/Pace/WailingCaverns.lua
+Core/Pace/ShadowfangKeep.lua
 Core/DungeonPace.lua
 Core/RunPage.lua
+# A battleground's pages laid out (UI/Journey/Match.lua draws them).
+Core/MatchPage.lua
 Core/Roster.lua
 Core/Reunions.lua
 Core/Timeline.lua
@@ -142,6 +149,7 @@ UI/Journey/Text/Tips.lua
 UI/Journey/Text/Caption.lua
 UI/Journey/Text/Margin.lua
 UI/Journey/Text/Run.lua
+UI/Journey/Text/Match.lua
 UI/Journal/Book.lua
 UI/Journal/Pages.lua
 UI/Journal/Pad.lua
@@ -157,6 +165,7 @@ UI/Journey/Caption.lua
 UI/Journey/Full.lua
 UI/Journey/Empty.lua
 UI/Journey/Run.lua
+UI/Journey/Match.lua
 UI/Journey/Page.lua
 UI/Journey/CardSheet.lua
 UI/Journey/Pad.lua
@@ -219,6 +228,7 @@ UI/Settings/Sections/Shortcuts.lua
 UI/Settings/Sections/Dungeons.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
+UI/Settings/Sections/Battlegrounds.lua
 UI/Settings/Sections/Memory.lua
 UI/Settings/Sections/About.lua
 UI/Settings/Sections/Feedback.lua
@@ -328,6 +338,9 @@ Features/Classes/Hunter/Capture.lua
 Capture/Menus.lua
 Capture/Group.lua
 Capture/Instances.lua
+# Battleground matches: the only capture that writes inside a match
+# (ns.InBattleground keeps the rest out). Independent of Instances.
+Capture/Matches.lua
 Capture/Together.lua
 Capture/Nearby.lua
 Capture/Sightings.lua
@@ -357,6 +370,7 @@ Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
 Dev/PaceDebug.lua
 Dev/TestData.lua
+Dev/TestMatches.lua
 Dev/Hints.lua
 Dev/Pad.lua
 Features/LevelUps/Dev.lua

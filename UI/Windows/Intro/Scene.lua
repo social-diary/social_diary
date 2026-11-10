@@ -224,7 +224,7 @@ local CREASE = {
 local MAKERS = {
     gnome = { sender = { L["WIZZLEBOLT & DAUGHTER"], L["Diarywrights, Tinker Town"] },
         address = {}, postmark = { L["TINKER"], L["TOWN"] } },
-    goblin = { sender = { L["GRIZZIK'S DIARIES"], L["Ratchet \194\183 no refunds"] },
+    goblin = { sender = { L["GRIZZIK'S DIARIES"], L["Ratchet, no refunds"] },
         address = { L["To the new owner"], L["(paid in full)"] }, aside = true, postmark = { L["RATCHET"] } },
 }
 

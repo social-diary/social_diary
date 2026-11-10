@@ -54,6 +54,23 @@ do
         Check(not line:find("evel 10"), "the hunter's level in the tooltip: " .. line)
         Check(not line:find("three") and not line:find("tamed 3"), "the tries in the tooltip: " .. line)
     end
+
+    -- Every tame on one spot, one account (spec.tips, 9 Nov).
+    local function P(tame) return { kind = "tame", t = tame.t, tame = tame } end
+    local function Clock(t) return date("%H:%M", t) end
+    title, lines = spec.tips({ P(NAMED) }, now)
+    Eq(title, "Bristlemane, tamed here", "a lone paw: who")
+    Eq(lines[1], "Boar, Dire Mottled Boar", "a lone paw: what the game calls it")
+    Eq(lines[2], "Today at " .. Clock(NAMED.t), "a lone paw: when, once")
+    Eq(#lines, 2, "a lone paw: nothing doubled")
+    title, lines = spec.tips({ P(NAMED), P(PLAIN) }, now)
+    Eq(title, "Bristlemane and Savannah Prowler, tamed here", "two on a spot: both named once")
+    Eq(lines[1], "Bristlemane, Boar, Dire Mottled Boar", "two: the named one's kind, with its name")
+    Eq(lines[2], "Today at " .. Clock(NAMED.t) .. " and " .. Clock(PLAIN.t), "two: each time, the day once")
+    Eq(#lines, 2, "two: no repeated title or time")
+    title = spec.tips({ P(PLAIN), P({ t = now - 100 }) }, now)
+    Eq(title, "Savannah Prowler and a pet, tamed here", "one known by neither name")
+    for _, line in ipairs(lines) do Check(not line:find("evel"), "the hunter's level in the tooltip: " .. line) end
 end
 
 --------------------------------------------------------------------------
@@ -86,7 +103,7 @@ do
     Eq(card.form, "XL", "a 220 px box")
     Check(not card.overfull and w <= 220 and h > 0, "XL does not fit its box")
     Eq(card.name:GetText(), "Bristlemane", "the given name in the hand")
-    Eq(card:Kind(), "Boar · Dire Mottled Boar", "the kind printed under it")
+    Eq(card:Kind(), "Boar, Dire Mottled Boar", "the kind printed under it")
     Eq(card.tagText:GetText(), "Lv 9", "the pet's level on its label")
     Check(card.tag ~= nil and card.tagText:IsShown(), "the label is not shown")
     Eq(card.picture, nil, "no display, no portrait")
@@ -220,7 +237,7 @@ do
     Eq(p.tame.rec.name, "Bristlemane", "level 10's tame")
     Eq(page.tamesWritten, 1, "level 10's card")
     local card = Cards()[1]
-    Eq(card:Kind():gsub(" ·", ""), "Boar Dire Mottled Boar", "level 10's kind")
+    Eq(card:Kind():gsub(",", ""), "Boar Dire Mottled Boar", "level 10's kind")
     Eq(card.picture, nil, "testdata keeps no display")
     local kinds = {}
     for _, it in ipairs(p.margin or {}) do kinds[#kinds + 1] = it.kind end

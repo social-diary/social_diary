@@ -69,7 +69,11 @@ ns.DungeonPace = DungeonPace
 -- 23 to 64 yd off, Roogug's 160, Glutton's 95; fitted through them, the
 -- maps came out stretched by up to a fifth and three dungeons were
 -- refused). The pins' distances are kept (`worst`) as a note on how DCF
--- drew them, never a reason to refuse. Bosses on several floors: every one
+-- drew them, never a reason to refuse. A floor DCF drew as its own art,
+-- without bounds, takes the pace data's (`bounds`, by uiMapID) where that
+-- art lies over a Blizzard floor's rectangle (Wailing Caverns, 9 Nov 2026:
+-- DCF's 800431 over floor 279, the bosses' pins within 2% of their spawns
+-- there). Bosses on several floors: every one
 -- of those floors needs bounds, else no fit. Where the one floor has no
 -- bounds, the old fit: an affine, least squares over the entrance and the
 -- bosses, at least `least` anchors on one floor, none off by more than
@@ -145,6 +149,49 @@ local function ByBounds(b)
     }
 end
 
+-- A floor drawn as one picture of several pieces at their own scales (the
+-- pace data's `pieces[uiMapID]`, Shadowfang Keep's overview, 9 Nov 2026):
+-- each piece { name, rects (fractions of the picture, tried in order),
+-- game (gx = g1 + g2 fx + g3 fy, gy = g4 + g5 fx + g6 fy) } becomes a floor
+-- of its own in `floors`, keyed uiMapID * 10 + n, its `sheet` the picture's
+-- uiMapID; packs carry that key. The floor itself takes a point of the
+-- picture to game yards through the piece that holds it, and says which
+-- (`Piece`); it has no way back without a piece named.
+local function ByPieces(f, list, floors)
+    if type(list) ~= "table" or #list == 0 then return nil end
+    local keys = {}
+    for n, pc in ipairs(list) do
+        local g = pc.game
+        local det = g and #g == 6 and (g[2] * g[6] - g[3] * g[5])
+        if not det or math.abs(det) < 1e-12 then return nil end
+        local key = f * 10 + n
+        keys[#keys + 1] = key
+        floors[key] = {
+            ToGame = function(fx, fy) return g[1] + g[2] * fx + g[3] * fy, g[4] + g[5] * fx + g[6] * fy end,
+            ToFloor = function(gx, gy)
+                local dx, dy = gx - g[1], gy - g[4]
+                return (g[6] * dx - g[3] * dy) / det, (g[2] * dy - g[5] * dx) / det
+            end,
+            rects = pc.rects, sheet = f, name = pc.name,
+        }
+    end
+    local function Piece(fx, fy)
+        for _, key in ipairs(keys) do
+            for _, r in ipairs(floors[key].rects or {}) do
+                if fx >= r[1] and fx <= r[3] and fy >= r[2] and fy <= r[4] then return key end
+            end
+        end
+    end
+    return {
+        pieces = keys, Piece = Piece,
+        ToGame = function(fx, fy)
+            local key = Piece(fx, fy)
+            if key then return floors[key].ToGame(fx, fy) end
+        end,
+        ToFloor = function() return nil end,
+    }
+end
+
 -- A fit over `floors` ({ [uiMapID] = { ToFloor, ToGame, bounds } }), the
 -- floors in `order` (the first the way in's): ToGame(fx, fy, floor) takes
 -- a floor's point to game yards (the first floor where none is named);
@@ -174,7 +221,8 @@ local function Make(order, floors, method, worst, worstName, anchors)
             local t = floors[f]
             if not t then return nil end
             local fx, fy = t.ToFloor(gx, gy)
-            return fx, fy, f
+            if fx == nil then return nil end
+            return fx, fy, t.sheet or f
         end,
     }
 end
@@ -211,17 +259,22 @@ function DungeonPace.Fit(instanceID)
         local floors, all = {}, first ~= nil
         for _, f in ipairs(order) do
             local fl = D.Floor(instanceID, f)
-            floors[f] = ByBounds(fl and fl.bounds)
+            floors[f] = ByBounds(fl and fl.bounds) or ByBounds(data.bounds and data.bounds[f])
+                or ByPieces(f, data.pieces and data.pieces[f], floors)
             if not floors[f] then all = false end
         end
         if all then
             local worst, worstName = 0, nil
             for _, p in ipairs(pairs_) do
                 local gx, gy = floors[p[6]].ToGame(p[3], p[4])
-                local off = math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2)
+                local off = gx and math.sqrt((gx - p[1]) ^ 2 + (gy - p[2]) ^ 2) or math.huge
                 if off > worst then worst, worstName = off, p[5] end
             end
-            fit = Make(order, floors, "bounds", worst, worstName, #pairs_)
+            local method = "bounds"
+            for _, f in ipairs(order) do
+                if floors[f].pieces then method = "pieces" end
+            end
+            fit = Make(order, floors, method, worst, worstName, #pairs_)
         elseif #order == 1 and #pairs_ >= FIT.least then
             local rx, ry = {}, {}
             for i, p in ipairs(pairs_) do
@@ -284,6 +337,11 @@ function DungeonPace.Course(visit, route)
     for i, p in ipairs(route) do
         local f, x, y = ns.DungeonWay.Where(id, p)
         local on = f and fit.floors[f]
+        if on and on.Piece and x and y then
+            -- An overview's piece: the floor from here on.
+            f = on.Piece(x, y)
+            on = f and fit.floors[f]
+        end
         if on and x and y then
             game[i], floors[i] = { on.ToGame(x, y) }, f
         else

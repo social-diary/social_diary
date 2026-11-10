@@ -710,7 +710,15 @@ ns.UI.JourneyPlate.RegisterPass("killer", {
         for _, cross in ipairs(c.crosses) do
             if #cross.deaths > 0 then
                 local told, kept = cross.deaths, {}
-                c.HoverCross(cross, function() return c.Tip(ns.Deaths.DeathCross(cross.count, told)) end)
+                -- What the tooltip reads: each death as the player left it,
+                -- with the level it came at (the route's, Recap.LevelAt),
+                -- on a copy, so nothing is written to the saved record.
+                local said = {}
+                for i, d in ipairs(told) do
+                    said[i] = { name = d.name, spell = d.spell, environment = d.environment, t = d.t,
+                        level = type(d.t) == "number" and ns.JourneyRecap.LevelAt(j, d.t) or nil }
+                end
+                c.HoverCross(cross, function() return c.Tip(ns.Deaths.DeathCross(cross.count, said, c.now)) end)
                 for _, d in ipairs(told) do
                     if d.customOf then
                         local px, py = c.OnPage(cross.x, cross.y)
@@ -792,11 +800,20 @@ ns.UI.JourneyMargin.Register("killerCustom", {
 -- nothing of the route is touched to draw it. Here and not in a Mark.lua of its
 -- own, since it has no drawing of its own to keep there. After the close call's (30)
 -- and before the luck's (40). On its own dot of paper, as the route's cross is, so
--- no halo; hovered as the route's is, and told by the same tooltip.
+-- no halo; hovered as the route's is, and told by the same tooltip: those on
+-- one spot together ("Died here twice", each killer once), as a cross of the
+-- route's tells its deaths (`tips`, 9 Nov).
+local function Inserted(list)
+    local deaths = {}
+    for i, m in ipairs(list) do deaths[i] = m.killedBy end
+    return deaths
+end
+
 ns.UI.JourneyPlate.RegisterMark("killedBy", {
     order = 32, cap = 20, count = "insertedDeaths",
     radius = 5, halo = false, hover = 14,
-    tip = function(m) return ns.Deaths.DeathCross(1, { m.killedBy }) end,
+    tip = function(m, now) return ns.Deaths.DeathCross(1, { m.killedBy }, now) end,
+    tips = function(list, now) return ns.Deaths.DeathCross(#list, Inserted(list), now) end,
     keep = "killedMarks",
     draw = function(kit, x, y) ns.UI.JourneyPlate.SHAPE.death(kit, x, y) end,
 })

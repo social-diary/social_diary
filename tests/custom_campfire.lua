@@ -80,7 +80,7 @@ do
     Eq(rec.custom.zone, nil, "and never written")
     local title, lines = Campfire.Tip(read, now)
     Eq(title, "Sat by a campfire", "the tooltip's title")
-    Eq(lines[1], "Skull Rock", "the tooltip says the place as edited")
+    Eq(lines[1], "In Skull Rock", "the tooltip says the place as edited")
 
     Custom.Edit("campfire", read, { subZone = "" })
     read = Fires()[1]

@@ -47,7 +47,7 @@ Check(not pcall(Hints.Register, "x", { page = "people", eligible = function() en
     "a done that is not a function")
 local ids = {}
 for _, spec in ipairs(Hints.All()) do ids[#ids + 1] = spec.id end
-Eq(table.concat(ids, ","), "major-update,custom-events,remember-bind,remember-use", "the hints, in order")
+Eq(table.concat(ids, ","), "major-update,board-rollup,custom-events,remember-bind,remember-use", "the hints, in order")
 
 --------------------------------------------------------------------------
 Section("the heartbeat: played time and sittings")

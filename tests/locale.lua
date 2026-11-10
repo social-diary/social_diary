@@ -82,6 +82,16 @@ local function Escaped(text)
         or text:find("|H.-|h") or text:find("|A:") or text:find("|K") or text:find("|n") or text:find("|4")
 end
 
+-- Whether signature `part` takes only values `whole` takes ("2d" of
+-- "1d,2d"): the form for exactly 1 may leave the count out and keep the
+-- rest ("Took a quest, handed in %2$d").
+local function Within(part, whole)
+    local has = {}
+    for v in whole:gmatch("[^,]+") do has[v] = true end
+    for v in part:gmatch("[^,]+") do if not has[v] then return false end end
+    return true
+end
+
 Section("plural keys")
 local badKey = {}
 for _, k in ipairs(order) do
@@ -89,9 +99,9 @@ for _, k in ipairs(order) do
         local forms = ns.Locale.Forms(ns.Locale.English(k))
         local sig = PluralSignature(k)
         local ok = #forms == 2 and not Escaped(k) and sig ~= ""
-        for _, f in ipairs(forms) do
+        for i, f in ipairs(forms) do
             local s = Extract.Signature(f)
-            if s ~= sig and s ~= "" then ok = false end
+            if s ~= sig and not (i == 1 and Within(s, sig)) then ok = false end
         end
         if not ok then badKey[#badKey + 1] = k end
     end
@@ -105,11 +115,12 @@ end
 -- The prepositions a zone phrase brings itself. "to", "from" and "at" are
 -- left out: "died to %s" and "level %s to %s" name no place. ADVERB keys
 -- keep a word that belongs to the verb ("flew in", then "from Durotar").
-local PLACE_WORDS = { "in", "into", "through", "near", "around" }
-local ADVERB = { ["Flew in %s##zone"] = true }
+local PLACE_WORDS = { "in", "into", "through", "near", "around", "round" }
+local ADVERB = { ["Flew in %s##zone"] = true, ["Flew in %1$s %2$s##zone"] = true }
 -- A context that marks a word as a whole unit on screen: "on##switch" is a
--- status (on / off), not the preposition.
-local WHOLE = { switch = true }
+-- status (on / off), not the preposition; "to##score" stands alone between
+-- two rows of drawn pennants (UI/Journey/Match.lua).
+local WHOLE = { switch = true, score = true }
 local edged, bare, glued = {}, {}, {}
 for _, k in ipairs(order) do
     local text = ns.Locale.English(k)
@@ -172,7 +183,7 @@ for _, id in ipairs(LOCALES) do
             for i, f in ipairs(forms) do
                 local s, mixed = Extract.Signature(f)
                 local fits = s == sig or (s:find("%d") and s == pos)
-                local bare = s == "" and i == 1 and oneAlone
+                local bare = i == 1 and oneAlone and (Within(s, sig) or Within(s, pos))
                 if mixed or not (fits or bare) then ok = false end
             end
             if not ok then

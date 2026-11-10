@@ -104,6 +104,33 @@ Hints.Register("major-update", {
     end,
 })
 
+-- d) News, not teaching: old battleground scoreboards are about to fade
+-- (Core/Matches.lua's roll-up), at 25, 10, 5, 4, 3, 2 and 1 matches
+-- before it starts, each step once (Matches.Warned). On whatever page the
+-- book opens on: what it warns of happens at the next matches, wherever
+-- the player is reading, and what can be done about it is in Settings,
+-- not on Your Diary; a notice kept to one page could miss its step.
+-- Behind its own switch (boardWarnings, Battlegrounds settings).
+Hints.Register("board-rollup", {
+    order = 2,
+    page = "any",
+    notice = true,
+    setting = "boardWarnings",
+    dwell = 1.5,
+    eligible = function() return ns.Matches.WarningDue() ~= nil end,
+    shown = function()
+        local step = ns.Matches.WarningDue()
+        if step then ns.Matches.Warned(step) end
+    end,
+    words = function()
+        local _, left = ns.Matches.WarningDue()
+        left = left or ns.Matches.UntilRollup()
+        return { title = L["Old Scoreboards"],
+            body = ns.Plural(left, L["In %d match, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.|In %d matches, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.##plural"]),
+            link = L["Keep more"], onLink = function() ns.UI.ShowSettings("battlegrounds") end }
+    end,
+})
+
 --------------------------------------------------------------------------
 -- The watcher
 --------------------------------------------------------------------------

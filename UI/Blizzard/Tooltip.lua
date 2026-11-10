@@ -43,10 +43,8 @@ function ns.UI.SeenLine(guid, now)
     -- A single earlier sighting is too thin to be worth a line.
     if count < 2 then return nil, "seen only once before" end
 
-    -- "twice" is a word English has, not a plural form: its own line.
-    local at = Format.At(last, now)
-    if count == 2 then return Fmt(L["Seen twice  ·  last %s"], at) end
-    return ns.Plural(count, L["Seen %1$d time  ·  last %2$s|Seen %1$d times  ·  last %2$s##plural"], count, at)
+    -- "Seen twice, last ...", "Seen 5 times, last ..." (Format.Times).
+    return Fmt(L["Seen %1$s, last %2$s"], Format.Times(count), Format.At(last, now))
 end
 
 local function SeenLine(tooltip, guid)
@@ -73,7 +71,9 @@ local function OnUnitTooltip(tooltip, data)
     local entry = s.entry
 
     local head = entry.tags[1] and table.concat(entry.tags, ", ") or L["in your diary"]
-    if entry.relationship then head = head .. "  ·  " .. entry.relationship end
+    -- What they are to you, after their tags with a comma (never a middle
+    -- dot: the copywriter skill), "friend, questing buddy".
+    if entry.relationship then head = Fmt(L["%1$s, %2$s"], head, entry.relationship) end
     tooltip:AddLine(Fmt(L["|cffffd100Diary:|r %s"], head), 1, 1, 1)
 
     local note = NoteLine(entry.note)
@@ -82,7 +82,7 @@ local function OnUnitTooltip(tooltip, data)
     end
 
     if s.timesMet > 0 then
-        tooltip:AddLine(ns.Plural(s.timesMet, L["Met %1$d time  ·  last %2$s|Met %1$d times  ·  last %2$s##plural"],
+        tooltip:AddLine(ns.Plural(s.timesMet, L["Met %1$d time, last %2$s|Met %1$d times, last %2$s##plural"],
             s.timesMet, Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
     else
         -- Before this encounter, as SeenLine: hovering them has just moved

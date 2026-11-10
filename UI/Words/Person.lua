@@ -293,7 +293,7 @@ PersonText.GLIMPSE = {
     daysLater = L["%d day later|%d days later##plural"], daysEarlier = L["%d day earlier|%d days earlier##plural"],
     levels = L["you at level %1$d, they at %2$d"], mine = L["at level %d"],
     stood = L["you were %s##zone"],
-    joinLevels = L["%1$s  \194\183  %2$s"],
+    joinLevels = L["%1$s, %2$s"],
     more = L["and %d more|and %d more##plural"],
     seenDays = L["Seen on %1$d day since %2$s. %3$s|Seen on %1$d days since %2$s. %3$s##plural"],
     ["until"] = L["Pencilled in until %s"],

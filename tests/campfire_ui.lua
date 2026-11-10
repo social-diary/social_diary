@@ -41,12 +41,12 @@ local function Line(row, guid)
     return (text:gsub(NB, " "))
 end
 Eq(Line(Row("The Barrens", "Lushwater Oasis"), BRAM),
-    "You and Bram sat by a campfire together  ·  Lushwater Oasis, The Barrens", "the row, the user's words")
+    "You and Bram sat by a campfire together in Lushwater Oasis, The Barrens", "the row, the user's words")
 Eq(Line(Row("The Barrens", nil), BRAM), "You and Bram sat by a campfire together in The Barrens", "no subzone")
 Eq(Line(Row("The Barrens", ""), BRAM), "You and Bram sat by a campfire together in The Barrens", "an empty subzone")
 Eq(Line(Row("Mulgore", "Mulgore"), BRAM), "You and Bram sat by a campfire together in Mulgore",
     "a subzone with the zone's name, said twice")
-Eq(Line(Row(nil, "Bloodhoof Village"), BRAM), "You and Bram sat by a campfire together  ·  Bloodhoof Village",
+Eq(Line(Row(nil, "Bloodhoof Village"), BRAM), "You and Bram sat by a campfire together in Bloodhoof Village",
     "no zone")
 Eq(Line(Row(nil, nil), nil), "Sat by a campfire together", "no one known and nowhere")
 local _, _, _, icon = ns.UI.DescribeItem({ kind = "row", row = Row("The Barrens") }, BRAM)
@@ -61,7 +61,7 @@ for _, c in ipairs(ns.Candidates()) do
 end
 Eq(why, "sat by a campfire together", "the picker's reason")
 local row = ns._test.LatestInteraction(BRAM, "campfire")
-Eq(Line(row, BRAM), "You and Bram sat by a campfire together  ·  Lushwater Oasis, The Barrens", "a row as kept")
+Eq(Line(row, BRAM), "You and Bram sat by a campfire together in Lushwater Oasis, The Barrens", "a row as kept")
 
 --------------------------------------------------------------------------
 Section("the caption's words")
@@ -74,7 +74,7 @@ local function M(kind, extra)
     return m
 end
 local alone = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }) })
-Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = true }), "Lushwater Oasis, and a campfire.",
+Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = true }), "By a campfire in Lushwater Oasis.",
     "a fire alone, its slip left off")
 Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = false }), "Lushwater Oasis.",
     "a fire alone, its slip beside it: the place, for the slip to finish")
@@ -84,7 +84,7 @@ Eq(Text.PlateCaption(bare, nil, { named = {}, find = {}, campfire = false }), "O
 Eq(Text.PlateCaption(bare, nil, { named = {}, find = {}, campfire = true }), "By a campfire.", "no subzone, left off")
 local twice = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }),
     M("campfire", { campfire = Fire("Lushwater Oasis", now - 300) }) })
-Eq(Text.PlateCaption(twice, nil, { named = {}, find = {}, campfire = true }), "Lushwater Oasis, and a campfire.",
+Eq(Text.PlateCaption(twice, nil, { named = {}, find = {}, campfire = true }), "By a campfire in Lushwater Oasis.",
     "one place sat by twice: no count")
 local two = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }),
     M("campfire", { campfire = Fire("The Stagnant Oasis", now - 300) }) })
@@ -100,8 +100,41 @@ Eq(words, "Lushwater Oasis, 25 min, and a campfire.", "after a stay")
 Eq(ns.Campfire.WORDS, "sat by a campfire", "the slip's words, the user's")
 local title, lines = ns.Campfire.Tip(Fire("Lushwater Oasis"), now)
 Eq(title, "Sat by a campfire", "the tooltip's title")
-Eq(lines[1], "Lushwater Oasis", "the tooltip's place")
+Eq(lines[1], "In Lushwater Oasis", "the tooltip's place")
 Eq(#lines, 2, "the tooltip's lines")
+Eq(lines[2], "Today at " .. date("%H:%M", now - 600), "a lone fire: when, once")
+
+-- A fire sat by again, one account on its mark (spec.tips, 9 Nov): how
+-- often, the place once, every time with its day once.
+do
+    local spec = Plate.MARKS.campfire
+    local function C(fire) return { kind = "campfire", campfire = fire } end
+    local first, second, third = Fire("Lushwater Oasis", now - 900), Fire("Lushwater Oasis", now - 600),
+        Fire("Lushwater Oasis", now - 300)
+    local t, l = spec.tips({ C(first) }, now)
+    Eq(t, "Sat by a campfire", "a lone fire's mark: the title")
+    Eq(l[1], "In Lushwater Oasis", "a lone fire's mark: where")
+    Eq(#l, 2, "a lone fire's mark: nothing doubled")
+    t, l = spec.tips({ C(first), C(second), C(third) }, now)
+    Eq(t, "Sat by a campfire 3 times", "sat by three times: how often")
+    Eq(l[1], "In Lushwater Oasis", "sat by three times: the place once")
+    Eq(l[2], "Today at " .. date("%H:%M", now - 900) .. ", " .. date("%H:%M", now - 600) .. " and "
+        .. date("%H:%M", now - 300), "sat by three times: each time, the day once")
+    Eq(#l, 2, "sat by three times: no line repeated")
+    local yesterday = Fire("Lushwater Oasis", now - ns.DAY)
+    t, l = spec.tips({ C(yesterday), C(second) }, now)
+    Eq(t, "Sat by a campfire twice", "two days: twice")
+    Eq(l[2], "Yesterday at " .. date("%H:%M", now - ns.DAY) .. " and today at " .. date("%H:%M", now - 600),
+        "two days: each day named")
+    local many = {}
+    for i = 5, 1, -1 do many[#many + 1] = C(Fire("Lushwater Oasis", now - i * 60)) end
+    t, l = spec.tips(many, now)
+    Eq(t, "Sat by a campfire 5 times", "five times")
+    Eq(l[2], "Today from " .. date("%H:%M", now - 300) .. " to " .. date("%H:%M", now - 60),
+        "past four, from the first to the last")
+    t, l = spec.tips({ C(first), C(Fire("The Stagnant Oasis", now - 300)) }, now)
+    Eq(l[1], "In Lushwater Oasis and The Stagnant Oasis", "two places, each once")
+end
 
 --------------------------------------------------------------------------
 Section("the slip: one a plate, its leader to the nearest fire")
@@ -126,7 +159,8 @@ do
     slip:Layout(250, 90, 100)
     Check(slip.overfull, "a slip wider than its box is not overfull")
     local tip = slip.tip()
-    Eq(#tip, 3 * 2, "the slip's tooltip tells each sitting")
+    Eq(tip[1][1], "Sat by a campfire 3 times", "the slip's tooltip tells every sitting, once")
+    Eq(#tip, 2, "the slip's tooltip: one account, no sitting told twice")
     ns.SetSetting("flatSheets", true)
     slip:Layout(250, 90, 176)
     Eq(slip.turn, 0, "laid flat, the slip turns")

@@ -399,7 +399,7 @@ Eq(ns.db.sightings[STRANGER2.guid], nil, "setup: not rolled up")
 Eq(#mock.UnitTooltip(STRANGER2.guid), 0, "the current encounter counted as an earlier one")
 mock.now = mock.now + 10 * 60
 local lines = mock.UnitTooltip(STRANGER2.guid)
-Eq(lines[1], "Seen twice  ·  last " .. ns.UI.Format.At(secondSeen + 2 * 3600, mock.now),
+Eq(lines[1], "Seen twice, last " .. ns.UI.Format.At(secondSeen + 2 * 3600, mock.now),
     "rolled-up sightings not counted")
 
 -- Three and up are numbers.
@@ -407,7 +407,7 @@ mock.now = mock.now + 2 * 3600
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate9")
 Drain()
 mock.now = mock.now + 10 * 60
-Check(mock.UnitTooltip(STRANGER2.guid)[1]:find("^Seen 3 times  ·  "), "three sightings not worded as a number")
+Check(mock.UnitTooltip(STRANGER2.guid)[1]:find("^Seen 3 times, "), "three sightings not worded as a number")
 
 SlashCmdList.SOCIALDIARY("sightings tooltip")
 mock.SetUnit("target", STRANGER2)
@@ -578,7 +578,7 @@ Eq(Sorted("subzone", -1), "Dora Wick,Emil Vane", "by subzone reversed, none stil
 ns.Diary.Add(S1, { source = "nearby",
     where = { zone = "Mulgore", subZone = sby[S1].subZone, mapID = 1412, x = 0.1, y = 0.2 } })
 Eq(ns.Characters.Get(S1).seen.subZone, "Bloodhoof Village", "last seen lost the subzone on add")
-Eq(ns.UI.Format.SeenText(ns.Characters.Get(S1).seen):match(" · (.+)$"), "Bloodhoof Village, Mulgore",
+Eq(ns.UI.Format.SeenText(ns.Characters.Get(S1).seen):match(" in (.+)$"), "Bloodhoof Village, Mulgore",
     "the profile line does not name the subzone")
 ns.Characters.Forget(S1)
 ns.Characters.Forget(S2)

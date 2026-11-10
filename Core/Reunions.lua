@@ -33,24 +33,56 @@ function Reunions.CoolingDown(guid, now)
     return last ~= nil and (now or ns.Now()) - last < Reunions.Cooldown()
 end
 
--- Whether a toast about `guid` is due now. `reason` is "group" or "nearby",
--- each with its own switch: either can be on without the other. A nearby
--- toast is never for someone already in the group, who got theirs on
--- joining, nor for someone marked quiet nearby (Diary.IsQuietNearby).
+-- In the battleground match open now (Core/Matches.lua), the match and
+-- which side `guid` is on there: "with", "against", or false when the
+-- side went unread. Nil outside a match, or when they are not in it. By
+-- GUID, else by name: enemies' GUIDs are secret while it runs.
+function Reunions.InMatch(guid)
+    local Matches = ns.Matches
+    local m = Matches and Matches.Current()
+    guid = ns.SafeGUID(guid)
+    if not m or not guid then return nil end
+    local name = ns.Characters.FullName(guid)
+    for _, p in ipairs(Matches.Players(m)) do
+        if p.guid == guid or (not p.guid and Matches.SameName(name, p.name)) then
+            return m, Matches.Side(m, p) or false
+        end
+    end
+    return nil
+end
+
+-- Whether a toast about `guid` is due now. `reason` is "group", "nearby"
+-- or "match", "group" and "nearby" each with its own switch: either can be
+-- on without the other. A nearby toast is never for someone already in the
+-- group, who got theirs on joining, nor for someone marked quiet nearby
+-- (Diary.IsQuietNearby).
+-- In a battleground match (9 Nov 2026) the match's own toast tells of
+-- everyone there, once a match (Capture/Matches.lua): the group and nearby
+-- ones keep quiet, or a teammate would come twice, once as "joined your
+-- group". The match's toast follows the group switch for someone on your
+-- side (they joined your raid) and the nearby one, quiet list and all, for
+-- someone against you (they came into view).
 -- A foe skips the cooldown when settings.foeToastsUncooled says so: in
 -- world PvP, the same foe back after two minutes is news.
 -- Returns the safe GUID when it is.
 function Reunions.Due(guid, reason, now)
-    if not ns.Setting(reason == "nearby" and "nearbyToasts" or "toasts") then return nil end
-
     guid = ns.SafeGUID(guid)
     if not guid then return nil end
 
-    local uncooled = ns.Setting("foeToastsUncooled") and ns.Diary.HasTag(guid, FOE_TAG)
-    if not uncooled and Reunions.CoolingDown(guid, now) then return nil end
-    if reason == "nearby" and (ns.Roster.Has(guid) or ns.Diary.IsQuietNearby(guid)) then
+    local against = false
+    if reason == "match" then
+        local _, side = Reunions.InMatch(guid)
+        against = side == "against"
+    elseif ns.Matches and ns.Matches.Current() then
         return nil
     end
+    local nearby = reason == "nearby" or against
+    if not ns.Setting(nearby and "nearbyToasts" or "toasts") then return nil end
+
+    local uncooled = ns.Setting("foeToastsUncooled") and ns.Diary.HasTag(guid, FOE_TAG)
+    if not uncooled and Reunions.CoolingDown(guid, now) then return nil end
+    if reason == "nearby" and ns.Roster.Has(guid) then return nil end
+    if nearby and ns.Diary.IsQuietNearby(guid) then return nil end
     return guid
 end
 

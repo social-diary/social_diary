@@ -37,10 +37,9 @@ ns.Campfire = Campfire
 -- together".
 --
 -- Its line: "You and Bram sat by a campfire together in The Barrens", the
--- user's own words (14 Oct); with a subzone, which has no id to say "in"
--- with (a translation's preposition takes the zone), the place "Subzone,
--- Zone" as everywhere, after a dot: "You and Bram sat by a campfire
--- together  ·  Lushwater Oasis, The Barrens". Its icon: Basic Campfire's own spell icon.
+-- user's own words (14 Oct), the place "Subzone, Zone" as everywhere; the
+-- zone alone where the client gave no subzone, or one with the zone's own
+-- name. Its icon: Basic Campfire's own spell icon.
 ns.Rows.Register("campfire", {
     proximity = true,
     plate = 6,
@@ -51,18 +50,21 @@ ns.Rows.Register("campfire", {
         local them = guid and ns.Characters.Name(guid)
         local subZone = row.context and row.context.subZone
         if subZone == "" or subZone == row.zone then subZone = nil end
-        -- The zone's phrase ("in The Barrens"); a subzone, which has no id
-        -- to say "in" with, after a dot ("  ·  The Crossroads, The Barrens").
-        local zone = not unplaced and not subZone and TT.Place(row) or nil
-        local spot = not unplaced and subZone and TT.Spot(subZone, row.zone) or nil
-        local text
-        if them then
-            text = ns.UI.Format.You(row.me, zone and Fmt(L["{You} and %1$s sat by a campfire together %2$s##zone"], them, zone)
+        -- The place as one phrase: "in The Barrens", or the subzone's
+        -- (which has no id: ns.ZoneIn asks the locale by its name) with
+        -- the zone after it, "in Lushwater Oasis, The Barrens".
+        local zone = not unplaced and (subZone and ns.ZoneIn(nil, subZone) or TT.Place(row)) or nil
+        local within = zone and subZone and row.zone or nil
+        if them and within then
+            return ns.UI.Format.You(row.me,
+                Fmt(L["{You} and %1$s sat by a campfire together %2$s, %3$s##zone"], them, zone, within))
+        elseif them then
+            return ns.UI.Format.You(row.me, zone and Fmt(L["{You} and %1$s sat by a campfire together %2$s##zone"], them, zone)
                 or Fmt(L["{You} and %s sat by a campfire together"], them))
-        else
-            text = zone and Fmt(L["Sat by a campfire together %s##zone"], zone) or L["Sat by a campfire together"]
+        elseif within then
+            return Fmt(L["Sat by a campfire together %1$s, %2$s##zone"], zone, within)
         end
-        return TT.Dot(text, spot)
+        return zone and Fmt(L["Sat by a campfire together %s##zone"], zone) or L["Sat by a campfire together"]
     end,
     icon = "campfire",
 })

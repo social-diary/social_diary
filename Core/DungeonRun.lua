@@ -452,7 +452,7 @@ function DungeonRun.Notes(visit)
 end
 
 -- How many times the run wiped: at its bosses and on the way. What the card
--- says ("10 deaths  ·  2 wipes"); the count kept on the record (bosses
+-- says ("10 deaths, 2 wipes"); the count kept on the record (bosses
 -- only, at the time) when there is nothing to work it out from.
 function DungeonRun.Wipes(visit)
     if not visit then return 0 end

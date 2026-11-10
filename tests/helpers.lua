@@ -288,13 +288,13 @@ Eq(UI.Format.At(ns.DayStart(day) - 60, day), "yesterday at " .. date("%H:%M", ns
     "At and DayLabel disagree about yesterday")
 -- Moved out of Style (UI/Words/Format.lua), still inked in Style's colours.
 Eq(UI.Format.WhoLine({ level = 6, race = "Tauren", class = "DRUID", faction = "Horde" }, "Kin"),
-    "Level 6 Tauren Druid  ·  |cff8c1a12Horde|r  |cff705936<Kin>|r", "UI.Format.WhoLine")
+    "Level 6 Tauren Druid, |cff8c1a12Horde|r  |cff705936<Kin>|r", "UI.Format.WhoLine")
 -- The toast drops the faction when it is the player's own (SELF is Horde).
 Eq(UnitFactionGroup("player"), "Horde", "the player is not Horde")
 Eq(UI.Format.WhoLine({ level = 6, race = "Tauren", class = "DRUID", faction = "Horde" }, nil, true),
     "Level 6 Tauren Druid", "own faction kept on the toast")
 Eq(UI.Format.WhoLine({ level = 5, race = "Human", class = "ROGUE", faction = "Alliance" }, nil, true),
-    "Level 5 Human Rogue  ·  |cff" .. ns.Style.HEX.alliance .. "Alliance|r", "other faction dropped from the toast")
+    "Level 5 Human Rogue, |cff" .. ns.Style.HEX.alliance .. "Alliance|r", "other faction dropped from the toast")
 
 -- The colour codes are written out from the RGB palette (UI/Style/Tokens.lua).
 -- These are the strings they were typed as by hand: the inks must not move.

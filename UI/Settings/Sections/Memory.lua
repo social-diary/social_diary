@@ -17,7 +17,7 @@ local function SizeText(bytes)
     local rows = ns.Interactions.Totals()
 
     local P = ns.Plural
-    return Fmt(L["%1$d in the diary  ·  %2$s  ·  %3$s  ·  %4$s  ·  %5$s.  About %6$d KB on disk."],
+    return Fmt(L["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."],
         ns.Diary.Count(), P(ns.Characters.Count(), L["%d character known|%d characters known##plural"]),
         P(ns.CountKeys(ns.db.sessions), L["%d session|%d sessions##plural"]),
         P(rows, L["%d interaction|%d interactions##plural"]),

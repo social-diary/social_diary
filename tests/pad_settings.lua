@@ -97,7 +97,7 @@ Eq(ns.Setting("chatLines"), lines + 1, "right did not count up")
 Eq(At().frame, page.chatLines, "right moved off the number")
 Press("PADDLEFT")
 Eq(ns.Setting("chatLines"), lines, "left did not count down")
-Eq(Prompt(), "Less · more", "a number's prompt")
+Eq(Prompt(), "Less or more", "a number's prompt")
 
 -- Chat off: the number and Unlimited fade, and down passes over them.
 Press("PADDUP")

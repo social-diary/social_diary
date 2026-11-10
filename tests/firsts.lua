@@ -362,8 +362,52 @@ Check(line:find("^Wolfskin Bracers, looted, at level 6, "), "a looted first's to
 head, line = Firsts.Tip(Find("bag", { t = d0, link = POUCH, from = "craft", level = 5 }), d0)
 Check(line:find("^Small Brown Pouch, made by hand, at level 5, "), "a made first's tooltip line: " .. line)
 
+-- A pouch's tooltip (Firsts.Tips, the mark's `tips`): everything in it
+-- told once. A lone first reads as one account, its time and level once
+-- at its foot.
+local DOT = ", "
+local at = function(t) return (ns.UI.Format.At(t, d0):gsub("^%l", string.upper)) end
+local lines
+head, lines = Firsts.Tips({ Find("bag", gift) }, d0)
+Eq(head, "Your first bag", "a lone first's title")
+Eq(table.concat(lines, "|"), "Small Brown Pouch, from Koko Skybluff|" .. at(d0) .. DOT .. "level 5",
+    "a lone first: the item and how, then when and the level, once")
+-- A green bag is two firsts and one item: named once, how it came once.
+local greenBag = { t = d0, mapID = MULGORE, link = GREEN_BAG, from = "vendor", level = 7 }
+head, lines = Firsts.Tips({ Find("uncommon", greenBag), Find("bag", greenBag) }, d0)
+Eq(head, "Your first bag and first green", "a green bag's title: both firsts, once each")
+Eq(table.concat(lines, "|"), "Green Leather Bag, bought|" .. at(d0) .. DOT .. "level 7",
+    "a green bag's item and when, never twice")
+-- Two items on one spot, the best first (the pouch sorts them so): each
+-- once, the firsts in the title in their order, one span and level range.
+local blueLater = { t = d0 + 1500, mapID = MULGORE, link = BLUE, from = "quest", level = 7 }
+head, lines = Firsts.Tips({ Find("rare", blueLater), Find("bag", gift), Find("uncommon", loot) }, d0)
+Eq(head, "Your first blue, first bag and first green", "three firsts' title, the best first")
+Eq(lines[1], "Pathfinder Footpads, a quest's reward", "the best item first")
+Eq(lines[2], "Small Brown Pouch, from Koko Skybluff", "then the next")
+Eq(lines[3], "Wolfskin Bracers, looted", "then the last")
+Eq(lines[4], at(d0):gsub(" at ", " from ") .. date(" to %H:%M", d0 + 1500) .. DOT .. "levels 5 to 7",
+    "a span and a level range, not a time each")
+Eq(#lines, 4, "four lines")
+for _, line in ipairs(lines) do Check(not line:find("more"), "no count of the rest: " .. line) end
+-- More than three items: their names on one line, every one named.
+local fourth = { t = d0, link = SPAULDERS, from = "loot", level = 6 }
+head, lines = Firsts.Tips({ Find("rare", blueLater), Find("bag", gift), Find("uncommon", loot),
+    Find("shoulder", fourth) }, d0)
+Eq(lines[1], "Pathfinder Footpads, Small Brown Pouch, Wolfskin Bracers and Ragged Leather Spaulders",
+    "four items on one line")
+Eq(#lines, 2, "and when")
+-- The slip's tooltip is the pouch's words for its one item.
+local slip = FC.Tip({ moments = { Find("uncommon", greenBag), Find("bag", greenBag) } }, d0)
+Eq(slip[1][1], "Your first bag and first green", "the slip's title")
+Eq(slip[2][1], "Green Leather Bag, bought", "the slip's item, once")
+Eq(#slip, 3, "the slip's tooltip: a title and two lines")
+-- Under the item's own tooltip (its link names it), how alone.
+head, lines = Firsts.Tips({ Find("bag", greenBag) }, d0, true)
+Eq(lines[1], "Bought", "bare: how, the name left to the link")
+
 -- The entry's prose ends with its firsts.
-local lines = Text.Lines({ kind = "level", level = 5, from = d0, to = d0 + 600, seconds = 600, places = {},
+lines = Text.Lines({ kind = "level", level = 5, from = d0, to = d0 + 600, seconds = 600, places = {},
     stops = {}, flights = {}, people = {}, fights = {}, notes = {}, deaths = {}, dungeons = {},
     finds = { { kind = "uncommon", rec = loot } } }, d0 + DAY)
 Eq(lines[#lines], "Found your first green in Mulgore: Wolfskin Bracers.", "the prose's firsts")
@@ -449,9 +493,10 @@ local function Tipped(pattern)
     end
     return false
 end
-Check(Tipped("^Your first bag|Small Brown Pouch, looted, at level 5, "), "the bag's tooltip: " .. table.concat(tips, " / "))
-Check(Tipped("^Your first blue|Pathfinder Footpads, from Tika Dawnhoof, at level 5, "), "the blue's tooltip")
-Check(Tipped("^Your first shoulders|Ragged Leather Spaulders, a gift, at level 5, "), "the shoulders' tooltip")
+Check(Tipped("^Your first bag|Small Brown Pouch, looted|[^|]*, level 5$"), "the bag's tooltip: "
+    .. table.concat(tips, " / "))
+Check(Tipped("^Your first blue|Pathfinder Footpads, from Tika Dawnhoof|[^|]*, level 5$"), "the blue's tooltip")
+Check(Tipped("^Your first shoulders|Ragged Leather Spaulders, a gift|[^|]*, level 5$"), "the shoulders' tooltip")
 
 -- The pouch is drawn: a body, a neck and a mouth, on its paper halo.
 do
@@ -515,10 +560,49 @@ for _, text in ipairs(captions) do
 end
 Check(table.concat(captions, " "):find("first blue"), "no caption tells the blue: " .. table.concat(captions, " / "))
 
+-- A green bag: two firsts on one spot, one pouch, its tooltip one account
+-- (the mark's `tips`): the item named once, how it came once, one time.
+do
+    local bag = route.firsts.bag
+    route.firsts.bag = { t = bag.t, mapID = MULGORE, x = bag.x, y = bag.y, level = 5, link = GREEN_BAG, from = "loot" }
+    route.firsts.uncommon = { t = bag.t, mapID = MULGORE, x = bag.x, y = bag.y, level = 5, link = GREEN_BAG,
+        from = "loot" }
+    local function Reopen()
+        J.Touch()
+        ns.UI.SetJournalView("people")
+        ns.UI.SetJournalView("journey")
+        for i, entry in ipairs(page.recap.entries) do
+            if entry.level == 5 then page.open = i end
+        end
+        ns.UI.RedrawJourneyPage()
+    end
+    Reopen()
+    local said, pouches = nil, 0
+    for _, plate in ipairs(page.plates) do
+        if plate:IsShown() then
+            pouches = pouches + #(plate.findMarks or {})
+            for i = 1, plate.hover.used do
+                local b = plate.hover[i]
+                if b.spot and b.spot.kind == "find" and #b.spot.list == 2 then
+                    local parts = {}
+                    for _, line in ipairs(b.tip()) do parts[#parts + 1] = line[1] end
+                    said = table.concat(parts, "|")
+                end
+            end
+        end
+    end
+    Eq(pouches, 3, "a green bag is one pouch")
+    Check(said and said:find("^Your first bag and first green|Green Leather Bag, looted|[^|]*, level 5$"),
+        "the green bag's pouch: " .. tostring(said))
+    route.firsts.bag, route.firsts.uncommon = bag, nil
+    Reopen()
+end
+
 -- The zone's full page has the pouches too.
 ns.UI.OpenZoneSheet(MULGORE)
 Eq(page.mode, "full", "setup: the full page")
 Eq(#(page.plates[1].findMarks or {}), 3, "the full page has no pouches")
+
 ns.UI.CloseJournal()
 
 --------------------------------------------------------------------------
@@ -720,8 +804,9 @@ card = Shown(page.findPool)[1]
 -- the box's rule darkens.
 card.item.scripts.OnEnter(card.item)
 Eq(GameTooltip.link, BLUE, "the box does not show the item's tooltip")
-Check(GameTooltip.lines[1] and GameTooltip.lines[1][1]:find("^Your first blue, looted, at level 7, "),
-    "the how and when under it: " .. tostring(GameTooltip.lines[1] and GameTooltip.lines[1][1]))
+Eq(GameTooltip.lines[1] and GameTooltip.lines[1][1], "Your first blue, looted", "the firsts and how under it")
+Check(GameTooltip.lines[2] and GameTooltip.lines[2][1]:find(", level 7$") and #GameTooltip.lines == 2,
+    "then when, once: " .. tostring(GameTooltip.lines[2] and GameTooltip.lines[2][1]))
 Check(card.hot, "the box does not answer the mouse")
 card.item.scripts.OnLeave(card.item)
 Check(not card.hot and not GameTooltip.shown, "the tooltip stays")

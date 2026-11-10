@@ -81,6 +81,8 @@ local LayoutFor, Handout = YourDiary.LayoutFor, YourDiary.Handout
 local NewNote, EnsurePools, ROW, Shared = YourDiary.NewNote, YourDiary.EnsurePools, YourDiary.ROW, YourDiary.Shared
 local DrawPlates, DrawFull = YourDiary.DrawPlates, YourDiary.DrawFull
 local DrawRun, HideRun, RunsOf = YourDiary.DrawRun, YourDiary.HideRun, YourDiary.RunsOf
+local DrawMatch, DrawEvening, HideMatch = YourDiary.DrawMatch, YourDiary.DrawEvening, YourDiary.HideMatch
+local MatchOf, SessionOf, SessionsOf = YourDiary.MatchOf, YourDiary.SessionOf, YourDiary.SessionsOf
 local PlatesOf = YourDiary.PlatesOf
 local BuildEmpty, FillEmpty = YourDiary.BuildEmpty, YourDiary.FillEmpty
 
@@ -98,7 +100,7 @@ local function PieceAt(e, t)
 end
 
 -- Set below, and on the module for the files before this one.
-local OpenLevel, OpenPiece, OpenFull, OpenRun
+local OpenLevel, OpenPiece, OpenFull, OpenRun, OpenMatch, OpenMatches
 
 --------------------------------------------------------------------------
 -- The right page
@@ -148,9 +150,24 @@ local function DrawRight()
     local shown = 0
     local visit = e and page.mode == "run" and RunOf(piece, page.runVisit)
     if not visit then HideRun() end
+    -- A battleground's pages (UI/Journey/Match.lua): one match, or the
+    -- evening's overview; the match's way back where its session has one.
+    local match, session = nil, nil
+    if e and page.mode == "match" then
+        local _, of
+        match, of = MatchOf(piece, page.matchId)
+        page.matchBack = of and ns.Matches.HasOverview(of) and of.key or nil
+    elseif e and page.mode == "matches" then
+        session = SessionOf(piece, page.session)
+    end
+    if not (match or session) then HideMatch() end
     if e then
         if visit then
             shown = DrawRun(piece, visit)
+        elseif match then
+            shown = DrawMatch(piece, match, page.matchBack)
+        elseif session then
+            shown = DrawEvening(piece, session)
         elseif page.mode == "full" and page.fullMap then
             shown = DrawFull(e)
         else
@@ -315,7 +332,19 @@ YourDiary.Rebuild = Rebuild
 -- page saying nothing was kept. "plates" for an entry drawn whole.
 local function ViewOf(piece)
     if piece and piece.runs and piece.runs[1] and #PlatesOf(piece) == 0 then return "run", piece.runs[1].id end
+    -- (no plates and no run, but battlegrounds (a capped week spent in
+    -- them): the first session's overview, else its first match)
+    local s = piece and #PlatesOf(piece) == 0 and SessionsOf(piece)[1]
+    if s then
+        if ns.Matches.HasOverview(s) then return "matches", nil, s.key end
+        return "match", nil, nil, s.matches[1].id
+    end
     return "plates", nil
+end
+
+-- The page's mode and what it shows, set as ViewOf says.
+local function SetView(page, piece)
+    page.mode, page.runVisit, page.session, page.matchId = ViewOf(piece)
 end
 
 -- Opens piece `k` of entry `i` (its newest when not given, or where `i`
@@ -329,7 +358,7 @@ function OpenPiece(i, k)
     local pieces = PiecesOf(e)
     if not (k and pieces[k]) then k = #pieces > 0 and #pieces or nil end
     page.open, page.piece, page.pieceOf, page.fullMap = i, k, e, nil
-    page.mode, page.runVisit = ViewOf(OpenPieceOf(e))
+    SetView(page, OpenPieceOf(e))
     Rebuild(true, i)
     DrawRight()
 end
@@ -380,6 +409,62 @@ function OpenRun(id, i)
     DrawRight()
 end
 
+-- Where a battleground's page is: entry `i` and the index of its piece
+-- whose sessions `has(piece)` finds one in (a session belongs to the piece
+-- it began in, whole: Recap.Pieces). Entry `i` first, then the others,
+-- newest first. A battleground is never on an entry drawn whole
+-- (Recap.Pieces does not splice it).
+local function SessionHolder(has, i)
+    local page = YourDiary.page
+    local entries = page.recap.entries
+    local function In(n)
+        local e = entries[n]
+        if not e or e.spliced then return nil end
+        for k, p in ipairs(PiecesOf(e)) do
+            if has(p) then return k end
+        end
+    end
+    local k = i and In(i)
+    if k then return i, k end
+    for n = #entries, 1, -1 do
+        if n ~= i then
+            k = In(n)
+            if k then return n, k end
+        end
+    end
+end
+
+-- Shows match `id` across the right page (C, the board clipped), in the
+-- piece of entry `i` (the open one when not given) its session began in:
+-- its line under that sitting, or a ticket on the evening's overview,
+-- clicked. Its way back is to the overview, where the session has one.
+function OpenMatch(id, i)
+    local page = YourDiary.page
+    if not (page and page.recap and id) then return end
+    local n, k = SessionHolder(function(p) return MatchOf(p, id) ~= nil end, i or page.open)
+    if not n then return end
+    GameTooltip:Hide()
+    page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
+    page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "match", nil, nil, id, nil
+    Rebuild(true, n)
+    DrawRight()
+end
+
+-- Shows the overview of the battleground session keyed `key` (its first
+-- match's id), titled "Battlegrounds": its line under the sitting it began
+-- in, or the way back from one of its matches, clicked.
+function OpenMatches(key, i)
+    local page = YourDiary.page
+    if not (page and page.recap and key) then return end
+    local n, k = SessionHolder(function(p) return SessionOf(p, key) ~= nil end, i or page.open)
+    if not n then return end
+    GameTooltip:Hide()
+    page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
+    page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "matches", nil, nil, nil, key
+    Rebuild(true, n)
+    DrawRight()
+end
+
 -- Shows `mapID`'s whole map across the right page, the entry `i` in ink
 -- (the open one when not given): the whole entry's, never a piece's. The
 -- piece open is kept, so the way back (Full.lua's Back: OpenPiece) is to
@@ -395,6 +480,7 @@ function OpenFull(mapID, i)
 end
 YourDiary.OpenLevel, YourDiary.OpenPiece, YourDiary.OpenFull, YourDiary.OpenRun = OpenLevel, OpenPiece, OpenFull,
     OpenRun
+YourDiary.OpenMatch, YourDiary.OpenMatches = OpenMatch, OpenMatches
 
 -- `opening`: the page is being turned to, so it falls open at the newest
 -- entry and its plates. Otherwise (the diary changed while it lies open)
@@ -446,7 +532,7 @@ function ns.UI.RefreshJourneyPage(opening)
         -- Fallen open on the newest entry's newest piece.
         local e = recap.entries[count]
         page.open, page.piece, page.pieceOf, page.fullMap = count, nil, nil, nil
-        page.mode, page.runVisit = ViewOf(OpenPieceOf(e))
+        SetView(page, OpenPieceOf(e))
     end
     if changed or opening then
         Rebuild(not opening)

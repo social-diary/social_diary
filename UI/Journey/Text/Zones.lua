@@ -18,7 +18,7 @@ local L, Fmt = ns.L, ns.Fmt
 -- The zone index (JRN-15)
 --------------------------------------------------------------------------
 
--- "The Barrens", "levels 10 to 14 · 3 h 20 min".
+-- "The Barrens", "levels 10 to 14, 3 h 20 min".
 function Text.ZoneName(z)
     return MapName(z.mapID) or Fmt(L["Map %s"], z.mapID)
 end
@@ -33,16 +33,16 @@ function Text.ZoneLine(z)
     local parts = {}
     if levels then parts[#parts + 1] = levels end
     if z.seconds and z.seconds >= 60 then parts[#parts + 1] = Plain(z.seconds) end
-    return table.concat(parts, "  \194\183  ")
+    return table.concat(parts, ", ")
 end
 
--- The line under a full-page plate (JRN-15): "levels 1 to 5 · 6 h 20 min ·
--- with Dos, Koko · 2 fights". `names` are the diary people met there, short.
+-- The line under a full-page plate (JRN-15): "levels 1 to 5, 6 h 20 min,
+-- with Dos and Koko, 2 fights". `names` are the diary people met there, short.
 function Text.ZoneFoot(z, names, fights)
     local line = Text.ZoneLine(z)
     local parts = { line ~= "" and line or nil }
     local list = List(names or {}, { max = 4, shown = 3, more = ns.UI.Format.OTHERS })
     if list then parts[#parts + 1] = Fmt(L["with %s"], list) end
     if (fights or 0) > 0 then parts[#parts + 1] = ns.Plural(fights, L["a fight|%d fights##plural"]) end
-    return table.concat(parts, "  \194\183  ")
+    return table.concat(parts, ", ")
 end

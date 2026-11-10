@@ -12,7 +12,7 @@ local Glue, Duration, NUMBER, Short = Text.Glue, Text.Duration, Text.NUMBER, Tex
 local L, Fmt = ns.L, ns.Fmt
 
 -- What happened with one person on one plate, for their margin note:
--- "35 min together and a note", "killed you", "first seen · you'd meet
+-- "35 min together and a note", "killed you", "first seen, and you'd meet
 -- again at level 4". A stranger's note has only fights (JRN-22). The
 -- short phrases are held together by no-break spaces as a time is ("a
 -- note", "killed you"), so a strip's last line is never "note" alone
@@ -56,7 +56,7 @@ function Text.MarginWhat(moments, level)
         if m.kind == "first" then
             local again = m.metLevel and level and m.metLevel > level
                 and Fmt(L["you'd meet again at level %d"], m.metLevel) or L["you'd meet again"]
-            parts[#parts + 1] = Fmt(L["first seen  \194\183  %s"], again)
+            parts[#parts + 1] = Fmt(L["first seen, and %s"], again)
         end
     end
     -- Each part after the one before, as one whole phrase: "35 min

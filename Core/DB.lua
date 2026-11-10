@@ -40,6 +40,9 @@ local DIARY = {
     persons = {},       -- [personId]  = manual alt groupings (DIA-8)
     sessions = {},      -- [sessionId] = open and recent together sessions
     instances = {},     -- [visitId]   = instance visits (INS-1)
+    -- [matchId] = battleground matches (Core/Matches.lua, which has the
+    -- record's shape). New in 3.1 as a plain table: no step fills it.
+    matches = {},
     interactions = {},  -- rolling buffer, 7 days (INT-2)
     sightings = {},     -- recent raw sightings, rolled up after 30 days (SIG-7)
     around = {},        -- [guid] = "seen around" stretches of diary entries (SES-9)
@@ -61,6 +64,11 @@ local DIARY = {
         openSession = nil,  -- id of the one open together session (SES-1)
         nextVisitId = 1,    -- Core/Instances.lua's ids (INS-1)
         openVisit = nil,    -- id of the one open visit (Core/Instances.lua)
+        nextMatchId = 1,    -- Core/Matches.lua's ids
+        openMatch = nil,    -- id of the one open match (Core/Matches.lua)
+        -- The last roll-up warning given (Matches.WarningDue): 25, 10, 5..1
+        -- matches before the oldest board fades. Cleared when there is room.
+        matchWarned = nil,
         nextNoteId = 1,     -- Core/Notes.lua's ids (DIA-11)
 
         -- The group as last seen, so a /reload does not read every member as
@@ -98,6 +106,10 @@ local ACCOUNT_SETTINGS = {
     -- HNT-10: the hints on the pages (Core/Hints.lua). About the person, as
     -- the hints' own record is.
     showHints = true,
+    -- The roll-up warnings (25, 10, 5..1 matches before the oldest
+    -- battleground board fades): a notice, switched off here
+    -- (Core/Matches.lua's WarningDue, the hint in UI/Journal/Hints.lua).
+    boardWarnings = true,
     -- A notice on the page the first time the journal opens after a major
     -- update (2.x to 3.0), linking the Changelog (Core/Hints.lua's
     -- Installed). Its own switch, beside Show hints.
@@ -127,6 +139,10 @@ local CHARACTER_SETTINGS = {
     -- per-person summaries. One window, so the Recently nearby page never
     -- lists a day whose "dealt with" marks are already gone. Decision D3.
     bufferDays = 30,
+    -- Battlegrounds: the full board (every player, every number) is kept
+    -- for this many of the newest matches; older ones roll up to their
+    -- header and the diary's people (Core/Matches.lua, Jan 9 Nov 2026).
+    battlegroundBoards = 100,
     toasts = true,      -- REU-1
     nearbyToasts = true,  -- REU-5
     toastCooldownMinutes = 10,  -- at most one toast per person this often

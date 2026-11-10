@@ -25,6 +25,12 @@ ns.UI.JourneyPlate.RegisterMark("finale", {
     order = 10, cap = 10, count = "finales",
     radius = MARK.rules[1].w / 2, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return QuestFinales.Tip(m.finale, now) end,
+    -- Every chain ended on the spot told once together (QuestFinales.Tips).
+    tips = function(list, now)
+        local finales = {}
+        for _, m in ipairs(list) do finales[#finales + 1] = m.finale end
+        return QuestFinales.Tips(finales, now)
+    end,
     -- Two swelled rules and a full stop.
     draw = function(kit, x, y)
         local F = MARK

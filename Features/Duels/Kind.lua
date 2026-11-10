@@ -93,17 +93,19 @@ end
 -- close-call judge or the route's fighting count one (ns.Duelling).
 
 local TT = ns.UI.TimelineText
-local Place, Spot, Dot, Join = TT.Place, TT.Spot, TT.Dot, TT.Join
+local Place = TT.Place
 
--- Where a series started: the zone's phrase ("in Westfall", for a "##zone"
--- template) where the client gave no subzone or one with the zone's own
--- name, else the spot ("Sentinel Hill, Westfall", after a dot: a subzone
--- has no id to say "in" with); neither without a place, or `unplaced`.
+-- Where a series started, as one phrase for a "##zone" template: "in
+-- Sentinel Hill, Westfall" (the subzone's phrase, ns.ZoneIn, then its
+-- zone), the zone's alone where the client gave no subzone or one with
+-- the zone's own name (Place, "in Westfall"); nil without a place, or
+-- `unplaced`.
 local function Where(row, unplaced)
-    if unplaced then return nil, nil end
+    if unplaced then return nil end
     local sub = row.context and row.context.subZone
-    if type(sub) ~= "string" or sub == "" or sub == row.zone then return Place(row), nil end
-    return nil, Spot(sub, row.zone)
+    if type(sub) ~= "string" or sub == "" or sub == row.zone then return Place(row) end
+    local phrase = ns.ZoneIn(nil, sub)
+    return row.zone and Fmt(L["%1$s, %2$s"], phrase, row.zone) or phrase
 end
 
 -- Each line whole, with the zone's phrase (`zone`, its value last) and
@@ -134,16 +136,16 @@ local SERIES = {
 -- "Won a duel against Bram", "Lost a duel to Bram", "Won a duel when Bram
 -- fled", "Fled a duel with Bram"; a series by its balance, flights counted
 -- with their side, "Lost 3 duels to Bram and won 2" (the user's own, 15
--- Oct), "Won 3 duels against Bram"; each "in Westfall", or with "  ·
--- Sentinel Hill, Westfall" after it. A series with a flight in it says so
--- after the place: "  ·  they fled once", "  ·  you fled twice". Figures,
--- as the timeline counts. `unplaced`: without the place (the plate's
--- tooltip leaves it to the map).
+-- Oct), "Won 3 duels against Bram"; each "in Sentinel Hill, Westfall".
+-- A series with a flight in it says so after the place: ", and they fled
+-- once", ", and you fled twice and they fled once". Figures, as the
+-- timeline counts. `unplaced`: without the place (the plate's tooltip
+-- leaves it to the map).
 local function Line(row, guid, unplaced)
     local c = row.context or {}
     local them = guid and ns.Characters.Name(guid) or nil
     local balance, up, down = Duels.Balance(c), (c.won or 0) + (c.theyFled or 0), (c.lost or 0) + (c.fled or 0)
-    local zone, spot = Where(row, unplaced)
+    local zone = Where(row, unplaced)
     local at = zone and "zone" or "alone"
     if up + down <= 1 then
         local last = c.last
@@ -154,8 +156,8 @@ local function Line(row, guid, unplaced)
         elseif not them then
             who = last == "fled" and L["them##with"] or L["them##against"]
         end
-        if who then return Dot(Fmt(ONE[last][at], who, zone), spot) end
-        return Dot(Fmt(ONE[last][at], zone), spot)
+        if who then return Fmt(ONE[last][at], who, zone) end
+        return Fmt(ONE[last][at], zone)
     end
     local lead, rest = up, down
     if balance == "lost" then lead, rest = down, up end
@@ -167,12 +169,12 @@ local function Line(row, guid, unplaced)
     else
         text = ns.Plural(lead, words, lead, them, zone)
     end
-    text = Dot(text, spot)
     local Times = ns.UI.Format.Times
     local flights = {}
     if (c.fled or 0) > 0 then flights[#flights + 1] = ns.UI.Format.You(row.me, Fmt(L["{you} fled %s"], Times(c.fled))) end
     if (c.theyFled or 0) > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(c.theyFled)) end
-    return Dot(text, #flights > 0 and Join(flights) or nil)
+    if #flights > 0 then text = Fmt(L["%1$s, and %2$s##list"], text, ns.UI.Format.List(flights)) end
+    return text
 end
 
 local function Always() return true end

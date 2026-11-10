@@ -19,22 +19,36 @@ local HEADINGS = {
     group = L["Joined your group"],
     nearby = L["Nearby"],
     mixed = L["Nearby and in your group"],
+    -- A battleground match (Core/Matches.lua): by the side they are on.
+    with = L["On your side"],
+    against = L["Against you"],
+    match = L["In this battleground"],   -- (side unread, and a flood's last card)
 }
 -- The last card of a flood goes on from "AND 3 MORE".
 local MORE = {
     group = L["from your diary joined your group too."],
     nearby = L["from your diary are nearby too."],
     mixed = L["from your diary are about too."],
+    match = L["from your diary are in this battleground too."],
 }
 -- A warning: someone tagged foe or avoid. Their card says so in its
 -- heading, its paraph is red (lapis on the others), and a double rule is
 -- inked round it in red, like a notice: never colour alone. The tags in
 -- the order they matter: in the group, the person to avoid; nearby, the foe.
 local WARNINGS = {
-    foe = { group = L["A foe joined your group"], nearby = L["A foe, nearby"] },
-    avoid = { group = L["Someone to avoid joined your group"], nearby = L["Someone to avoid, nearby"] },
+    foe = { group = L["A foe joined your group"], nearby = L["A foe, nearby"],
+        with = L["A foe, on your side"],
+        against = L["A foe, against you"],
+        match = L["A foe in this battleground"] },
+    avoid = { group = L["Someone to avoid joined your group"], nearby = L["Someone to avoid, nearby"],
+        with = L["Someone to avoid, on your side"],
+        against = L["Someone to avoid, against you"],
+        match = L["Someone to avoid in this battleground"] },
 }
-local WARNING_ORDER = { group = { "avoid", "foe" }, nearby = { "foe", "avoid" } }
+-- In a match, one on your side is as one in your group, and one against
+-- you as one nearby.
+local WARNING_ORDER = { group = { "avoid", "foe" }, nearby = { "foe", "avoid" },
+    with = { "avoid", "foe" }, against = { "foe", "avoid" }, match = { "foe", "avoid" } }
 
 --------------------------------------------------------------------------
 -- Content
@@ -48,7 +62,7 @@ local function Snapshot(guid, reason)
     local tags = {}
     for i, tag in ipairs(s.entry.tags) do tags[i] = tag end
 
-    return {
+    local snap = {
         guid = guid,
         reason = reason,
         name = s.name,
@@ -61,6 +75,17 @@ local function Snapshot(guid, reason)
         timesMet = s.timesMet,
         fights = ns.Interactions.Fights(guid),
     }
+    -- In a match: which side, where, and how many matches on that side so
+    -- far, this one counted (Capture/Matches.lua wrote their row first).
+    if reason == "match" then
+        local m, side = ns.Reunions.InMatch(guid)
+        if m then
+            snap.map = ns.UI.TimelineText.MatchName(m)
+            snap.side = side or nil
+            snap.meetings = side and ns.Matches.Meetings(guid, m, side) or nil
+        end
+    end
+    return snap
 end
 Toast.Snapshot = Snapshot
 
@@ -112,7 +137,7 @@ end
 -- first time.
 local function Story(snap, place)
     if snap.timesMet == 0 then
-        if snap.reason == "nearby" then
+        if snap.reason == "nearby" or snap.side == "against" then
             return L["You've only seen them in passing so far."]
         end
         return L["Your first time together since you wrote them in."]
@@ -130,6 +155,25 @@ local function Story(snap, place)
     local times = Em(ns.Plural(snap.timesMet, L["%d time|%d times##plural"]))
     if zone then return Fmt(L["You've crossed paths %1$s, last %2$s %3$s.##zone"], times, when, zone) end
     return Fmt(L["You've crossed paths %1$s, last %2$s."], times, when)
+end
+
+-- In a match: "Your third match against them, in Warsong Gulch.", and
+-- without the place. Nil when the match went unread.
+local MATCH_STORY = {
+    with = { placed = L["Your %1$s match with them, %2$s.##zone"], alone = L["Your %s match with them."] },
+    against = { placed = L["Your %1$s match against them, %2$s.##zone"], alone = L["Your %s match against them."] },
+}
+local function MatchStories(snap)
+    local line = MATCH_STORY[snap.side]
+    if not line or not snap.meetings or snap.meetings < 1 then
+        if snap.map then return { Fmt(L["Somewhere %s.##zone"], EmPlace(nil, snap.map)) } end  -- (side unread)
+        return nil
+    end
+    local nth = Em(ns.UI.TimelineText.Nth(snap.meetings))
+    local out = {}
+    if snap.map then out[1] = Fmt(line.placed, nth, EmPlace(nil, snap.map)) end
+    out[#out + 1] = Fmt(line.alone, nth)
+    return out
 end
 
 -- The record without some of what it says.
@@ -192,6 +236,7 @@ function ns.UI.ReunionText(snap)
         has[tag] = true
     end
     local reason = snap.reason == "nearby" and "nearby" or "group"
+    if snap.reason == "match" then reason = snap.side or "match" end
     local warning
     for _, tag in ipairs(WARNING_ORDER[reason]) do
         if has[tag] then
@@ -203,11 +248,22 @@ function ns.UI.ReunionText(snap)
     local text = {
         heading = warning and WARNINGS[warning][reason] or HEADINGS[reason],
         name = snap.name,
-        tags = tags[1] and table.concat(tags, "  ·  ") or nil,
+        tags = tags[1] and table.concat(tags, ", ") or nil,
         relationship = snap.relationship,
         stories = has.foe and FightStories(snap.fights) or { Story(snap, true), Story(snap, false) },
         warning = warning,
     }
+    -- In a match the match comes first: what it is to them, then, where
+    -- there is room, the last meeting or a foe's score after it.
+    local match = snap.reason == "match" and MatchStories(snap)
+    if match then
+        local stories = {}
+        for _, story in ipairs(text.stories) do
+            stories[#stories + 1] = Fmt(L["%1$s %2$s##sentences"], match[1], story)
+        end
+        for _, story in ipairs(match) do stories[#stories + 1] = story end
+        text.stories = stories
+    end
     if not text.tags and not text.relationship then
         text.who = Whos(snap.record, snap.guild)
     end

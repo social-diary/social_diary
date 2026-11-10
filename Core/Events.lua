@@ -16,6 +16,11 @@
 --                              join, and Capture/Nearby.lua;
 --                              UI/Windows/Reunion/Queue.lua toasts it
 --                              (REU-1, REU-5).
+--   SD_MATCH_CLOSED (match)    a battleground match ended, its board read
+--                              or not (Core/Matches.lua's record; state
+--                              "complete", "noboard" or "left"). Fired by
+--                              Capture/Matches.lua; Your Diary and the
+--                              roll-up warning follow it.
 --   SD_DIARY_CHANGED ()        the user edited or removed diary data: the
 --                              entry form, the settings page's deletes,
 --                              /sd testdata. UI/Journal/Book.lua refreshes the
@@ -397,7 +402,8 @@ ns.On("PLAYER_LOGIN", function()
     -- login. The records' prune comes after the rows': a record goes once
     -- the rows that held on to it have.
     for _, step in ipairs({ ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
-        ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune }) do
+        ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune,
+        function() ns.Matches.Expire() ns.Matches.Rollup() end }) do
         Call(step)
     end
     ns.Debug("v%s loaded. /sd opens the journal, /sd help lists commands.", ns.version)

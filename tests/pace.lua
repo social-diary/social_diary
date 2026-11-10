@@ -75,8 +75,24 @@ floor213.bounds = bb
 Pace.Reset()
 Eq(Pace.Fit(RFC).method, "bounds", "the bounds back")
 -- No data: nothing.
-Eq(Pace.Fit(43), nil, "a fit without data")
-Eq(Pace.Course({ instanceID = 43 }, D.Route(43)), nil, "a course without data")
+Eq(Pace.Fit(48), nil, "a fit without data")
+Eq(Pace.Course({ instanceID = 48 }, D.Route(48)), nil, "a course without data")
+-- A floor DCF drew as its own art, without bounds (Wailing Caverns' 800431),
+-- takes the data's bounds for it (Blizzard's floor 279 under it); DCF's own
+-- bounds, where a floor has them, win.
+do
+    Check(D.Floor(43, 800431) and not D.Floor(43, 800431).bounds, "Wailing Caverns' art has no bounds of its own")
+    local wc = Pace.Fit(43)
+    Check(wc and wc.method == "bounds" and wc.floor == 800431, "Wailing Caverns fitted by the data's bounds")
+    Eq(wc.floors[800431].bounds, ns.PaceData[43].bounds[800431], "the data's bounds for 800431")
+    Check(wc.worstName == "Kresh", "only Kresh's pin far off: " .. tostring(wc.worstName))
+    local saved = ns.PaceData[43].bounds
+    ns.PaceData[43].bounds = nil
+    Pace.Reset()
+    Check(not (Pace.Fit(43) and Pace.Fit(43).method == "bounds"), "no bounds fit without them")
+    ns.PaceData[43].bounds = saved
+    Pace.Reset()
+end
 
 --------------------------------------------------------------------------
 Section("the packs laid on the usual way")
@@ -379,6 +395,74 @@ Eq(Page.LegPoint(cove, early), nil, "the early death drawn on the cove's sheet t
 end
 
 --------------------------------------------------------------------------
+Section("an overview of pieces: Shadowfang Keep")
+
+do
+-- DCF draws the keep as one picture (800331, no bounds) of eight pieces at
+-- their own scales; the pace data gives each its rectangles and affine, and
+-- each piece is a floor of its own (800331 * 10 + n) on that sheet.
+local SFK, SHEET = 33, 800331
+local data = ns.PaceData and ns.PaceData[SFK]
+Check(data and data.pieces and data.pieces[SHEET], "no pieces for Shadowfang Keep")
+local sfit = Pace.Fit(SFK)
+Check(sfit, "Shadowfang Keep's pieces do not fit")
+Eq(sfit.method, "pieces", "not fitted by its pieces")
+Eq(sfit.floor, SHEET, "the sheet")
+Eq(#sfit.floors[SHEET].pieces, #data.pieces[SHEET], "a piece missing")
+for n in ipairs(data.pieces[SHEET]) do
+    local piece = sfit.floors[SHEET * 10 + n]
+    Check(piece and piece.sheet == SHEET, "piece " .. n .. " not a floor on the sheet")
+end
+-- The pins: every boss's within 10 yd of its spawn through its piece.
+Check(sfit.worst < 10, ("DCF's worst pin: %s %.1f yd"):format(tostring(sfit.worstName), sfit.worst))
+-- A pin to its piece, and back: the third value the sheet, not the piece.
+local m = D.Boss(SFK, "Rethilgore")
+local key = sfit.floors[SHEET].Piece(m.x, m.y)
+Check(key and sfit.floors[key].name:find("courtyard", 1, true), "Rethilgore's pin not on the courtyard's piece")
+local gx, gy = sfit.ToGame(m.x, m.y, SHEET)
+local fx, fy, f = sfit.ToFloor(gx, gy, key)
+Check(Near(fx, m.x, 1e-6) and Near(fy, m.y, 1e-6), "a piece's transforms not each other's inverse")
+Eq(f, SHEET, "a piece's point on another sheet")
+Eq(sfit.ToFloor(gx, gy, SHEET), nil, "an overview's point without its piece")
+-- Off every piece (the title scroll): no game yards.
+Eq(sfit.ToGame(0.3, 0.57, SHEET), nil, "the title scroll on a piece")
+-- The usual way: every point on a piece, the jumps between pieces (one
+-- stair drawn on two) a few yards at most.
+local route = D.Route(SFK)
+local course = Pace.Course({ instanceID = SFK }, route)
+Check(course, "no course over the pieces")
+local pieces, longest = {}, 0
+for i = 1, #route do
+    Check(course.game[i], "a point of the usual way on no piece: " .. i)
+    pieces[course.floors[i]] = true
+    if i > 1 and course.floors[i] ~= course.floors[i - 1] then
+        longest = math.max(longest, course.cum[i] - course.cum[i - 1])
+    end
+end
+local count = 0
+for _ in pairs(pieces) do count = count + 1 end
+Eq(count, #data.pieces[SHEET], "the way not over every piece")
+Check(longest < 15, ("a jump between pieces of %.0f yd"):format(longest))
+-- Packs: each on a piece; a pull only on a stretch of its own piece.
+for _, pull in ipairs(course.pulls) do
+    Check(pull.floor and pull.floor > SHEET * 10, "a pull on no piece")
+end
+local nandos
+for _, pack in ipairs(data.packs) do
+    if pack.boss == "Wolf Master Nandos" then nandos = pack end
+end
+Check(nandos and nandos.floor == sfit.floors[SHEET].Piece(D.Boss(SFK, "Wolf Master Nandos").x, D.Boss(SFK, "Wolf Master Nandos").y),
+    "Nandos's wolves not his guard on his piece")
+-- Without its pieces, the overview has no fit by them.
+local saved = data.pieces
+data.pieces = nil
+Pace.Reset()
+Check(not (Pace.Fit(SFK) and Pace.Fit(SFK).method == "pieces"), "a fit by pieces without them")
+data.pieces = saved
+Pace.Reset()
+end
+
+--------------------------------------------------------------------------
 Section("time inside: the way out and back not counted")
 
 local away = { instanceID = RFC, startedAt = 1000, spans = { { from = 1000, to = 1300, ghost = true }, { from = 1500 } } }
@@ -485,9 +569,9 @@ local rx, ry = Page.LegPoint(path, roll)
 Check(Near(rx, ax) and Near(ry, ay), "a roll at A's time not where A died")
 
 -- A dungeon without pace data keeps the map's own guess.
-local wc = { instanceID = 43, startedAt = 1000, spans = { { from = 1000 } }, deathLog = {} }
+local wc = { instanceID = 48, startedAt = 1000, spans = { { from = 1000 } }, deathLog = {} }
 local wpath = { route = { { f = 1, x = 0, y = 0 }, { boss = "Alpha" } }, pts = { { 0, 0 }, { 100, 0 } },
-    stops = { [D.Norm("Alpha")] = 2 }, killed = {}, course = Pace.Course(wc, D.Route(43)) }
+    stops = { [D.Norm("Alpha")] = 2 }, killed = {}, course = Pace.Course(wc, D.Route(48)) }
 Eq(wpath.course, nil, "a course without pace data")
 local _, _, whow = Page.LegPoint(wpath, { open = true, frac = 0.5, dt = 240 })
 Eq(whow, "eased", "without pace data, not eased")

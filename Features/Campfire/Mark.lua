@@ -40,6 +40,12 @@ ns.UI.JourneyPlate.RegisterMark("campfire", {
     order = 70, cap = 20, count = "campfires",
     radius = MARK.h / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return Campfire.Tip(m.campfire, now) end,
+    -- Every sitting on the spot in one account (Text.lua's Campfire.Tips).
+    tips = function(list, now)
+        local fires = {}
+        for _, m in ipairs(list) do fires[#fires + 1] = m.campfire end
+        return Campfire.Tips(fires, now)
+    end,
     keep = "campfireMarks", chosen = "campfire",
     choose = function(marks) return Campfire.Slip.Choose(marks) end,
     -- The logs, then the flame over their crossing, then the paper of its

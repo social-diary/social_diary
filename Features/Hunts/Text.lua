@@ -7,15 +7,15 @@
 -- exports): a figure held to its noun (Text.Count), a creature's name for
 -- more than one (Text.Plural), an item's (Text.ItemWord, Text.Items), counts
 -- in words (Text.NUMBER, Text.WORDS) and a tooltip's last line
--- (Text.When). Copy changes go through the copywriter skill, as every
+-- (Text.Foot). Copy changes go through the copywriter skill, as every
 -- player-read word does.
 
 local addonName, ns = ...
 
 local Hunts = ns.Hunts
 local Text = ns.UI.JourneyText
-local Capital, Count, Counts, ItemWord, Items, NUMBER, Plural, When, WORDS =
-    Text.Capital, Text.Count, Text.Counts, Text.ItemWord, Text.Items, Text.NUMBER, Text.Plural, Text.When, Text.WORDS
+local Capital, Count, Counts, ItemWord, Items, NUMBER, Plural, WORDS =
+    Text.Capital, Text.Count, Text.Counts, Text.ItemWord, Text.Items, Text.NUMBER, Text.Plural, Text.WORDS
 local L, Fmt = ns.L, ns.Fmt
 
 -- Kills of a creature with no name, counted: "31 kills".
@@ -98,8 +98,159 @@ function Hunts.Tip(hunt, now)
         lines[#lines + 1] = ns.UI.TimelineText.Join(parts)
     end
     if hunt.title and hunt.title ~= "" then lines[#lines + 1] = Fmt(L["For %s"], hunt.title) end
-    lines[#lines + 1] = When(hunt.t, hunt.level, now)
+    lines[#lines + 1] = Text.Foot({ from = hunt.t, levelFrom = hunt.level }, now)
     return Hunts.Line(hunt), lines
+end
+
+-- A tooltip's last line for everything under one mark, as the core says
+-- it for every mark (Text.Foot, UI/Journey/Text/Tips.lua): when, from the
+-- first to the last ("Today at 12:47", "Today from 12:47 to 13:20"), then
+-- the level or levels ("Level 20", "Levels 19 to 20"). `list` is records
+-- with `t` and `level`.
+local function Foot(list, now)
+    local a = {}
+    for _, r in ipairs(list) do
+        if r.t then a.from, a.to = math.min(a.from or r.t, r.t), math.max(a.to or r.t, r.t) end
+        if r.level then
+            a.levelFrom, a.levelTo = math.min(a.levelFrom or r.level, r.level), math.max(a.levelTo or r.level, r.level)
+        end
+    end
+    return Text.Foot(a, now)
+end
+
+-- A quest's title as the diary quotes it: “Break Sharptusk!”.
+local function Quoted(title)
+    return Fmt(L["\226\128\156%s\226\128\157"], title)
+end
+
+-- The kills of `hunts` by kind, summed across them, most killed first: {
+-- key, n, name } (name nil for kills of no named creature).
+local function KindsOf(hunts)
+    local by, list = {}, {}
+    local function Add(key, n, name)
+        local k = by[key]
+        if not k then
+            k = { key = tostring(key), n = 0, name = name }
+            by[key] = k
+            list[#list + 1] = k
+        end
+        k.n = k.n + (n or 0)
+    end
+    for _, hunt in ipairs(hunts) do
+        if Kinds(hunt) > 0 then
+            for npcID, k in pairs(hunt.byKind) do Add(k.name or npcID, k.n, k.name) end
+        else
+            local named = hunt.name and hunt.name ~= "" and hunt.name or nil
+            Add(named or "", hunt.kills, named)
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.n ~= b.n then return a.n > b.n end
+        return a.key < b.key
+    end)
+    return list
+end
+
+-- What was killed, each count with its creature and "Killed" said once
+-- (12 Oct, the user: no number stands bare): "Killed 31 Plainstriders",
+-- "Killed 20 Plainstriders and 11 Adult Plainstriders"; past HUNT_KINDS
+-- kinds the rest together, "Killed 17 Scytheclaws, 9 Lashtails and 6
+-- others"; kills of no named creature are "others" beside named ones, and
+-- alone "31 kills". One kill: "Dropped by the first Hezrul Bloodmark".
+local TIP_KINDS = 3
+
+local function KilledLine(hunts)
+    local kinds = KindsOf(hunts)
+    -- One kill, the first of them: no figure ("Killed 1 Hezrul Bloodmark"
+    -- reads as a tally of one), as the prose says it (Hunts.Fortune).
+    if #kinds == 1 and kinds[1].n == 1 and kinds[1].name then
+        return Fmt(L["Dropped by the first %s"], kinds[1].name)
+    end
+    local named, rest = {}, 0
+    for _, k in ipairs(kinds) do
+        if k.name and #named < TIP_KINDS then named[#named + 1] = k else rest = rest + k.n end
+    end
+    if #named == 0 then return rest > 0 and Counts(rest, KILLS) or nil end
+    -- Past the kinds named, the last one named joins the others.
+    if rest > 0 and #named == TIP_KINDS and #kinds > TIP_KINDS then
+        rest = rest + table.remove(named).n
+    end
+    local parts = {}
+    for _, k in ipairs(named) do parts[#parts + 1] = Killed(k.n, k.name) end
+    if rest > 0 then parts[#parts + 1] = Counts(rest, L["%d other|%d others##plural"]) end
+    return Fmt(L["Killed %s"], Text.List(parts))
+end
+
+-- How far off the drop rates the kills came, all of them together: "14
+-- more kills than expected", "54 fewer kills than expected"; nil unless
+-- every hunt had its rates (a sum over some would not be the whole), or
+-- where it came out even. `all`: of several hunts, "14 more kills than
+-- expected in all".
+local OFF = {
+    more = L["%d more kills than expected|%d more kills than expected##plural"],
+    fewer = L["%d fewer kills than expected|%d fewer kills than expected##plural"],
+    moreAll = L["%d more kills than expected in all|%d more kills than expected in all##plural"],
+    fewerAll = L["%d fewer kills than expected in all|%d fewer kills than expected in all##plural"],
+}
+
+local function OffLine(hunts, all)
+    local off = 0
+    for _, hunt in ipairs(hunts) do
+        if not hunt.expected then return nil end
+        off = off + (hunt.kills or 0) - hunt.expected
+    end
+    off = math.floor(off + 0.5)
+    if off == 0 then return nil end
+    return Counts(math.abs(off), OFF[(off > 0 and "more" or "fewer") .. (all and "All" or "")])
+end
+
+-- What a hunt was for, as a heading: "7 Plainstrider Meat", "Hezrul's
+-- Head".
+local function Wanted(hunt)
+    local need, item = hunt.need or 0, hunt.item
+    if not item then return need > 1 and Counts(need, L["%d drop|%d drops##plural"]) or L["a drop"] end
+    return need > 1 and Count(need, ItemWord(need, item)) or item
+end
+
+-- The tooltip of a tally or a star (Mark.lua's `tips`): every hunt on the
+-- mark told once together (9 Nov 2026, as a fight's stain tells its stops;
+-- before, each hunt's Hunts.Tip was stacked under the last, its time
+-- again each time). One hunt: what it was for, what was killed, how far
+-- off the rates, the quest, when and at what level. Several: how many
+-- ("Two slow hunts", `lucky`: "Two lucky hunts"), the kills summed by
+-- kind, the items, how far off the rates in all, and from when to when.
+-- Four lines at most.
+function Hunts.Tips(hunts, now, lucky)
+    local lines = {}
+    local function Add(line) if line then lines[#lines + 1] = line end end
+    if #hunts == 1 then
+        local hunt = hunts[1]
+        Add(KilledLine(hunts))
+        Add(OffLine(hunts))
+        if hunt.title and hunt.title ~= "" then Add(Fmt(L["For %s"], Quoted(hunt.title))) end
+        Add(Foot(hunts, now))
+        return Capital(Wanted(hunt)), lines
+    end
+    Add(KilledLine(hunts))
+    local items, seen = {}, {}
+    for _, hunt in ipairs(hunts) do
+        local item = hunt.item or ""
+        local at = seen[item]
+        if at then
+            items[at].need = items[at].need + (hunt.need or 0)
+        else
+            items[#items + 1] = { item = hunt.item, need = hunt.need or 0 }
+            seen[item] = #items
+        end
+    end
+    local wanted = {}
+    for i, it in ipairs(items) do wanted[i] = Wanted(it) end
+    Add(Fmt(L["For %s"], Text.List(wanted)))
+    Add(OffLine(hunts, true))
+    Add(Foot(hunts, now))
+    local n = NUMBER[#hunts] or WORDS[#hunts] or tostring(#hunts)
+    return Capital(ns.Plural(#hunts, lucky and L["%s lucky hunt|%s lucky hunts##plural"]
+        or L["%s slow hunt|%s slow hunts##plural"], n)), lines
 end
 
 -- The hunt card (HuntCard.lua, JRN-26): bad luck written out in the

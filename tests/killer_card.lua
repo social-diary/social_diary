@@ -101,6 +101,30 @@ local title, lines = ns.Deaths.DeathCross(3, { Death(1, "Sunscale Lashtail", { s
 Eq(title, "Died here 3 times", "a cross's tooltip title")
 Eq(lines[1], "Sunscale Lashtail, with Bite, twice", "a cross's killer line")
 Eq(lines[2], "A fall", "a fall in a cross's tooltip")
+-- When and at what level, once for them all (Deaths.Foot): a span, a range.
+title, lines = ns.Deaths.DeathCross(2, { Death(now - 3600, "Sunscale Lashtail", { level = 19 }),
+    Death(now - 1800, "Sunscale Lashtail", { level = 20 }) }, now)
+Eq(#lines, 2, "one killer line and the foot")
+Eq(lines[2], date("Today from %H:%M", now - 3600) .. date(" to %H:%M", now - 1800) .. ", levels 19 to 20",
+    "the deaths' span and levels")
+title, lines = ns.Deaths.DeathCross(1, { Death(now - 3600, "Sunscale Lashtail", { level = 19 }) }, now)
+Eq(title, "Died here", "a lone death")
+Eq(table.concat(lines, "|"), "Sunscale Lashtail|" .. date("Today at %H:%M", now - 3600) .. ", level 19",
+    "a lone death: its killer, then when, each once")
+-- The one that killed you most first, at most three lines of them.
+title, lines = ns.Deaths.DeathCross(6, { Death(1, "Kolkar Stormer"), Death(2, "Sunscale Lashtail"),
+    Death(3, "Sunscale Lashtail"), Death(4, "Hecklefang Hyena"), Death(5, nil, { environment = "FALLING" }),
+    Death(6, "Razormane Hunter") })
+Eq(title, "Died here 6 times", "all of them counted")
+Eq(lines[1], "Sunscale Lashtail, twice", "the most first")
+Eq(lines[2], "Kolkar Stormer", "then in the order they did")
+Eq(lines[3], "And others", "the rest not counted")
+Eq(#lines, 4, "three and the foot")
+Eq(ns.Deaths.Foot({}, now), nil, "no time, no level: no foot")
+Eq(ns.Deaths.Foot({ { level = 12 } }, now), "Level 12", "a level alone")
+-- Across midnight, both ends, as the core's foot says them (Text.Foot).
+Eq(ns.Deaths.Foot({ { t = now - DAY }, { t = now } }, now),
+    date("From yesterday at %H:%M", now - DAY) .. date(" to today at %H:%M", now), "over two days: both ends")
 Eq(Text.PlateCaption({ moments = { { kind = "level", level = 12 }, { kind = "death" }, { kind = "death" } } }, nil,
     { death = "a Sunscale Lashtail" }), "Two deaths, to a Sunscale Lashtail.", "the caption with a left-off card")
 
@@ -231,8 +255,10 @@ Eq(GameTooltip.text, "Sunscale Lashtail", "the card has no tooltip")
 card.link.scripts.OnLeave(card.link)
 Eq(card.lift, 0, "the card lifts like a person's strip, but opens nothing")
 local tips = Tips(plate)
-Check(Any(tips, "^Died here twice|Sunscale Lashtail, with Bite, twice$"), "the stop's cross: " .. table.concat(tips, "; "))
-Check(Any(tips, "^Died here|Kolkar Stormer, with Lightning Bolt$"), "the road's cross: " .. table.concat(tips, "; "))
+Check(Any(tips, "^Died here twice|Sunscale Lashtail, with Bite, twice|[^|]* from %d+:%d+ to %d+:%d+, level 10$"),
+    "the stop's cross, its deaths' span and level once: " .. table.concat(tips, "; "))
+Check(Any(tips, "^Died here|Kolkar Stormer, with Lightning Bolt|[^|]* at %d+:%d+, level 10$"),
+    "the road's cross: " .. table.concat(tips, "; "))
 -- The caption still counts the deaths, and names no killer the card names.
 local caption = page.captionPool[1]:GetText()
 Check(caption:find("deaths%.$") and not caption:find("Lashtail"), "the caption: " .. caption)

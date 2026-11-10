@@ -7,8 +7,8 @@
 --   diary event  "Added to the diary". Always top level, never inside an
 --                episode and never the end of one.
 --   episode      A stretch of time: a together session, an instance visit,
---                an exchange (a run of interactions outside any session),
---                seen around. A headline and a details line.
+--                a battleground match, an exchange (a run of interactions
+--                outside any session), seen around. A headline and a details line.
 --   moment       One thing worth its own line inside its episode: a rare
 --                killed, a trade with a green item or better, a death, a
 --                level-up. Level-ups one after another are one line folded
@@ -460,6 +460,52 @@ local function JustTheVisit(session, visit)
 end
 
 --------------------------------------------------------------------------
+-- Battleground matches
+--------------------------------------------------------------------------
+--
+-- Matches come from Core/Matches.lua (Matches.For: the match, their row,
+-- "with" or "against"), which has the record's shape; rolled-up matches
+-- keep diary people's rows, so they are here too.
+--
+-- A match is an episode of its own, like a visit: one line that never
+-- folds (a click opens the match's page on Your Diary). A battleground's
+-- raid is not gated (Core/Roster.lua), so a teammate from the diary gets a
+-- together session there as well. That session is the match told twice,
+-- so it is placed as a visit is (9 Nov 2026): a session that was no more
+-- than the match gives way to it, its rows going with the match; a longer
+-- one (a party queued together over an evening) keeps the match as one of
+-- its children. Someone against you was never in your group: their match
+-- is always a line of its own.
+
+local MATCH_SLACK = VISIT_SLACK
+
+local function MatchEnd(m)
+    return m.endedAt or (m.state == "open" and ns.Now()) or m.startedAt
+end
+
+local function NewMatch(hit)
+    local m = hit.match
+    return { kind = "match", time = m.startedAt, match = m, row = hit.row, side = hit.side, key = m,
+        seconds = m.duration or (MatchEnd(m) - m.startedAt), all = {}, moment = true }
+end
+
+-- The together session that held a match with them, if any, and whether
+-- it was no more than the match: began and ended with it, give or take
+-- MATCH_SLACK (the raid is joined at the gates and left on the way out).
+-- One that only overlapped it is left alone, and so is the match.
+local function MatchHost(order, m)
+    local from, to = m.startedAt, MatchEnd(m)
+    for _, episode in ipairs(order) do
+        local s = episode.session
+        local sFrom, sTo = s.startedAt, s.endedAt or ns.Now()
+        if not episode.replaced and sFrom <= from + MATCH_SLACK and sTo >= to - MATCH_SLACK then
+            local just = math.abs(sFrom - from) <= MATCH_SLACK and math.abs(sTo - to) <= MATCH_SLACK
+            return episode, just
+        end
+    end
+end
+
+--------------------------------------------------------------------------
 -- Notes (TLN-10)
 --------------------------------------------------------------------------
 --
@@ -479,6 +525,12 @@ local function Span(episode)
         from, to = episode.session.startedAt, episode.session.endedAt or ns.Now()
     elseif episode.kind == "visit" then
         from, to = episode.visit.startedAt, episode.visit.endedAt or ns.Now()
+        local session = episode.replacing
+        if session then
+            from, to = math.min(from, session.startedAt), math.max(to, session.endedAt or ns.Now())
+        end
+    elseif episode.kind == "match" then
+        from, to = episode.match.startedAt, MatchEnd(episode.match)
         local session = episode.replacing
         if session then
             from, to = math.min(from, session.startedAt), math.max(to, session.endedAt or ns.Now())
@@ -598,6 +650,25 @@ function Timeline.For(guid)
                 end
             end
             host.all = kept
+            host.all[#host.all + 1] = Finish(episode, {}, 1)
+        else
+            top[#top + 1] = Finish(episode, {})
+        end
+    end
+
+    for _, hit in ipairs(ns.Matches and ns.Matches.For(guid) or {}) do
+        local episode = NewMatch(hit)
+        local host, just
+        if hit.side ~= "against" then host, just = MatchHost(order, hit.match) end
+        if host and just then
+            -- The session was the match: the match takes its place and rows.
+            host.replaced = true
+            episode.replacing = host.session
+            for i = 1, #host.all do
+                if host.all[i].kind == "row" then episode.all[#episode.all + 1] = host.all[i] end
+            end
+            top[#top + 1] = Finish(episode, {})
+        elseif host then
             host.all[#host.all + 1] = Finish(episode, {}, 1)
         else
             top[#top + 1] = Finish(episode, {})

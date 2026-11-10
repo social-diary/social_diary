@@ -7,7 +7,7 @@ local addonName, ns = ...
 
 local Campfire = ns.Campfire
 local Text = ns.UI.JourneyText
-local Capital, MapName, When = Text.Capital, Text.MapName, Text.When
+local Capital, List, MapName = Text.Capital, Text.List, Text.MapName
 local L, Fmt = ns.L, ns.Fmt
 
 -- The margin's slip for a campfire on a plate (Slip.lua): the user's own
@@ -29,18 +29,52 @@ function Campfire.At(fires, zone)
     return at
 end
 
--- The fire's mark and its slip, under the mouse: "Sat by a campfire", then
--- where ("Lushwater Oasis", on a line of its own, where there is a subzone
--- that is not the zone's name: it has no id to say "in" with) and when
--- ("Yesterday, 21:40, at level 12").
-function Campfire.Tip(fire, now)
-    local lines = {}
-    local sub = fire.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = sub end
+-- When the sittings were, and at what level, as every mark's tooltip on the
+-- plates ends (the core's Text.Foot and Text.Moments, UI/Journey/Text/
+-- Tips.lua): each time, a day said once for the times on it, past four
+-- the first to the last, then the levels after a comma, "Today at 12:47
+-- and 15:10, level 20", "Today from 12:47 to 19:02, levels 19 to 20".
+-- The tames' tooltip says its times the same way, without the level.
+local function Foot(ts, lo, hi, now)
+    return Text.Foot({ times = ts, levelFrom = lo, levelTo = hi }, now)
+end
+
+-- The fire's mark and the slip, under the mouse: one account of every
+-- sitting it stands for (a list of one for a fire sat by once). "Sat by a
+-- campfire", or how often, "Sat by a campfire twice", "... 3 times"; where,
+-- each place once ("In Lushwater Oasis", "In Lushwater Oasis and The
+-- Stagnant Oasis", only a subzone that is not its zone's name); then the
+-- times and the level: "Yesterday at 21:40 and today at 08:10, levels 11
+-- to 12". (9 Nov: a fire sat by three times told "Sat by a campfire" and
+-- its place three times over.)
+function Campfire.Tips(fires, now)
+    local places, seen = {}, {}
+    local ts, lo, hi = {}, nil, nil
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
-    local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
-    lines[#lines + 1] = When(fire.t or 0, level, now)
-    return Capital(Campfire.WORDS), lines
+    for _, fire in ipairs(fires) do
+        local sub = fire.subZone
+        if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) and not seen[sub] then
+            seen[sub] = true
+            places[#places + 1] = sub
+        end
+        ts[#ts + 1] = fire.t or 0
+        local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
+        if level then
+            lo = (not lo or level < lo) and level or lo
+            hi = (not hi or level > hi) and level or hi
+        end
+    end
+    local lines = {}
+    if places[1] then lines[1] = Capital(ns.ZoneIn(nil, List(places))) end
+    lines[#lines + 1] = Foot(ts, lo, hi, now)
+    local title = Capital(Campfire.WORDS)
+    if #fires > 1 then title = Fmt(L["Sat by a campfire %s##times"], ns.UI.Format.Times(#fires)) end
+    return title, lines
+end
+
+-- One sitting's tooltip, as its fire's alone (Campfire.Tips).
+function Campfire.Tip(fire, now)
+    return Campfire.Tips({ fire }, now)
 end
 
 -- A line of a menu, where a spot merges several fires or one is hidden (the
@@ -56,9 +90,7 @@ end
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
 -- campfire") found no room in the margin, so the words say it, last of
 -- everything and as short as the rest of the list (", and a campfire"),
--- or lead where nothing else does: its place first, then the fire in its
--- tail place ("Lushwater Oasis, and a campfire."), or "By a campfire."
--- where there is no place to name.
+-- or lead where nothing else does ("By a campfire in Lushwater Oasis.").
 -- With the slip beside the plate the words say nothing of it, but where
 -- the fire is all there is they name its place ("Lushwater Oasis.") for
 -- the slip to finish. "A campfire", sat by once or more at one place;
@@ -89,15 +121,12 @@ Text.RegisterCaption("campfire", {
     take = function(m) return m.campfire end,
     lead = { at = 140, say = function(fires, c)
         local spot = Campfire.At(fires, MapName(c.plate.mapID))
-        -- The place is a subzone (no id): it never follows a preposition
-        -- (10 Nov, for translations; "By a campfire in Lushwater Oasis"
-        -- was one). It leads alone, a noun phrase as the caption's other
-        -- leads are, and the fire goes in the tail's own place as `rest`,
-        -- so the list joins it as it joins every kind: "Lushwater Oasis,
-        -- and a campfire.", "Lushwater Oasis, a duel won, and a campfire."
+        -- The place is a subzone (no id): its phrase is ns.ZoneIn's, by
+        -- the client's name. "By a campfire in Lushwater Oasis".
         if c.said.campfire then
-            if spot then return spot, Camped(fires) end
-            return By(fires)
+            if not spot then return By(fires) end
+            local place = ns.ZoneIn(nil, spot)
+            return One(fires) and Fmt(L["By a campfire %s##zone"], place) or Fmt(L["By campfires %s##zone"], place)
         end
         return spot
     end },

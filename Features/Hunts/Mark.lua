@@ -7,6 +7,15 @@ local addonName, ns = ...
 
 local Hunts = ns.Hunts
 
+-- The hunts of the moments merged on one mark, in their order.
+local function Of(list)
+    local hunts = {}
+    for _, m in ipairs(list) do
+        if m.hunt then hunts[#hunts + 1] = m.hunt end
+    end
+    return hunts
+end
+
 -- Bad luck with a quest's drops (JRN-26): a tally, the kills counted where
 -- the hunt went on. Four uprights `gap` px apart, `h` tall, each leaning
 -- `lean` px at its top as a hand draws them (`jitter`: each one's height
@@ -26,6 +35,8 @@ ns.UI.JourneyPlate.RegisterMark("luck", {
     order = 40, cap = 20, count = "hunts",
     radius = TALLY.h / 2 + 2, halo = TALLY.halo, hover = TALLY.halo,
     tip = function(m, now) return Hunts.Tip(m.hunt, now) end,
+    -- Every hunt on the tally told once together (Hunts.Tips, 9 Nov 2026).
+    tips = function(list, now) return Hunts.Tips(Of(list), now) end,
     keep = "huntMarks", chosen = "hunt",
     choose = function(marks)
         local usual = #marks > 0 and Hunts.UsualLuck(ns.Journey.For(ns.ownGUID)) or nil
@@ -64,6 +75,7 @@ ns.UI.JourneyPlate.RegisterMark("fortune", {
     order = 50, cap = 20, count = "fortunes",
     radius = FORTUNE.r + 1, halo = FORTUNE.halo, hover = FORTUNE.halo,
     tip = function(m, now) return Hunts.Tip(m.hunt, now) end,
+    tips = function(list, now) return Hunts.Tips(Of(list), now, true) end,
     keep = "fortuneMarks", chosen = "lucky",
     choose = function(marks) return Hunts.LuckyCard.Choose(marks) end,
     -- A solid star, one kite of ink to each point.

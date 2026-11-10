@@ -823,7 +823,7 @@ local function SeenLine()
         if line[1]:find("^Last seen") then return line[1] end
     end
 end
-Eq(SeenLine(), "Last seen today at 14:10 · The Crossroads, The Barrens", "the tooltip's place")
+Eq(SeenLine(), "Last seen today at 14:10 in The Crossroads, The Barrens", "the tooltip's place")
 bram.scripts.OnLeave(bram)
 local hidden = RowFor(HIDDEN)
 hidden.scripts.OnEnter(hidden)

@@ -162,15 +162,6 @@ local function UpdateDayRow(row, item)
     row.selected:SetShown(isSelected)
 end
 
--- Where they were seen, in full for the tooltip: "Goldshire, Elwynn Forest",
--- as Your Diary and the profile write a place. DayEntries has already
--- dropped a subzone named like its zone; "?" is a zone it could not name.
-local function Place(e)
-    if not e.subZone then return e.zone end
-    if e.zone == "?" then return e.subZone end
-    return Fmt(L["%1$s, %2$s"], e.subZone, e.zone)
-end
-
 -- The tooltip's lines: all the detail a stranger gets.
 local function TooltipLines(row)
     local e = row.item
@@ -192,7 +183,7 @@ local function TooltipLines(row)
     if record.faction then
         local faction = record.faction == "Horde" and L["Horde"] or record.faction == "Alliance" and L["Alliance"]
             or record.faction
-        line = line .. "  ·  " .. faction
+        line = Fmt(L["%1$s, %2$s"], line, faction)
     end
     lines[#lines + 1] = { line, 1, 1, 1 }
 
@@ -207,11 +198,15 @@ local function TooltipLines(row)
     if e.dealt and DEALT_TEXT[e.dealt] then
         lines[#lines + 1] = { Fmt(L["%1$s at %2$s##time"], DEALT_TEXT[e.dealt], date("%H:%M", e.dealtAt)), 1, 0.82, 0 }
     end
-    -- Worded as the profile's line will be once they are added
-    -- (Format.SeenText): a subzone follows a dot, a zone alone "in".
+    -- Where they were seen, in full, worded as the profile's line will be
+    -- once they are added: "in Goldshire, Elwynn Forest". DayEntries has
+    -- already dropped a subzone named like its zone; "?" is a zone it could
+    -- not name.
     local at, seen = Format.At(e.last, now), nil
-    if e.subZone then
-        seen = Fmt(L["Last seen %1$s · %2$s"], at, Place(e))
+    if e.subZone and e.zone and e.zone ~= "?" then
+        seen = Fmt(L["Last seen %1$s %2$s, %3$s##zone"], at, ns.ZoneIn(nil, e.subZone), e.zone)
+    elseif e.subZone then
+        seen = Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(nil, e.subZone))
     elseif e.zone and e.zone ~= "?" then
         seen = Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(e.row and e.row.mapID, e.zone))
     else

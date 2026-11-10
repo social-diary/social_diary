@@ -16,14 +16,15 @@ local addonName, ns = ...
 
 local Hunter = ns.Hunter
 local Text = ns.UI.JourneyText
-local When = Text.When
+local Capital, List = Text.Capital, Text.List
 local L, Fmt = ns.L, ns.Fmt
 
 Hunter.WORDS = {
     -- The printed line under a given name: the family, then the beast it
-    -- was, as the game names them ("Wolf · Prairie Stalker"). %1$s family,
-    -- %2$s beast. Single-spaced, as signed: the card is narrow.
-    kind = L["%1$s · %2$s"],
+    -- was, as the game names them ("Wolf, Prairie Stalker"). %1$s family,
+    -- %2$s beast. Where it will not go on one line, the card puts each on
+    -- its own (Card.lua). A comma, never a middle dot (the copywriter skill).
+    kind = L["%1$s, %2$s"],
     -- The pet's level on the printed tag, as the close call's tag says a
     -- creature's ("Lv 7"). %d the level.
     level = L["Lv %d"],
@@ -35,9 +36,16 @@ Hunter.WORDS = {
     tipBeast = L["%s, tamed here"],
     -- Its first line knowing neither ("A pet, tamed here").
     tipNone = L["A pet, tamed here"],
-    -- Its second line, under a given name: what the game calls it, the
-    -- ledger's join ("Wolf  ·  Prairie Stalker"). %1$s family, %2$s beast.
-    tipKind = L["%1$s  ·  %2$s"],
+    -- Its second line, under a given name: what the game calls it, as the
+    -- card prints it ("Wolf, Prairie Stalker"). %1$s family, %2$s beast.
+    tipKind = L["%1$s, %2$s"],
+    -- Under several tames on one spot, a given name's line names it too
+    -- ("Bristlemane, Wolf, Prairie Stalker"). %1$s the name, %2$s family,
+    -- %3$s beast.
+    tipEach = L["%1$s, %2$s, %3$s"],
+    -- In the title's list of several, a tame known by neither name ("Snarl
+    -- and a pet, tamed here").
+    tipSome = L["a pet"],
 
     -- The custom card's picker title, heading and form labels are on the
     -- moment's spec in Kind.lua, as every feature's are (it loads first).
@@ -52,7 +60,7 @@ function Hunter.Hand(tame)
     return tame.name or tame.beast
 end
 
--- The printed line under the hand: "Wolf · Prairie Stalker" under a given
+-- The printed line under the hand: "Wolf, Prairie Stalker" under a given
 -- name; the family alone under the beast's name; nil knowing neither.
 function Hunter.Kind(tame)
     if tame.name and tame.family and tame.beast then return Fmt(W.kind, tame.family, tame.beast) end
@@ -64,20 +72,66 @@ function Hunter.Level(tame)
     return tame.petLevel and Fmt(W.level, tame.petLevel) or nil
 end
 
--- The mark's tooltip lines: who, what it was, when.
-function Hunter.Tip(tame, now)
-    local lines = {}
-    if tame.name then
-        lines[#lines + 1] = Fmt(W.tipNamed, tame.name)
-        if tame.family and tame.beast then lines[#lines + 1] = Fmt(W.tipKind, tame.family, tame.beast) end
-    elseif tame.beast then
-        lines[#lines + 1] = Fmt(W.tipBeast, tame.beast)
-    else
-        lines[#lines + 1] = W.tipNone
+-- When the tames on one spot were, as every mark's tooltip on the plates
+-- ends (the core's Text.Foot and Text.Moments, UI/Journey/Text/Tips.lua):
+-- each time, a day said once for the times on it, "Today at 12:47 and
+-- 15:10", past four the first to the last, "Today from 12:47 to 19:02".
+-- Never the hunter's level (the user's sign-off, 4 Nov).
+local function Foot(ts, now)
+    return Text.Foot({ times = ts }, now)
+end
+
+-- The paw's tooltip: one account of every tame on its spot (a list of one
+-- for a lone paw), as a title and lines. Who, each once: "Bristlemane,
+-- tamed here", "Bristlemane and Snarl, tamed here", "Snarl and a pet, tamed
+-- here" (known by neither name), "A pet, tamed here"; what the game calls a
+-- named one, "Wolf, Prairie Stalker", or with several on the spot
+-- "Bristlemane, Wolf, Prairie Stalker", two at most (past that the
+-- title has named them all); then when, without the hunter's level and
+-- without the tries merged (the user's sign-off, 4 Nov).
+function Hunter.Tips(tames, now)
+    local hands, seen, some = {}, {}, false
+    local kinds, said = {}, {}
+    local ts = {}
+    for _, tame in ipairs(tames) do
+        local hand = Hunter.Hand(tame)
+        if not hand then
+            some = true
+        elseif not seen[hand] then
+            seen[hand] = true
+            hands[#hands + 1] = hand
+        end
+        ts[#ts + 1] = tame.t or 0
     end
-    -- When, without the hunter's level (the user's sign-off, 4 Nov).
-    lines[#lines + 1] = When(tame.t, nil, now)
-    return lines
+    local many = #hands + (some and 1 or 0) > 1
+    for _, tame in ipairs(tames) do
+        if tame.name and tame.family and tame.beast then
+            local line = many and Fmt(W.tipEach, tame.name, tame.family, tame.beast)
+                or Fmt(W.tipKind, tame.family, tame.beast)
+            if not said[line] then
+                said[line] = true
+                kinds[#kinds + 1] = line
+            end
+        end
+    end
+    local title = W.tipNone
+    if hands[1] then
+        if some then hands[#hands + 1] = W.tipSome end
+        title = Fmt(W.tipNamed, List(hands))
+    end
+    local lines = {}
+    if #kinds <= 2 then
+        for _, line in ipairs(kinds) do lines[#lines + 1] = line end
+    end
+    lines[#lines + 1] = Foot(ts, now)
+    return title, lines
+end
+
+-- One tame's tooltip lines, the title first (the card's, Card.lua): its
+-- paw's alone (Hunter.Tips).
+function Hunter.Tip(tame, now)
+    local title, lines = Hunter.Tips({ tame }, now)
+    return { title, unpack(lines) }
 end
 
 -- A menu's line for one card (the custom spec's `describe`).

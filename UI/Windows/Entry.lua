@@ -49,7 +49,7 @@ local sheet
 -- The form
 --------------------------------------------------------------------------
 
--- "Added 6 October in Mulgore  ·  6 interactions on record". On a draft,
+-- "Added 6 October in Mulgore, 6 interactions on record". On a draft,
 -- that it is not added yet.
 function Entry.Meta(guid, draft)
     local entry = (draft or ns.Diary).Get(guid)
@@ -61,9 +61,9 @@ function Entry.Meta(guid, draft)
     local place = entry.addedContext and entry.addedContext.zone
     local day = Format.DayMonth(entry.addedAt, ns.Now())
     if place then
-        return Fmt(L["Added %1$s %2$s  ·  %3$s##zone"], day, ns.ZoneIn(entry.addedContext.mapID, place), count)
+        return Fmt(L["Added %1$s %2$s, %3$s##zone"], day, ns.ZoneIn(entry.addedContext.mapID, place), count)
     end
-    return Fmt(L["Added %1$s  ·  %2$s"], day, count)
+    return Fmt(L["Added %1$s, %2$s"], day, count)
 end
 
 local function Label(parent, text)

@@ -57,22 +57,6 @@ local function Place(row, unplaced)
     return ns.ZoneIn(row.mapID, row.zone)
 end
 
--- A subzone has no id, so it never follows a preposition: it is written
--- "Subzone, Zone" (the zone alone where the client gave no subzone, or one
--- with the zone's own name) and set after the line's words by a middle
--- dot (Dot). nil without a place.
-local function Spot(subZone, zone)
-    if subZone == "" then subZone = nil end
-    if subZone and zone and subZone ~= zone then return Fmt(L["%1$s, %2$s"], subZone, zone) end
-    return subZone or zone
-end
-
--- `text` with `spot` after a middle dot, or `text` alone.
-local function Dot(text, spot)
-    if not spot then return text end
-    return text .. "  \194\183  " .. spot
-end
-
 -- The creature a row's context names ({ name, rank }, as a witness's row
 -- keeps it) as Your Diary names a killer ("a Sunscale Lashtail",
 -- Text.KillerName), or nil.
@@ -104,8 +88,8 @@ local ENVIRONMENT = { falling = L["falling##death"], drowning = L["drowning##dea
 -- The sentence, one whole template for each how and where: how they died
 -- (`plain`, the environment's `env`, a killer the death recap named `to`,
 -- one the diary guessed `probably`), and where (`alone`, `there`, or the
--- zone's phrase, `near`). Theirs take the name first. A subzone has no id
--- to say "near" with: the line without a place, the spot after a dot.
+-- place's phrase, `near`: the subzone, else the zone). Theirs take the name
+-- first.
 local DIED = {
     theirs = {
         plain = { alone = L["%s died"], there = L["%s died there"], near = L["%1$s died %2$s##zone"] },
@@ -145,13 +129,12 @@ local function DeathText(death, guid, there)
 
     local sub = death.subZone
     if sub == "" or sub == death.zone then sub = nil end
-    local where, spot, zone = "alone", nil, nil
-    if there and (sub or death.zone) then
+    local place = sub or death.zone
+    local where, zone = "alone", nil
+    if there and place then
         where = "there"
-    elseif sub then
-        spot = Spot(sub, death.zone)
-    elseif death.zone then
-        where, zone = "near", ns.ZoneIn(nil, death.zone, "near")
+    elseif place then
+        where, zone = "near", ns.ZoneIn(nil, place, "near")
     end
 
     -- The values in order: the name (theirs), what, the place.
@@ -162,7 +145,7 @@ local function DeathText(death, guid, there)
     if zone then values[#values + 1] = zone end
     local template = DIED[theirs and "theirs" or "you"][how][where]
     if not theirs then template = Format.You(death.guid, template) end
-    return Dot(Fmt(template, unpack(values)), spot)
+    return Fmt(template, unpack(values))
 end
 
 -- "Mulgore", "Mulgore and The Barrens", "Mulgore and around", and how many
@@ -544,11 +527,10 @@ local function PlaceStory(episode, where, lead)
             placed = true }
     end
     if where.top and where.share >= SETTLED then
-        -- A subzone has no id to say "at" with: the headline's spot, after
-        -- a dot at its end ("Quested together for 1 h 6 min  ·  Sentinel
-        -- Hill, Westfall").
+        -- "Quested together at Sentinel Hill in Westfall".
         if where.sub then
-            return { lead = { verb }, placed = true, spot = Spot(where.sub, where.top) }
+            return { lead = { Fmt(L["%1$s %2$s %3$s##zone"], verb, ns.ZoneIn(nil, where.sub, "at"),
+                ns.ZoneIn(nil, where.top)) }, placed = true }
         end
         return { lead = { Fmt(L["%1$s %2$s##zone"], verb, ns.ZoneIn(nil, where.top)) }, placed = true }
     end
@@ -587,7 +569,7 @@ local function SessionHeadline(episode, guid)
         text = Fmt(L["%1$s; %2$s"], text, strong.tail)
         said[strong.said] = true
     end
-    return Dot(text, story.spot), said
+    return text, said
 end
 
 -- Everyone in the visit but the user and the person whose page this is.
@@ -636,7 +618,70 @@ local function VisitText(episode, guid)
     local wipes = ns.DungeonRun.Wipes(visit)
     if wipes > 0 then facts[#facts + 1] = ns.Plural(wipes, L["%d wipe|%d wipes##plural"]) end
     facts[#facts + 1] = Members(visit, guid)
-    if #bosses > 0 then facts[#facts + 1] = Fmt(L["killed %s##timeline"], Join(bosses)) end
+    if #bosses > 0 then facts[#facts + 1] = Fmt(L["killed %s##timeline"], Format.List(bosses)) end
+    return text, facts
+end
+
+-- A battleground match (Core/Matches.lua): the map by the name the client
+-- gave it, else these.
+local MATCH_MAPS = {
+    warsong = L["Warsong Gulch"],
+    arathi = L["Arathi Basin"],
+    alterac = L["Alterac Valley"],
+}
+local function MatchName(m)
+    if m.mapName and m.mapName ~= "" then return m.mapName end
+    local map = ns.Matches.MAPS[m.map]
+    return map and MATCH_MAPS[map.key] or L["A battleground"]  -- (a match whose map went unread)
+end
+
+-- "third", "11th": how many matches you have met in. An ordinal is the
+-- locale's grammar (grammar.Nth) where it has its own.
+local NTH = { L["first##ordinal"], L["second##ordinal"], L["third##ordinal"], L["fourth##ordinal"],
+    L["fifth##ordinal"], L["sixth##ordinal"], L["seventh##ordinal"], L["eighth##ordinal"], L["ninth##ordinal"],
+    L["tenth##ordinal"] }
+local function Nth(n)
+    if G.Nth then return G.Nth(n) end
+    if NTH[n] then return NTH[n] end
+    local last, tens = n % 10, n % 100
+    local suffix = (tens >= 11 and tens <= 13) and "th" or ({ "st", "nd", "rd" })[last] or "th"
+    return n .. suffix
+end
+
+-- "Warsong Gulch, on your side" ("on Thessaly's side" for another of the
+-- user's characters in a shared diary: Format.You) with the result, how often you have met in
+-- a match on this side, how long it took and their killing blows.
+local MATCH_SIDE = {
+    with = L["%s, on {your} side"],
+    against = L["%s, against {you}"],
+}
+-- "your third match together", "your third match against them".
+local MATCH_AGAIN = {
+    with = L["{your} %s match together"],
+    against = L["{your} %s match against them"],
+}
+local function MatchText(episode, guid)
+    local m, row = episode.match, episode.row or {}
+    local side = MATCH_SIDE[episode.side]  -- (side unknown: the map alone)
+    local text = side and Fmt(Format.You(m.me, side), MatchName(m)) or MatchName(m)
+
+    local facts = {}
+    local won = ns.Matches.Won(m)
+    if m.state == "left" then
+        facts[#facts + 1] = Format.You(m.me, L["{you} left before the end"])
+    elseif won == true then
+        facts[#facts + 1] = Format.You(m.me, L["{you} won"])
+    elseif won == false then
+        facts[#facts + 1] = Format.You(m.me, L["{you} lost"])
+    end
+    local n = episode.side and ns.Matches.Meetings(guid, m, episode.side) or 0
+    if n > 1 then
+        local again = episode.side == "with" and MATCH_AGAIN.with or MATCH_AGAIN.against
+        facts[#facts + 1] = Fmt(Format.You(m.me, again), Nth(n))
+    end
+    if m.state ~= "open" and (episode.seconds or 0) >= 60 then facts[#facts + 1] = Format.Duration(episode.seconds) end
+    if (row.kb or 0) > 0 then facts[#facts + 1] = ns.Plural(row.kb, L["%d killing blow|%d killing blows##plural"]) end
+    if m.state == "open" then facts[#facts + 1] = L["still going"] end
     return text, facts
 end
 
@@ -729,6 +774,9 @@ local function EpisodeText(episode, guid)
     if episode.kind == "visit" then
         visitText, facts = VisitText(episode, guid)
         for _, fact in ipairs(Facts(episode, guid)) do facts[#facts + 1] = fact end
+    elseif episode.kind == "match" then
+        visitText, facts = MatchText(episode, guid)
+        for _, fact in ipairs(Facts(episode, guid)) do facts[#facts + 1] = fact end
     elseif episode.kind == "session" and episode.session then
         sessionText, said = SessionHeadline(episode, guid)
         facts = Facts(episode, guid, said)
@@ -745,12 +793,14 @@ local function EpisodeText(episode, guid)
     end
 
     local text = visitText or sessionText or Headline(episode, episode.headline)
-    local sub = #shown > 0 and table.concat(shown, "  ·  ") or nil
+    -- The row's details run on with commas; the tooltip gives each fact a
+    -- line of its own (never a middle dot: the copywriter skill).
+    local sub = #shown > 0 and table.concat(shown, ", ") or nil
     local full = visitText or sessionText or Headline(episode, episode.activities)
-    if #facts > 0 then full = full .. "\n" .. table.concat(facts, "  ·  ") end
+    if #facts > 0 then full = full .. "\n" .. table.concat(facts, "\n") end
 
     local icon = (episode.kind == "session" and "together") or (episode.kind == "visit" and "dungeon")
-        or ACTIVITY_ICON[episode.headline[1]] or "talk"
+        or (episode.kind == "match" and "match") or ACTIVITY_ICON[episode.headline[1]] or "talk"
     return text, sub, icon, full
 end
 
@@ -839,17 +889,21 @@ function ns.UI.DescribeItem(item, guid)
         return when, text, nil, "note", full
     elseif item.kind == "first" then
         local first = item.first
-        -- The zone "at" its phrase; a subzone, which has no id, after a dot.
+        -- "First seen at Red Rocks, Mulgore, level 12": the subzone "at" its
+        -- phrase with the zone after it, else the zone "at" its own.
         local zone = first.mapID and ns.MapName(first.mapID) or nil
         local sub = first.subZone
         if sub == "" or sub == zone then sub = nil end
-        local place = not sub and zone and ns.ZoneIn(first.mapID, zone, "at")
+        local place = sub and ns.ZoneIn(nil, sub, "at") or zone and ns.ZoneIn(first.mapID, zone, "at")
         local text
-        if place and first.level then text = Fmt(L["First seen %1$s, level %2$s##zone"], place, first.level)
+        if sub and zone and first.level then
+            text = Fmt(L["First seen %1$s, %2$s, level %3$s##zone"], place, zone, first.level)
+        elseif sub and zone then text = Fmt(L["First seen %1$s, %2$s##zone"], place, zone)
+        elseif place and first.level then text = Fmt(L["First seen %1$s, level %2$s##zone"], place, first.level)
         elseif place then text = Fmt(L["First seen %s##zone"], place)
         elseif first.level then text = Fmt(L["First seen, level %s"], first.level)
         else text = L["First seen"] end
-        return when, Dot(text, sub and Spot(sub, zone)), nil, "added"
+        return when, text, nil, "added"
     elseif item.kind == "added" then
         local context = item.entry.addedContext
         local zone = context and context.zone
@@ -869,10 +923,15 @@ end
 -- [Copper Ore]"; Quote(text, fallback) 'Said: "hello"', or the fallback
 -- alone; Place(row, unplaced) "in Hillsbrad Foothills" for the kind's own
 -- "##zone" template, or nil (no zone, or the kind's text asked without its
--- place: `text(row, guid, unplaced)`); Spot(subZone, zone) "Sentinel Hill,
--- Westfall", a place with no id, and Dot(text, spot) the line with it after
--- a middle dot; Join(list, template) a list joined by "%1$s, %2$s##list"
+-- place: `text(row, guid, unplaced)`); Join(list, template) a list joined by "%1$s, %2$s##list"
 -- (or `template`); Foe(row) the creature in a witness's row as Your Diary
 -- names a killer ("a Kobold Vermin"), or nil.
+-- MatchName(match) a battleground match's map ("Warsong Gulch"), and
+-- Nth(n) "third", for the reunion toast in a match (UI/Windows/Reunion/).
 ns.UI.TimelineText = { IsEpisode = IsEpisode, OtherMembers = OtherMembers, DescribeNote = DescribeNote,
-    Items = Items, Quote = Quote, Place = Place, Spot = Spot, Dot = Dot, Join = Join, Foe = Foe }
+    Items = Items, Quote = Quote, Place = Place, Join = Join, Foe = Foe,
+    MatchName = MatchName, Nth = Nth }
+
+-- A match's line on the timeline: crossed swords from the battlemasters'
+-- gossip, like the other gossip icons the timeline draws.
+ns.Style.AddArt("match", { "Interface\\GossipFrame\\BattleMasterGossipIcon", "Interface\\Icons\\Ability_DualWield" })
