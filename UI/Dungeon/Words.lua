@@ -73,7 +73,7 @@ local function Mine(visit, guid) return guid == ns.ownGUID or guid == visit.me e
 -- `you` is the "{you}" the sentence takes (Format.You): a locale declines
 -- it by what it follows ("{you}##for", for "dropped for you").
 local function Whose(visit, guid, you)
-    if Mine(visit, guid) then return Format.You(guid, you or "{you}") end
+    if Mine(visit, guid) then return Format.You(guid, you or L["{you}##subject"]) end
     for _, m in ipairs(visit.members or {}) do
         if m.guid == guid and m.first then return m.first end
     end
@@ -81,9 +81,10 @@ local function Whose(visit, guid, you)
 end
 Words.Whose = Whose
 
--- After "dropped for", and "from" or "by".
+-- After "dropped for", after "from" (snagged from), after "by" (reached by).
 local function For(visit, guid) return Whose(visit, guid, L["{you}##for"]) end
 local function From(visit, guid) return Whose(visit, guid, L["{you}##from"]) end
+local function By(visit, guid) return Whose(visit, guid, L["{you}##by"]) end
 
 -- An item that dropped for someone: "dropped for Tester", "dropped for you".
 function Words.Dropped(visit, guid) return Fmt(L["dropped for %s"], For(visit, guid)) end
@@ -264,7 +265,7 @@ end
 -- plates' "Reached ...": "Reached by Tester", "Reached by you".
 function Words.LevelScrawl(level) return tostring(level) end
 function Words.LevelTip(visit, up)
-    return ns.Style.TipList(Fmt(L["Level %d"], up.level), { Fmt(L["Reached by %s"], From(visit, up.guid)) })
+    return ns.Style.TipList(Fmt(L["Level %d"], up.level), { Fmt(L["Reached by %s"], By(visit, up.guid)) })
 end
 
 -- A find on the way's mark (Print.lua's Finds), its tooltip: the item

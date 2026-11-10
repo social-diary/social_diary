@@ -50,13 +50,27 @@ diary there would say it, not word for word.
   the language needs in `ns.Locale.grammar`:
   - `PluralForm(n)` and `PLURAL_FORMS` (CLDR, integers; the rule's row
     goes into `RULES` in `tests/locale.lua`);
-  - `Upper`, `Capital` (letters outside ASCII), `Ordinal` ("25.");
+  - `Upper`, `Capital` (letters outside ASCII);
+  - `Ordinal(n, context)` ("25."): `context` is the noun counted where the
+    caller has one ("match", "death"), for its gender;
+  - `Day(n, ordinal)`: a date's day (French "1er", then the figure; the
+    figure always where a date takes no ordinal), `Clock(hour, minute)`
+    ("18 h 30"), `DECIMAL` (","), `ListEnd(head, last, oxford)` where the
+    "and" turns on the next word (Spanish "e Inés");
+  - `Agree(text)`: a last pass over every filled template, for a number
+    word that arrives as a value and must agree with a noun in the words
+    ("%s<f> morts" -> "deux mortes"): the locale picks its own mark and
+    resolves it here;
+  - `EACH_PLACE = true` where every name of a list takes its own
+    preposition, `NO_ARTICLE = true` where a creature is named without one;
   - `YOU_FOR`: every word the translation braces for the reader, lower
     case, with its form for another character's name (`"%s hat"`, or a
     function for a genitive);
   - `PLACE[role]` (the plain preposition per role) and, only where a name
     needs an article or a case, `ZONES[mapID][role]`,
-    `DUNGEONS[instanceID][role]`, `SUBZONES[name][role]`.
+    `DUNGEONS[instanceID][role]`, `SUBZONES[name][role]`. Each may be a
+    function of the bare name where the preposition contracts or elides
+    ("del Cruce", "près d’Orgrimmar").
 - One file per area, each `ns.Locale.Add("<id>", { ... })`, with a comment
   line naming the source file above its keys, in the order of
   `Locales/enUS.lua`. Every file whose table is built at load starts with

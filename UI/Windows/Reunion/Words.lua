@@ -108,8 +108,8 @@ end
 
 -- "3 days ago", but "on 12 Sep 2025".
 local function When(time)
-    local when = Format.Ago(time)
-    if when:match("^%d") and not when:find("ago$") then when = Fmt(L["on %s"], when) end
+    local when, dated = Format.Ago(time)
+    if dated then when = Fmt(L["on %s"], when) end
     return when
 end
 

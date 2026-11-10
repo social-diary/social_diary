@@ -26,11 +26,44 @@ function Format.Month(time) return MONTHS[tonumber(date("%m", time))] end
 function Format.MonthShort(time) return MONTHS_SHORT[tonumber(date("%m", time))] end
 function Format.Weekday(time) return WEEKDAYS[tonumber(date("%w", time)) + 1] end
 
--- "6 Oct 2026" (a short date with its year), "6 Oct" without.
+-- A day of the month as a date writes it: "6" in English, and "25th" where
+-- the English says it as an ordinal (`ordinal`: the sitting label, "Oct
+-- 25th"). A locale's own is grammar.Day(n, ordinal): French "1er" for the
+-- first and the figure after it, Spanish and Russian the figure always.
+function Format.Day(n, ordinal)
+    if G.Day then return G.Day(n, ordinal) end
+    return ordinal and Format.Ordinal(n) or tostring(n)
+end
+
+-- A time of day, "21:43" (a locale's own, grammar.Clock(hour, minute):
+-- French "21 h 43").
+function Format.Clock(time)
+    if G.Clock then return G.Clock(tonumber(date("%H", time)), tonumber(date("%M", time))) end
+    return date("%H:%M", time)
+end
+
+-- A number with decimals, "3.2" (grammar.DECIMAL is the locale's mark:
+-- "3,2").
+function Format.Decimal(n, places)
+    local text = ("%." .. (places or 1) .. "f"):format(n)
+    if G.DECIMAL then text = text:gsub("%.", G.DECIMAL, 1) end
+    return text
+end
+
+-- `text` padded with spaces to `width` characters, for a column in chat.
+-- Counted in characters, not bytes ("%-3s" counts bytes: "sí" is three).
+function Format.Pad(text, width)
+    text = tostring(text)
+    local _, more = text:gsub("[\128-\191]", "")
+    return text .. (" "):rep(width - (#text - more))
+end
+
+-- "6 Oct 2026" (a short date with its year), "6 Oct" without. Its own keys
+-- beside the long date's: a locale may join the two differently.
 function Format.ShortDate(time, withYear)
-    local day = tonumber(date("%d", time))
-    if withYear then return Fmt(L["%1$d %2$s %3$s"], day, Format.MonthShort(time), date("%Y", time)) end
-    return Fmt(L["%1$d %2$s"], day, Format.MonthShort(time))
+    local day = Format.Day(tonumber(date("%d", time)))
+    if withYear then return Fmt(L["%1$s %2$s %3$s##short date"], day, Format.MonthShort(time), date("%Y", time)) end
+    return Fmt(L["%1$s %2$s##short date"], day, Format.MonthShort(time))
 end
 
 --------------------------------------------------------------------------
@@ -46,7 +79,9 @@ function Format.Duration(seconds)
     return Fmt(L["%d h %d min"], hours, minutes)
 end
 
--- DAT-4: stored as server epoch, shown relative or in local time.
+-- DAT-4: stored as server epoch, shown relative or in local time. The
+-- second value is true where the answer is a date ("6 Oct 2026") and not
+-- words ("3 days ago"), for a sentence that takes "on" before one.
 function Format.Ago(time, now)
     if not time then return L["never"] end
     now = now or ns.Now()
@@ -55,7 +90,7 @@ function Format.Ago(time, now)
     if days < 2 then return L["yesterday"] end
     if days < 14 then return ns.Plural(days, L["%d day ago|%d days ago##plural"]) end
     if days < 60 then return ns.Plural(math.floor(days / 7), L["%d week ago|%d weeks ago##plural"]) end
-    return Format.ShortDate(time, true)
+    return Format.ShortDate(time, true), true
 end
 
 -- "Mulgore", "Mulgore and Durotar", "Mulgore, Durotar and The Barrens".
@@ -93,8 +128,11 @@ function Format.List(names, opts)
     end
 
     if n == 1 then return names[1] end
-    local last = (opts.oxford and n > 2) and L["%1$s, and %2$s##list"] or L["%1$s and %2$s"]
-    return Fmt(last, Commas(names, n - 1), names[n])
+    local oxford = opts.oxford and n > 2
+    -- A locale whose "and" turns on the word after it (Spanish "e Inés")
+    -- joins the last name itself: grammar.ListEnd(head, last, oxford).
+    if G.ListEnd then return G.ListEnd(Commas(names, n - 1), names[n], oxford) end
+    return Fmt(oxford and L["%1$s, and %2$s##list"] or L["%1$s and %2$s"], Commas(names, n - 1), names[n])
 end
 
 --------------------------------------------------------------------------
@@ -116,11 +154,11 @@ end
 -- 2025". Without it, never -- for a page that only reaches back as far as
 -- the buffer does.
 function Format.DayMonth(time, now)
-    local day = tonumber(date("%d", time))
+    local day = Format.Day(tonumber(date("%d", time)))
     if now and date("%Y", time) ~= date("%Y", now) then
-        return Fmt(L["%1$d %2$s %3$s"], day, Format.Month(time), date("%Y", time))
+        return Fmt(L["%1$s %2$s %3$s##date"], day, Format.Month(time), date("%Y", time))
     end
-    return Fmt(L["%1$d %2$s"], day, Format.Month(time))
+    return Fmt(L["%1$s %2$s##date"], day, Format.Month(time))
 end
 
 -- A heading for the day `time` falls on: "Today", "Yesterday", else
@@ -130,14 +168,14 @@ function Format.DayLabel(time, now)
     local back = DaysBack(time, now)
     if back == 0 then return L["Today"] end
     if back == 1 then return L["Yesterday"] end
-    return Fmt(L["%1$s, %2$s"], Format.Weekday(time), Format.DayMonth(time, now))
+    return Fmt(L["%1$s, %2$s##weekday date"], Format.Weekday(time), Format.DayMonth(time, now))
 end
 
 -- "today at 21:43", "yesterday at 18:02", "on 12 Sep at 18:02"; the year is
 -- added once it is not this one.
 function Format.At(time, now)
     now = now or ns.Now()
-    local clock = date("%H:%M", time)
+    local clock = Format.Clock(time)
     local back = DaysBack(time, now)
 
     if back == 0 then return Fmt(L["today at %s"], clock) end
@@ -162,9 +200,11 @@ function Format.SeenText(seen, now)
 end
 
 -- "25th": a number as an ordinal (a locale's own, grammar.Ordinal:
--- German "25.").
-function Format.Ordinal(n)
-    if G.Ordinal then return G.Ordinal(n) end
+-- German "25."). `context` names the noun it counts where the caller has
+-- one ("match", "death", as the word lists' "##match"): an ordinal takes
+-- its noun's gender in most languages (Spanish "13.ª" for a death).
+function Format.Ordinal(n, context)
+    if G.Ordinal then return G.Ordinal(n, context) end
     local tail = n % 100
     if tail >= 11 and tail <= 13 then return n .. "th" end
     local last = n % 10
@@ -177,12 +217,12 @@ end
 -- most languages ("dein drittes Match", but "beim dritten Versuch"):
 -- Format.NTH_MATCH for a match, a file's own for anything else.
 function Format.Nth(n, words)
-    return words[n] or Format.Ordinal(n)
+    return words[n] or Format.Ordinal(n, words.context)
 end
 
 Format.NTH_MATCH = { L["first##match"], L["second##match"], L["third##match"], L["fourth##match"],
     L["fifth##match"], L["sixth##match"], L["seventh##match"], L["eighth##match"], L["ninth##match"],
-    L["tenth##match"], L["eleventh##match"], L["twelfth##match"] }
+    L["tenth##match"], L["eleventh##match"], L["twelfth##match"], context = "match" }
 
 -- "once", "twice", "5 times". "twice" is a word English has for 2, not a
 -- plural form: a locale without one leaves it empty, and 2 takes the

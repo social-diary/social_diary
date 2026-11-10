@@ -436,7 +436,7 @@ end
 -- Today, as the postmark strikes it: "9 OCT".
 local function Day()
     -- (no time given: date() reads now)
-    return Fmt(L["%1$d %2$s"], tonumber(date("%d")) or 1, Style.Upper(ns.UI.Format.MonthShort(nil) or ""))
+    return Fmt(L["%1$s %2$s##short date"], ns.UI.Format.Day(tonumber(date("%d")) or 1), Style.Upper(ns.UI.Format.MonthShort(nil) or ""))
 end
 
 -- For the pieces after this file.

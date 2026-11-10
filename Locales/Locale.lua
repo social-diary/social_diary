@@ -72,8 +72,15 @@ end
 
 -- string.format with positional placeholders: "%2$s, %1$s" takes the
 -- second value first. A template without them is plain string.format.
+--
+-- A locale may give grammar.Agree(text), a last pass over every filled
+-- template, for words that arrive as values and must agree with a noun
+-- the template holds: a number word's gender ("deux" before a masculine
+-- noun, "une" for 1 before a feminine one). The locale picks its own mark
+-- for its words to carry ("%s<f> morts") and resolves it there; English
+-- has none.
 local ESCAPED = "\1"
-function ns.Fmt(template, ...)
+local function Fill(template, ...)
     if not template:find("%%%d+%$") then return template:format(...) end
     local values = { ... }
     local text = template:gsub("%%%%", ESCAPED)
@@ -81,6 +88,11 @@ function ns.Fmt(template, ...)
         return ("%" .. spec):format(values[tonumber(i)])
     end)
     return (text:gsub(ESCAPED, "%%"))
+end
+function ns.Fmt(template, ...)
+    local agree = Locale.grammar.Agree
+    if agree then return agree(Fill(template, ...)) end
+    return Fill(template, ...)
 end
 
 -- A key looked up and filled: ns.T("Met %s", name).
@@ -156,6 +168,9 @@ Locale.grammar.Capital = function(text) return (text:gsub("^%l", string.upper)) 
 --   grammar.ZONES[mapID][role]          "im Brachland" (only the zones that
 --   grammar.DUNGEONS[instanceID][role]   need it: articles, declension)
 --   grammar.PLACE[role]                  the rest: "in %s"
+-- Any of them may be a function of the bare name instead of a text, for a
+-- preposition that contracts, elides or declines with what follows
+-- (Spanish "del Cruce", French "près d'Orgrimmar").
 --   grammar.SUBZONES[name][role]        a subzone, which has no id, by the
 --                                        name the client gives ("Wegekreuz"
 --                                        -> "am Wegekreuz")
@@ -172,8 +187,11 @@ local ENGLISH_PLACE = Locale.grammar.PLACE
 local function Phrase(own, id, name, role)
     role = role or "in"
     local words = id and own[id]
-    if words and words[role] then return words[role] end
+    local own = words and words[role]
+    if type(own) == "function" then return own(name or "") end
+    if own then return own end
     local template = Locale.grammar.PLACE[role] or ENGLISH_PLACE[role] or ENGLISH_PLACE["in"]
+    if type(template) == "function" then return template(name or "") end
     return ns.Fmt(template, name or "")
 end
 
@@ -183,6 +201,17 @@ function ns.ZoneIn(mapID, name, role)
     name = name or (mapID and ns.MapName and ns.MapName(mapID))
     if not mapID then return Phrase(Locale.grammar.SUBZONES, name, name, role) end
     return Phrase(Locale.grammar.ZONES, mapID, name, role)
+end
+
+-- Several places after one preposition: "in Mulgore and Durotar". `join`
+-- makes the list (Format.List). English says the preposition once; a
+-- locale whose every name takes its own (French "à Hurlevent et à
+-- Orgrimmar", a Russian case per name) sets grammar.EACH_PLACE.
+function ns.ZonesIn(names, role, join)
+    if not Locale.grammar.EACH_PLACE then return ns.ZoneIn(nil, join(names), role) end
+    local phrases = {}
+    for i, name in ipairs(names) do phrases[i] = ns.ZoneIn(nil, name, role) end
+    return join(phrases)
 end
 
 function ns.DungeonIn(instanceID, name, role)

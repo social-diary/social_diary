@@ -50,8 +50,24 @@ end
 -- What they did, in the hand under their name: "mercilessly watched you
 -- die", "watched you die", "saw you die", "tried to save you", "saved you".
 -- The second value is the word the hand underlines (twice), if any.
-function Witnesses.Deed(w)
+--
+-- `form` is how the sentence takes it, where English says the same words
+-- and another language does not:
+--   nil      after one name, or under it: "Numa saved you"
+--   "many"   after several, the verb theirs: "Numa and another saved you"
+--   "line"   a line of its own with no one named before it: "Saved you"
+local DEEDS_SAID = {
+    many = { merciless = L["mercilessly watched you die##many"], saw = L["saw you die##many"],
+        watched = L["watched you die##many"], saved = L["saved you##many"], tried = L["tried to save you##many"] },
+    line = { merciless = L["mercilessly watched you die##line"], saw = L["saw you die##line"],
+        watched = L["watched you die##line"], saved = L["saved you##line"], tried = L["tried to save you##line"] },
+}
+function Witnesses.Deed(w, form)
     local look = Witnesses.Look(w)
+    local said = form and DEEDS_SAID[form]
+    if said then
+        return said[look or (w and w.type == Witnesses.SAVED and "saved" or "tried")]
+    end
     if look == "merciless" then return L["mercilessly watched you die"], L["mercilessly"] end
     if look == "saw" then return L["saw you die"] end
     if look then return L["watched you die"] end
@@ -74,8 +90,8 @@ end
 function Witnesses.Caption(w)
     local who = Witnesses.Name(w)
     local others = Witnesses.Others(w and w.others, true)
-    if others then who = Fmt(L["%1$s %2$s"], who, others) end
-    return Fmt(L["%1$s %2$s."], who, (Witnesses.Deed(w)))
+    if others then who = Fmt(L["%1$s %2$s##name and others"], who, others) end
+    return Fmt(L["%1$s %2$s."], who, (Witnesses.Deed(w, others and "many" or nil)))
 end
 
 -- The card's tooltip: their full name, who they are, what they did (the
@@ -85,15 +101,16 @@ end
 -- mark's tooltip is this too, where the card may have found no room, so the deed
 -- and the creature are spelt out.
 -- What a written witness did, with its creature: "Saved you from Hogger".
-local function Did(w)
+-- `form`: Witnesses.Deed's ("line" where the deed starts a line).
+local function Did(w, form)
     local foe = Witnesses.Foe(w)
-    local deed = Witnesses.Deed(w)
-    return foe and Fmt(L["%1$s %2$s"], deed, foe) or deed
+    local deed = Witnesses.Deed(w, form)
+    return foe and Fmt(L["%1$s %2$s##deed and foe"], deed, foe) or deed
 end
 
 function Witnesses.Tip(w, now)
     if w.written then
-        local lines = { Capital(Did(w)) }
+        local lines = { Capital(Did(w, "line")) }
         if ns.Witnesses.Card.Evidence(w) then lines[#lines + 1] = Fmt(L["You came out of it with %s"], Health(w)) end
         lines[#lines + 1] = When(w.t, w.level, now)
         return Who(w.guid) or Witnesses.Name(w), lines
@@ -110,7 +127,7 @@ function Witnesses.Tip(w, now)
     local look = Witnesses.Look(w)
     if look then
         if type(w.watched) == "number" then
-            lines[#lines + 1] = Fmt(L["Watched for %s"], Glue(Fmt(L["%.1f seconds"], w.watched)))
+            lines[#lines + 1] = Fmt(L["Watched for %s"], Glue(Fmt(L["%s seconds"], ns.UI.Format.Decimal(w.watched, 1))))
         end
         lines[#lines + 1] = L["Not in a fight themselves"]
     elseif w.type == Witnesses.SAVED then
@@ -142,10 +159,10 @@ end
 local PEOPLE, DEEDS = 3, 3
 
 -- A person's deeds, each once: { text, n }, in the order first done.
-local function Deeds(ws)
+local function Deeds(ws, form)
     local by, list = {}, {}
     for _, w in ipairs(ws) do
-        local did = Did(w)
+        local did = Did(w, form)
         if not by[did] then
             by[did] = { text = did, n = 0 }
             list[#list + 1] = by[did]
@@ -172,7 +189,7 @@ function Witnesses.Tips(list, now)
     local lines = {}
     if #people == 1 then
         local ws = people[1]
-        local deeds = Deeds(ws)
+        local deeds = Deeds(ws, "line")
         for i = 1, math.min(#deeds, DEEDS) do lines[i] = Capital(Often(deeds[i])) end
         if #deeds > DEEDS then lines[DEEDS] = L["And more besides"] end
         if #ws == 1 and ns.Witnesses.Card.Evidence(ws[1]) then
@@ -189,7 +206,7 @@ function Witnesses.Tips(list, now)
         local deeds = Deeds(ws)
         local said = {}
         for k, d in ipairs(deeds) do said[k] = Often(d) end
-        lines[i] = Fmt(L["%1$s %2$s"], Witnesses.Name(ws[1]), ns.UI.TimelineText.Join(said, L["%1$s and %2$s"]))
+        lines[i] = Fmt(L["%1$s %2$s##name and deed"], Witnesses.Name(ws[1]), ns.UI.TimelineText.Join(said, L["%1$s and %2$s"]))
     end
     lines[#lines + 1] = ns.Deaths.Foot(list, now)
     return Capital(ns.Plural(#people, L["%s witness|%s witnesses##plural"],

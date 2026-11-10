@@ -167,7 +167,13 @@ local function Places(zones, role)
     local first = named[1]
     if role then first = ns.ZoneIn(nil, first, role(#named)) end
     if #named == 1 then return first, 1 end
-    if #named == 2 then return Fmt(L["%1$s and %2$s"], first, named[2]), 2 end
+    if #named == 2 then
+        -- The second name bare after the first's preposition, or with its
+        -- own where a locale gives every name one (ns.ZonesIn).
+        local second = named[2]
+        if role and G.EACH_PLACE then second = ns.ZoneIn(nil, second, role(2)) end
+        return Fmt(L["%1$s and %2$s"], first, second), 2
+    end
     return Fmt(L["%s and around"], first), #named
 end
 
@@ -379,7 +385,9 @@ local function In(where)
     if not where.top then return nil end
     if where.count == 1 or where.share >= SETTLED then return ns.ZoneIn(nil, where.top) end
     local first = ns.ZoneIn(nil, where.names[1])
-    if where.count == 2 then return Fmt(L["%1$s and %2$s"], first, where.names[2]) end
+    if where.count == 2 then
+        return Fmt(L["%1$s and %2$s"], first, G.EACH_PLACE and ns.ZoneIn(nil, where.names[2]) or where.names[2])
+    end
     return Fmt(L["%s and around"], first)
 end
 
@@ -399,7 +407,7 @@ local function RunWords(runs)
     end
     if #runs >= 3 then
         local ran = ns.Plural(dungeons, L["%d dungeon|%d dungeons##plural"])
-        if raids == 0 then return Fmt(L["ran %s"], ran) end
+        if raids == 0 then return Fmt(L["ran %s##count"], ran) end
         if dungeons == 0 then return Fmt(L["raided %s##times"], Times(raids)) end
         return Fmt(L["ran %1$s and %2$s"], ran, ns.Plural(raids, L["%d raid|%d raids##plural"]))
     end
@@ -641,7 +649,7 @@ end
 -- "third", "11th": how many matches you have met in, in words up to the
 -- tenth (Format.Nth, the match's words).
 local function Nth(n)
-    return n <= 10 and Format.Nth(n, Format.NTH_MATCH) or Format.Ordinal(n)
+    return n <= 10 and Format.Nth(n, Format.NTH_MATCH) or Format.Ordinal(n, "match")
 end
 
 -- "Warsong Gulch, on your side" ("on Thessaly's side" for another of the
@@ -813,7 +821,7 @@ local function DescribeNote(note, guid)
     end
     if #others > 0 then full[#full + 1] = Fmt(L["Also about %s."], Format.List(others)) end
 
-    local clock = date("%H:%M", note.time)
+    local clock = Format.Clock(note.time)
     full[#full + 1] = note.zone and Fmt(L["Written at %1$s %2$s.##zone"], clock, ns.ZoneIn(note.mapID, note.zone))
         or Fmt(L["Written at %s."], clock)
     full[#full + 1] = L["Click to change or delete it."]
@@ -858,7 +866,7 @@ function ns.UI.DescribeItem(item, guid)
         if mine > 0 then parts[#parts + 1] = Fmt(Format.You(me, L["{You} died %s"]), Times(mine)) end
         if theirs > 0 then
             local name = ns.Characters.Name(guid) or L["They"]
-            parts[#parts + 1] = Fmt(mine > 0 and L["%1$s %2$s"] or L["%1$s died %2$s"], name, Times(theirs))
+            parts[#parts + 1] = Fmt(mine > 0 and L["%1$s %2$s##name and times"] or L["%1$s died %2$s"], name, Times(theirs))
         end
         local text = Join(parts)
         table.insert(full, 1, text)

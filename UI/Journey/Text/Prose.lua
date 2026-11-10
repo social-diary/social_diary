@@ -177,11 +177,12 @@ local function Flights(e)
             ids[name] = seg.mapID2
         end
     end
-    local list = List(names, { max = 3, shown = 2 })
-    if not list then return nil end
-    -- One place takes its own phrase; a list takes the plain preposition.
-    local mapID = #names == 1 and ids[names[1]] or nil
-    return Fmt(L["Flew %s.##zone"], ns.ZoneIn(mapID, list, "to"))
+    if #names == 0 then return nil end
+    -- One place takes its own phrase; a list takes the plain preposition
+    -- (or one per name, where a locale says so: ns.ZonesIn).
+    if #names == 1 then return Fmt(L["Flew %s.##zone"], ns.ZoneIn(ids[names[1]], names[1], "to")) end
+    local function Listed(them) return List(them, { max = 3, shown = 2 }) end
+    return Fmt(L["Flew %s.##zone"], ns.ZonesIn(names, "to", Listed))
 end
 
 -- "With Tester Testerson for four hours and Kaelith Dawnsong briefly."

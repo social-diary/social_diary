@@ -276,6 +276,15 @@ function Witnesses.Written(rec, mark)
         creature = rec.creature and { name = rec.creature, rank = rec.rank, bare = rec.bare == "yes" } or nil, written = rec, mark = mark }
 end
 
+-- A list of form fields without the ones a condition turned to false.
+local function Kept(list)
+    local kept = {}
+    for i = 1, #list do
+        if list[i] then kept[#kept + 1] = list[i] end
+    end
+    return kept
+end
+
 -- Rank 3 as a death and a close call have it, the moments a witness belongs to,
 -- though any card here outranks them all by being the player's (Recap's Rank).
 -- Full, not light: it puts a card in the margin. No list: inserted cards reach
@@ -288,10 +297,10 @@ ns.JourneyRecap.RegisterMoment("witnessed", { order = 25, entry = "witnessed", f
         group = "social",
         describe = function(rec)
             local w = Witnesses.Written(rec)
-            return Fmt(L["%1$s %2$s"], Witnesses.Name(w), Witnesses.Deed(w))
+            return Fmt(L["%1$s %2$s##name and deed"], Witnesses.Name(w), Witnesses.Deed(w))
         end,
         defaults = { deed = DEED_PLAIN },
-        fields = {
+        fields = Kept({
             { key = "name", type = "person", guid = "guid", label = L["Who"], hint = L["Anyone, in your diary or not"] },
             -- Short because a box and its word have 86 px on the form
             -- (CardSheet's SHEET.toggle); "saw you die" would run into the next.
@@ -300,9 +309,12 @@ ns.JourneyRecap.RegisterMoment("witnessed", { order = 25, entry = "witnessed", f
             { key = "creature", type = "text", label = L["Creature"] },
             -- Only for how the card names it: ticked, "from Hogger" and not "from a
             -- Hogger" (Text.KillerName). The user's in place of a rank, 2 Nov.
-            { key = "bare", type = "choice", values = { "yes" }, label = L["Article"],
-                names = { yes = L["Disable (\"A Hogger\")"] } },
+            -- Left out where a locale names a creature without one
+            -- (grammar.NO_ARTICLE): the box would change nothing there.
+            not ns.Locale.grammar.NO_ARTICLE
+                and { key = "bare", type = "choice", values = { "yes" }, label = L["Article"],
+                    names = { yes = L["Disable (\"A Hogger\")"] } } or false,
             { key = "pct", type = "number", min = 0, max = 100, label = L["Health left"],
                 hint = L["%, if they saved you"] },
-        },
+        }),
     } })

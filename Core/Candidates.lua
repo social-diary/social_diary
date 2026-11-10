@@ -126,10 +126,19 @@ end
 -- to one of the user's; whatever a feature's own kind says
 -- (Features/<Name>/).
 
+-- The kinds without a `reason`, whole: a row's type is the code's own
+-- word and no reader's ("whisper_in"), so a locale names each.
+local RECENT = {
+    whisper_in = L["recent whisper_in"], whisper_out = L["recent whisper_out"], say = L["recent say"],
+    yell = L["recent yell"], party = L["recent party"], trade = L["recent trade"],
+    group_join = L["recent group_join"], group_leave = L["recent group_leave"], level_up = L["recent level_up"],
+}
+
 local function GatherBuffer(add, now)
     local recent = ns.Interactions.Since(now - RECENT_WINDOW)
     for i = 1, #recent do
-        add(recent[i].guid, ns.Rows.Get(recent[i].type).reason or ns.Fmt(L["recent %s"], recent[i].type))
+        local kind = recent[i].type
+        add(recent[i].guid, ns.Rows.Get(kind).reason or RECENT[kind] or ns.Fmt(L["recent %s"], kind))
     end
 end
 

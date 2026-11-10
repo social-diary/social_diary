@@ -234,8 +234,17 @@ here.
   `Format.Nth(n, words)` (`UI/Words/Format.lua`), with a word list per noun
   counted (`Format.NTH_MATCH`, or a file's own with its own context,
   `L["first##death"]`): an ordinal takes its noun's gender and case in
-  most languages. Past the list it is the number's, `Format.Ordinal(n)`
-  ("13th"; a locale's `grammar.Ordinal`).
+  most languages. Past the list it is the number's, `Format.Ordinal(n,
+  context)` ("13th"; a locale's `grammar.Ordinal`, which takes the list's
+  `context`, "match" or "death", for the noun's gender).
+- **Dates, times and figures go through `Format`**, never `date("%H:%M")`
+  or `%.1f` in a sentence: `Format.Day(n)` for a date's day,
+  `Format.Clock(time)`, `Format.Decimal(n, places)`; a column in chat is
+  padded with `Format.Pad` (it counts characters). A list of places after
+  one preposition is `ns.ZonesIn(names, role, List)`.
+- **A shared template says what it joins**: `L["%1$s %2$s##name and deed"]`,
+  never a bare `L["%1$s %2$s"]`; a translation orders and joins each use
+  its own way.
 - **Several counts in one line** are a plural each, set in a template:
   `Fmt(L["%1$s, %2$s##board row"], ns.Plural(a, ...), ns.Plural(b, ...))`.
 - **One English word, two meanings**: add a context, `L["May##short"]`;

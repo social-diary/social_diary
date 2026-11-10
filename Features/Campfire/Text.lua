@@ -65,7 +65,7 @@ function Campfire.Tips(fires, now)
         end
     end
     local lines = {}
-    if places[1] then lines[1] = Capital(ns.ZoneIn(nil, List(places))) end
+    if places[1] then lines[1] = Capital(ns.ZonesIn(places, "in", List)) end
     lines[#lines + 1] = Foot(ts, lo, hi, now)
     local title = Capital(Campfire.WORDS)
     if #fires > 1 then title = Fmt(L["Sat by a campfire %s##times"], ns.UI.Format.Times(#fires)) end
