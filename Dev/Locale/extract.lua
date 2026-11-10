@@ -101,6 +101,7 @@ function M.Locale(root, id)
     ns.Locale = {
         id = id, grammar = {},
         Is = function(other) return other == id end,
+        Offer = function() end,   -- a locale's Grammar.lua names itself first
         Add = function(other, list)
             if other ~= id then return false end
             for k, v in pairs(list) do words[k] = v end
