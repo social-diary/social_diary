@@ -60,7 +60,9 @@ function Entry.Meta(guid, draft)
     if draft then return "  " .. count end
     local place = entry.addedContext and entry.addedContext.zone
     local day = Format.DayMonth(entry.addedAt, ns.Now())
-    if place then return Fmt(L["Added %1$s in %2$s  ·  %3$s"], day, place, count) end
+    if place then
+        return Fmt(L["Added %1$s %2$s  ·  %3$s##zone"], day, ns.ZoneIn(entry.addedContext.mapID, place), count)
+    end
     return Fmt(L["Added %1$s  ·  %2$s"], day, count)
 end
 

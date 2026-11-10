@@ -50,6 +50,21 @@ local function OneAlone(G)
     return true
 end
 
+Section("zones and dungeons")
+Eq(ns.ZoneIn(nil, "The Barrens"), "in The Barrens", "a zone takes 'in' by default")
+Eq(ns.ZoneIn(nil, "Durotar", "from"), "from Durotar", "a role picks the preposition")
+Eq(ns.DungeonIn(36, "The Deadmines", "into"), "into The Deadmines", "a dungeon the same way")
+do
+    local G = ns.Locale.grammar
+    local zones, place = G.ZONES, G.PLACE
+    G.ZONES = { [1413] = { ["in"] = "im Brachland" } }
+    G.PLACE = { ["in"] = "in %s" }
+    Eq(ns.ZoneIn(1413, "Brachland"), "im Brachland", "a locale's own phrase for a zone")
+    Eq(ns.ZoneIn(1411, "Durotar"), "in Durotar", "else the locale's default")
+    Eq(ns.ZoneIn(1413, "Brachland", "near"), "near Brachland", "a role a locale left out falls back to English")
+    G.ZONES, G.PLACE = zones, place
+end
+
 local keys, order = Extract.Keys(".")
 local en = Extract.Locale(".", "enUS")
 local function IsPlural(k) return k:find("##plural$") ~= nil end
@@ -60,13 +75,20 @@ local function PluralSignature(k)
     return (Extract.Signature(forms[#forms])), Extract.PositionalOf(forms[#forms])
 end
 
+-- WoW's own "|" escapes, which a plural value can't hold: colour, textures,
+-- links, atlases, the client's own plural (|4).
+local function Escaped(text)
+    return text:find("|c%x%x%x%x%x%x%x%x") or text:find("|cn") or text:find("|r") or text:find("|T.-|t")
+        or text:find("|H.-|h") or text:find("|A:") or text:find("|K") or text:find("|n") or text:find("|4")
+end
+
 Section("plural keys")
 local badKey = {}
 for _, k in ipairs(order) do
     if IsPlural(k) then
         local forms = ns.Locale.Forms(ns.Locale.English(k))
         local sig = PluralSignature(k)
-        local ok = #forms == 2 and not k:find("|[cCrRtTnHhAaKk4]") and sig ~= ""
+        local ok = #forms == 2 and not Escaped(k) and sig ~= ""
         for _, f in ipairs(forms) do
             local s = Extract.Signature(f)
             if s ~= sig and s ~= "" then ok = false end
@@ -74,6 +96,37 @@ for _, k in ipairs(order) do
         if not ok then badKey[#badKey + 1] = k end
     end
 end
+-- No fragments: a key is a whole unit. One with a space at an edge is
+-- glued to something; a bare preposition or conjunction means nothing alone.
+local BARE = {}
+for w in ("for to in from at with on near of by and or into through around over than"):gmatch("%S+") do
+    BARE[w] = true
+end
+-- The prepositions a zone phrase brings itself. "to", "from" and "at" are
+-- left out: "died to %s" and "level %s to %s" name no place. ADVERB keys
+-- keep a word that belongs to the verb ("flew in", then "from Durotar").
+local PLACE_WORDS = { "in", "into", "through", "near", "around" }
+local ADVERB = { ["Flew in %s##zone"] = true }
+-- A context that marks a word as a whole unit on screen: "on##switch" is a
+-- status (on / off), not the preposition.
+local WHOLE = { switch = true }
+local edged, bare, glued = {}, {}, {}
+for _, k in ipairs(order) do
+    local text = ns.Locale.English(k)
+    if text:find("^%s") or text:find("%s$") then edged[#edged + 1] = ("%q (%s)"):format(k, keys[k]) end
+    if BARE[text:lower()] and not WHOLE[k:match("##(.*)$") or ""] then bare[#bare + 1] = ("%q (%s)"):format(k, keys[k]) end
+    if k:find("##zone") and not ADVERB[k] then
+        for _, word in ipairs(PLACE_WORDS) do
+            if text:find("%f[%a]" .. word .. " %%%d*%$?s") then glued[#glued + 1] = k; break end
+        end
+    end
+end
+Check(#edged == 0, "keys that begin or end with a space are fragments; write the whole sentence: "
+    .. table.concat(edged, " | "))
+Check(#bare == 0, "keys that are a bare preposition or conjunction are fragments: " .. table.concat(bare, " | "))
+Check(#glued == 0, "a ##zone key takes the whole phrase (ns.ZoneIn / ns.DungeonIn), not a preposition before it: "
+    .. table.concat(glued, " | "))
+
 Check(#badKey == 0, "plural keys need two English forms that take the same values, the other form the count, "
     .. "and no WoW | escapes: " .. table.concat(badKey, " | "))
 

@@ -209,7 +209,20 @@ here.
   ("a fight|%d fights") only where it means exactly 1, so translations to
   French or Russian keep the number in every form. No `|cff..|r` inside a
   plural value: colour goes round the call. The values after the text
-  fill the form; with none, the count does.
+  fill the form; with none, the count does. A key may also carry a
+  context before it (`"...##zone##plural"`). "twice" is a word, not a
+  plural form: `Format.Times` asks `L["twice"]` for 2, and a locale with no
+  such word writes `""` there, so 2 takes the plural. Lists past their
+  limit take `Format.MORE` / `Format.OTHERS` ("A, B and 3 others").
+- **A zone or dungeon after a preposition is one phrase**:
+  `Fmt(L["Found %1$s %2$s##zone"], item, ns.ZoneIn(mapID, zone))` gives
+  "Found Linen Cloth in The Barrens"; `ns.DungeonIn(instanceID, name,
+  role)` the same for a dungeon. The locale writes the phrase ("im
+  Brachland", "в Дуротаре"), so a `##zone` template never has its own
+  preposition before the place. `role` picks it: "in" (default), "to",
+  "from", "into", "through", "near", "at", "around". A subzone has no id:
+  never put it after a preposition; let it follow a middle dot or comma
+  ("· Crossroads, The Barrens").
 - **One English word, two meanings**: add a context, `L["May##short"]`;
   the English shown is the part before `##`.
 - **Never translate data**: saved values, table keys, event and setting

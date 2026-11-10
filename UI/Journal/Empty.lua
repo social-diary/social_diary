@@ -202,14 +202,9 @@ local function Refresh()
     local w = welcome
     local days = J.PencilDays()
     local n = ns.People.PencilledCount()
-    local text
-    if n == 0 then
-        text = Fmt(L["Everyone you cross paths with is saved for %s."], days)
-    elseif n == 1 then
-        text = Fmt(L["Everyone you cross paths with is saved for %s. One is there already."], days)
-    else
-        text = Fmt(L["Everyone you cross paths with is saved for %1$s. %2$d are there already."], days, n)
-    end
+    -- Two sentences: the second counts.
+    local text = Fmt(L["Everyone you cross paths with is saved for %s."], days)
+    if n > 0 then text = text .. " " .. ns.Plural(n, L["One is there already.|%d are there already.##plural"]) end
     w.laterText:SetText(text)
     w.key:Refresh()
     if w.book then w.book:Refresh() end

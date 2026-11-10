@@ -125,6 +125,13 @@ local WORDS = {
 }
 DungeonPage.WAY.WORDS = WORDS
 
+-- The points left out, as a list is written: "4, 5, 6".
+local function Listed(items)
+    local text = items[1] and tostring(items[1]) or ""
+    for i = 2, #items do text = ns.Fmt(L["%1$s, %2$s##list"], text, items[i]) end
+    return text
+end
+
 --------------------------------------------------------------------------
 -- The pieces, made the first time a run's map is laid
 --------------------------------------------------------------------------
@@ -952,7 +959,7 @@ function DungeonPage.WayClick(view, button)
         local gap = pen:Gap()
         if gap and hit.i >= gap then
             local dropped = pen:Connect(hit.i)
-            local said = dropped and (#dropped > 0 and WORDS.joinedLeft:format(table.concat(dropped, L[", "]))
+            local said = dropped and (#dropped > 0 and WORDS.joinedLeft:format(Listed(dropped))
                 or WORDS.joined) or nil
             return Changed(view, said)
         end

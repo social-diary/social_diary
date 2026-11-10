@@ -27,13 +27,13 @@ end
 local function Span(seconds)
     local days = seconds / ns.DAY
     if days < 1 then return Spoken(seconds) end
-    local function Of(n, one, many)
+    local function Of(n, forms)
         n = math.max(1, math.floor(n + 0.5))
-        return n == 1 and one or Fmt(many, Many(n))
+        return ns.Plural(n, forms, Many(n))
     end
-    if days < 13.5 then return Of(days, L["a day"], L["%s days"]) end
-    if days < 60 then return Of(days / 7, L["a week"], L["%s weeks"]) end
-    return Of(days / 30, L["a month"], L["%s months"])
+    if days < 13.5 then return Of(days, L["a day|%s days##plural"]) end
+    if days < 60 then return Of(days / 7, L["a week|%s weeks##plural"]) end
+    return Of(days / 30, L["a month|%s months##plural"])
 end
 
 -- A finale in a few words, for a plate's caption: "the end of “Crown of
@@ -53,7 +53,10 @@ function QuestFinales.Sentence(f)
     if start and start.t and f.t then
         local zone = MapName(start.mapID)
         local span = Span(f.t - start.t)
-        if zone then return Fmt(L["The end of %1$s, a chain of %2$s begun in %3$s %4$s before."], title, Many(n), zone, span) end
+        if zone then
+            return Fmt(L["The end of %1$s, a chain of %2$s begun %3$s %4$s before.##zone"], title, Many(n),
+                ns.ZoneIn(start.mapID, zone), span)
+        end
         return Fmt(L["The end of %1$s, a chain of %2$s begun %3$s before."], title, Many(n), span)
     end
     return Fmt(L["The end of %1$s, a chain of %2$s."], title, Many(n))
@@ -71,12 +74,13 @@ end
 -- chain was, where and when it began, when it ended.
 function QuestFinales.Tip(f, now)
     local lines = {}
-    if (f.n or 0) > 1 then lines[#lines + 1] = Fmt(L["A chain of %d quests"], f.n) end
+    if (f.n or 0) > 1 then lines[#lines + 1] = Fmt(L["A chain of %s"], ns.Plural(f.n, L["%d quest|%d quests##plural"])) end
     local start = f.started
     if start and start.t then
         local zone = MapName(start.mapID)
         local at = ns.UI.Format.At(start.t, now)
-        lines[#lines + 1] = zone and Fmt(L["Begun in %1$s, %2$s"], zone, at) or Fmt(L["Begun %s"], at)
+        lines[#lines + 1] = zone and Fmt(L["Begun %1$s, %2$s##zone"], ns.ZoneIn(start.mapID, zone), at)
+            or Fmt(L["Begun %s"], at)
     end
     lines[#lines + 1] = When(f.t, f.level, now)
     return Capital(QuestFinales.Words(f)), lines
@@ -92,7 +96,7 @@ Text.RegisterLines("finale", { at = 50, lines = function(e) return QuestFinales.
 -- cap (40); its tail (`at` 20) after the finds (10), before the caps (30).
 local function Ended(finales)
     return #finales == 1 and QuestFinales.Words(finales[1])
-        or Fmt(L["%s chains finished"], NUMBER[#finales] or tostring(#finales))
+        or ns.Plural(#finales, L["%s chain finished|%s chains finished##plural"], NUMBER[#finales] or tostring(#finales))
 end
 
 Text.RegisterCaption("finale", {

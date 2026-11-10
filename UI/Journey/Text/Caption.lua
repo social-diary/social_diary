@@ -40,7 +40,7 @@ function Text.PlateHeading(plate, now, before)
         and ns.DayStart(plate.t) == ns.DayStart(before.t) then
         local later = Fmt(L["%s later"], Spoken(plate.t - before.t))
         if plate.mapID == before.mapID then return Capital(later), Capital(later), nil end
-        return Fmt(L["%1$s, in %2$s"], Capital(later), zone), zone, later
+        return Fmt(L["%1$s, %2$s##zone"], Capital(later), ns.ZoneIn(plate.mapID, zone)), zone, later
     end
     local day = PlateDay(plate.t, now)
     return Fmt(L["%1$s, %2$s"], zone, day), zone, day
@@ -128,14 +128,14 @@ local LEADS = {
     -- Who you were with that no note beside the plate names.
     { at = 10, key = "people", say = function(c)
         if #c.people == 0 then return nil end
-        return Fmt(L["With %s"], List(c.people, { max = 3, shown = 2, more = L["others"] }))
+        return Fmt(L["With %s"], List(c.people, { max = 3, shown = 2, more = ns.UI.Format.OTHERS }))
     end },
     -- Fights with strangers no note tells: "A fight, won", "Two fights".
     { at = 45, key = "fights", say = function(c)
         local strangers = c.strangers
         if #strangers == 0 then return nil end
         if #strangers == 1 then return strangers[1].outcome == "won" and L["A fight, won"] or L["A fight, lost"] end
-        return Fmt(L["%s fights"], Capital(NUMBER[#strangers] or tostring(#strangers)))
+        return ns.Plural(#strangers, L["%s fight|%s fights##plural"], Capital(NUMBER[#strangers] or tostring(#strangers)))
     end },
     { at = 100, key = "arrive", say = function(c)
         local arrive = c.of.arrive
@@ -143,13 +143,14 @@ local LEADS = {
         if c.began and arrive.t <= c.began then return L["Where the diary began"] end
         local zone = MapName(c.plate.mapID)
         if not zone then return L["Into a new zone for the first time"] end
-        return Fmt(L["Into %s for the first time"], zone)
+        return Capital(Fmt(L["%s for the first time##zone"], ns.ZoneIn(c.plate.mapID, zone, "into")))
     end },
     { at = 110, key = "dungeon", say = function(c)
         local dungeon = c.of.dungeon
         if not dungeon then return nil end
         if not dungeon.name then return L["The way into a dungeon"] end
-        return Fmt(L["The way into %s"], dungeon.name)
+        local id = (dungeon.seg and dungeon.seg.instanceID) or (dungeon.visit and dungeon.visit.instanceID)
+        return Fmt(L["The way %s##zone"], ns.DungeonIn(id, dungeon.name, "into"))
     end },
     { at = 120, key = "stay", say = function(c)
         local stay = c.of.stay
@@ -315,10 +316,9 @@ function Text.PlateCaption(plate, began, said)
     end
     -- The tail is a list, joined as a list is ("X, and Y"; "X, Y, and Z"):
     -- the lead and each phrase after it are whole units.
-    if #tail == 1 then
-        text = text .. L[", and "] .. tail[1]
-    elseif #tail > 1 then
-        text = text .. L[", "] .. table.concat(tail, L[", "], 1, #tail - 1) .. L[", and "] .. tail[#tail]
+    -- Each phrase after the words before it, the last with "and".
+    for i, words in ipairs(tail) do
+        text = Fmt(i == #tail and L["%1$s, and %2$s##list"] or L["%1$s, %2$s##list"], text, words)
     end
     -- No second full stop after one a translation's abbreviation brings
     -- ("20 Min."); the English words never end in one.

@@ -27,17 +27,17 @@ local NUMBER = { L["one"], L["two"], L["three"], L["four"], L["five"], L["six"],
     L["ten"] }
 
 local function Capital(text)
-    if G.Capital then return G.Capital(text) end
-    return (text:gsub("^%l", string.upper))
+    return G.Capital(text)
 end
 Words.Capital = Capital
 
 -- "once", "twice", "three times" ... "ten times", then "11 times".
+-- English's word for two is asked for on its own (it is no plural
+-- category); the rest is the count's plural (ns.Plural).
 local function Times(n)
-    if n == 1 then return L["once"] end
-    if n == 2 then return L["twice"] end
-    if NUMBER[n] then return Fmt(L["%s times##words"], NUMBER[n]) end
-    return Fmt(L["%d times"], n)
+    if n == 2 and L["twice"] ~= "" then return L["twice"] end
+    if NUMBER[n] then return ns.Plural(n, L["once|%s times##plural"], NUMBER[n]) end
+    return ns.Plural(n, L["once|%d times##plural"])
 end
 
 -- "Wiped once", "Wiped twice", "Wiped three times".
@@ -127,10 +127,9 @@ function Words.Facts(visit, e)
             others = others + 1
         end
     end
-    if others == 1 then
-        lines[#lines + 1] = L["One item for someone else"]
-    elseif others > 1 then
-        lines[#lines + 1] = Capital(Fmt(L["%s items for others"], NUMBER[others] or tostring(others)))
+    if others > 0 then
+        lines[#lines + 1] = Capital(ns.Plural(others, L["One item for someone else|%s items for others##plural"],
+            NUMBER[others] or tostring(others)))
     end
     return lines
 end
@@ -226,13 +225,18 @@ end
 -- strip's heading: "[A]", "[A] and [B]", "[A], [B] and [C]". Returns the
 -- heading and each item's piece of it, { text, from } (`from` the heading
 -- before it), so each link can take the mouse on its own.
+-- Each link joins the heading as a list's next item ("%1$s, %2$s", the
+-- last "%1$s and %2$s"); `from` is the heading up to where it lands.
+-- (Not "\1": ns.Fmt keeps a template's "%%" in that while it works.)
+local SLOT = "\2"
 function Words.Items(links)
     local parts, text = {}, ""
     for i, link in ipairs(links) do
-        local sep = i == 1 and "" or (i == #links and L[" and "] or L[", "])
-        text = text .. sep
-        parts[i] = { text = link, from = text }
-        text = text .. link
+        local joined = i == 1 and SLOT
+            or Fmt(i == #links and L["%1$s and %2$s"] or L["%1$s, %2$s##list"], text, SLOT)
+        local before, after = joined:match("^(.-)\2(.*)$")
+        parts[i] = { text = link, from = before }
+        text = before .. link .. after
     end
     return text, parts
 end
@@ -245,13 +249,15 @@ function Words.DroppedFor(visit, guids)
 end
 
 -- "and 2 more", under the notes there was no room for.
-function Words.More(n) return Fmt(L["and %d more"], n) end
+function Words.More(n) return ns.Plural(n, L["and %d more|and %d more##plural"]) end
 
 -- A near wipe (Core/DungeonRun.lua's NEAR): "Nearly wiped", and under it
 -- how many went down, "two went down" (the diary is not in the group, so
 -- no "us").
 Words.NEARLY = L["Nearly wiped"]
-function Words.WentDown(n) return Fmt(L["%s went down"], NUMBER[n] or tostring(n)) end
+function Words.WentDown(n)
+    return ns.Plural(n, L["%s went down|%s went down##plural"], NUMBER[n] or tostring(n))
+end
 
 -- A level-up on the map: the bare level scrawled by its star ("22"), as
 -- the plates' level pins, and its tooltip, "Level 22" over who, as the
@@ -287,7 +293,8 @@ function Words.Snagged(visit, guid)
 end
 function Words.Versus(mine, theirs) return Fmt(L["%1$d against %2$d"], mine, theirs) end
 function Words.Finally(total)
-    return Fmt(L["Finally! After %s drops, it's yours"], NUMBER[total] or tostring(total)), L["Finally!"]
+    return ns.Plural(total, L["Finally! After %s drop, it's yours|Finally! After %s drops, it's yours##plural"],
+        NUMBER[total] or tostring(total)), L["Finally!"]
 end
 function Words.Rolled(visit, guid, roll)
     if Mine(visit, guid) then return Fmt(Format.You(guid, L["{You} rolled a %d"]), roll) end

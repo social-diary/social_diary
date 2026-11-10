@@ -74,7 +74,6 @@ local PARAPHS = { Style.LAPIS, Style.RUBRIC }
 -- (`inset`) to `right` px short of the row's end.
 local NOTE_SLIP = { top = 3, below = 6, most = 2, inset = 2, right = 4 }
 
-local Count = Format.Count
 local IsEpisode, OtherMembers = ns.UI.TimelineText.IsEpisode, ns.UI.TimelineText.OtherMembers
 local DayLabel = Format.DayLabel
 
@@ -199,9 +198,9 @@ local function TimelineLines(items, guid)
             local aside = Format.Duration(item.seconds)
             if visit.difficulty and visit.difficulty ~= "Normal" then aside = aside .. "  ·  " .. visit.difficulty end
             local losses = {}
-            if (visit.deaths or 0) > 0 then losses[#losses + 1] = Count(visit.deaths, L["death"], L["deaths"]) end
+            if (visit.deaths or 0) > 0 then losses[#losses + 1] = ns.Plural(visit.deaths, L["%d death|%d deaths##plural"]) end
             local wipes = ns.DungeonRun.Wipes(visit)
-            if wipes > 0 then losses[#losses + 1] = Count(wipes, L["wipe"], L["wipes"]) end
+            if wipes > 0 then losses[#losses + 1] = ns.Plural(wipes, L["%d wipe|%d wipes##plural"]) end
             lines[#lines + 1] = { item = item, when = when, text = visit.name or L["An instance"],
                 font = FONT.runTitle, depth = item.depth, full = full, height = VISIT.height,
                 visit = { visit = visit, aside = aside, losses = table.concat(losses, "  ·  "),

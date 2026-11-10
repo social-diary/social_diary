@@ -21,9 +21,8 @@ local function Foes(call)
     local name = Text.KillerName(call)
     if not name then return nil end
     local more = (call.foes or 1) - 1
-    if more == 1 then return Fmt(L["%s and another"], name) end
-    if more > 1 then return Fmt(L["%1$s and %2$s others"], name, NUMBER[more] or tostring(more)) end
-    return name
+    if more < 1 then return name end
+    return Fmt(L["%1$s and %2$s"], name, ns.Plural(more, L["another|%s others##plural"], NUMBER[more] or tostring(more)))
 end
 
 -- A close call in a sentence: "Got away from a Plainstrider with 6%
@@ -82,8 +81,8 @@ function CloseCalls.FoeTip(call, now)
     lines[#lines + 1] = Fmt(L["Left you with %s%% health"], tostring(call.pct or 0))
     local more = (call.foes or 1) - 1
     if more > 0 then
-        lines[#lines + 1] = more == 1 and L["One more was in the fight"]
-            or Fmt(L["%s more were in the fight"], Capital(NUMBER[more] or tostring(more)))
+        lines[#lines + 1] = ns.Plural(more, L["One more was in the fight|%s more were in the fight##plural"],
+            Capital(NUMBER[more] or tostring(more)))
     end
     lines[#lines + 1] = When(call.t, call.level, now)
     return call.name, lines
@@ -105,8 +104,8 @@ function CloseCalls.Lines(e)
     for i = 1, math.min(#calls, PROSE.most) do parts[#parts + 1] = CloseCalls.Sentence(calls[i]) end
     local more = #calls - PROSE.most
     if more > 0 then
-        parts[#parts + 1] = more == 1 and L["And one more close call."] or Fmt(L["And %s more close calls."],
-            NUMBER[more] or tostring(more))
+        parts[#parts + 1] = Fmt(L["And %s.##more"], ns.Plural(more,
+            L["one more close call|%s more close calls##plural"], NUMBER[more] or tostring(more)))
     end
     if #parts == 0 then return nil end
     return table.concat(parts, " ")
@@ -135,7 +134,7 @@ local function Calls(calls, c)
         local name = not c.said.close and Text.KillerName(calls[1])
         return name and Fmt(L["a close call with %s"], name) or L["a close call"]
     end
-    return Fmt(L["%s close calls"], NUMBER[#calls] or tostring(#calls))
+    return ns.Plural(#calls, L["%s close call|%s close calls##plural"], NUMBER[#calls] or tostring(#calls))
 end
 
 Text.RegisterCaption("close", {

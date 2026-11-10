@@ -578,7 +578,7 @@ Eq(Sorted("subzone", -1), "Dora Wick,Emil Vane", "by subzone reversed, none stil
 ns.Diary.Add(S1, { source = "nearby",
     where = { zone = "Mulgore", subZone = sby[S1].subZone, mapID = 1412, x = 0.1, y = 0.2 } })
 Eq(ns.Characters.Get(S1).seen.subZone, "Bloodhoof Village", "last seen lost the subzone on add")
-Eq(ns.UI.Format.SeenText(ns.Characters.Get(S1).seen):match(" in (.+)$"), "Bloodhoof Village, Mulgore",
+Eq(ns.UI.Format.SeenText(ns.Characters.Get(S1).seen):match(" · (.+)$"), "Bloodhoof Village, Mulgore",
     "the profile line does not name the subzone")
 ns.Characters.Forget(S1)
 ns.Characters.Forget(S2)

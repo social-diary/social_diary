@@ -406,13 +406,9 @@ function ns.UI.MapSheet.New(parent)
             Place(under[1], left + (under[2] - 1) * KEY.step, y - KEY.swatch / 2, KEY.swatch, KEY.swatch)
         end
         local n = total or 0
-        local legend
-        if view.everyone then
-            legend = n == 1 and L["Your diary was seen here %d time"] or L["Your diary was seen here %d times"]
-        else
-            legend = n == 1 and L["Seen here %d time"] or L["Seen here %d times"]
-        end
-        view.legend:SetText(any and Fmt(legend, n) or "")
+        local legend = view.everyone and L["Your diary was seen here %d time|Your diary was seen here %d times##plural"]
+            or L["Seen here %d time|Seen here %d times##plural"]
+        view.legend:SetText(any and ns.Plural(n, legend) or "")
         PlaceText(view.legend, left + 2 * KEY.step + KEY.swatch + 6, y)
 
         local record = view.marker:IsShown() and ns.Characters.Get(view.guid) or nil

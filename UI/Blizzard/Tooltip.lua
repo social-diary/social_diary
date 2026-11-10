@@ -28,12 +28,6 @@ local function NoteLine(note)
     return line .. "\226\128\166"
 end
 
--- "twice", "3 times". Never "once": that line is not shown.
-local function Times(count)
-    if count == 2 then return L["twice"] end
-    return Fmt(L["%d times"], count)
-end
-
 -- REU-6: "Seen N times, last ...", off by default. Only what came before
 -- this encounter (Sightings.SeenBefore): "last today at <now>" would say
 -- nothing, and a first meeting has no line at all.
@@ -49,7 +43,10 @@ function ns.UI.SeenLine(guid, now)
     -- A single earlier sighting is too thin to be worth a line.
     if count < 2 then return nil, "seen only once before" end
 
-    return Fmt(L["Seen %1$s  ·  last %2$s"], Times(count), Format.At(last, now))
+    -- "twice" is a word English has, not a plural form: its own line.
+    local at = Format.At(last, now)
+    if count == 2 then return Fmt(L["Seen twice  ·  last %s"], at) end
+    return ns.Plural(count, L["Seen %1$d time  ·  last %2$s|Seen %1$d times  ·  last %2$s##plural"], count, at)
 end
 
 local function SeenLine(tooltip, guid)
@@ -85,8 +82,8 @@ local function OnUnitTooltip(tooltip, data)
     end
 
     if s.timesMet > 0 then
-        local met = s.timesMet == 1 and Fmt(L["%d time"], s.timesMet) or Fmt(L["%d times"], s.timesMet)
-        tooltip:AddLine(Fmt(L["Met %1$s  ·  last %2$s"], met, Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
+        tooltip:AddLine(ns.Plural(s.timesMet, L["Met %1$d time  ·  last %2$s|Met %1$d times  ·  last %2$s##plural"],
+            s.timesMet, Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
     else
         -- Before this encounter, as SeenLine: hovering them has just moved
         -- `seen` to now.

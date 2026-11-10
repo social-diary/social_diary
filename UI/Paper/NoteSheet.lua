@@ -234,7 +234,7 @@ function ns.UI.NoteSheet.New(parent)
         K.PlaceText(view.title, M, SHEET.title)
         local note = view.editing
         local day = note and ns.UI.Format.DayMonth(note.time, ns.Now())
-        view.written:SetText(note and (note.zone and Fmt(L["Written %1$s in %2$s"], day, note.zone)
+        view.written:SetText(note and (note.zone and Fmt(L["Written %1$s %2$s##zone"], day, ns.ZoneIn(note.mapID, note.zone))
             or Fmt(L["Written %s"], day)) or "")
         K.PlaceText(view.written, W - M, SHEET.title, "RIGHT")
         K.PlaceText(view.aboutLabel, M, SHEET.about)

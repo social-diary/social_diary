@@ -68,6 +68,37 @@ Every string a player reads follows the house voice in
 The suite asserts some copy. If you change a string, search `tests/` for it
 and update the test.
 
+## Translating
+
+Every string a player reads goes through `L["English text"]`; the English
+is the key and the fallback. The rules for writing them (whole sentences,
+positional `%1$s`, `ns.Plural` for counts, zones through `ns.ZoneIn`) are in
+`/copywriter` §7.
+
+- **Where a locale lives:** `Locales/<id>/` (`deDE`, `frFR`, `ruRU`), a
+  file per area of the addon, each listed in `social_diary.toc` after
+  `Locales/enUS.lua`. Each file starts `ns.Locale.Add("<id>", { ... })`.
+  Grammar the templates can't carry (plural rule, capitals, ordinals, the
+  zone and dungeon phrases) goes in `Locales/<id>/Grammar.lua`, replacing
+  the defaults in `Locales/Locale.lua`.
+- **After changing a string in the code,** regenerate the master list:
+
+  ```sh
+  luajit Dev/Locale/extract.lua
+  ```
+
+  `--check` only says whether it is up to date; `--missing <id>` lists the
+  keys a locale has no words for yet.
+- **Tests:** `luajit tests/run.lua` (its `locale` file checks every locale
+  in the TOC: no missing or unknown keys, the same placeholders, one plural
+  form per category), then the whole suite under the locale:
+
+  ```sh
+  luajit tests/run.lua --locale deDE
+  ```
+
+  It must end with `NO ADDON ERRORS UNDER deDE`.
+
 ## UI conventions
 
 The journal is an open book on parchment, not a window. In brief:

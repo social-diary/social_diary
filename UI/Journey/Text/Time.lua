@@ -44,7 +44,7 @@ local function Spoken(seconds)
     if m < 8 then return L["a few minutes"] end
     if m < 25 or (m >= 38 and m < 53) then
         local n = 5 * math.floor(m / 5 + 0.5)
-        return Fmt(L["%s minutes"], WORDS[n] or Glue(tostring(n)))
+        return ns.Plural(n, L["%s minute|%s minutes##plural"], WORDS[n] or Glue(tostring(n)))
     end
     if m < 38 then return L["half an hour"] end
     if m < 75 then return L["an hour"] end
@@ -52,7 +52,9 @@ local function Spoken(seconds)
     local halves = math.floor(m / 30 + 0.5)
     local whole = math.floor(halves / 2)
     local name = WORDS[whole] or Glue(tostring(whole))
-    return Fmt(halves % 2 == 1 and L["%s and a half hours"] or L["%s hours"], name)
+    -- The hours agree with the whole number said ("два с половиной часа").
+    if halves % 2 == 1 then return ns.Plural(whole, L["%s and a half hour|%s and a half hours##plural"], name) end
+    return ns.Plural(whole, L["%s hour|%s hours##plural"], name)
 end
 Text.Spoken = Spoken
 

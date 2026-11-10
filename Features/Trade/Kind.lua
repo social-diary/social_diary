@@ -67,6 +67,6 @@ ns.Rows.Register("trade", { proximity = true, plate = 7, opens = true, meeting =
         if c.received then parts[#parts + 1] = Fmt(L["got %s"], Items(c.received)) end
         if c.moneyReceived then parts[#parts + 1] = Fmt(L["got %s"], ns.UI.Format.Money(c.moneyReceived)) end
         if #parts == 0 then return L["Traded"] end
-        return Fmt(L["Traded: %s"], table.concat(parts, L["; "]))
+        return Fmt(L["Traded: %s"], ns.UI.TimelineText.Join(parts, L["%1$s; %2$s"]))
     end,
     icon = "trade" })

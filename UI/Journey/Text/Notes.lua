@@ -51,8 +51,7 @@ function Text.Note(e)
     if #text > NOTE.most then
         text = text:sub(1, NOTE.most - 2):gsub("[\192-\255][\128-\191]*$", ""):gsub("%s+$", "") .. "\226\128\166"
     end
-    local more = #e.notes > 1 and (#e.notes == 2 and L["And one more note."] or Fmt(L["And %d more notes."], #e.notes - 1))
-        or nil
+    local more = #e.notes > 1 and ns.Plural(#e.notes - 1, L["And one more note.|And %d more notes.##plural"]) or nil
     -- In the book's curly quotes, the reader's language's own.
     return Fmt(L["\226\128\156%s\226\128\157"], text), more
 end

@@ -103,7 +103,8 @@ local function ResolveArgument(text, unitFallback)
         if hits == 0 then
             ns.Print(L["no character called |cffffffff%s|r on record."], text)
         else
-            ns.Print(Fmt(L["|cffffffff%1$s|r matches %2$d characters -- add the surname."], text, hits))
+            ns.Print(ns.Plural(hits, L["%1$s matches %2$d character -- add the surname.|%1$s matches %2$d characters -- add the surname.##plural"],
+                "|cffffffff" .. text .. "|r", hits))
         end
         return nil
     end
@@ -167,11 +168,7 @@ local function CommandList()
             ChatDay(entry.addedAt, true), tags))
     end
 
-    if #entries == 1 then
-        ns.Print(L["%d diary entry."], #entries)
-    else
-        ns.Print(L["%d diary entries."], #entries)
-    end
+    ns.Print(ns.Plural(#entries, L["%d diary entry.|%d diary entries.##plural"]))
 end
 
 -- PRV-3: any character, in the diary or not. Name only: forgetting whoever
@@ -222,23 +219,21 @@ local function SightingRecent(text)
             local entry = group[i]
             local row = entry.row
             -- Wide enough for "yesterday at 18:02" and "on 12 Sep at 18:02".
-            DEFAULT_CHAT_FRAME:AddMessage(Fmt(L["      %1$-22s lvl %2$-3s %3$-18s %4$s%5$s%6$s"],
+            DEFAULT_CHAT_FRAME:AddMessage("      " .. Fmt(L["%1$-22s lvl %2$-3s %3$-18s %4$s%5$s%6$s"],
                 ns.Characters.FullName(entry.guid) or entry.guid,
                 tostring(row.level or "?"), ns.UI.Format.At(ns.Sightings.Last(row), now), row.src or "",
                 row.hostile and ("  |cffc04040" .. L["hostile##chat"] .. "|r") or "",
                 ns.Diary.IsDiary(entry.guid) and ("  |cffffd100[" .. L["diary##chat tag"] .. "]|r") or ""))
         end
         if #group > 8 then
-            DEFAULT_CHAT_FRAME:AddMessage("      |cff808080" .. Fmt(L["and %d more##chat"], #group - 8) .. "|r")
+            DEFAULT_CHAT_FRAME:AddMessage("      |cff808080" .. ns.Plural(#group - 8, L["and %d more|and %d more##plural"]) .. "|r")
         end
     end
 
-    local one, oneHour = #list == 1, hours == 1
-    local template = one and (oneHour and L["%1$d character seen in the last %2$s hour."]
-            or L["%1$d character seen in the last %2$s hours."])
-        or (oneHour and L["%1$d characters seen in the last %2$s hour."]
-            or L["%1$d characters seen in the last %2$s hours."])
-    ns.Print(Fmt(template, #list, tostring(hours)))
+    -- Two counts: the hours are a phrase of their own ("24 hours"), in the
+    -- sentence that counts the characters.
+    ns.Print(ns.Plural(#list, L["%1$d character seen in the last %2$s.|%1$d characters seen in the last %2$s.##plural"],
+        #list, ns.Plural(hours, L["%s hour|%s hours##plural"], tostring(hours))))
 end
 
 local function SightingsOf(text)
@@ -266,16 +261,18 @@ local function SightingsOf(text)
     ns.Print(Fmt(template, name, summary.count,
         ChatDay(summary.first, true), ChatDay(summary.last, true) .. date(" %H:%M", summary.last),
         tostring(summary.levelMin or "?"), tostring(summary.levelMax or "?"), summary.hostile))
-    DEFAULT_CHAT_FRAME:AddMessage("   " .. table.concat(zones, L[", "]))
+    local joined = zones[1] or ""
+    for i = 2, #zones do joined = Fmt(L["%1$s, %2$s##list"], joined, zones[i]) end
+    DEFAULT_CHAT_FRAME:AddMessage("   " .. joined)
 
     local rows = ns.Sightings.For(guid)
     for i = #rows, math.max(1, #rows - 9), -1 do
         local row = rows[i]
-        DEFAULT_CHAT_FRAME:AddMessage(Fmt(L["   %1$s%2$s  %3$s%4$s  lvl %5$s  %6$s%7$s"],
+        DEFAULT_CHAT_FRAME:AddMessage("   " .. Fmt(L["%1$s%2$s  %3$s%4$s  lvl %5$s  %6$s%7$s"],
             ChatDay(row.time) .. date(" %H:%M", row.time),
             row.last and date("-%H:%M", row.last) or "      ",
-            (row.subZone and (row.subZone .. ", ") or "") .. RowZone(row),
-            row.x and Fmt(L[" (you at %1$.1f, %2$.1f)"], row.x * 100, row.y * 100) or "",
+            row.subZone and Fmt(L["%1$s, %2$s"], row.subZone, RowZone(row)) or RowZone(row),
+            row.x and (" " .. Fmt(L["(you at %1$.1f, %2$.1f)"], row.x * 100, row.y * 100)) or "",
             tostring(row.level or "?"), row.src or "",
             row.hostile and ("  |cffc04040" .. L["hostile##chat"] .. "|r") or ""))
     end
@@ -307,7 +304,7 @@ local function SightingCity(text)
     for _, city in ipairs(Capture.Cities()) do
         local key = city.key
         DEFAULT_CHAT_FRAME:AddMessage(("   %s %-8s %s%s"):format(
-            city.on and ("|cff40c040%-3s|r"):format(L["on##city"]) or ("|cff808080%-3s|r"):format(L["off##city"]),
+            city.on and ("|cff40c040%-3s|r"):format(L["on##switch"]) or ("|cff808080%-3s|r"):format(L["off##switch"]),
             tostring(key), type(key) == "number" and (MapName(key) or "") or "",
             here == key and ("  |cffffd100" .. L["<- you are here"] .. "|r") or ""))
     end

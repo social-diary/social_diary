@@ -29,8 +29,9 @@ end
 function Witnesses.Others(n, prose)
     n = n or 0
     if n < 1 then return nil end
-    if n == 1 then return prose and L["and another"] or L["& another"] end
-    return Fmt(prose and L["and %s others"] or L["& %s others"], NUMBER[n] or tostring(n))
+    local word = NUMBER[n] or tostring(n)
+    if prose then return Fmt(L["and %s##others"], ns.Plural(n, L["another|%s others##plural"], word)) end
+    return ns.Plural(n, L["& another|& %s others##plural"], word)
 end
 
 -- What the watching was, by how long (Kind.lua's WATCHING): "saw" under
@@ -115,8 +116,8 @@ function Witnesses.Tip(w, now)
     end
     local more = w.others or 0
     if more > 0 then
-        lines[#lines + 1] = more == 1 and L["One other was there too"]
-            or Fmt(L["%s others were there too"], Capital(NUMBER[more] or tostring(more)))
+        lines[#lines + 1] = ns.Plural(more, L["One other was there too|%s others were there too##plural"],
+            Capital(NUMBER[more] or tostring(more)))
     end
     local at = w.death or w.call
     lines[#lines + 1] = When(w.t, at and at.level, now)

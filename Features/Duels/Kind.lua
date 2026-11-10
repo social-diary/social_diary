@@ -92,57 +92,87 @@ end
 -- with someone is world PvP's, and a duel counts in it no more than the
 -- close-call judge or the route's fighting count one (ns.Duelling).
 
-local Place = ns.UI.TimelineText.Place
+local TT = ns.UI.TimelineText
+local Place, Spot, Dot, Join = TT.Place, TT.Spot, TT.Dot, TT.Join
 
--- Where a series started, as the campfire's line says it: " in Sentinel
--- Hill, Westfall", the zone alone where the client gave no subzone or one
--- with the zone's own name (Place), or "".
-local function Where(row)
+-- Where a series started: the zone's phrase ("in Westfall", for a "##zone"
+-- template) where the client gave no subzone or one with the zone's own
+-- name, else the spot ("Sentinel Hill, Westfall", after a dot: a subzone
+-- has no id to say "in" with); neither without a place, or `unplaced`.
+local function Where(row, unplaced)
+    if unplaced then return nil, nil end
     local sub = row.context and row.context.subZone
-    if type(sub) ~= "string" or sub == "" or sub == row.zone then return Place(row) end
-    return Fmt(L[" in %s"], row.zone and Fmt(L["%1$s, %2$s"], sub, row.zone) or sub)
+    if type(sub) ~= "string" or sub == "" or sub == row.zone then return Place(row), nil end
+    return nil, Spot(sub, row.zone)
 end
+
+-- Each line whole, with the zone's phrase (`zone`, its value last) and
+-- without (`alone`).
+local ONE = {
+    won = { zone = L["Won a duel against %1$s %2$s##zone"], alone = L["Won a duel against %s"] },
+    they_fled = { zone = L["Won a duel when %1$s fled %2$s##zone"], alone = L["Won a duel when %s fled"] },
+    they_fled_nameless = { zone = L["Won a duel when they fled %s##zone"], alone = L["Won a duel when they fled"] },
+    fled = { zone = L["Fled a duel with %1$s %2$s##zone"], alone = L["Fled a duel with %s"] },
+    lost = { zone = L["Lost a duel to %1$s %2$s##zone"], alone = L["Lost a duel to %s"] },
+}
+local SERIES = {
+    won = {
+        both = { zone = L["Won %1$d duel against %2$s and lost %3$d %4$s|Won %1$d duels against %2$s and lost %3$d %4$s##zone##plural"],
+            alone = L["Won %1$d duel against %2$s and lost %3$d|Won %1$d duels against %2$s and lost %3$d##plural"] },
+        only = { zone = L["Won %1$d duel against %2$s %3$s|Won %1$d duels against %2$s %3$s##zone##plural"],
+            alone = L["Won %1$d duel against %2$s|Won %1$d duels against %2$s##plural"] },
+    },
+    lost = {
+        both = { zone = L["Lost %1$d duel to %2$s and won %3$d %4$s|Lost %1$d duels to %2$s and won %3$d %4$s##zone##plural"],
+            alone = L["Lost %1$d duel to %2$s and won %3$d|Lost %1$d duels to %2$s and won %3$d##plural"] },
+        only = { zone = L["Lost %1$d duel to %2$s %3$s|Lost %1$d duels to %2$s %3$s##zone##plural"],
+            alone = L["Lost %1$d duel to %2$s|Lost %1$d duels to %2$s##plural"] },
+    },
+}
 
 -- Its line, the outcome first, as the icon is the same for both: one duel
 -- "Won a duel against Bram", "Lost a duel to Bram", "Won a duel when Bram
 -- fled", "Fled a duel with Bram"; a series by its balance, flights counted
 -- with their side, "Lost 3 duels to Bram and won 2" (the user's own, 15
--- Oct), "Won 3 duels against Bram"; each " in Sentinel Hill, Westfall".
--- A series with a flight in it says so after the place: "  ·  they fled
--- once", "  ·  you fled twice". Figures, as the timeline counts.
-local function Line(row, guid)
+-- Oct), "Won 3 duels against Bram"; each "in Westfall", or with "  ·
+-- Sentinel Hill, Westfall" after it. A series with a flight in it says so
+-- after the place: "  ·  they fled once", "  ·  you fled twice". Figures,
+-- as the timeline counts. `unplaced`: without the place (the plate's
+-- tooltip leaves it to the map).
+local function Line(row, guid, unplaced)
     local c = row.context or {}
     local them = guid and ns.Characters.Name(guid) or nil
     local balance, up, down = Duels.Balance(c), (c.won or 0) + (c.theyFled or 0), (c.lost or 0) + (c.fled or 0)
-    local where = Where(row)
+    local zone, spot = Where(row, unplaced)
+    local at = zone and "zone" or "alone"
     if up + down <= 1 then
         local last = c.last
         if not COUNT[last] then last = (c.theyFled or 0) > 0 and "they_fled" or (c.fled or 0) > 0 and "fled" or balance end
-        if last == "won" then return Fmt(L["Won a duel against %1$s%2$s"], them or L["them##against"], where) end
+        local who = them
         if last == "they_fled" then
-            if not them then return Fmt(L["Won a duel when they fled%s"], where) end
-            return Fmt(L["Won a duel when %1$s fled%2$s"], them, where)
+            if not them then last = "they_fled_nameless" end
+        elseif not them then
+            who = last == "fled" and L["them##with"] or L["them##against"]
         end
-        if last == "fled" then return Fmt(L["Fled a duel with %1$s%2$s"], them or L["them##with"], where) end
-        return Fmt(L["Lost a duel to %1$s%2$s"], them or L["them##against"], where)
+        if who then return Dot(Fmt(ONE[last][at], who, zone), spot) end
+        return Dot(Fmt(ONE[last][at], zone), spot)
     end
     local lead, rest = up, down
     if balance == "lost" then lead, rest = down, up end
     them = them or L["them##against"]
+    local words = SERIES[balance == "won" and "won" or "lost"][rest > 0 and "both" or "only"][at]
     local text
-    if balance == "won" then
-        text = rest > 0 and Fmt(L["Won %1$d duels against %2$s and lost %3$d"], lead, them, rest)
-            or Fmt(L["Won %1$d duels against %2$s"], lead, them)
+    if rest > 0 then
+        text = ns.Plural(lead, words, lead, them, rest, zone)
     else
-        text = rest > 0 and Fmt(L["Lost %1$d duels to %2$s and won %3$d"], lead, them, rest)
-            or Fmt(L["Lost %1$d duels to %2$s"], lead, them)
+        text = ns.Plural(lead, words, lead, them, zone)
     end
+    text = Dot(text, spot)
     local Times = ns.UI.Format.Times
     local flights = {}
     if (c.fled or 0) > 0 then flights[#flights + 1] = ns.UI.Format.You(row.me, Fmt(L["{you} fled %s"], Times(c.fled))) end
     if (c.theyFled or 0) > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(c.theyFled)) end
-    if #flights > 0 then where = where .. "  \194\183  " .. table.concat(flights, L[", "]) end
-    return text .. where
+    return Dot(text, #flights > 0 and Join(flights) or nil)
 end
 
 local function Always() return true end

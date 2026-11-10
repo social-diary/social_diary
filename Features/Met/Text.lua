@@ -33,7 +33,7 @@ end
 --------------------------------------------------------------------------
 
 -- As the core's people lead words a list of names.
-local MOST = { max = 3, shown = 2, more = L["others"] }
+local MOST = { max = 3, shown = 2, more = ns.UI.Format.OTHERS }
 
 -- The names no note beside the plate gives, and the words have not. said.met
 -- holds the cards on strips ([record] = true, Strip.lua); said.named who any

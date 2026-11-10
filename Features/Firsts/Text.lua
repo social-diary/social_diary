@@ -96,6 +96,7 @@ end
 function Firsts.Sentence(kind, rec)
     local _, yours = Words(kind)
     local zone = MapName(rec.mapID)
+    zone = zone and ns.ZoneIn(rec.mapID, zone)
     local text
     if rec.from == "trade" then
         local giver = Giver(rec)
@@ -103,13 +104,13 @@ function Firsts.Sentence(kind, rec)
     elseif rec.from == "quest" then
         text = Fmt(L["A quest gave you %s"], yours)
     elseif rec.from == "vendor" then
-        text = zone and Fmt(L["Bought %1$s in %2$s"], yours, zone) or Fmt(L["Bought %s"], yours)
+        text = zone and Fmt(L["Bought %1$s %2$s##zone"], yours, zone) or Fmt(L["Bought %s"], yours)
     elseif rec.from == "craft" then
-        text = zone and Fmt(L["Made %1$s in %2$s"], yours, zone) or Fmt(L["Made %s"], yours)
+        text = zone and Fmt(L["Made %1$s %2$s##zone"], yours, zone) or Fmt(L["Made %s"], yours)
     elseif rec.from == "mail" then
         text = Capital(Fmt(L["%s came by mail"], yours))
     else
-        text = zone and Fmt(L["Found %1$s in %2$s"], yours, zone) or Fmt(L["Found %s"], yours)
+        text = zone and Fmt(L["Found %1$s %2$s##zone"], yours, zone) or Fmt(L["Found %s"], yours)
     end
     local name = Name(rec)
     if name then return Fmt(L["%1$s: %2$s."], text, name) end
@@ -144,7 +145,7 @@ function Firsts.Tip(m, now, bare)
     for i = 1, 4 do
         if parts[i] then list[#list + 1] = parts[i] end
     end
-    return Capital(yours), table.concat(list, L[", "])
+    return Capital(yours), ns.UI.TimelineText.Join(list)
 end
 
 -- A gift is its giver's moment too (Kind.lua's moment: `person`): on

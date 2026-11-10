@@ -84,20 +84,16 @@ local function Column(parent, x, y, width)
     function column:Number(text, unit, min, max, get, set)
         local row = CreateFrame("Frame", nil, self.parent)
 
-        -- The unit first: a longer one (a translation's "Zeilen") takes the
-        -- room it needs from the sentence.
-        row.unit = Style.Text(row, FONT.body)
-        row.unit:SetText(unit)
-        local unitW = math.max(UNIT_W, math.ceil(row.unit:GetStringWidth() or 0))
-
         row.label = Style.Text(row, FONT.body)
         row.label:SetPoint("TOPLEFT")
-        row.label:SetWidth(self.width - FIELD_W - unitW - 8)
+        row.label:SetWidth(self.width - FIELD_W - UNIT_W - 8)
         row.label:SetText(text)
 
         row.box = Style.NumberField(row, FIELD_W, min, max, get, set)
-        row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -unitW, 1)
+        row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -UNIT_W, 1)
 
+        row.unit = Style.Text(row, FONT.body)
+        row.unit:SetText(unit)
         row.unit:SetPoint("LEFT", row.box, "RIGHT", 6, 0)
 
         local height = math.max(18, row.label:GetStringHeight())

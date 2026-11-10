@@ -58,18 +58,10 @@ local function Glue(text)
     return (text:gsub(" ", SPACE.nbsp))
 end
 
-local function Capital(text)
-    if G.Capital then return G.Capital(text) end
-    return text:sub(1, 1):upper() .. text:sub(2)
-end
-
--- A rubric's capitals ("LEVEL 12", "WEEK OF 6 OCTOBER"): string.upper
--- leaves UTF-8 letters alone, so a locale may give its own
--- (G.JourneyUpper: German's umlauts).
-local function Upper(text)
-    if G.JourneyUpper then return G.JourneyUpper(text) end
-    return text:upper()
-end
+-- The first letter up, and a rubric's capitals ("LEVEL 12", "WEEK OF 6
+-- OCTOBER"), by the reader's language (Locales/Locale.lua).
+local function Capital(text) return G.Capital(text) end
+local function Upper(text) return G.Upper(text) end
 
 local function MapName(mapID)
     return mapID and ns.MapName(mapID) or nil
@@ -100,11 +92,15 @@ Text.Short = Short
 
 local NUMBER = { L["a##one"], L["two"], L["three"], L["four"], L["five"] }
 
--- `many` a template whose %s takes "twice", "3 times".
+-- `one` the sentence for once (it says no count: "Died here"), `many` a
+-- template whose %s takes "twice", "3 times". English has a word for two
+-- that is no plural category, so it is asked for on its own; the rest is
+-- the count's own plural (ns.Plural: a Russian "21 раз" takes the "one"
+-- form, not `one`'s sentence).
 local function Times(n, one, many)
     if n == 1 then return one end
-    if n == 2 then return many:format(L["twice"]) end
-    return many:format(Fmt(L["%d times"], n))
+    if n == 2 and L["twice"] ~= "" then return Fmt(many, L["twice"]) end
+    return Fmt(many, ns.Plural(n, L["once|%d times##plural"]))
 end
 
 -- A close call's health left (JRN-25), held together: "6% health".
@@ -116,6 +112,16 @@ end
 -- never breaks after the 31); the rest of the words may wrap.
 local function Count(n, words)
     return tostring(n) .. (SPACE.keep and SPACE.nbsp or " ") .. words
+end
+
+-- A count and its noun from one "##plural" key, the figure held to the
+-- word after it as Count does: Counts(31, L["%d kill|%d kills##plural"])
+-- is "31 kills" with a no-break space. Where the noun is the game's (a
+-- creature's name), Count takes it as it comes.
+local function Counts(n, forms, ...)
+    local text = ns.Plural(n, forms, ...)
+    if not SPACE.keep then return text end
+    return (text:gsub("^(%d+) ", "%1" .. SPACE.nbsp, 1))
 end
 
 -- A creature's name for more than one: "Plainstriders", "Timber Wolves",
@@ -208,6 +214,7 @@ end
 --   NUMBER, WORDS         counts in words: NUMBER[n] "a", "two" ... "five";
 --                         WORDS[n] "two" ... "twelve", "fifteen", "twenty", ...
 --   Count(n, words)       a figure held to its noun ("31 Plainstriders")
+--   Counts(n, forms, ...) the same from a "##plural" key ("31 kills")
 --   Plural(name)          a creature's name for more than one
 --   ItemWord(n, item)     an item's name for `n` of it ("Plainstrider Meat")
 --   Items(n, item)        "one Hezrul's Head", "7 Plainstrider Meat"
@@ -220,5 +227,5 @@ end
 Text.Glue, Text.Capital, Text.MapName, Text.Who = Glue, Capital, MapName, Who
 Text.Upper = Upper
 Text.Times, Text.NUMBER, Text.Count, Text.ItemWord, Text.Items = Times, NUMBER, Count, ItemWord, Items
-Text.Health = Health
+Text.Health, Text.Counts = Health, Counts
 Text.List = List

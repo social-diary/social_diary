@@ -77,34 +77,68 @@ local L, Fmt = ns.L, ns.Fmt
 
 local function Always() return true end
 
+-- Each sentence whole, with its place ("##zone", the zone's phrase) and
+-- without (no zone, or the plate's tooltip, which leaves it to the map).
+local KILLED = {
+    alone = { [true] = L["{You} killed %1$s %2$s##zone"], [false] = L["{You} killed %s"] },
+    blow = { [true] = L["{Your} group killed %1$s %2$s (%3$s's killing blow)##zone"],
+        [false] = L["{Your} group killed %1$s (%2$s's killing blow)"] },
+    group = { [true] = L["{Your} group killed %1$s %2$s##zone"], [false] = L["{Your} group killed %s"] },
+}
+
 ns.Rows.Register(KILL, { fight = "kill", plate = 1, moment = Always, reason = L["you killed them"],
-    text = function(row, guid)
+    text = function(row, guid, unplaced)
         local them = guid and ns.Characters.Name(guid) or L["them##killed"]
         local by = row.context and row.context.by
-        local You = ns.UI.Format.You
-        if not by then return You(row.me, Fmt(L["{You} killed %1$s%2$s"], them, Place(row))) end
-        local blow = ns.Characters.Name(by)
-        if blow then
-            return You(row.me, Fmt(L["{Your} group killed %1$s%2$s (%3$s's killing blow)"], them, Place(row), blow))
-        end
-        return You(row.me, Fmt(L["{Your} group killed %1$s%2$s"], them, Place(row)))
+        local place = Place(row, unplaced)
+        local blow = by and ns.Characters.Name(by)
+        local template = KILLED[not by and "alone" or blow and "blow" or "group"][place ~= nil]
+        local values = { them }
+        if place then values[#values + 1] = place end
+        if blow then values[#values + 1] = blow end
+        return ns.UI.Format.You(row.me, Fmt(template, unpack(values)))
     end,
     icon = "hostile" })
 
+-- By who (named or "They"), whether the diary is sure, whether the spell
+-- is known, and the place: one template each. Values in that order.
+local KILLED_YOU = {
+    named = {
+        sure = {
+            plain = { [true] = L["%1$s killed {you} %2$s##zone"], [false] = L["%s killed {you}"] },
+            spell = { [true] = L["%1$s killed {you} with %2$s %3$s##zone"], [false] = L["%1$s killed {you} with %2$s"] },
+        },
+        probable = {
+            plain = { [true] = L["%1$s probably killed {you} %2$s##zone"], [false] = L["%s probably killed {you}"] },
+            spell = { [true] = L["%1$s probably killed {you} with %2$s %3$s##zone"],
+                [false] = L["%1$s probably killed {you} with %2$s"] },
+        },
+    },
+    they = {
+        sure = {
+            plain = { [true] = L["They killed {you} %s##zone"], [false] = L["They killed {you}"] },
+            spell = { [true] = L["They killed {you} with %1$s %2$s##zone"], [false] = L["They killed {you} with %s"] },
+        },
+        probable = {
+            plain = { [true] = L["They probably killed {you} %s##zone"], [false] = L["They probably killed {you}"] },
+            spell = { [true] = L["They probably killed {you} with %1$s %2$s##zone"],
+                [false] = L["They probably killed {you} with %s"] },
+        },
+    },
+}
+
 ns.Rows.Register(DEATH, { fight = "death", plate = 1, moment = Always, reason = L["they killed you"],
-    text = function(row, guid)
+    text = function(row, guid, unplaced)
         local c = row.context or {}
         local them = guid and ns.Characters.Name(guid)
-        local with = c.spell and Fmt(L[" with %s"], c.spell) or ""
-        local text
-        if them then
-            text = Fmt(c.probable and L["%1$s probably killed {you}%2$s%3$s"] or L["%1$s killed {you}%2$s%3$s"],
-                them, with, Place(row))
-        else
-            text = Fmt(c.probable and L["They probably killed {you}%1$s%2$s"] or L["They killed {you}%1$s%2$s"],
-                with, Place(row))
-        end
-        return ns.UI.Format.You(row.me, text)
+        local place = Place(row, unplaced)
+        local template = KILLED_YOU[them and "named" or "they"][c.probable and "probable" or "sure"]
+            [c.spell and "spell" or "plain"][place ~= nil]
+        local values = {}
+        if them then values[#values + 1] = them end
+        if c.spell then values[#values + 1] = c.spell end
+        if place then values[#values + 1] = place end
+        return ns.UI.Format.You(row.me, Fmt(template, unpack(values)))
     end,
     icon = "death" })
 

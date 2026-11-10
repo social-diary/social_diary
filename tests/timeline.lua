@@ -395,7 +395,7 @@ Check(sub:find("1 death"), "the death without a line is not counted: " .. sub)
 -- the card (the order above), and not counted on the session.
 Check(not sub:find("2 deaths"), "a death in the dungeon is counted on its session: " .. sub)
 Eq(select(2, ns.UI.DescribeItem(long.lines[1], G)),
-    "You died to Razormane Geomancer's Fireball (3 attackers) near Razormane Grounds", "a recap death's line")
+    "You died to Razormane Geomancer's Fireball (3 attackers)  ·  Razormane Grounds, The Barrens", "a recap death's line")
 Eq(select(2, ns.UI.DescribeItem(long.lines[5], G)),
     "Tester died, probably to Venture Co. Logger near Stonetalon Mountains", "a guessed death's line")
 
@@ -646,9 +646,9 @@ for _, line in ipairs(_G.SocialDiaryJournalFrame.profile.timeline.data) do
     if line.item and line.item.kind == "death" and line.text then deathLines[#deathLines + 1] = line end
 end
 Eq(#deathLines, 2, "the deaths are not lines")
-Eq(deathLines[1].text, "Trade died to Kobold Tunneler near Fargodeep Mine", "the first death at a place names it")
+Eq(deathLines[1].text, "Trade died to Kobold Tunneler  ·  Fargodeep Mine", "the first death at a place names it")
 Eq(deathLines[2].text, "You died to Kobold Tunneler (6 attackers) there", "a death at the same place names it again")
-Check(deathLines[2].full:find("near Fargodeep Mine", 1, true), "said \"there\", the tooltip lost the place")
+Check(deathLines[2].full:find("  ·  Fargodeep Mine", 1, true), "said \"there\", the tooltip lost the place")
 ns.UI.CloseJournal()
 
 --------------------------------------------------------------------------
@@ -703,7 +703,7 @@ text = Said({ Session(510, t0 + 1000, 4000, { quests = { 1 } }, { zones = { "Dus
 Eq(text, "Quested together in Westfall for 1 h 6 min", "settled in a zone")
 settled[3].subZone = "Sentinel Hill"
 text = Said({ Session(510, t0 + 1000, 4000, { quests = { 1 } }) }, settled)
-Eq(text, "Quested together at Sentinel Hill in Westfall for 1 h 6 min", "settled at a subzone")
+Eq(text, "Quested together for 1 h 6 min  ·  Sentinel Hill, Westfall", "settled at a subzone")
 
 -- A journey: a quarter of the time on the road, and a fifth in the zone
 -- it ended in.

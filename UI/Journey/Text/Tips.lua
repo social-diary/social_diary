@@ -100,18 +100,15 @@ function Text.Stop(seg, now, more)
         lines[#lines + 1] = L["Fought here"]
     end
     local took, gave = act.questsIn or 0, act.questsOut or 0
-    if took > 0 then lines[#lines + 1] = took == 1 and L["Took a quest"] or Fmt(L["Took %d quests"], took) end
-    if gave > 0 then
-        lines[#lines + 1] = gave == 1 and L["Handed in a quest"] or Fmt(L["Handed in %d quests"], gave)
-    end
+    if took > 0 then lines[#lines + 1] = ns.Plural(took, L["Took a quest|Took %d quests##plural"]) end
+    if gave > 0 then lines[#lines + 1] = ns.Plural(gave, L["Handed in a quest|Handed in %d quests##plural"]) end
     local deaths = act.deaths or 0
     if deaths > 0 then lines[#lines + 1] = Times(deaths, L["Died here"], L["Died here %s"]) end
     local levels = seg.levelFrom ~= seg.levelTo and Fmt(L["Levels %1$d to %2$d"], seg.levelFrom or 0, seg.levelTo or 0)
         or (seg.levelFrom and Fmt(L["Level %d"], seg.levelFrom))
     lines[#lines + 1] = When(seg.from, nil, now) .. (levels and (" \194\183 " .. levels) or "")
     if more and more > 0 then
-        lines[#lines + 1] = more == 1 and L["And one more short stay close by"]
-            or Fmt(L["And %d more short stays close by"], more)
+        lines[#lines + 1] = ns.Plural(more, L["And one more short stay close by|And %d more short stays close by##plural"])
     end
     return seg.subZone or MapName(seg.mapID) or L["A stop"], lines
 end
@@ -129,9 +126,10 @@ end
 
 function Text.Flight(seg, mapID, now)
     local other = seg.mapID1 == mapID and seg.mapID2 or seg.mapID1
-    local toward = seg.mapID1 == mapID and L["Flew to %s"] or L["Flew in from %s"]
-    local name = MapName(other)
-    local title = Fmt(toward, name or "")
+    -- "Flew to Orgrimmar", "Flew in from Orgrimmar": the zone's phrase.
+    local out = seg.mapID1 == mapID
+    local place = ns.ZoneIn(other, MapName(other) or "", out and "to" or "from")
+    local title = Fmt(out and L["Flew %s##zone"] or L["Flew in %s##zone"], place)
     if seg.mapID1 == seg.mapID2 then title = L["A flight"] end
     return title, { When(seg.from, seg.levelFrom, now) }
 end

@@ -349,13 +349,10 @@ local function Darken(r, g, b)
     return ("%02x%02x%02x"):format(r * scale * 255, g * scale * 255, b * scale * 255)
 end
 
--- Capitals for a heading or a rubric. string.upper leaves letters outside
--- ASCII alone ("ü" in "Rückblick"), so a locale may do them itself
--- (ns.Locale.grammar.StyleUpper, in that locale's files).
+-- Capitals for a heading or a rubric, by the reader's language
+-- (ns.Locale.grammar.Upper).
 function Style.Upper(text)
-    local G = ns.Locale.grammar
-    if G.StyleUpper then return G.StyleUpper(text) end
-    return text:upper()
+    return ns.Locale.grammar.Upper(text)
 end
 
 function Style.Inkify(text)

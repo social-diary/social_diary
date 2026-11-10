@@ -21,8 +21,7 @@ local G = ns.Locale.grammar
 
 -- The first letter up, as a line starts (a locale's own, umlauts too).
 local function Capital(text)
-    if G.Capital then return G.Capital(text) end
-    return (text:gsub("^%l", string.upper))
+    return G.Capital(text)
 end
 
 local PersonText = {}
@@ -203,12 +202,8 @@ function PersonText.RowTip(row, guid, now)
         local said = row.excerpt and JText().Written(row.excerpt)
         if said and said ~= "" then lines[1] = Fmt(L["\226\128\156%s\226\128\157"], said) end
     elseif spec.text then
-        title = spec.text(row, guid)
-        -- The place is the map's to say.
-        if row.zone then
-            local place = Fmt(L[" in %s"], row.zone)
-            if title:sub(-#place) == place then title = title:sub(1, -#place - 1) end
-        end
+        -- The place is the map's to say: the kind's words without it.
+        title = spec.text(row, guid, true)
     else
         title = row.type
     end
@@ -274,14 +269,17 @@ end
 --   nextDay    ... on the next calendar day, 12 h or more after
 --   dayBefore  ... the calendar day before (the hinge came first)
 --   later, earlier, daysLater, daysEarlier   ... "{duration} later", "{n}
---              days later" and their mirrors, as templates (ns.Fmt)
+--              days later" and their mirrors, as templates (ns.Fmt; the
+--              days ns.Plural)
 --   levels     note 2's sub line, both levels known; `mine` only yours
---   beside     a hinge off the print where they were beside you (a trade,
---              a /say); `stood` where only you are placed (a group join, a
---              whisper: the diary keeps your position, never theirs)
+--   stood      a hinge off the print where only you are placed (a group
+--              join, a whisper: the diary keeps your position, never
+--              theirs); where they were beside you (a trade, a /say) the
+--              zone's phrase alone (ns.ZoneIn, "in Durotar")
 --   joinLevels how the levels join a place on one line
---   more       the ledger's count past its lines
---   seenDays   the seen line's day count, before Format.SeenText
+--   more       the ledger's count past its lines (ns.Plural)
+--   seenDays   the seen line's day count, Format.SeenText after it
+--              (ns.Plural)
 --   until      the foot strip's name; `words` under it; `add` its link
 PersonText.GLIMPSE = {
     notYet = L["Not in your diary yet"],
@@ -292,12 +290,12 @@ PersonText.GLIMPSE = {
     nextDay = L["The next day"],
     dayBefore = L["The day before"],
     later = L["%s later"], earlier = L["%s earlier"],
-    daysLater = L["%d days later"], daysEarlier = L["%d days earlier"],
+    daysLater = L["%d day later|%d days later##plural"], daysEarlier = L["%d day earlier|%d days earlier##plural"],
     levels = L["you at level %1$d, they at %2$d"], mine = L["at level %d"],
-    beside = L["in %s"], stood = L["you were in %s"],
+    stood = L["you were %s##zone"],
     joinLevels = L["%1$s  \194\183  %2$s"],
-    more = L["and %d more##glimpse"],
-    seenDays = L["Seen on %1$d days since %2$s. "],
+    more = L["and %d more|and %d more##plural"],
+    seenDays = L["Seen on %1$d day since %2$s. %3$s|Seen on %1$d days since %2$s. %3$s##plural"],
     ["until"] = L["Pencilled in until %s"],
     words = L["Strangers are forgotten after %s. Once in your diary, all of this is kept for good."],
     add = L["Add %s to your diary"],
@@ -345,7 +343,7 @@ local function After(from, t, now)
         return Fmt(d > 0 and GW.later or GW.earlier, Format.Duration(gap))
     end
     if days == 1 then return d > 0 and GW.nextDay or GW.dayBefore end
-    return Fmt(d > 0 and GW.daysLater or GW.daysEarlier, days)
+    return ns.Plural(days, d > 0 and GW.daysLater or GW.daysEarlier)
 end
 PersonText.GlimpseAfter = After
 
@@ -370,7 +368,8 @@ function PersonText.GlimpseHinge(row, first, onPrint, now, guid)
     if onPrint then return heading, line, levels, nil end
     local zone = ns.RowZone(row)
     if not zone then return heading, line, levels, nil end
-    local place = Fmt(spec.proximity and GW.beside or GW.stood, zone)
+    local phrase = ns.ZoneIn(row.mapID, zone)
+    local place = spec.proximity and phrase or Fmt(GW.stood, phrase)
     return heading, line, place, levels and Fmt(GW.joinLevels, place, levels) or nil
 end
 
@@ -388,7 +387,7 @@ function PersonText.GlimpseRow(row, guid)
 end
 
 function PersonText.GlimpseMore(n)
-    return Fmt(GW.more, n)
+    return ns.Plural(n, GW.more)
 end
 
 -- The seen line: Recently nearby's tooltip written on the page. The day
@@ -400,7 +399,7 @@ function PersonText.GlimpseSeen(g, now)
     local text = Format.SeenText(seen, now)
     if seen and not text:find("%.$") then text = text .. "." end
     if g.seen and (g.seen.days or 0) > 1 and g.seen.since then
-        text = Fmt(GW.seenDays, g.seen.days, Format.DayMonth(g.seen.since, now)) .. text
+        text = ns.Plural(g.seen.days, GW.seenDays, g.seen.days, Format.DayMonth(g.seen.since, now), text)
     end
     return text
 end

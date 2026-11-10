@@ -172,11 +172,8 @@ local function Moment(c, s, guid)
         m.met = First(s, row.time)
         m.tip = function(_, now)
             if m.met then
-                local text = spec.text and spec.text(row, guid) or nil
-                if text and row.zone then
-                    local place = ns.Fmt(ns.L[" in %s"], row.zone)
-                    if text:sub(-#place) == place then text = text:sub(1, -#place - 1) end
-                end
+                -- The kind's words without the place: the map says it.
+                local text = spec.text and spec.text(row, guid, true) or nil
                 return PersonText.MetTip(text, row.time, now)
             end
             return PersonText.RowTip(row, guid, now)

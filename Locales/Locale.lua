@@ -98,7 +98,12 @@ end
 -- A form may leave the number out ("a note|%d notes") only where its
 -- category is the number 1 alone; tests/locale.lua checks each locale.
 -- WoW's own "|" escapes (|cff..|r, |T..|t) can't go inside a "##plural"
--- value: colour goes round the call.
+-- value: colour goes round the call. A key may carry a context before it
+-- ("...##zone##plural"); the English is the text before the first "##".
+--
+-- "twice" is a word, not a plural category: Format.Times and its kin ask
+-- L["twice"] for 2 and the plural for the rest, and a locale without such
+-- a word writes "" there, so 2 takes its plural form.
 
 -- English (and German) rule: 1 is "one", everything else "other".
 Locale.grammar.PluralForm = function(n) return n == 1 and 1 or 2 end
@@ -119,4 +124,57 @@ function ns.Plural(n, text, ...)
     local form = forms[math.max(1, math.min(i, #forms))]
     if select("#", ...) == 0 then return ns.Fmt(form, n) end
     return ns.Fmt(form, ...)
+end
+
+--------------------------------------------------------------------------
+-- Capitals. string.upper leaves letters outside ASCII alone ("ü" in
+-- "Rückblick"), so a locale whose letters need it gives its own.
+--   Upper(text)    the whole text in capitals (headings, rubrics)
+--   Capital(text)  the first letter up, as a line starts
+Locale.grammar.Upper = function(text) return text:upper() end
+Locale.grammar.Capital = function(text) return (text:gsub("^%l", string.upper)) end
+
+--------------------------------------------------------------------------
+-- A zone or dungeon after a preposition. The client gives a bare name
+-- ("Brachland"), and the preposition and the name are one unit in most
+-- languages: German "im Brachland" / "ins Brachland" / "aus dem
+-- Brachland", French "en Durotar" / "dans les Tarides", Russian
+-- "в Дуротаре" (the name itself declines). So the phrase is the locale's,
+-- and a template takes it whole, its key marked "##zone":
+--
+--   Fmt(L["Found %1$s %2$s##zone"], item, ns.ZoneIn(mapID, name))
+--   -- "Found Linen Cloth in The Barrens"
+--
+-- `role` is the preposition's job (default "in"; also "to", "from",
+-- "into", "through", "near", "at", "around"). A locale fills:
+--   grammar.ZONES[mapID][role]          "im Brachland" (only the zones that
+--   grammar.DUNGEONS[instanceID][role]   need it: articles, declension)
+--   grammar.PLACE[role]                  the rest: "in %s"
+-- English needs no table. A subzone has no id: its template doesn't put
+-- it after a preposition at all ("· Crossroads, The Barrens").
+Locale.grammar.PLACE = {
+    ["in"] = "in %s", to = "to %s", from = "from %s", into = "into %s",
+    through = "through %s", near = "near %s", at = "at %s", around = "around %s",
+}
+Locale.grammar.ZONES, Locale.grammar.DUNGEONS = {}, {}
+
+local ENGLISH_PLACE = Locale.grammar.PLACE
+
+local function Phrase(own, id, name, role)
+    role = role or "in"
+    local words = id and own[id]
+    if words and words[role] then return words[role] end
+    local template = Locale.grammar.PLACE[role] or ENGLISH_PLACE[role] or ENGLISH_PLACE["in"]
+    return ns.Fmt(template, name or "")
+end
+
+-- `name` is what the caller shows (the client's map name, or the zone
+-- kept on a row); `mapID` may be nil for rows that have none.
+function ns.ZoneIn(mapID, name, role)
+    name = name or (mapID and ns.MapName and ns.MapName(mapID))
+    return Phrase(Locale.grammar.ZONES, mapID, name, role)
+end
+
+function ns.DungeonIn(instanceID, name, role)
+    return Phrase(Locale.grammar.DUNGEONS, instanceID, name, role)
 end

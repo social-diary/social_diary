@@ -93,7 +93,7 @@ local function Capped(caps)
         local key = cap.skillLine or cap.name or cap
         if not seen[key] then seen[key], trades = true, trades + 1 end
     end
-    if trades > 1 then return Fmt(L["%s professions at their cap"], NUMBER[trades] or tostring(trades)) end
+    if trades > 1 then return ns.Plural(trades, L["%s profession at its cap|%s professions at their cap##plural"], NUMBER[trades] or tostring(trades)) end
     local text = ProfessionCaps.Words(caps[1])
     for k = 2, #caps do text = Fmt(L["%1$s, then %2$s"], text, Rank(caps[k], true)) end
     return text

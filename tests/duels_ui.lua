@@ -66,7 +66,7 @@ local function Caption(p, said)
 end
 local won, lost = Rec({ won = 1, last = "won" }), Rec({ lost = 1, last = "lost" })
 local alone = Plated({ M("duel", { duel = won }) })
-Eq(Caption(alone, { duel = true }), "A duel won in Raptor Grounds.", "a duel alone, its note left off")
+Eq(Caption(alone, { duel = true }), "Raptor Grounds, and a duel won.", "a duel alone, its note left off")
 Eq(Caption(alone, {}), "Raptor Grounds.", "a duel alone, its note beside it: the place, for the note to finish")
 local bare = Plated({ M("duel", { duel = Rec({ lost = 1, last = "lost" }, { subZone = "The Barrens" }) }) })
 Eq(Caption(bare, { duel = true }), "A duel lost.", "a subzone with the zone's own name is no place")
@@ -120,7 +120,7 @@ do
         now)
     Eq(title, "Duelled Bram", "the flag's tooltip names the opponent")
     Eq(lines[1], "Won 3, lost 1", "the flag's tooltip tells the outcome")
-    Eq(lines[2], "In Raptor Grounds", "the flag's tooltip tells where")
+    Eq(lines[2], "Raptor Grounds", "the flag's tooltip tells where")
 end
 
 --------------------------------------------------------------------------

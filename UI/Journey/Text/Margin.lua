@@ -39,9 +39,9 @@ function Text.MarginWhat(moments, level)
         parts[#parts + 1] = Fmt(L["%s together"], together >= 60 and Duration(together) or L["a moment"])
     end
     if notes > 0 and quoted then
-        parts[#parts + 1] = Glue(notes == 1 and L["one more note"] or Fmt(L["%s more notes"], NUMBER[notes] or notes))
+        parts[#parts + 1] = Glue(ns.Plural(notes, L["one more note|%s more notes##plural"], NUMBER[notes] or notes))
     elseif notes > 0 then
-        parts[#parts + 1] = Glue(notes == 1 and L["a note"] or Fmt(L["%s notes"], NUMBER[notes] or notes))
+        parts[#parts + 1] = Glue(ns.Plural(notes, L["a note|%s notes##plural"], NUMBER[notes] or notes))
     end
     for _, m in ipairs(moments) do
         if m.kind == "fight" then
@@ -59,7 +59,11 @@ function Text.MarginWhat(moments, level)
             parts[#parts + 1] = Fmt(L["first seen  \194\183  %s"], again)
         end
     end
-    return table.concat(parts, L[" and "])
+    -- Each part after the one before, as one whole phrase: "35 min
+    -- together and a note and killed you".
+    local text = parts[1]
+    for i = 2, #parts do text = Fmt(L["%1$s and %2$s"], text, parts[i]) end
+    return text or ""
 end
 
 -- The name a margin note is headed by, so the note reads as who you were

@@ -198,7 +198,8 @@ local function TooltipLines(row)
 
     local now = ns.Now()
     if e.days > 1 then
-        lines[#lines + 1] = { Fmt(L["Seen on %1$d days since %2$s"], e.days, Format.DayMonth(e.first, ns.Now())), 1, 0.82, 0 }
+        lines[#lines + 1] = { ns.Plural(e.days, L["Seen on %1$d day since %2$s|Seen on %1$d days since %2$s##plural"],
+            e.days, Format.DayMonth(e.first, ns.Now())), 1, 0.82, 0 }
     end
     if e.firstLevel and e.level and e.firstLevel < e.level then
         lines[#lines + 1] = { Fmt(L["Level %d when you first saw them"], e.firstLevel), 0.66, 0.66, 0.66 }
@@ -206,10 +207,16 @@ local function TooltipLines(row)
     if e.dealt and DEALT_TEXT[e.dealt] then
         lines[#lines + 1] = { Fmt(L["%1$s at %2$s##time"], DEALT_TEXT[e.dealt], date("%H:%M", e.dealtAt)), 1, 0.82, 0 }
     end
-    -- Worded as the profile's line will be once they are added.
-    local place = Place(e)
-    local seen = place ~= "?" and Fmt(L["Last seen %1$s in %2$s"], Format.At(e.last, now), place)
-        or Fmt(L["Last seen %s"], Format.At(e.last, now))
+    -- Worded as the profile's line will be once they are added
+    -- (Format.SeenText): a subzone follows a dot, a zone alone "in".
+    local at, seen = Format.At(e.last, now), nil
+    if e.subZone then
+        seen = Fmt(L["Last seen %1$s · %2$s"], at, Place(e))
+    elseif e.zone and e.zone ~= "?" then
+        seen = Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(e.row and e.row.mapID, e.zone))
+    else
+        seen = Fmt(L["Last seen %s"], at)
+    end
     lines[#lines + 1] = { seen, 0.66, 0.66, 0.66 }
     if ns.Diary.IsDiary(e.guid) then lines[#lines + 1] = { L["In your diary"], 1, 0.82, 0 } end
     return lines
@@ -438,7 +445,7 @@ function RefreshTable(keepScroll)
     for i = 1, #list do list[i].index = i end
     page.table:SetData(list, keepScroll)
 
-    page.count:SetText(#list == #entries and Format.Count(#entries, L["person"], L["people"])
+    page.count:SetText(#list == #entries and ns.Plural(#entries, L["%d person|%d people##plural"])
         or Fmt(L["%1$d of %2$d"], #list, #entries))
     page.empty:SetText(#list == 0 and L["Nobody matches."] or "")
     page.filter:SetText(FilterLabel())
@@ -471,8 +478,9 @@ function ns.UI.RefreshNearbyPage()
     end
     page.days:SetData(items, true)
 
-    page.hint:SetText(Fmt(L["Everyone you passed in the open world. Kept for %d days."], ns.BufferDays()))
-    page.dayCount:SetText(Format.Count(#days, L["day##count"], L["days##count"]))
+    page.hint:SetText(ns.Plural(ns.BufferDays(),
+        L["Everyone you passed in the open world. Kept for %d day.|Everyone you passed in the open world. Kept for %d days.##plural"]))
+    page.dayCount:SetText(ns.Plural(#days, L["%d day|%d days##plural"]))
     page.noDays:SetText(#days == 0 and EmptyText() or "")
     page.right:SetShown(selectedDay ~= nil)
     if not selectedDay then

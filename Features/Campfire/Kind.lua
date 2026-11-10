@@ -36,30 +36,33 @@ ns.Campfire = Campfire
 -- is also "last seen"; offered by the picker as "sat by a campfire
 -- together".
 --
--- Its line: "You and Bram sat by a campfire together in Lushwater Oasis,
--- The Barrens". The user's own words (14 Oct), the place "Subzone, Zone"
--- as everywhere; the zone alone where the client gave no subzone, or one
--- with the zone's own name. Its icon: Basic Campfire's own spell icon.
+-- Its line: "You and Bram sat by a campfire together in The Barrens", the
+-- user's own words (14 Oct); with a subzone, which has no id to say "in"
+-- with (a translation's preposition takes the zone), the place "Subzone,
+-- Zone" as everywhere, after a dot: "You and Bram sat by a campfire
+-- together  ·  Lushwater Oasis, The Barrens". Its icon: Basic Campfire's own spell icon.
 ns.Rows.Register("campfire", {
     proximity = true,
     plate = 6,
     moment = function() return true end,
     reason = L["sat by a campfire together"],
-    text = function(row, guid)
+    text = function(row, guid, unplaced)
+        local TT = ns.UI.TimelineText
         local them = guid and ns.Characters.Name(guid)
         local subZone = row.context and row.context.subZone
-        if subZone == "" then subZone = nil end
-        local place = row.zone
-        if subZone and place and subZone ~= place then
-            place = Fmt(L["%1$s, %2$s"], subZone, place)
-        elseif subZone then
-            place = subZone
-        end
+        if subZone == "" or subZone == row.zone then subZone = nil end
+        -- The zone's phrase ("in The Barrens"); a subzone, which has no id
+        -- to say "in" with, after a dot ("  ·  The Crossroads, The Barrens").
+        local zone = not unplaced and not subZone and TT.Place(row) or nil
+        local spot = not unplaced and subZone and TT.Spot(subZone, row.zone) or nil
+        local text
         if them then
-            return ns.UI.Format.You(row.me, place and Fmt(L["{You} and %1$s sat by a campfire together in %2$s"], them, place)
+            text = ns.UI.Format.You(row.me, zone and Fmt(L["{You} and %1$s sat by a campfire together %2$s##zone"], them, zone)
                 or Fmt(L["{You} and %s sat by a campfire together"], them))
+        else
+            text = zone and Fmt(L["Sat by a campfire together %s##zone"], zone) or L["Sat by a campfire together"]
         end
-        return place and Fmt(L["Sat by a campfire together in %s"], place) or L["Sat by a campfire together"]
+        return TT.Dot(text, spot)
     end,
     icon = "campfire",
 })
@@ -124,7 +127,8 @@ end
 -- the name a detected record uses. Its time and level are the page's, as every
 -- custom card's are, and `zone` is never read off a plate, so it is not asked.
 -- The line's length is kept shorter than a creature's because it goes into the
--- caption's words ("By a campfire in ..."), whose room is short on a print.
+-- caption's words ("Lushwater Oasis, and a campfire."), whose room is short
+-- on a print.
 ns.JourneyRecap.RegisterMoment("campfire", { order = 70, list = "campfires", field = "campfire", rank = 5.5,
     light = true,
     custom = {

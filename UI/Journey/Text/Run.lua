@@ -28,8 +28,8 @@ function Text.RunDuration(seconds)
     local minutes = math.floor((seconds or 0) / 60 + 0.5)
     if minutes < 1 then return L["a minute"] end
     local h, m = math.floor(minutes / 60), minutes % 60
-    local hours = h == 1 and L["1 hour"] or Fmt(L["%d hours"], h)
-    local mins = m == 1 and L["1 minute"] or Fmt(L["%d minutes"], m)
+    local hours = ns.Plural(h, L["%d hour|%d hours##plural"])
+    local mins = ns.Plural(m, L["%d minute|%d minutes##plural"])
     if h > 0 and m > 0 then return Fmt(L["%1$s %2$s##hours minutes"], hours, mins) end
     return h > 0 and hours or mins
 end
@@ -52,8 +52,7 @@ end
 
 -- The slip pinned to the last keepsake: "and eleven more".
 function Text.RunMore(n)
-    if n == 1 then return L["and one more"] end
-    return Fmt(L["and %s more"], Said(n))
+    return ns.Plural(n, L["and one more|and %s more##plural"], Said(n))
 end
 
 -- Whose a keepsake is: "yours at last", "yours", "Brom's" ("Atlas'").
@@ -67,9 +66,8 @@ end
 -- The fallen note's first line: "we fell once", "we fell twice", "we fell
 -- six times".
 function Text.RunFell(n)
-    if n == 1 then return L["we fell once"] end
     if n == 2 then return L["we fell twice"] end
-    return Fmt(L["we fell %s times"], Said(n))
+    return ns.Plural(n, L["we fell once|we fell %s times##plural"], Said(n))
 end
 
 -- One of the fallen with how often: "you", "you twice", "Brom thrice",
@@ -78,7 +76,7 @@ function Text.RunFallenOne(name, times)
     if times == 1 then return name end
     if times == 2 then return Fmt(L["%s twice"], name) end
     if times == 3 then return Fmt(L["%s thrice"], name) end
-    return Fmt(L["%1$s %2$s times"], name, Said(times))
+    return ns.Plural(times, L["%1$s %2$s time|%1$s %2$s times##plural"], name, Said(times))
 end
 
 -- Everyone who fell, as many as `fits(words)` lets in, the rest counted:
@@ -87,12 +85,9 @@ end
 function Text.RunFallen(names, fits)
     for take = #names, 1, -1 do
         local rest = #names - take
-        local words = table.concat(names, L[", "], 1, take)
-        if rest == 1 then
-            words = Fmt(L["%s, and one other"], words)
-        elseif rest > 1 then
-            words = Fmt(L["%1$s, and %2$s others"], words, Said(rest))
-        end
+        local words = names[1]
+        for i = 2, take do words = Fmt(L["%1$s, %2$s##list"], words, names[i]) end
+        if rest > 0 then words = ns.Plural(rest, L["%1$s, and %2$s other|%1$s, and %2$s others##plural"], words, Said(rest)) end
         if take == 1 or not fits or fits(words) then return words end
     end
     return ""
@@ -112,12 +107,10 @@ end
 -- After the names: members a run saved no name for, "and one you didn't
 -- keep"; and who has no room on this turn of the list, "and 34 others".
 function Text.RunStrangers(n)
-    if n == 1 then return L["and one you didn't keep"] end
-    return Fmt(L["and %s you didn't keep"], Said(n))
+    return ns.Plural(n, L["and one you didn't keep|and %s you didn't keep##plural"], Said(n))
 end
 function Text.RunOthers(n)
-    if n == 1 then return L["and 1 other"] end
-    return Fmt(L["and %d others"], n)
+    return ns.Plural(n, L["and %d other|and %d others##plural"])
 end
 
 Text.RUN = {
@@ -135,9 +128,10 @@ Text.RUN = {
 function Text.RunTip(visit, seconds, k, m, deaths, names)
     local parts = { visit.name or L["A dungeon"], ns.UI.Format.Duration(seconds) }
     if m then parts[#parts + 1] = Fmt(L["%1$d of %2$d bosses"], k, m) end
-    if deaths > 0 then parts[#parts + 1] = deaths == 1 and L["1 death"] or Fmt(L["%d deaths"], deaths) end
-    local line = table.concat(parts, L[", "])
-    local with = ns.UI.Format.List(names or {}, { max = 4, shown = 3, more = L["others"] })
+    if deaths > 0 then parts[#parts + 1] = ns.Plural(deaths, L["%d death|%d deaths##plural"]) end
+    local line = parts[1]
+    for i = 2, #parts do line = Fmt(L["%1$s, %2$s##list"], line, parts[i]) end
+    local with = ns.UI.Format.List(names or {}, { max = 4, shown = 3, more = ns.UI.Format.OTHERS })
     if with then line = Fmt(L["%1$s, with %2$s"], line, with) end
     return line
 end

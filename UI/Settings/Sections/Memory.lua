@@ -16,9 +16,12 @@ local Number = Kit.Number
 local function SizeText(bytes)
     local rows = ns.Interactions.Totals()
 
-    return Fmt(L["%1$d in the diary  ·  %2$d characters known  ·  %3$d sessions  ·  %4$d interactions  ·  %5$d sightings.  About %6$d KB on disk."],
-        ns.Diary.Count(), ns.Characters.Count(), ns.CountKeys(ns.db.sessions), rows,
-        ns.CountKeys(ns.db.sightings), math.ceil(bytes / 1024))
+    local P = ns.Plural
+    return Fmt(L["%1$d in the diary  ·  %2$s  ·  %3$s  ·  %4$s  ·  %5$s.  About %6$d KB on disk."],
+        ns.Diary.Count(), P(ns.Characters.Count(), L["%d character known|%d characters known##plural"]),
+        P(ns.CountKeys(ns.db.sessions), L["%d session|%d sessions##plural"]),
+        P(rows, L["%d interaction|%d interactions##plural"]),
+        P(ns.CountKeys(ns.db.sightings), L["%d sighting|%d sightings##plural"]), math.ceil(bytes / 1024))
 end
 
 -- Past ns.SIZE_WARNING: what it costs, and what to turn down. Empty below.

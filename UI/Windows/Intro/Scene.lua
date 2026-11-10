@@ -236,8 +236,7 @@ local BODY = L["I write down the people you meet, all by myself, so that months 
 local function Pencilled(n)
     -- Nobody yet: nothing to say.
     if n == 0 then return nil end
-    if n == 1 then return L["I've pencilled in one already."] end
-    return Fmt(L["I've pencilled in %d already."], n)
+    return ns.Plural(n, L["I've pencilled in one already.|I've pencilled in %d already.##plural"])
 end
 
 --------------------------------------------------------------------------

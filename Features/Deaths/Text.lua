@@ -22,9 +22,11 @@ end
 -- together as a margin note's phrases are.
 function Deaths.Killed(n)
     n = n or 1
+    -- Once says no count, and English has a word for two that is no plural
+    -- category (as Text.Times has them); the rest is the count's plural.
     if n == 1 then return Glue(L["killed you"]) end
     if n == 2 then return Glue(L["killed you twice"]) end
-    return Glue(Fmt(L["killed you %s times"], NUMBER[n] or tostring(n)))
+    return Glue(Fmt(L["killed you %s##times"], ns.Plural(n, L["%s time|%s times##plural"], NUMBER[n] or tostring(n))))
 end
 
 -- A creature's rank, as a tooltip says it.
@@ -69,10 +71,10 @@ function Deaths.DeathCross(count, deaths)
     local out = {}
     for i, line in ipairs(lines) do
         local text = With(line.name, line.spell)
-        if line.n == 2 then
+        if line.n == 2 and L["twice"] ~= "" then
             text = Fmt(L["%1$s, %2$s"], text, L["twice"])
         elseif line.n > 2 then
-            text = Fmt(L["%1$s, %2$s"], text, Fmt(L["%d times"], line.n))
+            text = Fmt(L["%1$s, %2$s"], text, ns.Plural(line.n, L["once|%d times##plural"]))
         end
         out[i] = text
     end
@@ -98,8 +100,7 @@ end
 -- which says how that fight went and nothing of the one the player wrote.
 do
     local function Count(n)
-        if n == 1 then return L["a death"] end
-        return Fmt(L["%s deaths"], NUMBER[n] or tostring(n))
+        return ns.Plural(n, L["a death|%s deaths##plural"], NUMBER[n] or tostring(n))
     end
     local function Died(n, c)
         local killer = c.said.death

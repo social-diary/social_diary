@@ -53,14 +53,9 @@ function Format.Ago(time, now)
     local days = math.floor((now - time) / ns.DAY)
     if days < 1 then return L["today"] end
     if days < 2 then return L["yesterday"] end
-    if days < 14 then return Fmt(L["%d days ago"], days) end
-    if days < 60 then return Fmt(L["%d weeks ago"], math.floor(days / 7)) end
+    if days < 14 then return ns.Plural(days, L["%d day ago|%d days ago##plural"]) end
+    if days < 60 then return ns.Plural(math.floor(days / 7), L["%d week ago|%d weeks ago##plural"]) end
     return Format.ShortDate(time, true)
-end
-
--- "1 time", "3 times".
-function Format.Count(n, one, many)
-    return n .. " " .. (n == 1 and one or many)
 end
 
 -- "Mulgore", "Mulgore and Durotar", "Mulgore, Durotar and The Barrens".
@@ -69,11 +64,23 @@ end
 --   max      past this many names, only `shown` of them and a count of the
 --            rest: "Mulgore, Durotar and 2 more"
 --   shown    how many to name then (default `max`)
---   more     the word for the rest (default "more"; "others" for people)
+--   more     the rest, as a "##plural" template taking the names and the
+--            count (default Format.MORE, "%1$s and %2$d more";
+--            Format.OTHERS for people)
 --   oxford   a comma before the last "and" once there are three or more,
 --            for lists of clauses rather than names
 --
 -- nil for an empty list.
+Format.MORE = L["%1$s and %2$d more|%1$s and %2$d more##plural"]
+Format.OTHERS = L["%1$s and %2$d other|%1$s and %2$d others##plural"]
+
+-- names[1], ..., names[last], joined by the list's comma.
+local function Commas(names, last)
+    local text = names[1]
+    for i = 2, last do text = Fmt(L["%1$s, %2$s##list"], text, names[i]) end
+    return text
+end
+
 function Format.List(names, opts)
     local n = #names
     if n == 0 then return nil end
@@ -81,12 +88,13 @@ function Format.List(names, opts)
 
     if opts.max and n > opts.max then
         local shown = opts.shown or opts.max
-        return Fmt(L["%1$s and %2$d %3$s"], table.concat(names, L[", "], 1, shown), n - shown, opts.more or L["more"])
+        local head, rest, more = Commas(names, shown), n - shown, opts.more or Format.MORE
+        return ns.Plural(rest, more, head, rest)
     end
 
     if n == 1 then return names[1] end
-    if n == 2 then return names[1] .. L[" and "] .. names[2] end
-    return table.concat(names, L[", "], 1, n - 1) .. (opts.oxford and L[", and "] or L[" and "]) .. names[n]
+    local last = (opts.oxford and n > 2) and L["%1$s, and %2$s##list"] or L["%1$s and %2$s"]
+    return Fmt(last, Commas(names, n - 1), names[n])
 end
 
 --------------------------------------------------------------------------
@@ -142,21 +150,23 @@ end
 function Format.SeenText(seen, now)
     if not seen then return L["Not seen nearby yet."] end
 
-    -- Subzone first, as every place is written: "Goldshire, Elwynn Forest".
-    local place = seen.zone
-    if place and seen.subZone and seen.subZone ~= seen.zone then
-        place = Fmt(L["%1$s, %2$s"], seen.subZone, place)
+    -- A subzone has no phrase of its own after "in" (ns.ZoneIn): the place
+    -- follows a dot then, subzone first, as every place is written: "Last
+    -- seen today at 21:43 · Goldshire, Elwynn Forest".
+    local at = Format.At(seen.time, now)
+    if seen.zone and seen.subZone and seen.subZone ~= seen.zone then
+        return Fmt(L["Last seen %1$s · %2$s"], at, Fmt(L["%1$s, %2$s"], seen.subZone, seen.zone))
     end
-
-    if place then return Fmt(L["Last seen %1$s in %2$s"], Format.At(seen.time, now), place) end
-    return Fmt(L["Last seen %s"], Format.At(seen.time, now))
+    if seen.zone then return Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(seen.mapID, seen.zone)) end
+    return Fmt(L["Last seen %s"], at)
 end
 
--- "once", "twice", "5 times".
+-- "once", "twice", "5 times". "twice" is a word English has for 2, not a
+-- plural form: a locale without one leaves it empty, and 2 takes the
+-- plural like any other number.
 function Format.Times(n)
-    if n == 1 then return L["once"] end
-    if n == 2 then return L["twice"] end
-    return Fmt(L["%d times"], n)
+    if n == 2 and L["twice"] ~= "" then return L["twice"] end
+    return ns.Plural(n, L["once|%d times##plural"])
 end
 
 -- The score with a foe, from Interactions.Fights: "You've killed them twice and

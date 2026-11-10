@@ -22,8 +22,6 @@ local PEOPLE_ROW_HEIGHT = Style.ROW_HEIGHT
 local PEOPLE_ROWS = math.floor((BOOK_H - PEOPLE_TOP - 14) / PEOPLE_ROW_HEIGHT)
 local DAY = ns.DAY
 
-local Count = Format.Count
-
 --------------------------------------------------------------------------
 -- The People list (JNL-1)
 --------------------------------------------------------------------------
@@ -41,7 +39,7 @@ end
 -- ordered by. Blank where the group heading already says it ("No Interactions yet").
 local function PersonDetail(s)
     if J.query.sort == "timesMet" then
-        return s.timesMet > 0 and Count(s.timesMet, L["time"], L["times"]) or ""
+        return s.timesMet > 0 and ns.Plural(s.timesMet, L["%d time|%d times##plural"]) or ""
     elseif J.query.sort == "together" then
         return s.seconds > 0 and Format.Duration(s.seconds) or ""
     elseif J.query.sort == "lastSeen" then
@@ -98,8 +96,9 @@ local function ActiveFilters()
     if J.query.tag then parts[#parts + 1] = Fmt(L["tag: %s"], J.query.tag) end
     if J.query.relationship then parts[#parts + 1] = Fmt(L["relationship: %s"], J.query.relationship) end
     if J.query.faction then parts[#parts + 1] = FactionLabel(J.query.faction) end
-    if J.query.zone then parts[#parts + 1] = Fmt(L["met in %s"], J.query.zone) end
-    if J.query.withinDays then parts[#parts + 1] = Fmt(L["met in the last %s days"], J.query.withinDays) end
+    if J.query.zone then parts[#parts + 1] = Fmt(L["met %s##zone"], ns.ZoneIn(nil, J.query.zone)) end
+    if J.query.withinDays then parts[#parts + 1] = ns.Plural(J.query.withinDays,
+        L["met in the last %s day|met in the last %s days##plural"], tostring(J.query.withinDays)) end
     return parts
 end
 
@@ -129,7 +128,7 @@ local function RefreshList(keepScroll)
 
     local filters = ActiveFilters()
     J.journal.sortButton:SetText(SortLabel())
-    J.journal.filterButton:SetText(#filters == 0 and L["All people"] or Count(#filters, L["filter"], L["filters"]))
+    J.journal.filterButton:SetText(#filters == 0 and L["All people"] or ns.Plural(#filters, L["%d filter|%d filters##plural"]))
     J.journal.filters:SetText(#filters > 0 and table.concat(filters, "  ·  ") or "")
     -- The pad's rows were handed round (UI/Journal/PeoplePad.lua); with
     -- the pad down this does nothing.

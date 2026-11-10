@@ -72,6 +72,15 @@ local function Em(text)
     end))
 end
 
+-- A zone after its preposition (ns.ZoneIn), the name marked: "in
+-- |cff..Mulgore|r". A locale that declines the name marks the phrase.
+local function EmPlace(mapID, zone)
+    local phrase = ns.ZoneIn(mapID, zone)
+    local from, to = phrase:find(zone, 1, true)
+    if not from then return Em(phrase) end
+    return phrase:sub(1, from - 1) .. Em(zone) .. phrase:sub(to + 1)
+end
+
 -- "3 days ago", but "on 12 Sep 2025".
 local function When(time)
     local when = Format.Ago(time)
@@ -88,7 +97,9 @@ local function FightStories(fights)
     if not score then return { L["No blood between you yet."] } end
     local last = Em(When(fights.last))
     local stories = {}
-    if fights.zone then stories[1] = Fmt(L["%1$s Last fight %2$s in %3$s."], score, last, Em(fights.zone)) end
+    if fights.zone then
+        stories[1] = Fmt(L["%1$s Last fight %2$s %3$s.##zone"], score, last, EmPlace(fights.mapID, fights.zone))
+    end
     stories[#stories + 1] = Fmt(L["%1$s Last fight %2$s."], score, last)
     stories[#stories + 1] = score
     return stories
@@ -108,14 +119,16 @@ local function Story(snap, place)
     end
 
     local when = Em(When(snap.lastMet))
-    local zone = place and snap.lastZone and Em(snap.lastZone)
+    local zone = place and snap.lastZone and EmPlace(nil, snap.lastZone)
 
+    -- Exactly one meeting is a sentence of its own; any other count
+    -- takes its plural.
     if snap.timesMet == 1 then
-        if zone then return Fmt(L["You've met once, %1$s in %2$s."], when, zone) end
+        if zone then return Fmt(L["You've met once, %1$s %2$s.##zone"], when, zone) end
         return Fmt(L["You've met once, %s."], when)
     end
-    local times = Em(Fmt(L["%d times"], snap.timesMet))
-    if zone then return Fmt(L["You've crossed paths %1$s, last %2$s in %3$s."], times, when, zone) end
+    local times = Em(ns.Plural(snap.timesMet, L["%d time|%d times##plural"]))
+    if zone then return Fmt(L["You've crossed paths %1$s, last %2$s %3$s.##zone"], times, when, zone) end
     return Fmt(L["You've crossed paths %1$s, last %2$s."], times, when)
 end
 
@@ -167,7 +180,7 @@ function ns.UI.ReunionText(snap)
     if snap.more then
         return {
             heading = HEADINGS[snap.reason] or HEADINGS.mixed,
-            name = Fmt(L["and %d more"], snap.more),
+            name = ns.Plural(snap.more, L["and %d more|and %d more##plural"]),
             stories = { MORE[snap.reason] or MORE.mixed },
         }
     end

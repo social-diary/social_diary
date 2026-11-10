@@ -41,8 +41,8 @@ end
 function Text.ZoneFoot(z, names, fights)
     local line = Text.ZoneLine(z)
     local parts = { line ~= "" and line or nil }
-    local list = List(names or {}, { max = 4, shown = 3, more = L["others"] })
+    local list = List(names or {}, { max = 4, shown = 3, more = ns.UI.Format.OTHERS })
     if list then parts[#parts + 1] = Fmt(L["with %s"], list) end
-    if (fights or 0) > 0 then parts[#parts + 1] = fights == 1 and L["a fight"] or Fmt(L["%d fights"], fights) end
+    if (fights or 0) > 0 then parts[#parts + 1] = ns.Plural(fights, L["a fight|%d fights##plural"]) end
     return table.concat(parts, "  \194\183  ")
 end
