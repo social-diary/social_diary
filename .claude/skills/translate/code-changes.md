@@ -93,4 +93,11 @@ Open:
   number words (A6), French first forms that may now drop the count (C2),
   the `##line` deeds (B8), Spanish "a la 1" (the clock hook gives the hour,
   the template still says "a las").
-- **D1 to D3**, as above.
+- **D2, D3**, as above.
+
+**D1 is decided and built** (Jan, 10 Nov: the game's own sex of a
+character, no field for the player to set). A locale's words hold the
+forms, `<1:he/she/neither>` by a value's character and `<you:he/she>` by
+the reader (`Locales/Locale.lua`, "A person's gender"). No word uses them
+yet: writing the past tense back into the Russian, and the participles into
+the French and Spanish, is part of the second pass.
