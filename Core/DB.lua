@@ -114,6 +114,10 @@ local ACCOUNT_SETTINGS = {
     -- update (2.x to 3.0), linking the Changelog (Core/Hints.lua's
     -- Installed). Its own switch, beside Show hints.
     showUpdateHint = true,
+    -- The diary's language: "auto" (the client's) or a locale's id
+    -- ("deDE"). Read as the files load, before InitDB, straight from the
+    -- saved table (Locales/Locale.lua); a change applies after a reload.
+    language = "auto",
     debug = false,
 }
 

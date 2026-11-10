@@ -5,6 +5,7 @@
 ## Version: 3.0.2
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
+## LoadSavedVariablesFirst: 1
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## AddonCompartmentFunc: SocialDiary_OnCompartmentClick
 ## X-Category: Social

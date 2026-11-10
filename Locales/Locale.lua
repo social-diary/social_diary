@@ -29,11 +29,77 @@
 
 local addonName, ns = ...
 
+--------------------------------------------------------------------------
+-- Which language. The client's, unless the reader chose another (Settings,
+-- Interface > Language: the account setting `language`, "auto" or a
+-- locale's id).
+--
+-- The words are taken as each file loads, so the choice has to be known
+-- here, before any of them: the TOC asks for the saved variables first
+-- (LoadSavedVariablesFirst), and a change applies after a reload. A client
+-- that does not hand them over this early reads its own language whatever
+-- was chosen; Locale.Settle notices (Core/Events.lua calls it once the
+-- settings are in) and the settings page says so.
+--
+--   Locale.client     the client's language
+--   Locale.id         the language the diary reads
+--   Locale.offered    the languages there are words for, { id, name }, as
+--                     each locale's Grammar.lua offers itself (Locale.Offer)
+--   Locale.stuck      true once a saved choice turned out not to apply
+local function Chosen()
+    local saved = rawget(_G, "SocialDiaryDB")
+    local settings = type(saved) == "table" and saved.settings
+    local language = type(settings) == "table" and settings.language
+    if type(language) == "string" and language ~= "auto" then return language end
+    return nil
+end
+
+local client = (GetLocale and GetLocale()) or "enUS"
 local Locale = {
-    id = (GetLocale and GetLocale()) or "enUS",
+    client = client,
+    id = Chosen() or client,
     grammar = {},
+    offered = { { id = "enUS", name = "English" } },
+    stuck = false,
 }
 ns.Locale = Locale
+
+-- A locale says it is there, by the name its own readers call it
+-- ("Deutsch", "Русский"): the first line of its Grammar.lua, before the
+-- `Is` guard, so it is listed on every client.
+function Locale.Offer(id, name)
+    for _, offer in ipairs(Locale.offered) do
+        if offer.id == id then offer.name = name; return end
+    end
+    Locale.offered[#Locale.offered + 1] = { id = id, name = name }
+end
+
+-- Whether the diary has words for `id`.
+function Locale.Offers(id)
+    for _, offer in ipairs(Locale.offered) do
+        if offer.id == id then return true end
+    end
+    return false
+end
+
+-- The language a `language` setting asks for ("auto" is the client's).
+function Locale.Wanted(language)
+    if type(language) ~= "string" or language == "auto" then return Locale.client end
+    return language
+end
+
+-- Whether `language` (the setting, as it is now) reads another language
+-- than the diary does: chosen this session and waiting for a reload.
+function Locale.Pending(language)
+    return Locale.Wanted(language) ~= Locale.id
+end
+
+-- Once the settings are in: a choice saved before this load that the
+-- diary does not read was not handed over in time (see above).
+function Locale.Settle(language)
+    Locale.stuck = Locale.Pending(language)
+    return Locale.stuck
+end
 
 -- A key may carry a context after "##" where one English word needs two
 -- translations ("May##short", the month's short form): the English is the

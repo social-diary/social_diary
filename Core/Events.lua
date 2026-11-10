@@ -389,6 +389,9 @@ end
 ns.On("ADDON_LOADED", function(_, loaded)
     if loaded ~= addonName then return end
     ns.InitDB()
+    -- Whether a language chosen before this load is the one the diary
+    -- reads (Locales/Locale.lua).
+    ns.Locale.Settle(ns.db.settings.language)
     -- The tour's example person, left over from a /reload, crash or logout
     -- mid-tour: gone before anything lists people (Core/Sample.lua).
     Call(ns.Sample.Remove)
