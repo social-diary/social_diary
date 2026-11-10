@@ -30,7 +30,7 @@
 local addonName, ns = ...
 
 local Locale = {
-    id = (GetLocale and GetLocale()) or "enUS",
+    id = "frFR",
     grammar = {},
 }
 ns.Locale = Locale
