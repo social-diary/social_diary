@@ -242,6 +242,11 @@ here.
   `Format.Clock(time)`, `Format.Decimal(n, places)`; a column in chat is
   padded with `Format.Pad` (it counts characters). A list of places after
   one preposition is `ns.ZonesIn(names, role, List)`.
+- **A name that a sentence is about is the character's own** (from
+  `ns.Characters.Name` / `FullName`, or noted with `ns.Locale.Says(name,
+  sex)` where it comes from somewhere else): a translation's verb agrees
+  with that character's sex (`<1:he/she>` in its words), matched by the
+  name the template's value shows.
 - **A shared template says what it joins**: `L["%1$s %2$s##name and deed"]`,
   never a bare `L["%1$s %2$s"]`; a translation orders and joins each use
   its own way.

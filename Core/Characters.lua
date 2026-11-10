@@ -38,6 +38,13 @@ function Characters.Name(guid)
     local latest = record.names[#record.names]
     if not latest then return nil end
 
+    -- For the words that agree with whom they name (Locales/Locale.lua).
+    local Locale = ns.Locale
+    if Locale.gendered then
+        Locale.Says(latest.first, record.sex)
+        if latest.surname then Locale.Says(ns.JoinName(latest.first, latest.surname), record.sex) end
+    end
+
     return latest.first, latest.surname
 end
 

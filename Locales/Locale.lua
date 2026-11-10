@@ -54,12 +54,72 @@ local L = setmetatable({}, {
 })
 ns.L = L
 
+--------------------------------------------------------------------------
+-- A person's gender. English never needs it; a Russian past tense or a
+-- French participle agrees with whom the sentence is about. The game says
+-- each character's sex (kept on its record: Core/Characters.lua), so a
+-- locale's words may hold the forms and the lookup picks one:
+--
+--   ["%1$s killed {you}"] = "%1$s <1:убил/убила/убивает> {тебя}"
+--   ["{You} died"]        = "{ты} <you:погиб/погибла>"
+--
+--   <N:he/she>           by the character named in the template's Nth value
+--   <N:he/she/neither>   the third where their sex is not known (a row from
+--                        before it was kept, a name the player typed); with
+--                        two forms, the first
+--   <you:he/she>         by the reader: the character playing, or the one
+--                        of the player's a shared diary's row is about
+--                        (Format.You, where the key braces the reader)
+--
+-- A value is matched to a character by the name it shows: every name read
+-- from a record (Characters.Name) is noted with its sex as it is read, so
+-- of two characters with one name the one just named counts. Nothing is
+-- noted, and no template searched, until a locale's words hold a form.
+Locale.gendered = false
+
+local MALE, FEMALE = 2, 3   -- UnitSex's
+local saidSex = {}
+
+-- `forms`' ("he/she" or "he/she/neither") for `sex`.
+function Locale.Gender(forms, sex)
+    local he, she, neither = forms:match("^([^/]*)/([^/]*)/?(.*)$")
+    if not he then return forms end
+    if sex == MALE then return he end
+    if sex == FEMALE then return she end
+    return neither ~= "" and neither or he
+end
+
+-- Notes the sex of the character a name belongs to, as the name is read.
+function Locale.Says(name, sex)
+    if Locale.gendered and name then saidSex[name] = sex end
+end
+
+-- A value as its name was noted: without the colour round it.
+local function Bare(value)
+    return (tostring(value):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+-- `text` with its <you:...> forms picked for `sex`.
+function Locale.You(text, sex)
+    return (text:gsub("<you:([^<>]*)>", function(forms) return Locale.Gender(forms, sex) end))
+end
+
 -- Adds a locale's words, if it is the client's. `id` "enUS" is always
 -- taken: the English the code writes, as a base every locale builds on.
 function Locale.Add(id, words)
     if id ~= "enUS" and id ~= Locale.id then return false end
     for key, text in pairs(words) do
-        if type(text) == "string" then rawset(L, key, text) end
+        if type(text) == "string" then
+            if text:find("<%w+:") then
+                Locale.gendered = true
+                -- The reader where no row says which character: the one
+                -- playing, known as the words load.
+                if not key:find("{", 1, true) and text:find("<you:", 1, true) then
+                    text = Locale.You(text, UnitSex and UnitSex("player") or nil)
+                end
+            end
+            rawset(L, key, text)
+        end
     end
     return true
 end
@@ -81,6 +141,13 @@ end
 -- has none.
 local ESCAPED = "\1"
 local function Fill(template, ...)
+    if Locale.gendered and template:find("<%d") then
+        local who = { ... }
+        template = template:gsub("<(%d+):([^<>]*)>", function(i, forms)
+            local value = who[tonumber(i)]
+            return Locale.Gender(forms, value ~= nil and saidSex[Bare(value)] or nil)
+        end)
+    end
     if not template:find("%%%d+%$") then return template:format(...) end
     local values = { ... }
     local text = template:gsub("%%%%", ESCAPED)

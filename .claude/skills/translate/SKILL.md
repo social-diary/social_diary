@@ -71,6 +71,19 @@ diary there would say it, not word for word.
     `DUNGEONS[instanceID][role]`, `SUBZONES[name][role]`. Each may be a
     function of the bare name where the preposition contracts or elides
     ("del Cruce", "près d’Orgrimmar").
+- **A person's gender comes from the game** (each character's sex is on
+  its record; the reader's is the character playing). Where a verb or a
+  participle agrees with someone, write the forms in the words and the
+  lookup picks one:
+  `["%1$s killed {you}"] = "%1$s <1:убил/убила/убивает> {тебя}"`,
+  `["{You} died"] = "{ты} <you:погиб/погибла>"`.
+  `<N:he/she>` goes by the character named in the key's Nth value,
+  `<you:he/she>` by the reader. A third form is for a sex that is not
+  known (an old row, a name the player typed): give one wherever the
+  language has a neutral way to say it; with two, the first is used. The
+  forms are split by `/` and hold no `%` and no `|`. Never rebuild a
+  sentence round a colon to dodge a gender: use the forms. English has
+  none of this, and no key changes for it.
 - One file per area, each `ns.Locale.Add("<id>", { ... })`, with a comment
   line naming the source file above its keys, in the order of
   `Locales/enUS.lua`. Every file whose table is built at load starts with

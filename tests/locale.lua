@@ -127,6 +127,39 @@ do
     G.Day, G.Clock, G.DECIMAL, G.Ordinal, G.ListEnd, G.Agree = nil, nil, nil, nil, nil, nil
 end
 
+Section("a person's gender")
+do
+    local Locale, Format = ns.Locale, ns.UI.Format
+    Eq(Locale.Gender("убил/убила", 2), "убил", "he")
+    Eq(Locale.Gender("убил/убила", 3), "убила", "she")
+    Eq(Locale.Gender("убил/убила", nil), "убил", "not known: the first of two")
+    Eq(Locale.Gender("убил/убила/убивает", nil), "убивает", "or the third, where the words give one")
+    Eq(Locale.Gender("убил/убила/убивает", 1), "убивает", "the game's 'unknown' too")
+    Eq(ns.Fmt("%1$s <1:he/she> x", "Numa"), "Numa <1:he/she> x", "no template is searched before a locale has a form")
+
+    Locale.gendered = true
+    Locale.Says("Numa", 3)
+    Locale.Says("Brakk", 2)
+    Eq(ns.Fmt("%1$s <1:убил/убила> %2$s", "Numa", "Brakk"), "Numa убила Brakk", "by the first value's character")
+    Eq(ns.Fmt("%1$s, <2:спасён/спасена>: %2$s", "Numa", "Brakk"), "Numa, спасён: Brakk", "by the second's")
+    Eq(ns.Fmt("%s <1:убил/убила>", "|cffffd100Numa|r"), "|cffffd100Numa|r убила", "a name in colour is still its name")
+    Eq(ns.Fmt("%s <1:убил/убила/убивает>", "Someone"), "Someone убивает", "a name no record gave")
+    Eq(ns.Plural(2, "%2$s <2:умер/умерла> раз|%2$s <2:умер/умерла> %1$d раза", 2, "Numa"), "Numa умерла 2 раза",
+        "inside a plural form: the forms are split by a slash, not the plural's bar")
+    Locale.Says("Numa", 2)
+    Eq(ns.Fmt("%s <1:убил/убила>", "Numa"), "Numa убил", "of two with one name, the one just named")
+
+    -- The reader: the character playing.
+    local was = _G.UnitSex
+    _G.UnitSex = function() return 3 end
+    Eq(Format.You(nil, "{ты} <you:погиб/погибла>"), "ты погибла", "the reader's forms, by the character playing")
+    _G.UnitSex = function() return 2 end
+    Eq(Format.You(nil, "{ты} <you:погиб/погибла>"), "ты погиб", "he")
+    _G.UnitSex = was
+    Eq(Locale.You("<you:погиб/погибла/—>", nil), "—", "the reader's sex not known")
+    Locale.gendered = false
+end
+
 local keys, order = Extract.Keys(".")
 local en = Extract.Locale(".", "enUS")
 local function IsPlural(k) return k:find("##plural$") ~= nil end
@@ -248,6 +281,30 @@ local function Braced(text)
     return words
 end
 
+-- What is wrong with the gender forms in `value` (<1:he/she>,
+-- <you:he/she/neither>: Locales/Locale.lua), or nil: each names the reader
+-- or one of the key's values, and holds two forms or three.
+local function Forms(key, value)
+    local english = ns.Locale.English(key)
+    local _, takes = english:gsub("%%%d*%$?[-+ #0]*%d*%.?%d*[%a]", "")
+    if key:find("##plural") then
+        local forms = ns.Locale.Forms(english)
+        _, takes = forms[#forms]:gsub("%%%d*%$?[-+ #0]*%d*%.?%d*[%a]", "")
+    end
+    for who, forms in value:gmatch("<([^<>:/|]*):([^<>]*)>") do
+        local n = tonumber(who)
+        if who ~= "you" and not n then return ("<%s:...> names neither a value nor the reader"):format(who) end
+        if n and (n < 1 or n > takes) then return ("<%d:...> but the key takes %d values"):format(n, takes) end
+        local _, slashes = forms:gsub("/", "")
+        if slashes < 1 or slashes > 2 then return ("<%s:%s> needs two forms or three, split by /"):format(who, forms) end
+        if forms:find("|", 1, true) or forms:find("%", 1, true) then
+            return ("<%s:%s> holds a bar or a value"):format(who, forms)
+        end
+    end
+    if value:gsub("<[^<>:/|]*:[^<>]*>", ""):find("<%w+:") then return "a gender form is not closed" end
+    return nil
+end
+
 -- What is wrong with `value` as the words for `key`, or nil. `forms` is
 -- the locale's table of the reader's words (grammar.YOU_FOR, else the
 -- English one): a braced word not in it would stay as written in a shared
@@ -265,7 +322,7 @@ local function Carried(key, value, forms)
     for _, word in ipairs(theirs) do
         if not forms[word] then return ("{%s} is not one of the locale's reader's words (grammar.YOU_FOR)"):format(word) end
     end
-    return nil
+    return Forms(key, value)
 end
 
 Section("what a translation carries over")
@@ -284,6 +341,12 @@ do
     Check(Carried("Killed them", "{Du hast} sie getötet", DE) ~= nil, "braces the key has not")
     Check(Carried("%s saw {you} die##context", "%s sah {dich} sterben", DE) == nil, "a key's context is not its text")
     Check(Carried("a fight|%d fights##plural", "ein Kampf|%d Kämpfe", DE) == nil, "a plural's bar is no markup")
+    Check(Carried("%1$s killed %2$s", "%1$s <1:убил/убила> %2$s", DE) == nil, "gender forms by a value")
+    Check(Carried("%1$s killed %2$s", "%1$s <3:убил/убила> %2$s", DE) ~= nil, "by a value the key has not")
+    Check(Carried("%s died", "%s <1:умер>", DE) ~= nil, "one form alone")
+    Check(Carried("%s died", "%s <1:умер/умерла", DE) ~= nil, "a form left open")
+    Check(Carried("%s died", "%s <him:умер/умерла>", DE) ~= nil, "a form by no one")
+    Check(Carried("Died here", "<you:Погиб/Погибла/Смерть> здесь", DE) == nil, "the reader's, with a third")
     Check(Carried("a note|%d notes##plural", "une note|%d notes|nos %d notes", DE) == nil,
         "nor is a bar before a form that starts like an escape")
     -- The code's own keys against the English forms.
