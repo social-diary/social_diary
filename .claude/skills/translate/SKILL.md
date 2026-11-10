@@ -78,7 +78,10 @@ diary there would say it, not word for word.
   `["%1$s killed {you}"] = "%1$s <1:убил/убила/убивает> {тебя}"`,
   `["{You} died"] = "{ты} <you:погиб/погибла>"`.
   `<N:he/she>` goes by the character named in the key's Nth value,
-  `<you:he/she>` by the reader. A third form is for a sex that is not
+  `<you:he/she>` by the reader, `<they:he/she>` by the character the words
+  are about where the key holds no name and the code says who (today the
+  witness deeds, "saved you" and its kin with their `##many` and `##line`
+  forms; elsewhere it takes the form for no one known). A third form is for a sex that is not
   known (an old row, a name the player typed): give one wherever the
   language has a neutral way to say it; with two, the first is used. The
   forms are split by `/` and hold no `%` and no `|`. Never rebuild a

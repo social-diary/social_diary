@@ -70,6 +70,11 @@ ns.L = L
 --   <you:he/she>         by the reader: the character playing, or the one
 --                        of the player's a shared diary's row is about
 --                        (Format.You, where the key braces the reader)
+--   <they:he/she>        by the character the words are about, where the
+--                        key holds no name for them and the code says who
+--                        (Locale.They: a witness's deed, "saved you", set
+--                        under their name). Only in keys whose code does;
+--                        anywhere else it takes the form for no one known.
 --
 -- A value is matched to a character by the name it shows: every name read
 -- from a record (Characters.Name) is noted with its sex as it is read, so
@@ -97,6 +102,13 @@ end
 -- A value as its name was noted: without the colour round it.
 local function Bare(value)
     return (tostring(value):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+-- `text` with its <they:...> forms picked for `sex`: for words about one
+-- character that are no template of their name.
+function Locale.They(text, sex)
+    if not Locale.gendered then return text end
+    return (text:gsub("<they:([^<>]*)>", function(forms) return Locale.Gender(forms, sex) end))
 end
 
 -- `text` with its <you:...> forms picked for `sex`.
@@ -148,6 +160,8 @@ local function Fill(template, ...)
             return Locale.Gender(forms, value ~= nil and saidSex[Bare(value)] or nil)
         end)
     end
+    -- A <they:...> no code picked: the form for no one known.
+    if Locale.gendered and template:find("<they:", 1, true) then template = Locale.They(template, nil) end
     if not template:find("%%%d+%$") then return template:format(...) end
     local values = { ... }
     local text = template:gsub("%%%%", ESCAPED)

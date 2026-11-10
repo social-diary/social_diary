@@ -62,17 +62,24 @@ local DEEDS_SAID = {
     line = { merciless = L["mercilessly watched you die##line"], saw = L["saw you die##line"],
         watched = L["watched you die##line"], saved = L["saved you##line"], tried = L["tried to save you##line"] },
 }
+--
+-- The deed holds no name, so a locale whose verb agrees with the witness
+-- writes <they:he/she> and it is picked here by their record's sex.
+local function Theirs(w, text, under)
+    local record = w and w.guid and ns.Characters.Get and ns.Characters.Get(w.guid)
+    return ns.Locale.They(text, record and record.sex or nil), under
+end
 function Witnesses.Deed(w, form)
     local look = Witnesses.Look(w)
     local said = form and DEEDS_SAID[form]
     if said then
-        return said[look or (w and w.type == Witnesses.SAVED and "saved" or "tried")]
+        return Theirs(w, said[look or (w and w.type == Witnesses.SAVED and "saved" or "tried")])
     end
-    if look == "merciless" then return L["mercilessly watched you die"], L["mercilessly"] end
-    if look == "saw" then return L["saw you die"] end
-    if look then return L["watched you die"] end
-    if w and w.type == Witnesses.SAVED then return L["saved you"] end
-    return L["tried to save you"]
+    if look == "merciless" then return Theirs(w, L["mercilessly watched you die"], L["mercilessly"]) end
+    if look == "saw" then return Theirs(w, L["saw you die"]) end
+    if look then return Theirs(w, L["watched you die"]) end
+    if w and w.type == Witnesses.SAVED then return Theirs(w, L["saved you"]) end
+    return Theirs(w, L["tried to save you"])
 end
 
 -- The creature, in small print under the deed: "to a Ragged Young Wolf"

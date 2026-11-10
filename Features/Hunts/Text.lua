@@ -38,7 +38,10 @@ Hunts.Kinds = Kinds
 -- Plainstrider Meat"), for the sentences that say them in their own words.
 local function Parts(hunt)
     local kills = hunt.kills or 0
-    local items = Items(hunt.need or 0, hunt.item or L["drop"])
+    -- An item with no name kept is "one drop", "7 drops": its own plural,
+    -- where a named one is counted by the game's name (Items).
+    local items = hunt.item and Items(hunt.need or 0, hunt.item)
+        or Counts(hunt.need or 0, L["one drop|%d drops##plural"])
     if not (hunt.name and hunt.name ~= "") then return Counts(kills, KILLS), items end
     local what = kills == 1 and hunt.name or Plural(hunt.name)
     if Kinds(hunt) > 1 then what = Fmt(L["%s and others"], what) end

@@ -332,7 +332,7 @@ ns.Locale.Add("enUS", {
     ["Lucky Quest Drops"] = "Lucky Quest Drops",
     -- Features/Hunts/Text.lua
     ["%d kill|%d kills##plural"] = "%d kill|%d kills",
-    ["drop"] = "drop",
+    ["one drop|%d drops##plural"] = "one drop|%d drops",
     ["%s and others"] = "%s and others",
     ["%1$s for %2$s"] = "%1$s for %2$s",
     ["%d more than expected|%d more than expected##plural"] = "%d more than expected|%d more than expected",
@@ -358,6 +358,7 @@ ns.Locale.Add("enUS", {
     ["killed %s"] = "killed %s",
     ["Usually %d each"] = "Usually %d each",
     ["The first %1$s gave up its %2$s."] = "The first %1$s gave up its %2$s.",
+    ["drop"] = "drop",
     ["The first %1$s gave up its %2$s, where %3$s."] = "The first %1$s gave up its %2$s, where %3$s.",
     ["%d was expected|%d were expected##plural"] = "%d was expected|%d were expected",
     ["It took only %1$s to get %2$s."] = "It took only %1$s to get %2$s.",
