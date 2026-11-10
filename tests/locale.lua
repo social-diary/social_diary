@@ -145,6 +145,89 @@ Check(#glued == 0, "a ##zone key takes the whole phrase (ns.ZoneIn / ns.DungeonI
 Check(#badKey == 0, "plural keys need two English forms that take the same values, the other form the count, "
     .. "and no WoW | escapes: " .. table.concat(badKey, " | "))
 
+--------------------------------------------------------------------------
+-- What a translation must carry over from its key besides the values: the
+-- client's markup and the reader's braced words. Checked for every locale
+-- below, and here on words made up for it, so the checks themselves are
+-- tested while no locale is loaded.
+--------------------------------------------------------------------------
+
+-- A text's markup as the client reads it, in a comparable form: each
+-- colour by its code, each close, texture, link and atlas, and the line
+-- breaks ("\n" and the client's "|n"). A translation may move them, never
+-- drop, add or recolour one.
+local function Markup(text)
+    local found = {}
+    local function Count(name, pattern)
+        local _, n = text:gsub(pattern, "")
+        for _ = 1, n do found[#found + 1] = name end
+    end
+    for code in text:gmatch("|c(%x%x%x%x%x%x%x%x)") do found[#found + 1] = "colour " .. code:lower() end
+    for name in text:gmatch("|cn([%w_]+):") do found[#found + 1] = "colour " .. name end
+    Count("close", "|r")
+    Count("texture", "|T.-|t")
+    Count("link", "|H.-|h")
+    Count("atlas", "|A.-|a")
+    Count("break", "|n")
+    Count("line", "\n")
+    table.sort(found)
+    return table.concat(found, ", ")
+end
+
+-- The words a text braces for the reader ("{you}", "{Du hast}"), lower
+-- case as Format.You looks them up.
+local function Braced(text)
+    local words = {}
+    for word in text:gmatch("{(.-)}") do words[#words + 1] = word:lower() end
+    return words
+end
+
+-- What is wrong with `value` as the words for `key`, or nil. `forms` is
+-- the locale's table of the reader's words (grammar.YOU_FOR, else the
+-- English one): a braced word not in it would stay as written in a shared
+-- diary, "du hast" where another character's name belongs.
+local function Carried(key, value, forms)
+    local english = ns.Locale.English(key)
+    local a, b = Markup(english), Markup(value)
+    if a ~= b then return ("markup differs: [%s] in the key, [%s] in the words"):format(a, b) end
+    local mine, theirs = Braced(english), Braced(value)
+    if (#mine == 0) ~= (#theirs == 0) then
+        return #mine == 0 and "braces the reader where the key does not"
+            or "the key braces the reader ({you}), the words do not"
+    end
+    for _, word in ipairs(theirs) do
+        if not forms[word] then return ("{%s} is not one of the locale's reader's words (grammar.YOU_FOR)"):format(word) end
+    end
+    return nil
+end
+
+Section("what a translation carries over")
+do
+    local EN = ns.UI.Format.YOU_FOR
+    local DE = { ["du"] = "%s", ["du hast"] = "%s hat", ["dich"] = "%s" }
+    Check(Carried("added |cffffffff%s|r to the diary.", "|cffffffff%s|r ins Tagebuch eingetragen.", DE) == nil,
+        "markup kept and moved is fine")
+    Check(Carried("added |cffffffff%s|r to the diary.", "%s ins Tagebuch eingetragen.", DE) ~= nil, "a dropped colour")
+    Check(Carried("added |cffffffff%s|r to the diary.", "|cffffd100%s|r eingetragen.", DE) ~= nil, "another colour")
+    Check(Carried("One line.\n\nAnother.", "Eine Zeile.\nNoch eine.", DE) ~= nil, "a lost line break")
+    Check(Carried("One line.\n\nAnother.", "Eine Zeile.\n\nNoch eine.", DE) == nil, "line breaks kept")
+    Check(Carried("{You} killed them", "{Du hast} sie getötet", DE) == nil, "the reader braced in the locale's words")
+    Check(Carried("{You} killed them", "Du hast sie getötet", DE) ~= nil, "the reader's braces dropped")
+    Check(Carried("{You} killed them", "{Ihr habt} sie getötet", DE) ~= nil, "a braced word the locale has no form for")
+    Check(Carried("Killed them", "{Du hast} sie getötet", DE) ~= nil, "braces the key has not")
+    Check(Carried("%s saw {you} die##context", "%s sah {dich} sterben", DE) == nil, "a key's context is not its text")
+    Check(Carried("a fight|%d fights##plural", "ein Kampf|%d Kämpfe", DE) == nil, "a plural's bar is no markup")
+    -- The code's own keys against the English forms.
+    local bad = {}
+    local all, list = Extract.Keys(".")
+    for _, k in ipairs(list) do
+        for _, word in ipairs(Braced(ns.Locale.English(k))) do
+            if not EN[word] then bad[#bad + 1] = ("%q (%s)"):format(k, all[k]) end
+        end
+    end
+    Check(#bad == 0, "keys that brace a word Format.You has no form for: " .. table.concat(bad, " | "))
+end
+
 Section("enUS.lua is the code's keys")
 local stale, absent = {}, {}
 for _, k in ipairs(order) do if en[k] == nil then absent[#absent + 1] = k .. " (" .. keys[k] .. ")" end end
@@ -163,13 +246,16 @@ for line in io.lines("social_diary.toc") do
 end
 
 -- A locale's grammar, as its client loads it.
-local function GrammarOf(id)
+local loaded = {}
+local function GrammarNs(id)
+    if loaded[id] then return loaded[id] end
     local was, wasNs = _G.GetLocale, T.ns
     _G.GetLocale = function() return id end
-    local G = T.Load().Locale.grammar
+    loaded[id] = T.Load()
     _G.GetLocale, T.ns = was, wasNs
-    return G
+    return loaded[id]
 end
+local function GrammarOf(id) return GrammarNs(id).Locale.grammar end
 
 for _, id in ipairs(LOCALES) do
     Section(id)
@@ -177,8 +263,13 @@ for _, id in ipairs(LOCALES) do
     if RULES[id] then RuleHolds(G, RULES[id], id) end
     local oneAlone = OneAlone(G)
     local words = Extract.Locale(".", id)
-    local unknown, wrong, missing, plural = {}, {}, {}, {}
+    local unknown, wrong, missing, plural, lost = {}, {}, {}, {}, {}
+    local forms = G.YOU_FOR or GrammarNs(id).UI.Format.YOU_FOR
     for k, v in pairs(words) do
+        if keys[k] then
+            local why = Carried(k, v, forms)
+            if why then lost[#lost + 1] = ("%q -> %q (%s)"):format(k, v, why) end
+        end
         if not keys[k] then unknown[#unknown + 1] = k
         elseif IsPlural(k) then
             local sig, pos = PluralSignature(k)
@@ -207,6 +298,8 @@ for _, id in ipairs(LOCALES) do
     Check(#plural == 0, id .. " plural words need one form per plural category, each with the key's values"
         .. (oneAlone and "" or " (every form shows the count: form 1 is not the number 1 alone here)")
         .. ": " .. table.concat(plural, " | "))
+    Check(#lost == 0, id .. " words that lose what their key carries (colour codes, line breaks, the reader's braces): "
+        .. table.concat(lost, " | "))
     -- Words still to write are no failure: the key reads in English until
     -- they are, and a release need not wait for a translator. Said, so the
     -- gap shows (the list: luajit Dev/Locale/extract.lua --missing <id>).

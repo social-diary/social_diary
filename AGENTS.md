@@ -45,6 +45,8 @@ Every such string goes through `L["..."]`; then regenerate
 `Locales/enUS.lua` (`luajit Dev/Locale/extract.lua`) and run
 `luajit tests/run.lua`.
 
+Translations (`Locales/<id>/`: a new language, or one brought up to date) go through /translate (`.claude/skills/translate/`). The English is the golden copy: a translation never changes it.
+
 Dungeon pace data (`Core/Pace/`, where the Dungeon View places deaths
 between bosses) goes through /pace-data (`.claude/skills/pace-data/`); the
 design and its decisions are in `.claude/rules/pace.md`.

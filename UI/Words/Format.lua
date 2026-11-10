@@ -277,6 +277,10 @@ function Format.YouName(me)
     return own and own.first or (me and ns.Characters.Name(me)) or nil
 end
 
+-- The reader's words a template may brace, for tests/locale.lua: a
+-- translation's braced words are checked against its locale's forms.
+Format.YOU_FOR = YOU_FOR
+
 function Format.You(me, text)
     if Format.IsYou(me) then return (text:gsub("{(.-)}", "%1")) end
     local name = Format.YouName(me)

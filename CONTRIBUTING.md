@@ -88,7 +88,8 @@ positional `%1$s`, `ns.Plural` for counts, zones through `ns.ZoneIn`) are in
   ```
 
   `--check` only says whether it is up to date; `--missing <id>` lists the
-  keys a locale has no words for yet.
+  keys a locale has no words for yet, and `--context <id> [path]` shows each
+  with the code round it (what its values are, where it shows).
 - **Tests:** `luajit tests/run.lua` (its `locale` file checks every locale
   in the TOC: no unknown keys, the same placeholders, one plural form per
   category; keys still to translate are listed as a note, not a failure, and

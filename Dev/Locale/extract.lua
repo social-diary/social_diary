@@ -5,6 +5,14 @@
 --                                           that enUS.lua lacks, and the other way
 --   luajit Dev/Locale/extract.lua --missing deDE
 --                                           the keys deDE has no words for
+--   luajit Dev/Locale/extract.lua --context deDE [path]
+--                                           the same keys, each with the code
+--                                           round its first use (what its
+--                                           values are, where it shows), for
+--                                           a translator; `path` keeps to the
+--                                           files under it ("Features/Hunts")
+--   luajit Dev/Locale/extract.lua --context all [path]
+--                                           every key that way
 --
 -- A key is the literal in L["..."] or ns.T("...") (double quotes, Lua
 -- escapes allowed), in every file the TOC loads outside Vendor/, Dev/ and
@@ -199,6 +207,43 @@ if arg and arg[1] == "--check" then
     end
     print(bad == 0 and "enUS.lua is up to date" or (bad .. " differences: run luajit Dev/Locale/extract.lua"))
     os.exit(bad == 0 and 0 or 1)
+elseif arg and arg[1] == "--context" then
+    -- A key with the lines round its first use: the comment block above
+    -- it (the file's own account of the sentence) and the lines up to the
+    -- call's end, so the values of %1$s, %2$s can be read off the code.
+    local id, under = arg[2] or "all", arg[3]
+    local words = id ~= "all" and M.Locale(root, id) or {}
+    local cache = {}
+    local function Lines(file)
+        if not cache[file] then
+            local list = {}
+            for line in io.lines(root .. "/" .. file) do list[#list + 1] = line end
+            cache[file] = list
+        end
+        return cache[file]
+    end
+    local n = 0
+    for _, k in ipairs(order) do
+        local file, line = keys[k]:match("^(.-):(%d+)$")
+        line = tonumber(line)
+        if words[k] == nil and (not under or file:sub(1, #under) == under) then
+            n = n + 1
+            local lines = Lines(file)
+            local from = line
+            -- up through the comment block that leads to this line, 12 lines at most
+            local top = line - 1
+            while top >= 1 and line - top <= 12 and not lines[top]:find("^%s*%-%-") and lines[top]:find("%S") do top = top - 1 end
+            while top >= 1 and line - top <= 12 and lines[top]:find("^%s*%-%-") do from = top; top = top - 1 end
+            if from == line then from = math.max(1, line - 2) end
+            print(("%q"):format(k))
+            print(("  %s:%d"):format(file, line))
+            for i = from, math.min(#lines, line + 2) do
+                print(("  %s %4d  %s"):format(i == line and ">" or " ", i, lines[i]))
+            end
+            print("")
+        end
+    end
+    print(n .. " keys" .. (id ~= "all" and (" without " .. id .. " words") or "") .. (under and (" under " .. under) or ""))
 elseif arg and arg[1] == "--missing" then
     local id = arg[2] or "deDE"
     local words = M.Locale(root, id)
