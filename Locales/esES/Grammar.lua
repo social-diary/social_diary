@@ -29,8 +29,27 @@ G.Capital = function(text)
     return lead .. Up(first) .. rest
 end
 
--- "25.º"
-G.Ordinal = function(n) return n .. ".º" end
+-- "25.º", and "25.ª" for a feminine noun: the death ("muerte") and the
+-- match ("partida") of the word lists.
+local FEMININE = { death = true, match = true }
+G.Ordinal = function(n, context) return n .. (FEMININE[context] and ".ª" or ".º") end
+
+-- A date's day is the figure: "25 oct", "6 de octubre".
+G.Day = function(n) return tostring(n) end
+
+-- "3,2"
+G.DECIMAL = ","
+
+-- "y" is "e" before a word that starts with the sound i ("e Inés", "e
+-- Hilda"; not before "hie", "y hierro").
+G.ListEnd = function(head, last)
+    local low = last:lower()
+    local e = (low:find("^i") or low:find("^hi")) and not low:find("^hie") and not low:find("^io")
+    return head .. (e and " e " or " y ") .. last
+end
+
+-- A creature is named as it comes, with no article to turn off.
+G.NO_ARTICLE = true
 
 -- A name in the genitive: "la historia de Brom".
 G.Genitive = function(name) return "de " .. name end
@@ -48,12 +67,22 @@ G.YOU_FOR = {
     ["intentó salvarte"] = "intentó salvar a %s", ["te salvó"] = "salvó a %s",
 }
 
--- The plain preposition per role. The client's name arrives bare, with no
--- article ("de El Cruce" should be "del Cruce"): see the report.
+-- The plain preposition per role. "de" and "a" contract with a name's own
+-- article: "del Cruce", "al Cruce" (a name that begins "El ").
+local function De(lead)
+    return function(name)
+        local rest = name:match("^El (.+)$")
+        return rest and (lead .. "del " .. rest) or (lead .. "de " .. name)
+    end
+end
+local function A(name)
+    local rest = name:match("^El (.+)$")
+    return rest and ("al " .. rest) or ("a " .. name)
+end
 G.PLACE = {
-    ["in"] = "en %s", to = "a %s", from = "de %s", into = "a %s",
-    through = "por %s", near = "cerca de %s", at = "en %s",
-    around = "alrededor de %s", round = "alrededor de %s",
+    ["in"] = "en %s", to = A, from = De(""), into = A,
+    through = "por %s", near = De("cerca "), at = "en %s",
+    around = De("alrededor "), round = De("alrededor "),
 }
 -- ZONES, DUNGEONS, SUBZONES stay empty: names come from the game client.
 

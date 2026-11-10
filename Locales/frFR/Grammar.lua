@@ -6,10 +6,15 @@ if not ns.Locale.Is("frFR") then return end
 local G = ns.Locale.grammar
 
 -- CLDR: 0 and 1 are "one", the rest "other" (the "many" of whole millions
--- is never reached by a count in the diary). So the first form of a
--- "##plural" value always shows the count: "%d combat|%d combats".
-G.PluralForm = function(n) return n < 2 and 1 or 2 end
-G.PLURAL_FORMS = 2
+-- is never reached by a count in the diary). The diary splits "one" in
+-- two, so that the form for 1 may leave the figure out ("une fois") and 0
+-- keeps its own with the figure and the singular: "une fois|%d fois|%d
+-- fois", "un combat|%d combat|%d combats".
+G.PluralForm = function(n)
+    if n == 1 then return 1 end
+    return n < 2 and 2 or 3
+end
+G.PLURAL_FORMS = 3
 
 -- Letters outside ASCII, in UTF-8 (two bytes: lead \195, or \197 for œ).
 local UP = {
@@ -31,8 +36,34 @@ G.Capital = function(text)
     return lead .. Up(first) .. rest
 end
 
--- "25e", "1er" (a feminine noun's "1re" cannot be told: see the report).
-G.Ordinal = function(n) return n == 1 and "1er" or (n .. "e") end
+-- "25e", "1er", and "1re" for a feminine noun: the death ("mort") of the
+-- word lists.
+local FEMININE = { death = true }
+G.Ordinal = function(n, context)
+    if n == 1 then return FEMININE[context] and "1re" or "1er" end
+    return n .. "e"
+end
+
+-- A date's day: "1er octobre", then the figure, "6 octobre".
+G.Day = function(n) return n == 1 and "1er" or tostring(n) end
+
+-- "18 h 30", the spaces unbreaking.
+G.Clock = function(h, m) return ("%d\194\160h\194\160%02d"):format(h, m) end
+
+-- "2,5"
+G.DECIMAL = ","
+
+-- Every name of a list takes its own preposition: "à Hurlevent et à
+-- Orgrimmar". A creature is named as it comes, with no article to turn off.
+G.EACH_PLACE = true
+G.NO_ARTICLE = true
+
+-- A number word before a feminine noun, marked "<f>" in the words
+-- ("%s<f> fois"): only "un" changes ("une"); the mark goes either way.
+G.Agree = function(text)
+    if not text:find("<f>", 1, true) then return text end
+    return (text:gsub("([Uu]n)<f>", "%1e"):gsub("<f>", ""))
+end
 
 -- Whether a name starts with a vowel sound, so "de" elides: "d’Ana".
 -- (A mute h is left out on purpose: names such as "Hana" keep "de".)
@@ -71,12 +102,15 @@ G.YOU_FOR = {
 }
 
 -- The plain preposition per role. The client's name arrives bare, with no
--- article ("à Forêt d’Elwynn" should be "dans la forêt d’Elwynn") and no
--- elision ("près de Orgrimmar"): see the report.
+-- article ("à Forêt d’Elwynn" should be "dans la forêt d’Elwynn": that
+-- needs the names, see the report); "de" elides before a vowel, "près
+-- d’Orgrimmar".
+local function Near(name) return "près " .. De(name) end
+local function Around(name) return "autour " .. De(name) end
 G.PLACE = {
     ["in"] = "à %s", to = "vers %s", from = "depuis %s", into = "à %s",
-    through = "par %s", near = "près de %s", at = "à %s",
-    around = "autour de %s", round = "autour de %s",
+    through = "par %s", near = Near, at = "à %s",
+    around = Around, round = Around,
 }
 -- ZONES, DUNGEONS, SUBZONES stay empty: names come from the game client.
 

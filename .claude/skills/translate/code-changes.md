@@ -61,12 +61,36 @@ Sample names in the intro and the empty diary stay English until someone
 with that client fills them. Lengths (Russian runs 20 to 35 % longer) need a
 look in the client: see the reports.
 
-## Order
+## Status (10 Nov 2026)
 
-1. C1, C2: they block or bend translations today (one frFR key is untranslated,
-   others were reworded to pass the check).
-2. A9, B7: faults that show English or misbehave in any translation.
-3. A1, A3, A4, A5, A7: small hooks, each used by all three.
-4. A6, A8, B1 to B4: more keys and call sites; the words need a second pass.
-5. A2: needs the client exports.
-6. D1: decide whether the diary may use a character's sex in its wording.
+Done on `translations`, with each locale's grammar using it on `locale/all`:
+
+| # | How |
+|---|---|
+| A1 | `PLACE[role]` and a `ZONES`/`DUNGEONS`/`SUBZONES` entry may be a function of the name. Lists go through `ns.ZonesIn(names, role, List)`; `grammar.EACH_PLACE` gives every name its own preposition. es contracts "del/al", fr elides "d’", fr and ru set `EACH_PLACE`. |
+| A3 | `Format.Ordinal(n, context)`, `grammar.Ordinal(n, context)`; a word list carries `context` ("match", "death"). |
+| A4, B1, B6 | `Format.Day(n, ordinal)` / `grammar.Day`. The date keys are split: `##short date`, `##date`, `##weekday date`, `##date and year`. |
+| A5 | `Format.Decimal(n, places)`, `grammar.DECIMAL`. The key is `"%s seconds"`. |
+| A6 | `grammar.Agree(text)`, a last pass over every filled template. fr resolves `<f>` ("un" to "une"), ru `<f>` and `<n>` ("один", "два"). No word uses a mark yet. |
+| A7 | `Format.Pad(text, width)` in the `/sd` lists. |
+| A8, B8 | `Witnesses.Deed(w, form)`: `##many` after several names, `##line` at a line's start. `##many` is written in all three; `##line` is the singular carried over. |
+| A9 | `L["{you}##subject"]`. |
+| B2 | `grammar.ListEnd(head, last, oxford)`; es writes "e" before i/hi. Only `Format.List` asks it. |
+| B3 | `Format.Clock(time)` / `grammar.Clock(h, m)` in sentences; fr writes "18 h 05". The timeline's time column and the `/sd` lists keep "18:05". |
+| B4 | `"%1$s %2$s"` has a context per use; `"ran %s##count"`; `"{you}##by"` for "Reached by". `"%1$s's %2$s"` has one use and stays. |
+| B5 | A key per row kind, `L["recent whisper_in"]`. The English still shows the code's word: a copy decision. |
+| B7 | `Format.Ago` returns whether its answer is a date. |
+| B9 | `grammar.NO_ARTICLE` leaves the Article box off the witness form. |
+| C1 | A plural value's bars are not read as markup. |
+| C2 | French has three forms: 1, then 0, then the rest ("une fois|%d fois|%d fois"). No code change. |
+
+Open:
+
+- **A2**, place names from each client.
+- **B10**, units beside a number box: no change; the abbreviation stays.
+- **The second pass over the words.** The hooks are there, the sentences
+  rebuilt round their absence are not yet written back: gender marks on
+  number words (A6), French first forms that may now drop the count (C2),
+  the `##line` deeds (B8), Spanish "a la 1" (the clock hook gives the hour,
+  the template still says "a las").
+- **D1 to D3**, as above.

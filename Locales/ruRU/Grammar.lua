@@ -43,9 +43,35 @@ G.Capital = function(text)
     return Up(first) .. rest
 end
 
--- "25-й": the masculine ending only, there is no noun to agree with (see
--- ruRU-code-changes.md).
-G.Ordinal = function(n) return n .. "-й" end
+-- "25-й", and "25-я" for a feminine noun: the death ("смерть") of the
+-- word lists (the match, "матч", is masculine). Nominative only.
+local FEMININE = { death = true }
+G.Ordinal = function(n, context) return n .. (FEMININE[context] and "-я" or "-й") end
+
+-- A date's day is the figure: "25 окт".
+G.Day = function(n) return tostring(n) end
+
+-- "3,2"
+G.DECIMAL = ","
+
+-- Every name of a list takes its own preposition and quotes: "в «Мулгор»
+-- и в «Дуротар»". A creature is named as it comes, with no article.
+G.EACH_PLACE = true
+G.NO_ARTICLE = true
+
+-- A number word before a feminine or neuter noun, marked "<f>" or "<n>"
+-- in the words ("%s<f> смерти"): "один" and "два" change, the mark goes
+-- either way. Nominative only.
+local AGREE = {
+    f = { ["один"] = "одна", ["Один"] = "Одна", ["два"] = "две", ["Два"] = "Две" },
+    n = { ["один"] = "одно", ["Один"] = "Одно" },
+}
+G.Agree = function(text)
+    if not text:find("<[fn]>") then return text end
+    return (text:gsub("([^%s<]+)<([fn])>", function(word, gender)
+        return AGREE[gender][word] or word
+    end))
+end
 
 -- A name in a sentence of the "story of" kind: the name is not declined
 -- (it arrives from the game), the translation's template takes it bare.

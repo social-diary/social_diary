@@ -30,8 +30,8 @@ ns.Locale.Add("frFR", {
     -- UI/Settings/Sections/About.lua
     ["About"] = "À propos",
     -- UI/Settings/Sections/Battlegrounds.lua
-    ["%1$d of %2$d kept whole so far. In %3$d match, the oldest begin to lose their strangers.|%1$d of %2$d kept whole so far. In %3$d matches, the oldest begin to lose their strangers.##plural"] = "%1$d sur %2$d tableaux conservés en entier pour l’instant. Dans %3$d partie, les plus anciens commencent à perdre leurs inconnus.|%1$d sur %2$d tableaux conservés en entier pour l’instant. Dans %3$d parties, les plus anciens commencent à perdre leurs inconnus.",
-    ["The newest %d are kept whole. Older ones keep only the people from your diary.|The newest %d are kept whole. Older ones keep only the people from your diary.##plural"] = "%d tableau conservé en entier : le plus récent. Les plus anciens ne gardent que les personnes de ton journal.|Les %d plus récents sont conservés en entier. Les plus anciens ne gardent que les personnes de ton journal.",
+    ["%1$d of %2$d kept whole so far. In %3$d match, the oldest begin to lose their strangers.|%1$d of %2$d kept whole so far. In %3$d matches, the oldest begin to lose their strangers.##plural"] = "%1$d sur %2$d tableaux conservés en entier pour l’instant. Dans %3$d partie, les plus anciens commencent à perdre leurs inconnus.|%1$d sur %2$d tableaux conservés en entier pour l’instant. Dans %3$d partie, les plus anciens commencent à perdre leurs inconnus.|%1$d sur %2$d tableaux conservés en entier pour l’instant. Dans %3$d parties, les plus anciens commencent à perdre leurs inconnus.",
+    ["The newest %d are kept whole. Older ones keep only the people from your diary.|The newest %d are kept whole. Older ones keep only the people from your diary.##plural"] = "%d tableau conservé en entier : le plus récent. Les plus anciens ne gardent que les personnes de ton journal.|%d tableau conservé en entier : le plus récent. Les plus anciens ne gardent que les personnes de ton journal.|Les %d plus récents sont conservés en entier. Les plus anciens ne gardent que les personnes de ton journal.",
     ["Scoreboards"] = "Tableaux des scores",
     ["Keep the whole scoreboard for this many matches"] = "Garder le tableau entier pour ce nombre de parties",
     ["Older matches keep their map, result and times, and the people from your diary. Everyone else is rubbed out, leaving only a count."] = "Les parties plus anciennes gardent leur carte, leur résultat, leurs temps et les personnes de ton journal. Tous les autres sont effacés, il ne reste qu’un nombre.",
@@ -114,10 +114,10 @@ ns.Locale.Add("frFR", {
     ["Tooltips, minimap, how the book looks, hints"] = "Infobulles, minicarte, apparence du livre, astuces",
     -- UI/Settings/Sections/Memory.lua
     ["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."] = "%1$d dans le journal, %2$s, %3$s, %4$s et %5$s.  Environ %6$d Ko sur le disque.",
-    ["%d character known|%d characters known##plural"] = "%d personnage connu|%d personnages connus",
-    ["%d session|%d sessions##plural"] = "%d session|%d sessions",
-    ["%d interaction|%d interactions##plural"] = "%d interaction|%d interactions",
-    ["%d sighting|%d sightings##plural"] = "%d aperçu|%d aperçus",
+    ["%d character known|%d characters known##plural"] = "%d personnage connu|%d personnage connu|%d personnages connus",
+    ["%d session|%d sessions##plural"] = "%d session|%d session|%d sessions",
+    ["%d interaction|%d interactions##plural"] = "%d interaction|%d interaction|%d interactions",
+    ["%d sighting|%d sightings##plural"] = "%d aperçu|%d aperçu|%d aperçus",
     ["Over %d MB: a lot to read at every login and /reload. Your diary keeps its history for good, so lowering the maximum chat lines (Recording) or deleting sightings is what brings it down."] = "Plus de %d Mo : beaucoup à lire à chaque connexion et à chaque /reload. Ton journal garde son historique pour de bon : ce qui le fait baisser, c’est de réduire le nombre maximal de lignes de chat (Enregistrement) ou de supprimer des aperçus.",
     ["The shared diary is stored only on this computer, in %s. Nothing is sent to other players or to any server."] = "Le journal partagé est stocké uniquement sur cet ordinateur, dans %s. Rien n’est envoyé à d’autres joueurs ni à aucun serveur.",
     ["This character's diary is stored only on this computer, in %s. Nothing is sent to other players or to any server."] = "Le journal de ce personnage est stocké uniquement sur cet ordinateur, dans %s. Rien n’est envoyé à d’autres joueurs ni à aucun serveur.",

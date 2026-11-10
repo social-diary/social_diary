@@ -93,6 +93,8 @@ ns.Locale.Add("ruRU", {
     ["Ran back %s as a ghost"] = "Возвращались бегом %s в виде призраков",
     ["{you}##for"] = "{тебе}",
     ["{you}##from"] = "{тебя}",
+    ["{you}##by"] = "{тебя}",
+    ["{you}##subject"] = "{ты}",
     ["dropped for %s"] = "выпало: %s",
     ["dropped for %s on the way"] = "выпало по пути: %s",
     ["%1$s, dropped for %2$s"] = "%1$s, выпало: %2$s",

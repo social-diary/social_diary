@@ -6,7 +6,7 @@ if not ns.Locale.Is("frFR") then return end
 ns.Locale.Add("frFR", {
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "aucune interaction pour l’instant",
-    ["%d interaction on record|%d interactions on record##plural"] = "%d interaction enregistrée|%d interactions enregistrées",
+    ["%d interaction on record|%d interactions on record##plural"] = "%d interaction enregistrée|%d interaction enregistrée|%d interactions enregistrées",
     ["Added %1$s %2$s, %3$s##zone"] = "Ajouté le %1$s %2$s, %3$s",
     ["Added %1$s, %2$s"] = "Ajouté le %1$s, %2$s",
     ["What happened? What should you remember about them?"] = "Que s’est-il passé ? Que veux-tu retenir de cette personne ?",
@@ -40,7 +40,7 @@ ns.Locale.Add("frFR", {
     ["Oh — hello. I'm your new diary."] = "Oh, bonjour. Je suis ton nouveau journal.",
     ["Your diary, still here whenever you're ready."] = "Ton journal, toujours là quand tu voudras.",
     ["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."] = "J’écris le nom des personnes que tu rencontres, tout seul, pour que dans quelques mois tu saches encore qui elles étaient. Ce n’est que du crayon, jusqu’à ce que tu repasses quelqu’un à l’encre.",
-    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personnes au crayon.",
+    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personnes au crayon.",
     -- UI/Windows/Intro/Torn.lua
     ["Open me"] = "Ouvre-moi",
     -- UI/Windows/Intro/Tour.lua

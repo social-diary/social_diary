@@ -93,6 +93,8 @@ ns.Locale.Add("esES", {
     ["Ran back %s as a ghost"] = "Volvieron corriendo %s como fantasma",
     ["{you}##for"] = "{ti}",
     ["{you}##from"] = "{ti}",
+    ["{you}##by"] = "{ti}",
+    ["{you}##subject"] = "{tú}",
     ["dropped for %s"] = "salió para %s",
     ["dropped for %s on the way"] = "salió para %s por el camino",
     ["%1$s, dropped for %2$s"] = "%1$s, salió para %2$s",
