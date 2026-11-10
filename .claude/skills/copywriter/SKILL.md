@@ -244,6 +244,6 @@ here.
   `UI/Journey/Text/Grammar.lua` and `UI/Words/Format.lua` ask it first.
 - After changing keys: `luajit Dev/Locale/extract.lua` (rewrites
   `Locales/enUS.lua`), then `luajit tests/run.lua` (tests/locale.lua checks
-  every locale in the TOC has words for every key, with matching
-  placeholders, and plural words with one form per category of its rule) and `luajit tests/run.lua --locale <id>` (the whole suite
+  every locale in the TOC against the keys: matching placeholders,
+  no unknown keys (missing words are a note, not a failure), and plural words with one form per category of its rule) and `luajit tests/run.lua --locale <id>` (the whole suite
   under that locale: no addon errors).

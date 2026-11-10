@@ -43,8 +43,14 @@ local function English(key)
 end
 Locale.English = English
 
+-- A key with no words is its own English, kept once asked: on an English
+-- client every lookup comes here, the ones in a page's drawing too.
 local L = setmetatable({}, {
-    __index = function(_, key) return English(key) end,
+    __index = function(t, key)
+        local text = English(key)
+        rawset(t, key, text)
+        return text
+    end,
 })
 ns.L = L
 

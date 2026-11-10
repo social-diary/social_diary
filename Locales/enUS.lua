@@ -33,9 +33,6 @@ ns.Locale.Add("enUS", {
     ["Last 30 days"] = "Last 30 days",
     ["Last 90 days"] = "Last 90 days",
     ["Last year"] = "Last year",
-    -- Core/Sample.lua
-    ["Linen Cloth"] = "Linen Cloth",
-    ["thanks for the help"] = "thanks for the help",
     -- Core/Slash.lua
     ["commands:"] = "commands:",
     ["no character called |cffffffff%s|r on record."] = "no character called |cffffffff%s|r on record.",
