@@ -75,7 +75,11 @@ local function Mine(visit, guid) return guid == ns.ownGUID or guid == visit.me e
 local function Whose(visit, guid, you)
     if Mine(visit, guid) then return Format.You(guid, you or L["{you}##subject"]) end
     for _, m in ipairs(visit.members or {}) do
-        if m.guid == guid and m.first then return m.first end
+        if m.guid == guid and m.first then
+            local record = ns.Locale.gendered and ns.Characters.Get(guid)
+            if record then ns.Locale.Says(m.first, record.sex) end
+            return m.first
+        end
     end
     return (ns.Characters.Name(guid)) or L["someone"]
 end

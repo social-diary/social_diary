@@ -321,7 +321,17 @@ end
 -- translation's braced words are checked against its locale's forms.
 Format.YOU_FOR = YOU_FOR
 
+-- The sex of the reader a row is about: the character playing, or the one
+-- of the player's that wrote it (nil where its record does not say).
+local function ReaderSex(me)
+    if me == nil or me == ns.ownGUID then return UnitSex and UnitSex("player") or nil end
+    local record = ns.Characters.Get(me)
+    return record and record.sex or nil
+end
+
 function Format.You(me, text)
+    -- A locale's forms for the reader (<you:he/she>, Locales/Locale.lua).
+    if text:find("<you:", 1, true) then text = ns.Locale.You(text, ReaderSex(me)) end
     if Format.IsYou(me) then return (text:gsub("{(.-)}", "%1")) end
     local name = Format.YouName(me)
     local forms = G.YOU_FOR or YOU_FOR
