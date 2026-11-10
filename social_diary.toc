@@ -17,6 +17,15 @@ Core/Addon.lua
 # file can take its words as it loads.
 Locales/Locale.lua
 Locales/enUS.lua
+Locales/deDE/Grammar.lua
+Locales/deDE/Core.lua
+Locales/deDE/Journal.lua
+Locales/deDE/Journey.lua
+Locales/deDE/Dungeon.lua
+Locales/deDE/Features1.lua
+Locales/deDE/Features2.lua
+Locales/deDE/Settings.lua
+Locales/deDE/Windows.lua
 Core/DB.lua
 Core/Bridges/Questie.lua
 Core/Identity.lua
