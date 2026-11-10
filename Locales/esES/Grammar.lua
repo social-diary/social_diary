@@ -1,6 +1,8 @@
 -- Spanish (Spain): the grammar the templates cannot carry. Decisions in
 -- .claude/skills/translate/voices/esES.md.
 local addonName, ns = ...
+-- Offered on every client, by its own name (Settings, Language).
+ns.Locale.Offer("esES", "Español")
 if not ns.Locale.Is("esES") then return end
 
 local G = ns.Locale.grammar

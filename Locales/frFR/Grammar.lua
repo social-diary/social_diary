@@ -1,6 +1,8 @@
 -- French (France): the grammar the templates cannot carry. Decisions in
 -- .claude/skills/translate/voices/frFR.md.
 local addonName, ns = ...
+-- Offered on every client, by its own name (Settings, Language).
+ns.Locale.Offer("frFR", "Français")
 if not ns.Locale.Is("frFR") then return end
 
 local G = ns.Locale.grammar
