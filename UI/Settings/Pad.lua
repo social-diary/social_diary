@@ -17,6 +17,9 @@
 --   a scale (the kit's Slider) left and right step it
 --   a number (the kit's Number) left and right count it up or down
 --   a link (Style.Link)        A follows it
+--   a choice (the kit's Choice) A lays its choices out on the pad's own
+--                              menu (UI/Pad/Menu.lua), from the generator
+--                              the mouse's menu gets; never Blizzard's
 --   a key (UI/Kit/Keys.lua)    A listens for a keyboard key (the setters
 --                              are not shown with the pad in hand: a pad
 --                              button is never bound, it would not fire
@@ -70,6 +73,7 @@ local function Kind(w)
     if w.diaryMacro then return "book" end
     if w.keycap and w.bind and rawget(w, "Listen") then return "setter" end
     if w.slider then return "slider" end
+    if w.choice and w.menu then return "choice" end
     if w.box and w.label then return "number" end
     if w.tick and w.label then
         if w.readOnly then return "status" end   -- (a status the addon writes: not a switch)
@@ -114,6 +118,7 @@ local PROMPT = {
     stop = { "PAD2", L["Stop writing"] },
     title = { { "PADDUP", "PADDDOWN" }, L["Go to the sections"], main = true },
     read = { { "PADDUP", "PADDDOWN" }, L["Read on"], main = true },  -- copy TBD (copywriter)
+    choice = { "PAD1", L["See the choices"], main = true },  -- (the pad's menu's own: UI/Pad/Menu.lua)
 }
 
 local scope
@@ -139,6 +144,10 @@ local function Item(pane, sectionKey, i, found)
             return true
         end
         item.press = function() end
+    elseif kind == "choice" then
+        -- (what is chosen boxed; A lays the choices out, the pad's menu)
+        item.frame, item.words, item.subhead = w.choice, w.choice.label, w.group
+        item.press = function() Pad.Menu.Open(w.choice, w.menu()) end
     elseif kind == "switch" then
         -- (its tooltip and hover look are the mouse's; A clicks it)
         item.press = function() w:Click("LeftButton") end
@@ -380,6 +389,8 @@ function scope.legend()
         out[1] = PROMPT.step
     elseif at.kind == "link" then
         out[1] = PROMPT.link
+    elseif at.kind == "choice" then
+        out[1] = PROMPT.choice
     elseif at.kind == "read" then
         out[1] = PROMPT.read
     end

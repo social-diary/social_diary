@@ -62,6 +62,7 @@ local FILES = {
     "settings",
     "feedback",
     "settings_about",
+    "settings_language",
     "hints",
     "hints_ui",
     "paper_grain",

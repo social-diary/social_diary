@@ -3,7 +3,7 @@
 -- A page of the book like the others, in two panes: the left page lists the
 -- sections (Recording, Interface, Sounds, Integrations, Memory, About),
 -- with Interface's subpages (Toasts, Keybinds & Shortcuts, Dungeons and
--- Raids) hung under it, always listed, and About's (Feedback, Changelog,
+-- Raids, Language) hung under it, always listed, and About's (Feedback, Changelog,
 -- Credits) hung under About only while About is open, and the right page
 -- shows the chosen one's settings. Written in the same ink as the
 -- rest of the book: boxes to tick, numbers on a line and ruled scales
@@ -137,7 +137,10 @@ end
 -- foot's length, and its ink, darker while one of its subpages is open.
 -- SUB_AFTER is the room left under the last subpage, so the next section
 -- stands clear of the group.
-local NAV_TOP, NAV_ROW, NAV_PLAIN, SUB_ROW, SUB_INDENT, SUB_AFTER = 58, 42, 28, 24, 18, 6
+-- (NAV_ROW 40 and SUB_ROW 22, from 42 and 24, since Language joined
+-- Interface's subpages: with About's group open the rows have to end above
+-- the introduction's link, tests/settings_about.lua.)
+local NAV_TOP, NAV_ROW, NAV_PLAIN, SUB_ROW, SUB_INDENT, SUB_AFTER = 58, 40, 28, 22, 18, 6
 local BRACKET = { x = 10, foot = 6, ink = 0.30, open = 0.65 }
 
 -- The open section, kept across opens within a login: the first listed to

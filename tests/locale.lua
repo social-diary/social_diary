@@ -127,6 +127,42 @@ do
     G.Day, G.Clock, G.DECIMAL, G.Ordinal, G.ListEnd, G.Agree = nil, nil, nil, nil, nil, nil
 end
 
+Section("the reader's choice of language")
+do
+    local Locale = ns.Locale
+    Eq(Locale.id, "enUS", "the client's language without a choice")
+    Eq(Locale.client, "enUS", "and the client's is kept beside it")
+    Eq(Locale.offered[1].id, "enUS", "English is always offered")
+    Eq(Locale.Wanted("auto"), "enUS", "auto is the client's")
+    Eq(Locale.Wanted(nil), "enUS", "so is no setting at all")
+    Eq(Locale.Wanted("frFR"), "frFR", "a choice is itself")
+    Eq(Locale.Pending("auto"), false, "nothing waits while the setting is what the diary reads")
+    Eq(Locale.Pending("frFR"), true, "a choice made this session waits for a reload")
+
+    -- A choice saved before the load, handed over before the files run.
+    local saved, wasNs = rawget(_G, "SocialDiaryDB"), T.ns
+    _G.SocialDiaryDB = { settings = { language = "xxXX" } }
+    local chose = T.Load()
+    Eq(chose.Locale.id, "xxXX", "a saved choice is the language the diary reads")
+    Eq(chose.Locale.client, "enUS", "whatever the client's is")
+    Eq(chose.L["May##short"], "May", "a language with no words reads the English")
+    Eq(chose.Locale.Settle("xxXX"), false, "and it applied")
+    chose.Locale.Offer("xxXX", "Xxish")
+    chose.Locale.Offer("xxXX", "Xxish")
+    Eq(#chose.Locale.offered, 2, "a locale is offered once")
+    Eq(chose.Locale.Offers("xxXX"), true, "and found")
+    _G.SocialDiaryDB = { settings = { language = "auto" } }
+    Eq(T.Load().Locale.id, "enUS", "auto reads the client's")
+    _G.SocialDiaryDB, T.ns = saved, wasNs
+
+    -- A client that hands the saved table over too late: the choice shows
+    -- only once the settings are in, and it is not what the diary reads.
+    Eq(Locale.Settle("frFR"), true, "a saved choice that did not apply is noticed")
+    Eq(Locale.stuck, true, "and kept for the settings page")
+    Locale.Settle("auto")
+    Eq(Locale.stuck, false, "auto never is")
+end
+
 Section("a person's gender")
 do
     local Locale, Format = ns.Locale, ns.UI.Format

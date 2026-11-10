@@ -5,6 +5,7 @@
 ## Version: 3.0.2
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
+## LoadSavedVariablesFirst: 1
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## AddonCompartmentFunc: SocialDiary_OnCompartmentClick
 ## X-Category: Social
@@ -256,6 +257,7 @@ UI/Settings/Sections/Interface.lua
 UI/Settings/Sections/Toasts.lua
 UI/Settings/Sections/Shortcuts.lua
 UI/Settings/Sections/Dungeons.lua
+UI/Settings/Sections/Language.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Battlegrounds.lua

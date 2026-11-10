@@ -62,7 +62,7 @@ Eq(J.Page("bad"), nil, "a refused page was kept")
 Section("the settings' sections, and what a section must say")
 
 Eq(Keys(SettingsUI.Sections()),
-    "recording interface toasts shortcuts dungeons sounds integrations battlegrounds memory about feedback changelog credits",
+    "recording interface toasts shortcuts dungeons language sounds integrations battlegrounds memory about feedback changelog credits",
     "the sections, in the order the left page lists them")
 Eq(SettingsUI.Sections()[3].parent, "interface", "Toasts is not Interface's subpage")
 -- (a section without a build is a group, opening its first subpage: a
@@ -85,10 +85,10 @@ SettingsUI.RegisterSection("test", { order = 35, label = "Test section", about =
     end })
 SettingsUI.RegisterSection("gone", { order = 36, label = "Gone", about = "Taken out",
     build = function() section.gone = true end })
-Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test gone integrations battlegrounds memory about feedback changelog credits",
+Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons language sounds test gone integrations battlegrounds memory about feedback changelog credits",
     "the test's sections not in their order")
 Check(SettingsUI.RemoveSection("gone") ~= nil, "a section taken out was not found")
-Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons sounds test integrations battlegrounds memory about feedback changelog credits",
+Eq(Keys(SettingsUI.Sections()), "recording interface toasts shortcuts dungeons language sounds test integrations battlegrounds memory about feedback changelog credits",
     "a section taken out is still listed")
 
 --------------------------------------------------------------------------
