@@ -1,7 +1,8 @@
 -- Settings: Interface (UI/Settings/Page.lua lists the sections; the
 -- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, how
 -- the book looks, the hints on the pages and the one after a major update.
--- Its subpages are Toasts.lua, Shortcuts.lua and Dungeons.lua beside it,
+-- Its subpages are Toasts.lua, Shortcuts.lua, Dungeons.lua and Language.lua
+-- beside it,
 -- always listed under it.
 
 local addonName, ns = ...

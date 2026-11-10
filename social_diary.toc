@@ -227,6 +227,7 @@ UI/Settings/Sections/Interface.lua
 UI/Settings/Sections/Toasts.lua
 UI/Settings/Sections/Shortcuts.lua
 UI/Settings/Sections/Dungeons.lua
+UI/Settings/Sections/Language.lua
 UI/Settings/Sections/Sounds.lua
 UI/Settings/Sections/Integrations.lua
 UI/Settings/Sections/Battlegrounds.lua

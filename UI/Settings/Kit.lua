@@ -1,8 +1,8 @@
 -- The settings' kit (ns.UI.Settings.Kit): what a section's builder lays
 -- its pane out with. The column it is filled down (Column: Place, Heading,
--- Hint, Checkbox, Number, Slider), the pane on the right page (Pane), and the
+-- Hint, Checkbox, Number, Slider, Choice), the pane on the right page (Pane), and the
 -- settings written through ns.SetSetting and read again with the page
--- (Switch, Number, Slider, DependsOn, Saved). The page and its registry are in
+-- (Switch, Number, Slider, Choice, DependsOn, Saved). The page and its registry are in
 -- UI/Settings/Page.lua; the sections in UI/Settings/Sections/.
 
 local addonName, ns = ...
@@ -16,6 +16,7 @@ local SettingsUI = ns.UI.Settings
 local INDENT = 20               -- a setting that depends on the one above it
 local FIELD_W, UNIT_W = 34, 34  -- a number's line, and the word after it
 local SCALE_W, READING_W = 170, 38  -- a slider's scale, and what it reads, on the right
+local CHOICE_GAP = 12            -- between a choice's sentence and what is chosen
 local SECTION_GAP = 14
 
 --------------------------------------------------------------------------
@@ -136,6 +137,59 @@ local function Column(parent, x, y, width)
         return self:Place(row, height)
     end
 
+    -- "Write the diary in ......... English": the sentence on the left and
+    -- what is chosen on the right, on the column's edge, a link as the
+    -- People page's sort is: a click lays the choices out as a menu of
+    -- radios (Style.ChoiceGenerator), the one chosen marked. `choices` is
+    -- a list of { label, key }, or a function giving it (read each time,
+    -- for a list that can grow). `.choice` is the link; `.menu()` gives the
+    -- menu's generator as it is now, the mouse's and the pad's
+    -- (UI/Settings/Pad.lua hands it to Pad.Menu, never Blizzard's menu).
+    function column:Choice(text, choices, get, set, title)
+        local row = CreateFrame("Frame", nil, self.parent)
+        local width = self.width
+
+        local function List()
+            if type(choices) == "function" then return choices() end
+            return choices
+        end
+
+        row.label = Style.Text(row, FONT.body)
+        row.label:SetPoint("TOPLEFT")
+        row.label:SetText(text)
+
+        function row.menu()
+            return Style.ChoiceGenerator(title, List(), get, set)
+        end
+
+        row.choice = Style.Link(row, FONT.body, function(self)
+            if row.unavailable then return end
+            MenuUtil.CreateContextMenu(self, row.menu())
+        end)
+        row.choice:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 1)
+
+        local height = math.max(18, row.label:GetStringHeight())
+        row:SetSize(width, height)
+        row.group = self.group
+
+        -- What is chosen, written out; the sentence keeps the room left.
+        function row:Refresh()
+            local key, label = get(), nil
+            for _, choice in ipairs(List()) do
+                if choice.key == key then label = choice.label break end
+            end
+            self.choice:SetText(label or "")
+            self.label:SetWidth(math.max(40, width - self.choice:GetWidth() - CHOICE_GAP))
+        end
+        function row:SetAvailable(available)
+            self.unavailable = not available
+            self:SetAlpha(available and 1 or 0.45)
+        end
+        row:Refresh()
+
+        return self:Place(row, height)
+    end
+
     return column
 end
 
@@ -204,6 +258,19 @@ local function Slider(c, text, key, spec, after)
     return row
 end
 
+-- One of several: `choices` is a list of { label, key } or a function
+-- giving it, `title` heads the menu. Refreshes the page, as a switch does.
+local function Choice(c, text, key, choices, after, title)
+    local page = SettingsUI.page
+    local row = c:Choice(text, choices, function() return Saved()[key] end, function(v)
+        ns.SetSetting(key, v)
+        if after then after(v) end
+        ns.UI.Settings.Refresh()
+    end, title)
+    page.controls[#page.controls + 1] = row
+    return row
+end
+
 -- `on` is the key of the setting it depends on, or a function saying
 -- whether it is available.
 local function DependsOn(control, on)
@@ -216,6 +283,7 @@ local function DependsOn(control, on)
 end
 
 SettingsUI.Kit = {
-    Column = Column, Pane = Pane, Switch = Switch, Number = Number, Slider = Slider, DependsOn = DependsOn,
+    Column = Column, Pane = Pane, Switch = Switch, Number = Number, Slider = Slider, Choice = Choice,
+    DependsOn = DependsOn,
     Saved = Saved, INDENT = INDENT,
 }
