@@ -4,6 +4,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local SettingsUI = ns.UI.Settings
 local Kit = SettingsUI.Kit
@@ -16,42 +18,42 @@ local function BuildRecording(pane, c)
     local page = SettingsUI.page
 
     -- JRN-17: the timer starts and stops at once.
-    c:Heading("Your Diary")
-    page.keepRoute = Switch(c, "Keep my own route", "keepRoute", nil,
+    c:Heading(L["Your Diary"])
+    page.keepRoute = Switch(c, L["Keep my own route"], "keepRoute", nil,
         function(on) ns.JourneyCapture.SetEnabled(on) end,
-        "Data needed for the 'Your Diary' Page: Where you go and what you do.")
+        L["Data needed for the 'Your Diary' Page: Where you go and what you do."])
 
-    c:Heading("Chat")
+    c:Heading(L["Chat"])
     -- INT-4 asks for the hint to be said in the settings.
-    page.storeChat = Switch(c, "Keep whisper, /say and party text", "storeChat", nil, nil,
-        "some text in dungeons cannot be accessed, fyi.")
+    page.storeChat = Switch(c, L["Keep whisper, /say and party text"], "storeChat", nil, nil,
+        L["some text in dungeons cannot be accessed, fyi."])
 
     -- A lower limit applies now, to everyone's chat.
-    page.chatLines = Number(c, "Maximum chat lines kept per person", "lines", "chatLines",
+    page.chatLines = Number(c, L["Maximum chat lines kept per person"], L["lines"], "chatLines",
         1, MAX_CHAT_LINES, function() ns.Interactions.TrimChat() end)
     DependsOn(page.chatLines, function() return Saved().storeChat and not Saved().chatUnlimited end)
-    page.chatUnlimited = Switch(c, "Unlimited", "chatUnlimited", INDENT,
+    page.chatUnlimited = Switch(c, L["Unlimited"], "chatUnlimited", INDENT,
         function(on) if not on then ns.Interactions.TrimChat() end end)
     DependsOn(page.chatUnlimited, "storeChat")
-    c:Hint("Lines can still be lost if they exceed file size limits.")
+    c:Hint(L["Lines can still be lost if they exceed file size limits."])
 
     -- SIG-1 and SIG-5, through the same calls as /sd sightings on|off (Dev/)
     -- and /sd sightings city, so they take effect at once.
-    c:Heading("Sightings")
+    c:Heading(L["Sightings"])
     local Capture = ns.SightingCapture
-    page.detectSightings = Switch(c, "Notice who passes you in the open world", "detectSightings", nil,
+    page.detectSightings = Switch(c, L["Notice who passes you in the open world"], "detectSightings", nil,
         function(on) Capture.SetEnabled(on) end,
-        "Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds.")
+        L["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."])
 
     -- The cities on SIG-5's list, two to a line. Saved, a city on means it
     -- pauses there; ticked here means it notices people there, so that a
     -- tick never stands for something that is not being recorded. The list
     -- is the one saved when the page was built; a city added by command
     -- shows after a reload.
-    c:Hint("Enable sightings in cities - performance warning:", INDENT)
+    c:Hint(L["Enable sightings in cities - performance warning:"], INDENT)
     local cities = Capture.Cities()
     for _, city in ipairs(cities) do
-        city.name = type(city.key) == "number" and (ns.MapName(city.key) or ("map " .. city.key)) or city.key
+        city.name = type(city.key) == "number" and (ns.MapName(city.key) or Fmt(L["map %s"], city.key)) or city.key
     end
     table.sort(cities, function(a, b) return a.name < b.name end)
 
@@ -73,5 +75,5 @@ local function BuildRecording(pane, c)
     end
 end
 
-SettingsUI.RegisterSection("recording", { order = 10, label = "Recording",
-    about = "Your route, chat, sightings", build = BuildRecording })
+SettingsUI.RegisterSection("recording", { order = 10, label = L["Recording"],
+    about = L["Your route, chat, sightings"], build = BuildRecording })

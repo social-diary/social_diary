@@ -8,6 +8,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Style = ns.Style
 local Text = ns.UI.JourneyText
 local Plate = ns.UI.JourneyPlate
@@ -138,9 +140,9 @@ local function DrawFull(e)
         if zone.mapID == mapID then z = zone end
     end
     local foot = page.foot
-    foot.name:SetText((z and Text.ZoneName(z) or ns.MapName(mapID) or ("Map " .. mapID)):upper())
+    foot.name:SetText(Text.Upper(z and Text.ZoneName(z) or ns.MapName(mapID) or Fmt(L["Map %s"], mapID)))
     local names, fights = Company(sheet)
-    foot.meta:SetText(z and Text.ZoneFoot(z, names, fights) or "Nothing of your road is on this map yet.")
+    foot.meta:SetText(z and Text.ZoneFoot(z, names, fights) or L["Nothing of your road is on this map yet."])
     -- On one line where it fits, else the line under the name; the hint
     -- under them both.
     local nameW = foot.name:GetUnboundedStringWidth() or 0

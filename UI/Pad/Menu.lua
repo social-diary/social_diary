@@ -43,6 +43,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local Style = ns.Style
 
@@ -70,10 +72,10 @@ Menu.SLIP = SLIP
 
 -- The prompts (copy: copywriter, 8 Nov 2026).
 local PROMPT = {
-    choose = "Choose",
-    open = "See the choices",
-    away = "Put the menu away",
-    back = "Back to the menu",
+    choose = L["Choose"],
+    open = L["See the choices"],
+    away = L["Put the menu away"],
+    back = L["Back to the menu"],
 }
 Menu.PROMPT = PROMPT
 

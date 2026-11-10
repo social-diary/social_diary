@@ -14,6 +14,7 @@ local addonName, ns = ...
 
 local Hints = ns.Hints
 local J = ns.UI.Journal
+local L, Fmt = ns.L, ns.Fmt
 
 local HintsUI = {}
 ns.UI.Hints = HintsUI
@@ -47,7 +48,7 @@ Hints.Register("custom-events", {
     eligible = function() return Hints.Opens() >= 10 end,
     done = AnyCustom,
     words = function()
-        return { title = "Something missing?", body = "Right-Click the map to add events yourself." }
+        return { title = L["Something missing?"], body = L["Right-Click the map to add events yourself."] }
     end,
 })
 
@@ -60,8 +61,8 @@ Hints.Register("remember-bind", {
     fits = function() return RememberKey() == nil end,
     done = function() return RememberKey() ~= nil end,
     words = function()
-        return { title = "Quickly Add Notes", body = "Assign a hotkey to add a note quickly.",
-            link = "Go to Settings", onLink = function() ns.UI.ShowSettings("shortcuts") end }
+        return { title = L["Quickly Add Notes"], body = L["Assign a hotkey to add a note quickly."],
+            link = L["Go to Settings"], onLink = function() ns.UI.ShowSettings("shortcuts") end }
     end,
 })
 
@@ -78,8 +79,8 @@ Hints.Register("remember-use", {
     done = function() return Hints.Remembers() > 0 end,
     fits = function() return RememberKey() ~= nil end,
     words = function()
-        return { title = "Quickly Add Notes",
-            body = ("Remember to use your hotkey for adding Notes! (%s)"):format(RememberKey() or "") }
+        return { title = L["Quickly Add Notes"],
+            body = Fmt(L["Remember to use your hotkey for adding Notes! (%s)"], RememberKey() or "") }
     end,
 })
 
@@ -97,9 +98,9 @@ Hints.Register("major-update", {
     shown = function() Hints.UpdateRead() end,
     words = function()
         local version = Hints.Update() or ns.version
-        return { title = "Fresh Pages",
-            body = ("Social Diary %s is here, with a few new things to find."):format(version),
-            link = "See what’s new", onLink = function() ns.UI.ShowSettings("changelog") end }
+        return { title = L["Fresh Pages"],
+            body = Fmt(L["Social Diary %s is here, with a few new things to find."], version),
+            link = L["See what’s new"], onLink = function() ns.UI.ShowSettings("changelog") end }
     end,
 })
 

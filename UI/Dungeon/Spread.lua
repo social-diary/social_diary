@@ -46,6 +46,13 @@ local J = ns.UI.Journal
 local DungeonPage = ns.UI.DungeonPage
 local Surface = ns.UI.Surface
 
+-- A name as "%s's story" takes it: as it is, or in the locale's genitive
+-- (ns.Locale.grammar.Genitive: German "Thrains Geschichte").
+local function Genitive(name)
+    local G = ns.Locale.grammar
+    return G.Genitive and G.Genitive(name) or name
+end
+
 -- The spread on the screen: the sheet kept `edge` px inside it, its
 -- shadow reaching `shadow` px past it.
 local SPREAD = { name = "SocialDiaryTableSpread", book = "SocialDiaryJournalFrame", edge = 12, shadow = 8 }
@@ -66,7 +73,7 @@ local BOOKMARK = { tuck = 10, down = 30, turn = -4, h = 28, least = 104, ribbon 
     tail = { at = 8, w = 8, len = 34, hang = 22, notch = 4.5 }, eyelet = 6.5 }
 -- Opened from Your Diary's run page (UI/Journey/Run.lua), the way back is
 -- to the diary, not to a person's story: its words.
-BOOKMARK.journey = "Your Diary"
+BOOKMARK.journey = ns.L["Your Diary"]
 DungeonPage.SPREAD, DungeonPage.BOOKMARK = SPREAD, BOOKMARK
 
 -- The spread draws over all of the book, its side tabs too (16 Oct, in the
@@ -356,7 +363,7 @@ local function Bookmark(map)
     -- "Tester's story" on it, its length to suit them; or its own `words`
     -- (opened from Your Diary: BOOKMARK.journey).
     function mark:Set(first, words)
-        self.words:SetText(words or (first and ("%s's story"):format(first) or "Their story"))
+        self.words:SetText(words or (first and ns.Fmt(ns.L["%s's story"], Genitive(first)) or ns.L["Their story"]))
         self.words:SetSize(0, 0)
         self.textW = (Surface.Width(self.words) or 0) + 2
         self.w = math.max(BOOKMARK.least, BOOKMARK.ribbon + self.textW + BOOKMARK.pad)

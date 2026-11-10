@@ -9,6 +9,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Style = ns.Style
 local FONT = Style.FONT
 local Text = ns.UI.JourneyText
@@ -239,7 +241,7 @@ local function DrawPlates(e)
     end
     if #plates == 0 then
         -- JRN-21: a level whose road was not kept says so, faded.
-        page.nothing:SetText("Nothing of this level's road was kept.")
+        page.nothing:SetText(L["Nothing of this level's road was kept."])
         page.nothing:Show()
         return 0
     end

@@ -348,7 +348,7 @@ local function Reached(j, n)
     if not rec.mapID then
         for _, seg in ipairs(Journey.All(j)) do
             if seg.kind == "dungeon" and seg.from <= rec.at and rec.at <= seg.to then
-                reached.dungeon = seg.name
+                reached.dungeon, reached.instanceID = seg.name, seg.instanceID
                 break
             end
         end

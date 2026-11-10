@@ -40,7 +40,7 @@ local function Column(parent, x, y, width)
     -- rubricates both while it stands on one of them (UI/Pad/Look.lua).
     function column:Heading(text)
         local heading = Style.Text(self.parent, FONT.heading)
-        heading:SetText(text:upper())
+        heading:SetText(Style.Upper(text))
         self:PlaceHeading(heading)
 
         local rule = self.parent:CreateTexture(nil, "ARTWORK")
@@ -93,8 +93,8 @@ local function Column(parent, x, y, width)
         row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -UNIT_W, 1)
 
         row.unit = Style.Text(row, FONT.body)
-        row.unit:SetPoint("LEFT", row.box, "RIGHT", 6, 0)
         row.unit:SetText(unit)
+        row.unit:SetPoint("LEFT", row.box, "RIGHT", 6, 0)
 
         local height = math.max(18, row.label:GetStringHeight())
         row:SetSize(self.width, height)
@@ -159,7 +159,7 @@ local function Pane(s)
     pane.title = Style.Text(pane, s.parent and FONT.titleSmall or FONT.title)
     pane.title:SetPoint("TOPLEFT", 0, 0)
     pane.title:SetHeight(28)
-    pane.title:SetText(s.label:upper())
+    pane.title:SetText(Style.Upper(s.label))
 
     pane.about = Style.Text(pane, FONT.faded)
     pane.about:SetPoint("BOTTOMLEFT", pane.title, "BOTTOMRIGHT", 10, 5)

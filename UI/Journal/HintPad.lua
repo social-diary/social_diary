@@ -16,6 +16,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local HintSlip = ns.UI.HintSlip
@@ -24,8 +26,8 @@ local HintSlip = ns.UI.HintSlip
 local PAGE_LAYER = 20
 
 local PROMPT = {
-    away = { "PAD1", "Put the hint away", main = true },
-    back = { "PAD2", "Put the hint away" },
+    away = { "PAD1", L["Put the hint away"], main = true },
+    back = { "PAD2", L["Put the hint away"] },
 }
 
 local function Out(top)

@@ -12,6 +12,7 @@ local List = ns.UI.Format.List
 -- UI/Journey/Text/Time.lua).
 local Plain = ns.UI.Format.Duration
 local MapName = Text.MapName
+local L, Fmt = ns.L, ns.Fmt
 
 --------------------------------------------------------------------------
 -- The zone index (JRN-15)
@@ -19,15 +20,15 @@ local MapName = Text.MapName
 
 -- "The Barrens", "levels 10 to 14 · 3 h 20 min".
 function Text.ZoneName(z)
-    return MapName(z.mapID) or ("Map " .. z.mapID)
+    return MapName(z.mapID) or Fmt(L["Map %s"], z.mapID)
 end
 
 function Text.ZoneLine(z)
     local levels
     if z.levelMin and z.levelMax and z.levelMin ~= z.levelMax then
-        levels = ("levels %d to %d"):format(z.levelMin, z.levelMax)
+        levels = Fmt(L["levels %1$d to %2$d"], z.levelMin, z.levelMax)
     elseif z.levelMin then
-        levels = "level " .. z.levelMin
+        levels = Fmt(L["level %s"], z.levelMin)
     end
     local parts = {}
     if levels then parts[#parts + 1] = levels end
@@ -40,8 +41,8 @@ end
 function Text.ZoneFoot(z, names, fights)
     local line = Text.ZoneLine(z)
     local parts = { line ~= "" and line or nil }
-    local list = List(names or {}, { max = 4, shown = 3, more = "others" })
-    if list then parts[#parts + 1] = "with " .. list end
-    if (fights or 0) > 0 then parts[#parts + 1] = fights == 1 and "a fight" or (fights .. " fights") end
+    local list = List(names or {}, { max = 4, shown = 3, more = ns.UI.Format.OTHERS })
+    if list then parts[#parts + 1] = Fmt(L["with %s"], list) end
+    if (fights or 0) > 0 then parts[#parts + 1] = ns.Plural(fights, L["a fight|%d fights##plural"]) end
     return table.concat(parts, "  \194\183  ")
 end

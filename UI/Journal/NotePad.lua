@@ -31,6 +31,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local Controls = Pad.Controls
@@ -39,11 +41,11 @@ local Controls = Pad.Controls
 local OVER = 30
 
 local PROMPT = {
-    away = { "PAD2", "Put the note away" },
-    stop = { "PAD2", "Stop writing" },
-    card = { "PAD2", "Back to the note" },
-    link = { "PAD1", "Link them", main = true },
-    unlink = { "PAD1", "Unlink them", main = true },
+    away = { "PAD2", L["Put the note away"] },
+    stop = { "PAD2", L["Stop writing"] },
+    card = { "PAD2", L["Back to the note"] },
+    link = { "PAD1", L["Link them"], main = true },
+    unlink = { "PAD1", L["Unlink them"], main = true },
 }
 
 local hooked = setmetatable({}, { __mode = "k" })

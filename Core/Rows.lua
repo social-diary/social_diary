@@ -58,7 +58,9 @@
 --   hidden      never shown on the timeline
 --   reason      why the picker offers someone whose latest row it is ("they
 --               saved you"); without one, "recent <type>"
---   text        function(row, guid): its line on the timeline; without one,
+--   text        function(row, guid, unplaced): its line on the timeline
+--               (`unplaced`: without its place, for a tooltip that shows
+--               the place apart); without one,
 --               the type itself
 --   icon        its Style.ART key on the timeline; without one, no icon
 --

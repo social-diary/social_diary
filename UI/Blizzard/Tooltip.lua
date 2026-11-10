@@ -12,6 +12,8 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
+
 local Format = ns.UI.Format
 
 local NOTE_CHARS = 60
@@ -24,12 +26,6 @@ local function NoteLine(note)
     if #line <= NOTE_CHARS then return line end
     line = line:sub(1, NOTE_CHARS):gsub("[\192-\255][\128-\191]*$", "")
     return line .. "\226\128\166"
-end
-
--- "twice", "3 times". Never "once": that line is not shown.
-local function Times(count)
-    if count == 2 then return "twice" end
-    return count .. " times"
 end
 
 -- REU-6: "Seen N times, last ...", off by default. Only what came before
@@ -47,7 +43,10 @@ function ns.UI.SeenLine(guid, now)
     -- A single earlier sighting is too thin to be worth a line.
     if count < 2 then return nil, "seen only once before" end
 
-    return ("Seen %s  ·  last %s"):format(Times(count), Format.At(last, now))
+    -- "twice" is a word English has, not a plural form: its own line.
+    local at = Format.At(last, now)
+    if count == 2 then return Fmt(L["Seen twice  ·  last %s"], at) end
+    return ns.Plural(count, L["Seen %1$d time  ·  last %2$s|Seen %1$d times  ·  last %2$s##plural"], count, at)
 end
 
 local function SeenLine(tooltip, guid)
@@ -73,9 +72,9 @@ local function OnUnitTooltip(tooltip, data)
     if not s then return end
     local entry = s.entry
 
-    local head = entry.tags[1] and table.concat(entry.tags, ", ") or "in your diary"
+    local head = entry.tags[1] and table.concat(entry.tags, ", ") or L["in your diary"]
     if entry.relationship then head = head .. "  ·  " .. entry.relationship end
-    tooltip:AddLine("|cffffd100Diary:|r " .. head, 1, 1, 1)
+    tooltip:AddLine(Fmt(L["|cffffd100Diary:|r %s"], head), 1, 1, 1)
 
     local note = NoteLine(entry.note)
     if note and note ~= "" then
@@ -83,14 +82,14 @@ local function OnUnitTooltip(tooltip, data)
     end
 
     if s.timesMet > 0 then
-        tooltip:AddLine(("Met %s  ·  last %s"):format(Format.Count(s.timesMet, "time", "times"),
-            Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
+        tooltip:AddLine(ns.Plural(s.timesMet, L["Met %1$d time  ·  last %2$s|Met %1$d times  ·  last %2$s##plural"],
+            s.timesMet, Format.Ago(s.lastMet)), 0.6, 0.6, 0.6)
     else
         -- Before this encounter, as SeenLine: hovering them has just moved
         -- `seen` to now.
         local count, last = ns.Sightings.SeenBefore(guid)
         if count then
-            tooltip:AddLine("Last seen " .. Format.At(last), 0.6, 0.6, 0.6)
+            tooltip:AddLine(Fmt(L["Last seen %s"], Format.At(last)), 0.6, 0.6, 0.6)
         end
     end
 end

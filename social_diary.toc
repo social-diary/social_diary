@@ -12,6 +12,11 @@
 ## X-License: GPL-3.0-or-later
 
 Core/Addon.lua
+# Translations (Locales/Locale.lua): the lookup first, the English every
+# key falls back to, then each locale's words. Before everything else, so a
+# file can take its words as it loads.
+Locales/Locale.lua
+Locales/enUS.lua
 Core/DB.lua
 Core/Bridges/Questie.lua
 Core/Identity.lua

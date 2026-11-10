@@ -15,6 +15,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local J = ns.UI.Journal
 local Pad = ns.UI.Pad
 
@@ -102,8 +104,8 @@ local scope = {
     end,
     legend = function()
         return {
-            { { "PADLSHOULDER", "PADRSHOULDER" }, "Turn the page", beside = Ribbons() },
-            { "PAD2", "Close the book" },
+            { { "PADLSHOULDER", "PADRSHOULDER" }, L["Turn the page"], beside = Ribbons() },
+            { "PAD2", L["Close the book"] },
         }
     end,
 }

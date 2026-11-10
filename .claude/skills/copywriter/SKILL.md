@@ -11,8 +11,9 @@ personal, timeworn; a diary, quiet, never shouts during
 play.** This skill turns that into rules per surface. The changelog has its
 own rule (`.claude/rules/changelog.md`); follow that one there.
 
-All copy is English-only, hard-coded (there is no localisation table).
-Write British English: *pencilled*, *colour*, *grey*, *levelling*.
+Every string a player reads goes through the translation table
+(`Locales/Locale.lua`, §7): the English is the key. Write British English:
+*pencilled*, *colour*, *grey*, *levelling*.
 
 ## 1. Find the register first
 
@@ -180,3 +181,62 @@ format), *polish*. Don't edit until the user picks what to apply.
 
 When the user settles a wording question these rules don't cover, add it
 here.
+
+## 7. Translation
+
+**The mechanics** (`Locales/Locale.lua` has the details):
+
+- Wrap every player-facing string: `L["Keep my own route"]`, and for
+  values `ns.Fmt(L["Quested together for %s"], d)` (or `ns.T(key, ...)`).
+  `local L, Fmt = ns.L, ns.Fmt` at the file's top. The key is always one
+  plain double-quoted literal, never built (`L[name]`, `L["a" .. b]` are
+  invisible to the extractor).
+- **Whole sentences, never fragments.** `"Met " .. name .. " in " .. zone`
+  can't be translated: German puts the verb elsewhere. Write one template
+  per sentence shape (`"Met %1$s in %2$s"`); where code glues optional
+  parts, give each combination its own template rather than gluing
+  translated pieces. Fragments are fine only when they are whole units
+  (a label, a list joiner).
+- **Positional placeholders** (`%1$s`, `%2$d`) whenever a template has two
+  or more values, so a translation can reorder them. In one template all
+  positional or none. `%%` for a literal percent.
+- **Counts go through `ns.Plural`**, never `n == 1 and L[a] or L[b]`:
+  one key ending in `##plural`, its English forms singular first, split by
+  `|`: `ns.Plural(rows, L["%d interaction on record|%d interactions on record##plural"])`.
+  A locale writes as many forms as its rule has, in CLDR order (German 2,
+  Russian 3: one|few|many); `grammar.PluralForm(n)` picks one (French
+  takes the singular for 0, Russian for 21). A form may drop the number
+  ("a fight|%d fights") only where it means exactly 1, so translations to
+  French or Russian keep the number in every form. No `|cff..|r` inside a
+  plural value: colour goes round the call. The values after the text
+  fill the form; with none, the count does. A key may also carry a
+  context before it (`"...##zone##plural"`). "twice" is a word, not a
+  plural form: `Format.Times` asks `L["twice"]` for 2, and a locale with no
+  such word writes `""` there, so 2 takes the plural. Lists past their
+  limit take `Format.MORE` / `Format.OTHERS` ("A, B and 3 others").
+- **A zone or dungeon after a preposition is one phrase**:
+  `Fmt(L["Found %1$s %2$s##zone"], item, ns.ZoneIn(mapID, zone))` gives
+  "Found Linen Cloth in The Barrens"; `ns.DungeonIn(instanceID, name,
+  role)` the same for a dungeon. The locale writes the phrase ("im
+  Brachland", "в Дуротаре"), so a `##zone` template never has its own
+  preposition before the place. `role` picks it: "in" (default), "to",
+  "from", "into", "through", "near", "at", "around". A subzone has no id:
+  never put it after a preposition; let it follow a middle dot or comma
+  ("· Crossroads, The Barrens").
+- **One English word, two meanings**: add a context, `L["May##short"]`;
+  the English shown is the part before `##`.
+- **Never translate data**: saved values, table keys, event and setting
+  names, slash-command tokens, sound/texture paths, strings matched against
+  game text (chat patterns, combat log, tooltips), creature/zone/item names
+  used to look up data. Translate the label shown for them instead.
+- Text the game supplies (zone, creature, item, class, race names) is
+  already in the client's language: leave it as it comes.
+- Grammar that differs by language (plurals, articles, ordinals, the
+  shared diary's "{you}") is a function in `ns.Locale.grammar` a locale may
+  replace (`Locales/<id>/Grammar.lua`). The English helpers in
+  `UI/Journey/Text/Grammar.lua` and `UI/Words/Format.lua` ask it first.
+- After changing keys: `luajit Dev/Locale/extract.lua` (rewrites
+  `Locales/enUS.lua`), then `luajit tests/run.lua` (tests/locale.lua checks
+  every locale in the TOC has words for every key, with matching
+  placeholders, and plural words with one form per category of its rule) and `luajit tests/run.lua --locale <id>` (the whole suite
+  under that locale: no addon errors).

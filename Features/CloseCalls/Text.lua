@@ -12,6 +12,7 @@ local addonName, ns = ...
 local CloseCalls = ns.CloseCalls
 local Text = ns.UI.JourneyText
 local Capital, Health, NUMBER, When = Text.Capital, Text.Health, Text.NUMBER, Text.When
+local L, Fmt = ns.L, ns.Fmt
 
 -- A close call's creature in a sentence: "a Plainstrider", "Hogger", "a
 -- Plainstrider and two others" (it was one of `foes` targeted); nil when
@@ -20,9 +21,8 @@ local function Foes(call)
     local name = Text.KillerName(call)
     if not name then return nil end
     local more = (call.foes or 1) - 1
-    if more == 1 then return name .. " and another" end
-    if more > 1 then return name .. " and " .. (NUMBER[more] or tostring(more)) .. " others" end
-    return name
+    if more < 1 then return name end
+    return Fmt(L["%1$s and %2$s"], name, ns.Plural(more, L["another|%s others##plural"], NUMBER[more] or tostring(more)))
 end
 
 -- A close call in a sentence: "Got away from a Plainstrider with 6%
@@ -30,7 +30,8 @@ end
 -- health."
 function CloseCalls.Sentence(call)
     local foes = Foes(call)
-    return (foes and ("Got away from " .. foes) or "Got out of a fight") .. " with " .. Health(call) .. "."
+    if foes then return Fmt(L["Got away from %1$s with %2$s."], foes, Health(call)) end
+    return Fmt(L["Got out of a fight with %s."], Health(call))
 end
 
 -- A close call's creature's level and rank, as its card's tag says them
@@ -38,13 +39,13 @@ end
 -- "Lv 12" for a common creature, the rank alone where no level was kept
 -- ("Elite"); nil with neither. The fight's length is never told: it said
 -- nothing (11 Oct).
-local TAG = { elite = "Elite", rare = "Rare", rareelite = "Rare Elite", worldboss = "Boss" }
+local TAG = { elite = L["Elite"], rare = L["Rare"], rareelite = L["Rare Elite"], worldboss = L["Boss"] }
 
 function CloseCalls.Tag(call)
     local level = call and call.foeLevel
-    local lv = level == -1 and "Lv ??" or (type(level) == "number" and level > 0 and ("Lv " .. level)) or nil
+    local lv = level == -1 and L["Lv ??"] or (type(level) == "number" and level > 0 and Fmt(L["Lv %d"], level)) or nil
     local rank = call and TAG[call.rank]
-    if lv and rank then return lv .. " (" .. rank .. ")" end
+    if lv and rank then return Fmt(L["%1$s (%2$s)"], lv, rank) end
     return lv or rank
 end
 
@@ -52,14 +53,15 @@ end
 -- diary's hand (Card.lua's SetFoe), and its cross's tooltip's title, so
 -- the card and the mark it points to read as one thing.
 function CloseCalls.Heading()
-    return "A close call"
+    return L["A close call"]
 end
 
 -- A close call's cross on a plate, for its tooltip: "A close call", then
 -- what with, its level and rank, when.
 function CloseCalls.Tip(call, now)
     local foes = Foes(call)
-    local lines = { (call.pct or 0) .. "% health left" .. (foes and (", against " .. foes) or "") }
+    local pct = tostring(call.pct or 0)
+    local lines = { foes and Fmt(L["%1$s%% health left, against %2$s"], pct, foes) or Fmt(L["%s%% health left"], pct) }
     if foes then lines[#lines + 1] = CloseCalls.Tag(call) end
     lines[#lines + 1] = When(call.t, call.level, now)
     return CloseCalls.Heading(), lines
@@ -71,16 +73,16 @@ end
 function CloseCalls.Deed(call)
     local foes = call.foes or 1
     if foes <= 1 then return "" end
-    return "fought against " .. (NUMBER[foes] or tostring(foes))
+    return Fmt(L["fought against %s"], NUMBER[foes] or tostring(foes))
 end
 
 function CloseCalls.FoeTip(call, now)
     local lines = { CloseCalls.Tag(call) }
-    lines[#lines + 1] = "Left you with " .. (call.pct or 0) .. "% health"
+    lines[#lines + 1] = Fmt(L["Left you with %s%% health"], tostring(call.pct or 0))
     local more = (call.foes or 1) - 1
     if more > 0 then
-        lines[#lines + 1] = more == 1 and "One more was in the fight"
-            or (Capital(NUMBER[more] or tostring(more)) .. " more were in the fight")
+        lines[#lines + 1] = ns.Plural(more, L["One more was in the fight|%s more were in the fight##plural"],
+            Capital(NUMBER[more] or tostring(more)))
     end
     lines[#lines + 1] = When(call.t, call.level, now)
     return call.name, lines
@@ -102,8 +104,8 @@ function CloseCalls.Lines(e)
     for i = 1, math.min(#calls, PROSE.most) do parts[#parts + 1] = CloseCalls.Sentence(calls[i]) end
     local more = #calls - PROSE.most
     if more > 0 then
-        parts[#parts + 1] = more == 1 and "And one more close call." or ("And %s more close calls."):format(
-            NUMBER[more] or tostring(more))
+        parts[#parts + 1] = Fmt(L["And %s.##more"], ns.Plural(more,
+            L["one more close call|%s more close calls##plural"], NUMBER[more] or tostring(more)))
     end
     if #parts == 0 then return nil end
     return table.concat(parts, " ")
@@ -130,16 +132,16 @@ Text.RegisterLines("close", { at = 70, run = "combat", lines = function(e) retur
 local function Calls(calls, c)
     if #calls == 1 then
         local name = not c.said.close and Text.KillerName(calls[1])
-        return name and ("a close call with " .. name) or "a close call"
+        return name and Fmt(L["a close call with %s"], name) or L["a close call"]
     end
-    return (NUMBER[#calls] or tostring(#calls)) .. " close calls"
+    return ns.Plural(#calls, L["%s close call|%s close calls##plural"], NUMBER[#calls] or tostring(#calls))
 end
 
 Text.RegisterCaption("close", {
     moment = "close",
     take = function(m) return m.call end,
     lead = { at = 60, say = function(calls, c)
-        if #calls == 1 then return c.said.close and "A close call" or CloseCalls.Sentence(calls[1]):sub(1, -2) end
+        if #calls == 1 then return c.said.close and L["A close call"] or CloseCalls.Sentence(calls[1]):sub(1, -2) end
         return Capital(Calls(calls, c))
     end },
     tail = { at = 50, say = Calls },

@@ -10,6 +10,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local MAX_ROWS = 12
 local ROW_HEIGHT = ns.Style.ROW_HEIGHT
 
@@ -47,7 +49,7 @@ end
 
 local function Build()
     local panel = ns.UI.Chrome.Panel("SocialDiaryPickerFrame", 380,
-        52 + MAX_ROWS * ROW_HEIGHT + 40, "Remember this")
+        52 + MAX_ROWS * ROW_HEIGHT + 40, L["Remember this"])
 
     panel.rows = {}
     for i = 1, MAX_ROWS do
@@ -58,7 +60,7 @@ local function Build()
     panel.empty:SetPoint("TOPLEFT", 18, -56)
 
     panel.hint = ns.UI.Chrome.Label(panel,
-        "|cff808080Click somebody to add them. Already in the diary opens their entry.|r",
+        "|cff808080" .. L["Click somebody to add them. Already in the diary opens their entry."] .. "|r",
         "GameFontDisableSmall")
     panel.hint:SetPoint("BOTTOMLEFT", 18, 18)
     panel.hint:SetPoint("RIGHT", -18, 0)
@@ -90,8 +92,7 @@ local function Refresh()
     end
 
     if #candidates == 0 then
-        picker.empty:SetText("Nobody to remember right now. Target someone, or"
-            .. " interact with them first.")
+        picker.empty:SetText(L["Nobody to remember right now. Target someone, or interact with them first."])
     else
         picker.empty:SetText("")
     end

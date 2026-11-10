@@ -7,6 +7,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Style = ns.Style
 
 ns.UI.MinimapButton = {}
@@ -122,9 +124,9 @@ local function Build()
 
     Style.Tooltip(button, function()
         return Style.TipList("Social Diary", {
-            "Click to open or close the journal.",
-            "Right-click to open the settings.",
-            "Drag to move this button.",
+            L["Click to open or close the journal."],
+            L["Right-click to open the settings."],
+            L["Drag to move this button."],
         })
     end, "ANCHOR_LEFT")
 

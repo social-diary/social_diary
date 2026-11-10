@@ -90,46 +90,111 @@ Witnesses.WATCHING = WATCHING
 -- each "in Hillsbrad Foothills". The creature as Your Diary names a killer
 -- (ns.UI.TimelineText.Foe).
 
-local Foe, Place = ns.UI.TimelineText.Foe, ns.UI.TimelineText.Place
+local TT = ns.UI.TimelineText
+local Foe, Place, Spot, Dot = TT.Foe, TT.Place, TT.Spot, TT.Dot
+local L, Fmt = ns.L, ns.Fmt
 
 local function Always() return true end
 
+-- Each sentence is whole, one template for each of its optional parts:
+-- the creature (`foe`) and the place (`zone`, the zone's phrase), each
+-- template's values in the order they are named (them, foe, health,
+-- zone). A subzone has no id to say "in" with: the sentence without a
+-- place, the spot after a dot ("Sentinel Hill, Westfall").
+local function Values(...)
+    local values = {}
+    for i = 1, select("#", ...) do
+        local v = select(i, ...)
+        if v then values[#values + 1] = v end
+    end
+    return unpack(values)
+end
+
+-- Where a witness's row was: the zone's phrase, or the spot of a subzone
+-- (`sub`: only the row that keeps one), or neither.
+local function Where(row, sub, unplaced)
+    if unplaced then return nil, nil end
+    if sub == "" or sub == row.zone then sub = nil end
+    if sub then return nil, Spot(sub, row.zone) end
+    return Place(row), nil
+end
+
 -- "Bram mercilessly watched you die to a Kobold Vermin in Coldridge
 -- Valley": by how long they watched (WATCHING), under 1.5 s only "saw you
--- die", from 5 s on "mercilessly". In the subzone where there is one; a
--- row kept before the watching was timed is plain "watched".
-ns.Rows.Register(WATCHED, { witness = "watched", plate = 3, moment = Always, reason = "they watched you die",
-    text = function(row, guid)
-        local them = guid and ns.Characters.Name(guid) or "They"
+-- die", from 5 s on "mercilessly". The subzone where there is one, after a
+-- dot; a row kept before the watching was timed is plain "watched".
+local WATCHED_WORDS = {
+    watched = {
+        foe = { zone = L["%1$s watched {you} die to %2$s %3$s##zone"], alone = L["%1$s watched {you} die to %2$s"] },
+        none = { zone = L["%1$s watched {you} die %2$s##zone"], alone = L["%s watched {you} die"] },
+    },
+    saw = {
+        foe = { zone = L["%1$s saw {you} die to %2$s %3$s##zone"], alone = L["%1$s saw {you} die to %2$s"] },
+        none = { zone = L["%1$s saw {you} die %2$s##zone"], alone = L["%s saw {you} die"] },
+    },
+    merciless = {
+        foe = { zone = L["%1$s mercilessly watched {you} die to %2$s %3$s##zone"],
+            alone = L["%1$s mercilessly watched {you} die to %2$s"] },
+        none = { zone = L["%1$s mercilessly watched {you} die %2$s##zone"], alone = L["%s mercilessly watched {you} die"] },
+    },
+}
+
+ns.Rows.Register(WATCHED, { witness = "watched", plate = 3, moment = Always, reason = L["they watched you die"],
+    text = function(row, guid, unplaced)
+        local them = guid and ns.Characters.Name(guid) or L["They##someone"]
         local c = row.context or {}
         local watching = Witnesses.WATCHING
-        local verb = " watched {you} die"
+        local how = "watched"
         if c.watched and c.watched < watching.saw then
-            verb = " saw {you} die"
+            how = "saw"
         elseif c.watched and c.watched >= watching.merciless then
-            verb = " mercilessly watched {you} die"
+            how = "merciless"
         end
         local foe = Foe(row)
-        local place = c.subZone or row.zone
-        return them .. ns.UI.Format.You(row.me, verb) .. (foe and (" to " .. foe) or "") .. (place and (" in " .. place) or "")
+        local zone, spot = Where(row, c.subZone, unplaced)
+        local template = WATCHED_WORDS[how][foe and "foe" or "none"][zone and "zone" or "alone"]
+        return Dot(ns.UI.Format.You(row.me, Fmt(template, Values(them, foe, zone))), spot)
     end,
     icon = "around" })
 
-ns.Rows.Register(HELPED, { witness = "helped", plate = 3, moment = Always, reason = "they tried to save you",
-    text = function(row, guid)
-        local them = guid and ns.Characters.Name(guid) or "They"
+local HELPED_WORDS = {
+    foe = { zone = L["%1$s tried to save {you} from %2$s %3$s##zone"], alone = L["%1$s tried to save {you} from %2$s"] },
+    none = { zone = L["%1$s tried to save {you} %2$s##zone"], alone = L["%s tried to save {you}"] },
+}
+
+ns.Rows.Register(HELPED, { witness = "helped", plate = 3, moment = Always, reason = L["they tried to save you"],
+    text = function(row, guid, unplaced)
+        local them = guid and ns.Characters.Name(guid) or L["They##someone"]
         local foe = Foe(row)
-        return them .. ns.UI.Format.You(row.me, " tried to save {you}") .. (foe and (" from " .. foe) or "") .. Place(row)
+        local zone = Where(row, nil, unplaced)
+        local template = HELPED_WORDS[foe and "foe" or "none"][zone and "zone" or "alone"]
+        return ns.UI.Format.You(row.me, Fmt(template, Values(them, foe, zone)))
     end,
     icon = "together" })
 
-ns.Rows.Register(SAVED, { witness = "helped", plate = 3, moment = Always, reason = "they saved you",
-    text = function(row, guid)
-        local them = guid and ns.Characters.Name(guid) or "They"
+-- "Bram saved you from a Kobold Vermin at 6% health in Coldridge Valley".
+local SAVED_WORDS = {
+    foe = {
+        health = { zone = L["%1$s saved {you} from %2$s at %3$s%%\194\160health %4$s##zone"],
+            alone = L["%1$s saved {you} from %2$s at %3$s%%\194\160health"] },
+        none = { zone = L["%1$s saved {you} from %2$s %3$s##zone"], alone = L["%1$s saved {you} from %2$s"] },
+    },
+    none = {
+        health = { zone = L["%1$s saved {you} at %2$s%%\194\160health %3$s##zone"],
+            alone = L["%1$s saved {you} at %2$s%%\194\160health"] },
+        none = { zone = L["%1$s saved {you} %2$s##zone"], alone = L["%s saved {you}"] },
+    },
+}
+
+ns.Rows.Register(SAVED, { witness = "helped", plate = 3, moment = Always, reason = L["they saved you"],
+    text = function(row, guid, unplaced)
+        local them = guid and ns.Characters.Name(guid) or L["They##someone"]
         local foe = Foe(row)
         local pct = row.context and row.context.pct
-        local health = pct and (" at " .. pct .. "%\194\160health") or ""
-        return them .. ns.UI.Format.You(row.me, " saved {you}") .. (foe and (" from " .. foe) or "") .. health .. Place(row)
+        local health = pct and tostring(pct)
+        local zone = Where(row, nil, unplaced)
+        local template = SAVED_WORDS[foe and "foe" or "none"][health and "health" or "none"][zone and "zone" or "alone"]
+        return ns.UI.Format.You(row.me, Fmt(template, Values(them, foe, health, zone)))
     end,
     icon = "together" })
 
@@ -219,26 +284,26 @@ end
 ns.JourneyRecap.RegisterMoment("witnessed", { order = 25, entry = "witnessed", field = "witnessed", rank = 3,
     gather = function() end,
     custom = {
-        label = "Witness",
-        heading = "A witness",
+        label = L["Witness"],
+        heading = L["A witness"],
         group = "social",
         describe = function(rec)
             local w = Witnesses.Written(rec)
-            return Witnesses.Name(w) .. " " .. Witnesses.Deed(w)
+            return Fmt(L["%1$s %2$s"], Witnesses.Name(w), Witnesses.Deed(w))
         end,
         defaults = { deed = DEED_PLAIN },
         fields = {
-            { key = "name", type = "person", guid = "guid", label = "Who", hint = "Anyone, in your diary or not" },
+            { key = "name", type = "person", guid = "guid", label = L["Who"], hint = L["Anyone, in your diary or not"] },
             -- Short because a box and its word have 86 px on the form
             -- (CardSheet's SHEET.toggle); "saw you die" would run into the next.
-            { key = "deed", type = "choice", values = { "saw", "tried", "saved" }, label = "Their role",
-                names = { saw = "Saw it", tried = "Tried", saved = "Saved" } },
-            { key = "creature", type = "text", label = "Creature" },
+            { key = "deed", type = "choice", values = { "saw", "tried", "saved" }, label = L["Their role"],
+                names = { saw = L["Saw it"], tried = L["Tried"], saved = L["Saved"] } },
+            { key = "creature", type = "text", label = L["Creature"] },
             -- Only for how the card names it: ticked, "from Hogger" and not "from a
             -- Hogger" (Text.KillerName). The user's in place of a rank, 2 Nov.
-            { key = "bare", type = "choice", values = { "yes" }, label = "Article",
-                names = { yes = "Disable (\"A Hogger\")" } },
-            { key = "pct", type = "number", min = 0, max = 100, label = "Health left",
-                hint = "%, if they saved you" },
+            { key = "bare", type = "choice", values = { "yes" }, label = L["Article"],
+                names = { yes = L["Disable (\"A Hogger\")"] } },
+            { key = "pct", type = "number", min = 0, max = 100, label = L["Health left"],
+                hint = L["%, if they saved you"] },
         },
     } })

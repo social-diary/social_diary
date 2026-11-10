@@ -36,6 +36,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local Parcel = ns.UI.Parcel
 local Tour = ns.UI.Tour
@@ -45,17 +47,17 @@ local J = ns.UI.Journal
 local OVER = 30
 
 local PROMPT = {
-    tear = { "PAD1", "Tear it open", main = true },
-    open = { "PAD1", "Open the introduction", main = true },
-    later = { "PAD1", "Later", main = true },
-    away = { "PAD2", "Put the parcel away" },
-    continue = { "PAD1", "Continue", main = true },
-    add = { "PAD1", "Add Thex", main = true },
-    thex = { "PAD1", "Open his page", main = true },
-    step = { "PAD1", "Back to this step", main = true },
-    sheet = { "PAD2", "Put the introduction away" },
-    begin = { "PAD1", "Begin your own diary", main = true },
-    page = { "PAD2", "Back to the page" },
+    tear = { "PAD1", L["Tear it open"], main = true },
+    open = { "PAD1", L["Open the introduction"], main = true },
+    later = { "PAD1", L["Later"], main = true },
+    away = { "PAD2", L["Put the parcel away"] },
+    continue = { "PAD1", L["Continue"], main = true },
+    add = { "PAD1", L["Add Thex"], main = true },
+    thex = { "PAD1", L["Open his page"], main = true },
+    step = { "PAD1", L["Back to this step"], main = true },
+    sheet = { "PAD2", L["Put the introduction away"] },
+    begin = { "PAD1", L["Begin your own diary"], main = true },
+    page = { "PAD2", L["Back to the page"] },
 }
 
 local function Run(frame, name)

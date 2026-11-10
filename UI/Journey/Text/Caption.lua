@@ -15,13 +15,15 @@ local Text = ns.UI.JourneyText
 local List = Format.List
 local Spoken, Capital, MapName, Day = Text.Spoken, Text.Capital, Text.MapName, Text.Day
 local Duration, NUMBER, Short = Text.Duration, Text.NUMBER, Text.Short
+local L, Fmt = ns.L, ns.Fmt
 
 -- "today", "yesterday", "Tuesday", or "4 October" past a week: the day a
 -- plate's caption names, as it reads after a comma.
 local function PlateDay(t, now)
     local label = Format.DayLabel(t, now)
-    if label == "Today" or label == "Yesterday" then return label:lower() end
-    if now - t < 6 * ns.DAY then return date("%A", t) end
+    if label == L["Today"] then return L["today"] end
+    if label == L["Yesterday"] then return L["yesterday"] end
+    if now - t < 6 * ns.DAY then return Format.Weekday(t) end
     return Day(t, now)
 end
 
@@ -33,15 +35,15 @@ end
 -- changed.
 function Text.PlateHeading(plate, now, before)
     now = now or ns.Now()
-    local zone = MapName(plate.mapID) or "Somewhere"
+    local zone = MapName(plate.mapID) or L["Somewhere"]
     if before and before.t and plate.t and plate.t >= before.t
         and ns.DayStart(plate.t) == ns.DayStart(before.t) then
-        local later = Spoken(plate.t - before.t) .. " later"
+        local later = Fmt(L["%s later"], Spoken(plate.t - before.t))
         if plate.mapID == before.mapID then return Capital(later), Capital(later), nil end
-        return Capital(later) .. ", in " .. zone, zone, later
+        return Fmt(L["%1$s, %2$s##zone"], Capital(later), ns.ZoneIn(plate.mapID, zone)), zone, later
     end
     local day = PlateDay(plate.t, now)
-    return zone .. ", " .. day, zone, day
+    return Fmt(L["%1$s, %2$s"], zone, day), zone, day
 end
 
 --------------------------------------------------------------------------
@@ -126,44 +128,49 @@ local LEADS = {
     -- Who you were with that no note beside the plate names.
     { at = 10, key = "people", say = function(c)
         if #c.people == 0 then return nil end
-        return "With " .. List(c.people, { max = 3, shown = 2, more = "others" })
+        return Fmt(L["With %s"], List(c.people, { max = 3, shown = 2, more = ns.UI.Format.OTHERS }))
     end },
     -- Fights with strangers no note tells: "A fight, won", "Two fights".
     { at = 45, key = "fights", say = function(c)
         local strangers = c.strangers
         if #strangers == 0 then return nil end
-        if #strangers == 1 then return "A fight, " .. (strangers[1].outcome == "won" and "won" or "lost") end
-        return Capital(NUMBER[#strangers] or tostring(#strangers)) .. " fights"
+        if #strangers == 1 then return strangers[1].outcome == "won" and L["A fight, won"] or L["A fight, lost"] end
+        return ns.Plural(#strangers, L["%s fight|%s fights##plural"], Capital(NUMBER[#strangers] or tostring(#strangers)))
     end },
     { at = 100, key = "arrive", say = function(c)
         local arrive = c.of.arrive
         if not arrive then return nil end
-        if c.began and arrive.t <= c.began then return "Where the diary began" end
-        return "Into " .. (MapName(c.plate.mapID) or "a new zone") .. " for the first time"
+        if c.began and arrive.t <= c.began then return L["Where the diary began"] end
+        local zone = MapName(c.plate.mapID)
+        if not zone then return L["Into a new zone for the first time"] end
+        return Capital(Fmt(L["%s for the first time##zone"], ns.ZoneIn(c.plate.mapID, zone, "into")))
     end },
     { at = 110, key = "dungeon", say = function(c)
         local dungeon = c.of.dungeon
-        return dungeon and ("The way into " .. (dungeon.name or "a dungeon")) or nil
+        if not dungeon then return nil end
+        if not dungeon.name then return L["The way into a dungeon"] end
+        local id = (dungeon.seg and dungeon.seg.instanceID) or (dungeon.visit and dungeon.visit.instanceID)
+        return Fmt(L["The way %s##zone"], ns.DungeonIn(id, dungeon.name, "into"))
     end },
     { at = 120, key = "stay", say = function(c)
         local stay = c.of.stay
         if not stay then return nil end
         local seg = stay.seg
-        local text = seg.subZone and seg.subZone ~= MapName(seg.mapID) and seg.subZone or "A long stay"
-        return text .. ", " .. Duration(stay.seconds or seg.seconds or 0)
+        local text = seg.subZone and seg.subZone ~= MapName(seg.mapID) and seg.subZone or L["A long stay"]
+        return Fmt(L["%1$s, %2$s"], text, Duration(stay.seconds or seg.seconds or 0))
     end },
     -- Someone a note beside the plate names already: what you did together
     -- is said, never who.
     { at = 130, key = "company", say = function(c)
-        if c.company == "fight" then return "Where the fighting was" end
-        if c.company then return "In good company" end
+        if c.company == "fight" then return L["Where the fighting was"] end
+        if c.company then return L["In good company"] end
         return nil
     end },
     { at = 150, key = "level", say = function(c)
-        return c.of.level and ("Level " .. c.of.level.level) or nil
+        return c.of.level and Fmt(L["Level %d"], c.of.level.level) or nil
     end },
 }
-local ROAD = "On the road"
+local ROAD = L["On the road"]
 
 -- The kinds, in the order they registered: each sorts into the lead,
 -- the tail and the codas by its own `at` there (Chain), so the registry
@@ -307,12 +314,15 @@ function Text.PlateCaption(plate, began, said)
             if #list > 0 then Put(spec.tail.say(list, c)) end
         end
     end
-    if #tail == 1 then
-        text = text .. ", and " .. tail[1]
-    elseif #tail > 1 then
-        text = text .. ", " .. table.concat(tail, ", ", 1, #tail - 1) .. ", and " .. tail[#tail]
+    -- The tail is a list, joined as a list is ("X, and Y"; "X, Y, and Z"):
+    -- the lead and each phrase after it are whole units.
+    -- Each phrase after the words before it, the last with "and".
+    for i, words in ipairs(tail) do
+        text = Fmt(i == #tail and L["%1$s, and %2$s##list"] or L["%1$s, %2$s##list"], text, words)
     end
-    text = text .. "."
+    -- No second full stop after one a translation's abbreviation brings
+    -- ("20 Min."); the English words never end in one.
+    if text:sub(-1) ~= "." then text = Fmt(L["%s."], text) end
     for _, coda in ipairs(C.codas) do
         local sentence = coda.spec.coda.say(c)
         if sentence then text = text .. " " .. sentence end

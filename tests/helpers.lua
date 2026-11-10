@@ -255,9 +255,6 @@ C_Timer.After = After
 Section("wording")
 
 local UI = ns.UI
-Eq(UI.Format.Count(0, "day", "days"), "0 days", "none")
-Eq(UI.Format.Count(1, "person", "people"), "1 person", "one")
-Eq(UI.Format.Count(3, "time", "times"), "3 times", "many")
 
 local function L(n) local t = {} for i = 1, n do t[i] = string.char(64 + i) end return t end
 Eq(UI.Format.List({}), nil, "an empty list")
@@ -273,7 +270,7 @@ Eq(UI.Format.List(L(3), PLACES), "A, B and C", "three places, all named")
 Eq(UI.Format.List(L(4), PLACES), "A, B and 2 more", "four places")
 Eq(UI.Format.List(L(1), { max = 1 }), "A", "one rare under a limit of one")
 Eq(UI.Format.List(L(3), { max = 1 }), "A and 2 more", "rares past a limit of one")
-Eq(UI.Format.List(L(5), { max = 3, shown = 2, more = "others" }), "A, B and 3 others", "people past the limit")
+Eq(UI.Format.List(L(5), { max = 3, shown = 2, more = UI.Format.OTHERS }), "A, B and 3 others", "people past the limit")
 
 -- Days, at a fixed noon so the calendar does not move under the checks.
 local day = os.time({ year = 2026, month = 10, day = 7, hour = 12, min = 0, sec = 0 })

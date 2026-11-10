@@ -6,4 +6,6 @@
 
 local addonName, ns = ...
 
-ns.UI.Settings.RegisterSection("about", { order = 55, label = "About", collapsed = true })
+local L = ns.L
+
+ns.UI.Settings.RegisterSection("about", { order = 55, label = L["About"], collapsed = true })

@@ -21,6 +21,7 @@ local addonName, ns = ...
 
 local Style = ns.Style
 local FONT = Style.FONT
+local L, Fmt = ns.L, ns.Fmt
 
 -- The sheet and what is on it, in its own coordinates (x right, y down).
 local SHEET = { w = 440, h = 430, margin = 30, title = 36, about = 70, portraits = 98,
@@ -62,7 +63,10 @@ local function Ornament(S, onUnlink)
     mark:SetText("\195\151")  -- the multiplication sign, U+00D7
     mark:SetTextColor(Style.INK_STRONG[1], Style.INK_STRONG[2], Style.INK_STRONG[3])
     cross:SetScript("OnClick", function() onUnlink(o.guid) end)
-    Style.Tooltip(cross, function() return "Unlink " .. (ns.Characters.Name(o.guid) or "them") end)
+    Style.Tooltip(cross, function()
+        local name = ns.Characters.Name(o.guid)
+        return name and Fmt(L["Unlink %s"], name) or L["Unlink them"]
+    end)
     o.cross = cross
     return o
 end
@@ -96,7 +100,7 @@ function ns.UI.NoteSheet.New(parent)
     view.title = Style.Text(S, FONT.page)
     view.written = Style.Text(S, FONT.small)
     view.aboutLabel = Style.Text(S, FONT.heading)
-    view.aboutLabel:SetText("ABOUT")
+    view.aboutLabel:SetText(L["ABOUT"])
 
     local Refresh
 
@@ -144,7 +148,7 @@ function ns.UI.NoteSheet.New(parent)
     page:SetAllPoints(S)
     page.width = W - 2 * M
     page.count = Style.Text(page, FONT.small)
-    view.box = ns.UI.Entry.RuledNote(page, nil, "What happened? Write it down while you remember it.")
+    view.box = ns.UI.Entry.RuledNote(page, nil, L["What happened? Write it down while you remember it."])
     view.page = page
 
     view.delete = K.Link(FONT.body, function()
@@ -152,14 +156,14 @@ function ns.UI.NoteSheet.New(parent)
         view.guid, view.kept = nil, false
         Done()
     end)
-    view.delete:SetText("Delete this note")
+    view.delete:SetText(L["Delete this note"])
     view.delete:SetColor(Style.ACCENT[1], Style.ACCENT[2], Style.ACCENT[3])
 
     view.cancel = K.Link(FONT.body, function()
         view.guid, view.kept = nil, false
         Done()
     end)
-    view.cancel:SetText("Cancel")
+    view.cancel:SetText(L["Cancel"])
 
     -- The note goes into the diary, or the changed one back, about everyone
     -- linked; a note being changed and emptied goes. Written but about
@@ -188,7 +192,7 @@ function ns.UI.NoteSheet.New(parent)
         view.guid, view.kept = nil, false
         Done(written)
     end)
-    view.save:SetText("Save")
+    view.save:SetText(L["Save"])
 
     ----------------------------------------------------------------------
     -- Laying it out
@@ -198,7 +202,7 @@ function ns.UI.NoteSheet.New(parent)
     local function PlacePortraits()
         local list = { view.guid }
         for _, guid in ipairs(view.others) do list[#list + 1] = guid end
-        view.link:SetText((#list == 0 and "Link who it is about" or "Link others") .. ELLIPSIS)
+        view.link:SetText((#list == 0 and L["Link who it is about"] or L["Link others"]) .. ELLIPSIS)
         local size, y = PORTRAIT.size, SHEET.portraits
         local x, shown = M, 0
         for i, o in ipairs(view.portraits) do
@@ -226,11 +230,12 @@ function ns.UI.NoteSheet.New(parent)
 
     function Refresh()
         K.Lay()
-        view.title:SetText(view.editing and "Your note" or "A new note")
+        view.title:SetText(view.editing and L["Your note"] or L["A new note"])
         K.PlaceText(view.title, M, SHEET.title)
         local note = view.editing
-        view.written:SetText(note and ("Written " .. ns.UI.Format.DayMonth(note.time, ns.Now())
-            .. (note.zone and (" in " .. note.zone) or "")) or "")
+        local day = note and ns.UI.Format.DayMonth(note.time, ns.Now())
+        view.written:SetText(note and (note.zone and Fmt(L["Written %1$s %2$s##zone"], day, ns.ZoneIn(note.mapID, note.zone))
+            or Fmt(L["Written %s"], day)) or "")
         K.PlaceText(view.written, W - M, SHEET.title, "RIGHT")
         K.PlaceText(view.aboutLabel, M, SHEET.about)
         PlacePortraits()

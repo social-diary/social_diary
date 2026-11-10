@@ -13,6 +13,7 @@ local addonName, ns = ...
 local Duels = ns.Duels
 local Text = ns.UI.JourneyText
 local Capital, MapName, NUMBER, When = Text.Capital, Text.MapName, Text.NUMBER, Text.When
+local L, Fmt = ns.L, ns.Fmt
 
 -- The opponent of a series on the route (Kind.lua's records): the name the
 -- player wrote on the card, which only a custom one has (Core/Custom.lua), or
@@ -77,23 +78,30 @@ function Duels.Note(rec, named)
     local who = named ~= false and Duels.Who(rec) or nil
     if up + down <= 1 then
         local last = Single(rec)
-        if not last then return who and ("duelled " .. who) or "a duel" end
-        if last == "won" then return who and ("beat " .. who .. " in a duel") or "won a duel" end
-        if last == "they_fled" then return (who or "they") .. " fled the duel" end
-        if last == "fled" then return who and ("fled a duel with " .. who) or "fled a duel" end
-        return who and ("lost a duel to " .. who) or "lost a duel"
+        if not last then return who and Fmt(L["duelled %s"], who) or L["a duel"] end
+        if last == "won" then return who and Fmt(L["beat %s in a duel"], who) or L["won a duel"] end
+        if last == "they_fled" then return who and Fmt(L["%s fled the duel"], who) or L["they fled the duel"] end
+        if last == "fled" then return who and Fmt(L["fled a duel with %s"], who) or L["fled a duel"] end
+        return who and Fmt(L["lost a duel to %s"], who) or L["lost a duel"]
     end
-    if up == down then return who and (up .. " each with " .. who) or (up .. " duels each") end
+    if up == down then
+        return who and Fmt(L["%1$d each with %2$s"], up, who) or ns.Plural(up, L["%d duel each|%d duels each##plural"])
+    end
     local lead, rest = up, down
     if balance == "lost" then lead, rest = down, up end
     if rest == 0 then
         local Times = ns.UI.Format.Times
-        if balance == "won" then return who and ("beat " .. who .. " " .. Times(lead)) or ("won " .. lead .. " duels") end
-        return who and ("lost to " .. who .. " " .. Times(lead)) or ("lost " .. lead .. " duels")
+        if balance == "won" then
+            return who and Fmt(L["beat %1$s %2$s"], who, Times(lead)) or ns.Plural(lead, L["won %d duel|won %d duels##plural"])
+        end
+        return who and Fmt(L["lost to %1$s %2$s"], who, Times(lead)) or ns.Plural(lead, L["lost %d duel|lost %d duels##plural"])
     end
-    local score = lead .. " to " .. rest
-    if balance == "won" then return who and ("beat " .. who .. " " .. score) or ("won " .. lead .. " duels to " .. rest) end
-    return who and ("lost to " .. who .. " " .. score) or ("lost " .. lead .. " duels to " .. rest)
+    if balance == "won" then
+        return who and Fmt(L["beat %1$s %2$d to %3$d"], who, lead, rest)
+            or ns.Plural(lead, L["won %1$d duel to %2$d|won %1$d duels to %2$d##plural"], lead, rest)
+    end
+    return who and Fmt(L["lost to %1$s %2$d to %3$d"], who, lead, rest)
+        or ns.Plural(lead, L["lost %1$d duel to %2$d|lost %1$d duels to %2$d##plural"], lead, rest)
 end
 
 -- A line of a menu, where a spot merges several or one is hidden
@@ -110,7 +118,7 @@ end
 -- lost 1", "Lost 3, won 2", "Won both", "Lost all 3", and its flights on
 -- a line of their own, "They fled once", "You fled once, they fled
 -- twice". Figures, as tooltips count.
-local ONE = { won = "You won", lost = "You lost", they_fled = "They fled", fled = "You fled" }
+local ONE = { won = L["You won"], lost = L["You lost"], they_fled = L["They fled"], fled = L["You fled"] }
 
 function Duels.Tip(rec, now)
     local balance, up, down = Duels.Score(rec)
@@ -123,24 +131,28 @@ function Duels.Tip(rec, now)
     else
         local lead, rest = up, down
         if balance == "lost" then lead, rest = down, up end
-        local verb, other = balance == "won" and "Won" or "Lost", balance == "won" and "lost" or "won"
+        local won = balance == "won"
         if rest > 0 then
-            lines[1] = verb .. " " .. lead .. ", " .. other .. " " .. rest
+            lines[1] = Fmt(won and L["Won %1$d, lost %2$d"] or L["Lost %1$d, won %2$d"], lead, rest)
+        elseif lead == 2 then
+            lines[1] = won and L["Won both"] or L["Lost both"]
         else
-            lines[1] = verb .. (lead == 2 and " both" or (" all " .. lead))
+            lines[1] = Fmt(won and L["Won all %d"] or L["Lost all %d"], lead)
         end
         local Times = ns.UI.Format.Times
         local flights = {}
-        if (rec.fled or 0) > 0 then flights[#flights + 1] = "you fled " .. Times(rec.fled) end
-        if (rec.theyFled or 0) > 0 then flights[#flights + 1] = "they fled " .. Times(rec.theyFled) end
-        if #flights > 0 then lines[#lines + 1] = Capital(table.concat(flights, ", ")) end
+        if (rec.fled or 0) > 0 then flights[#flights + 1] = Fmt(L["you fled %s"], Times(rec.fled)) end
+        if (rec.theyFled or 0) > 0 then flights[#flights + 1] = Fmt(L["they fled %s"], Times(rec.theyFled)) end
+        if #flights > 0 then lines[#lines + 1] = Capital(ns.UI.TimelineText.Join(flights)) end
     end
+    -- Where: the subzone on a line of its own (it has no id to say "in"
+    -- with; the plate is its zone's map).
     local sub = rec.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(rec.mapID) then lines[#lines + 1] = "In " .. sub end
+    if type(sub) == "string" and sub ~= "" and sub ~= MapName(rec.mapID) then lines[#lines + 1] = sub end
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
     local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, rec.t or 0) or nil
     lines[#lines + 1] = When(rec.t or 0, level, now)
-    local title = who and ("Duelled " .. who) or (total <= 1 and "A duel" or (total .. " duels"))
+    local title = who and Fmt(L["Duelled %s"], who) or (total <= 1 and L["A duel"] or ns.Plural(total, L["%d duel|%d duels##plural"]))
     return Capital(title), lines
 end
 
@@ -154,8 +166,12 @@ end
 -- a campfire"): "a duel won", "a duel lost", "two duels won", "three
 -- duels lost", "duels mostly won", "duels mostly lost", and level, "duels
 -- won and lost". `Lead` opens the words where nothing else does, the
--- same words and where (`spot`, the subzone they share, or nil): "A duel
--- won in Sentinel Hill", "Duels mostly lost in Sentinel Hill".
+-- same words and where (`spot`, the subzone they share, or nil). The spot
+-- is a subzone, with no id, so it never follows a preposition (10 Nov, for
+-- translations; "A duel won in Sentinel Hill" was one): it leads alone and
+-- the phrase is handed back as the lead's `rest`, for its tail place, the
+-- campfire's shape: "Sentinel Hill, and a duel won." Without one, "A duel
+-- won", "Duels mostly lost".
 function Duels.Phrase(recs)
     local up, down = 0, 0
     for _, rec in ipairs(recs) do
@@ -163,17 +179,17 @@ function Duels.Phrase(recs)
         up, down = up + u, down + d
     end
     local n = up + down
-    if n == 0 then return "a duel" end
-    if n == 1 then return up == 1 and "a duel won" or "a duel lost" end
+    if n == 0 then return L["a duel"] end
     local count = NUMBER[n] or tostring(n)
-    if down == 0 then return count .. " duels won" end
-    if up == 0 then return count .. " duels lost" end
-    if up == down then return "duels won and lost" end
-    return up > down and "duels mostly won" or "duels mostly lost"
+    if down == 0 then return ns.Plural(n, L["a duel won|%s duels won##plural"], count) end
+    if up == 0 then return ns.Plural(n, L["a duel lost|%s duels lost##plural"], count) end
+    if up == down then return L["duels won and lost"] end
+    return up > down and L["duels mostly won"] or L["duels mostly lost"]
 end
 
 function Duels.Lead(recs, spot)
-    return Capital(Duels.Phrase(recs)) .. (spot and (" in " .. spot) or "")
+    if spot then return spot, Duels.Phrase(recs) end
+    return Capital(Duels.Phrase(recs))
 end
 
 -- The subzone a plate's series (route records) all started in, or nil
@@ -195,7 +211,7 @@ end
 -- `said.duel` (true): the plate's note (Slip.lua) found no room, in the
 -- margin nor on the print, so the words say it, after every other kind
 -- but the campfire (", a duel won, and a campfire"), or lead where nothing
--- else does ("A duel won in Raptor Grounds"). With the note beside the
+-- else does ("Raptor Grounds, and a duel won."). With the note beside the
 -- plate or on its print the words say nothing of it, but where the duels
 -- are all there is they name their place ("Raptor Grounds.") for the note
 -- to finish, as the campfire's do. Filler: where saying it would run the

@@ -5,6 +5,7 @@
 local addonName, ns = ...
 
 local Style = ns.Style
+local L, Fmt = ns.L, ns.Fmt
 local SettingsUI = ns.UI.Settings
 
 --------------------------------------------------------------------------
@@ -20,13 +21,15 @@ local SettingsUI = ns.UI.Settings
 -- them itself (PlaceAction).
 
 -- Icons by their file name without the folder, the form the macro API
--- takes in this era of client. Unverified in this build: should a macro
+-- takes in this era of client. A macro's name is how it is found again
+-- (GetMacroIndexByName), so it stays English on every client; its label is
+-- the reader's. Unverified in this build: should a macro
 -- show a question mark, its file ID is the other form CreateMacro accepts.
 local MACROS = {
     journal = { name = "Social Diary", body = "/sd", icon = "INV_Misc_Book_09",
-        art = "book", label = "Open Social Diary" },
+        art = "book", label = L["Open Social Diary"] },
     remember = { name = "Remember This", body = "/sd remember", icon = "INV_Misc_Note_01",
-        art = "note", label = "Remember this" },
+        art = "note", label = L["Remember this"] },
 }
 local MACRO_ORDER = { "journal", "remember" }
 -- How many account macros there is room for, when the client does not say
@@ -56,10 +59,10 @@ end
 
 local MACRO_SAID = {
     combat = ns.UI.Keys.COMBAT,
-    full = "Your macros are full, so there is no room for it. %s works anywhere, typed in chat.",
-    click = "Place it in your action bars.",
+    full = L["Your macros are full, so there is no room for it. %s works anywhere, typed in chat."],
+    click = L["Place it in your action bars."],
     -- (the pad in hand: a slot on the controller's bar is where it goes)
-    padClick = "place it with your mouse in a slot on your controller's action bar.",
+    padClick = L["place it with your mouse in a slot on your controller's action bar."],
 }
 
 -- The pad in hand (Forever's Gamepad UI on, the pad used last): the book
@@ -122,14 +125,14 @@ local function BookButton(parent, status, which)
         elseif why == "combat" then
             self:SetFight(true)
         else
-            status:SetText(MACRO_SAID.full:format(macro.body))
+            status:SetText(Fmt(MACRO_SAID.full, macro.body))
         end
     end
     button:SetScript("OnDragStart", function(self) Pickup(self, false) end)
     button:SetScript("OnClick", function(self) Pickup(self, true) end)
 
-    local mouseTip = { { macro.label }, { "Drag onto an action bar.", 1, 1, 1 } }
-    local padTip = { { macro.label }, { "Place it in a slot on your controller's action bar.", 1, 1, 1 } }
+    local mouseTip = { { macro.label }, { L["Drag onto an action bar."], 1, 1, 1 } }
+    local padTip = { { macro.label }, { L["Place it in a slot on your controller's action bar."], 1, 1, 1 } }
     Style.Tooltip(button, function() return PadInHand() and padTip or mouseTip end)
     ns.On("PLAYER_REGEN_DISABLED", function() button:SetFight(true) end)
     ns.On("PLAYER_REGEN_ENABLED", function() button:SetFight(false) end)
@@ -139,8 +142,8 @@ end
 -- What the pad's player is told beside the books: what to do with one.
 -- `glyph` is A as their pad draws it; `one`: a single book lies there.
 local function PadLine(glyph, one)
-    return ("Pick up %s with %s, then place it in a slot on your controller's action bar.")
-        :format(one and "the Macro" or "a Macro", glyph)
+    if one then return Fmt(L["Pick up the Macro with %s, then place it in a slot on your controller's action bar."], glyph) end
+    return Fmt(L["Pick up a Macro with %s, then place it in a slot on your controller's action bar."], glyph)
 end
 
 SettingsUI.Macro = { MACROS = MACROS, MACRO_ORDER = MACRO_ORDER, BOOK_ICON = BOOK_ICON, BookButton = BookButton,

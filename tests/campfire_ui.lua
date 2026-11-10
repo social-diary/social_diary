@@ -41,12 +41,12 @@ local function Line(row, guid)
     return (text:gsub(NB, " "))
 end
 Eq(Line(Row("The Barrens", "Lushwater Oasis"), BRAM),
-    "You and Bram sat by a campfire together in Lushwater Oasis, The Barrens", "the row, the user's words")
+    "You and Bram sat by a campfire together  ·  Lushwater Oasis, The Barrens", "the row, the user's words")
 Eq(Line(Row("The Barrens", nil), BRAM), "You and Bram sat by a campfire together in The Barrens", "no subzone")
 Eq(Line(Row("The Barrens", ""), BRAM), "You and Bram sat by a campfire together in The Barrens", "an empty subzone")
 Eq(Line(Row("Mulgore", "Mulgore"), BRAM), "You and Bram sat by a campfire together in Mulgore",
     "a subzone with the zone's name, said twice")
-Eq(Line(Row(nil, "Bloodhoof Village"), BRAM), "You and Bram sat by a campfire together in Bloodhoof Village",
+Eq(Line(Row(nil, "Bloodhoof Village"), BRAM), "You and Bram sat by a campfire together  ·  Bloodhoof Village",
     "no zone")
 Eq(Line(Row(nil, nil), nil), "Sat by a campfire together", "no one known and nowhere")
 local _, _, _, icon = ns.UI.DescribeItem({ kind = "row", row = Row("The Barrens") }, BRAM)
@@ -61,7 +61,7 @@ for _, c in ipairs(ns.Candidates()) do
 end
 Eq(why, "sat by a campfire together", "the picker's reason")
 local row = ns._test.LatestInteraction(BRAM, "campfire")
-Eq(Line(row, BRAM), "You and Bram sat by a campfire together in Lushwater Oasis, The Barrens", "a row as kept")
+Eq(Line(row, BRAM), "You and Bram sat by a campfire together  ·  Lushwater Oasis, The Barrens", "a row as kept")
 
 --------------------------------------------------------------------------
 Section("the caption's words")
@@ -74,7 +74,7 @@ local function M(kind, extra)
     return m
 end
 local alone = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }) })
-Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = true }), "By a campfire in Lushwater Oasis.",
+Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = true }), "Lushwater Oasis, and a campfire.",
     "a fire alone, its slip left off")
 Eq(Text.PlateCaption(alone, nil, { named = {}, find = {}, campfire = false }), "Lushwater Oasis.",
     "a fire alone, its slip beside it: the place, for the slip to finish")
@@ -84,7 +84,7 @@ Eq(Text.PlateCaption(bare, nil, { named = {}, find = {}, campfire = false }), "O
 Eq(Text.PlateCaption(bare, nil, { named = {}, find = {}, campfire = true }), "By a campfire.", "no subzone, left off")
 local twice = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }),
     M("campfire", { campfire = Fire("Lushwater Oasis", now - 300) }) })
-Eq(Text.PlateCaption(twice, nil, { named = {}, find = {}, campfire = true }), "By a campfire in Lushwater Oasis.",
+Eq(Text.PlateCaption(twice, nil, { named = {}, find = {}, campfire = true }), "Lushwater Oasis, and a campfire.",
     "one place sat by twice: no count")
 local two = Plated({ M("campfire", { campfire = Fire("Lushwater Oasis") }),
     M("campfire", { campfire = Fire("The Stagnant Oasis", now - 300) }) })
@@ -100,7 +100,7 @@ Eq(words, "Lushwater Oasis, 25 min, and a campfire.", "after a stay")
 Eq(ns.Campfire.WORDS, "sat by a campfire", "the slip's words, the user's")
 local title, lines = ns.Campfire.Tip(Fire("Lushwater Oasis"), now)
 Eq(title, "Sat by a campfire", "the tooltip's title")
-Eq(lines[1], "In Lushwater Oasis", "the tooltip's place")
+Eq(lines[1], "Lushwater Oasis", "the tooltip's place")
 Eq(#lines, 2, "the tooltip's lines")
 
 --------------------------------------------------------------------------

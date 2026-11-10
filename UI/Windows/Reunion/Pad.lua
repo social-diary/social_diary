@@ -19,6 +19,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local Toast = ns.UI.Toast
 
@@ -26,9 +28,9 @@ local Toast = ns.UI.Toast
 local STEP, SPEED = 8, 420
 
 local PROMPT = {
-    move = { { "PADDUP", "PADDDOWN" }, "Move the toast" },
-    done = { "PAD1", "Done", main = true },
-    reset = { "PAD3", "Put it back" },
+    move = { { "PADDUP", "PADDDOWN" }, L["Move the toast"] },
+    done = { "PAD1", L["Done"], main = true },
+    reset = { "PAD3", L["Put it back"] },
 }
 
 local function Placing()

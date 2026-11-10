@@ -8,6 +8,8 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
+local G = ns.Locale.grammar
 
 local Tally = ns.Timeline.Tally
 
@@ -15,30 +17,60 @@ local Tally = ns.Timeline.Tally
 -- Describing timeline items
 --------------------------------------------------------------------------
 
+-- A list read out comma by comma ("2x [Linen Cloth], [Copper Ore]"), each
+-- join a whole template a language may change: `template` "%1$s, %2$s##list"
+-- unless given.
+local function Join(list, template)
+    local text = list[1]
+    for i = 2, #list do text = Fmt(template or L["%1$s, %2$s##list"], text, list[i]) end
+    return text or ""
+end
+
 local function Items(list)
     local parts = {}
     for i = 1, #list do
         local item = list[i]
-        parts[#parts + 1] = (item.count and item.count > 1 and (item.count .. "x ") or "") .. item.link
+        parts[#parts + 1] = (item.count and item.count > 1) and Fmt(L["%1$dx %2$s"], item.count, item.link)
+            or item.link
     end
-    return table.concat(parts, ", ")
+    return Join(parts)
 end
 
 local function Quote(text, fallback)
     if not text then return fallback end
-    return fallback .. ': "' .. text .. '"'
+    return Fmt(L["%1$s: \"%2$s\""], fallback, text)
 end
 
 local ROW_TEXT = {
     group_join = function(row)
-        return (row.context and row.context.raid) and "Raided together" or "Grouped"
+        return (row.context and row.context.raid) and L["Raided together"] or L["Grouped"]
     end,
 }
 
--- " in Hillsbrad Foothills", the row's zone, or "" (a feature's row,
--- through ns.UI.TimelineText.Place).
-local function Place(row)
-    return row.zone and (" in " .. row.zone) or ""
+-- "in Hillsbrad Foothills", the row's zone as one phrase (ns.ZoneIn, for a
+-- template whose key is marked "##zone"), or nil: no zone, or `unplaced`
+-- (the kind's text was asked without its place, as the plate's tooltips
+-- leave the place to the map). A feature's row, through
+-- ns.UI.TimelineText.Place.
+local function Place(row, unplaced)
+    if unplaced or not row.zone then return nil end
+    return ns.ZoneIn(row.mapID, row.zone)
+end
+
+-- A subzone has no id, so it never follows a preposition: it is written
+-- "Subzone, Zone" (the zone alone where the client gave no subzone, or one
+-- with the zone's own name) and set after the line's words by a middle
+-- dot (Dot). nil without a place.
+local function Spot(subZone, zone)
+    if subZone == "" then subZone = nil end
+    if subZone and zone and subZone ~= zone then return Fmt(L["%1$s, %2$s"], subZone, zone) end
+    return subZone or zone
+end
+
+-- `text` with `spot` after a middle dot, or `text` alone.
+local function Dot(text, spot)
+    if not spot then return text end
+    return text .. "  \194\183  " .. spot
 end
 
 -- The creature a row's context names ({ name, rank }, as a witness's row
@@ -64,27 +96,73 @@ for kind, icon in pairs(ROW_ICON) do ns.Rows.Register(kind, { icon = icon }) end
 -- user's (Timeline's NewSession), so one that is not theirs is "You".
 -- `there`: the line above named the place already, so this one says
 -- "there" instead of naming it again.
-local function DeathText(death, guid, there)
-    local who = death.guid == guid and (ns.Characters.Name(guid) or "They") or Format.You(death.guid, "{You}")
-    local text = who .. " died"
+-- The environment's damage (the combat log's English token, lower case)
+-- in the reader's words.
+local ENVIRONMENT = { falling = L["falling##death"], drowning = L["drowning##death"],
+    fatigue = L["fatigue##death"], fire = L["fire##death"], lava = L["lava##death"], slime = L["slime##death"] }
 
+-- The sentence, one whole template for each how and where: how they died
+-- (`plain`, the environment's `env`, a killer the death recap named `to`,
+-- one the diary guessed `probably`), and where (`alone`, `there`, or the
+-- zone's phrase, `near`). Theirs take the name first. A subzone has no id
+-- to say "near" with: the line without a place, the spot after a dot.
+local DIED = {
+    theirs = {
+        plain = { alone = L["%s died"], there = L["%s died there"], near = L["%1$s died %2$s##zone"] },
+        env = { alone = L["%1$s died (%2$s)"], there = L["%1$s died (%2$s) there"],
+            near = L["%1$s died (%2$s) %3$s##zone"] },
+        to = { alone = L["%1$s died to %2$s"], there = L["%1$s died to %2$s there"],
+            near = L["%1$s died to %2$s %3$s##zone"] },
+        probably = { alone = L["%1$s died, probably to %2$s"], there = L["%1$s died, probably to %2$s there"],
+            near = L["%1$s died, probably to %2$s %3$s##zone"] },
+    },
+    you = {
+        plain = { alone = L["{You} died"], there = L["{You} died there"], near = L["{You} died %s##zone"] },
+        env = { alone = L["{You} died (%s)"], there = L["{You} died (%s) there"],
+            near = L["{You} died (%1$s) %2$s##zone"] },
+        to = { alone = L["{You} died to %s"], there = L["{You} died to %s there"],
+            near = L["{You} died to %1$s %2$s##zone"] },
+        probably = { alone = L["{You} died, probably to %s"], there = L["{You} died, probably to %s there"],
+            near = L["{You} died, probably to %1$s %2$s##zone"] },
+    },
+}
+
+local function DeathText(death, guid, there)
+    local how, what = "plain", nil
     local killer = death.killer
     local name = killer and (killer.player and killer.guid and ns.Characters.FullName(killer.guid) or killer.name)
     if killer and killer.environment and not name then
-        text = text .. " (" .. killer.environment:lower() .. ")"
+        local env = killer.environment:lower()
+        how, what = "env", ENVIRONMENT[env] or env
     elseif name then
-        local to = name .. (killer.spell and ("'s " .. killer.spell) or "")
-        text = text .. (killer.source == "recap" and " to " or ", probably to ") .. to
-        if (killer.attackers or 0) > 1 then text = text .. " (" .. killer.attackers .. " attackers)" end
+        what = killer.spell and Fmt(L["%1$s's %2$s"], name, killer.spell) or name
+        if (killer.attackers or 0) > 1 then
+            what = ns.Plural(killer.attackers, L["%1$s (%2$d attacker)|%1$s (%2$d attackers)##plural"],
+                what, killer.attackers)
+        end
+        how = killer.source == "recap" and "to" or "probably"
     end
 
-    local place = death.subZone or death.zone
-    if there and place then
-        text = text .. " there"
-    elseif place then
-        text = text .. " near " .. place
+    local sub = death.subZone
+    if sub == "" or sub == death.zone then sub = nil end
+    local where, spot, zone = "alone", nil, nil
+    if there and (sub or death.zone) then
+        where = "there"
+    elseif sub then
+        spot = Spot(sub, death.zone)
+    elseif death.zone then
+        where, zone = "near", ns.ZoneIn(nil, death.zone, "near")
     end
-    return text
+
+    -- The values in order: the name (theirs), what, the place.
+    local values = {}
+    local theirs = death.guid == guid
+    if theirs then values[1] = ns.Characters.Name(guid) or L["They"] end
+    if what then values[#values + 1] = what end
+    if zone then values[#values + 1] = zone end
+    local template = DIED[theirs and "theirs" or "you"][how][where]
+    if not theirs then template = Format.You(death.guid, template) end
+    return Dot(Fmt(template, unpack(values)), spot)
 end
 
 -- "Mulgore", "Mulgore and The Barrens", "Mulgore and around", and how many
@@ -95,15 +173,25 @@ end
 -- one written down again on coming back is the same place (20 and 21 Oct,
 -- in the client: "Quested together for 2 h 36 min through , Stormwind City
 -- and 23 more", and "Stormwind City, Deeprun Tram and 22 more").
-local function Places(zones)
+--
+-- `role`, a function of the count, makes it the phrase a "##zone" template
+-- takes (ns.ZoneIn: "in Mulgore", "through Mulgore and The Barrens", "in
+-- Mulgore and around"); the rows keep names, not ids, so the first name
+-- takes the preposition.
+local function Places(zones, role)
     local named = ns.Timeline.Unique(zones)
     if #named == 0 then return nil, 0 end
-    if #named == 1 then return named[1], 1 end
-    if #named == 2 then return named[1] .. " and " .. named[2], 2 end
-    return named[1] .. " and around", #named
+    local first = named[1]
+    if role then first = ns.ZoneIn(nil, first, role(#named)) end
+    if #named == 1 then return first, 1 end
+    if #named == 2 then return Fmt(L["%1$s and %2$s"], first, named[2]), 2 end
+    return Fmt(L["%s and around"], first), #named
 end
 
-local Count = Format.Count
+-- A headline's places: "through" two, else "in".
+local function Through(count) return count == 2 and "through" or "in" end
+local function Around() return "around" end
+
 
 -- Episodes (ns.Timeline) carry their children; nothing else does.
 local function IsEpisode(item)
@@ -114,7 +202,7 @@ end
 -- most that many.
 local function RareNames(rares, max)
     local names = {}
-    for i = 1, #rares do names[i] = rares[i].name or "a rare" end
+    for i = 1, #rares do names[i] = rares[i].name or L["a rare"] end
     return Format.List(names, max and { max = max }) or ""
 end
 
@@ -139,12 +227,12 @@ end
 -- TLN-2's activities in words: how one opens a headline, and how it is
 -- added after the first.
 local LEAD = {
-    quest = "Quested together",
-    rare = "Hunted together",
-    group = "Grouped",
-    trade = "Traded",
-    chat = "Chatted",
-    other = "Crossed paths",
+    quest = L["Quested together"],
+    rare = L["Hunted together"],
+    group = L["Grouped"],
+    trade = L["Traded"],
+    chat = L["Chatted"],
+    other = L["Crossed paths"],
 }
 
 -- The headline and its extras are clauses, not names: "Quested together,
@@ -152,12 +240,12 @@ local LEAD = {
 local CLAUSES = { oxford = true }
 
 local EXTRA = {
-    quest = "quested together",
-    rare = function(episode) return "killed " .. RareNames(Rares(episode), 1) end,
-    group = "grouped",
-    trade = "traded",
-    chat = "chatted",
-    other = "crossed paths",
+    quest = L["quested together"],
+    rare = function(episode) return Fmt(L["killed %s##timeline"], RareNames(Rares(episode), 1)) end,
+    group = L["grouped"],
+    trade = L["traded"],
+    chat = L["chatted"],
+    other = L["crossed paths"],
 }
 
 local ACTIVITY_ICON = { quest = "together", rare = "rare", group = "together", trade = "trade",
@@ -166,13 +254,19 @@ local ACTIVITY_ICON = { quest = "together", rare = "rare", group = "together", t
 -- "Quested together for 3 h 5 min through Westfall and Duskwood, killed
 -- Mor'Ladim, and traded".
 local function Headline(episode, activities)
-    local text = LEAD[activities[1]] or "Together"
-    if episode.kind == "session" or episode.seconds >= 60 then
-        text = text .. " for " .. Format.Duration(episode.seconds)
+    local lead = LEAD[activities[1]] or L["Together"]
+    local timed = episode.kind == "session" or episode.seconds >= 60
+    local places = Places(episode.zones, Through)
+    local text
+    if timed and places then
+        text = Fmt(L["%1$s for %2$s %3$s##zone"], lead, Format.Duration(episode.seconds), places)
+    elseif timed then
+        text = Fmt(L["%1$s for %2$s##duration"], lead, Format.Duration(episode.seconds))
+    elseif places then
+        text = Fmt(L["%1$s %2$s##zone"], lead, places)
+    else
+        text = lead
     end
-
-    local places, count = Places(episode.zones)
-    if places then text = text .. (count == 2 and " through " or " in ") .. places end
 
     local clauses = { text }
     for i = 2, #activities do
@@ -222,9 +316,7 @@ local function Curly(text)
     return (text:gsub("'", "\226\128\153"))
 end
 
-local function Times(n)
-    return n == 1 and "once" or (n == 2 and "twice") or (n .. " times")
-end
+local Times = Format.Times
 
 local function Pick(list, seed)
     return list[(seed or 0) % #list + 1]
@@ -298,13 +390,20 @@ local function Where(episode)
     return where
 end
 
--- " in Westfall", " in Westfall and Duskwood", " in Westfall and around",
--- or "" without a place.
+-- "in Westfall", "in Westfall and Duskwood", "in Westfall and around"
+-- (the phrase a "##zone" template takes), or nil without a place.
 local function In(where)
-    if not where.top then return "" end
-    if where.count == 1 or where.share >= SETTLED then return " in " .. where.top end
-    if where.count == 2 then return " in " .. where.names[1] .. " and " .. where.names[2] end
-    return " in " .. where.names[1] .. " and around"
+    if not where.top then return nil end
+    if where.count == 1 or where.share >= SETTLED then return ns.ZoneIn(nil, where.top) end
+    local first = ns.ZoneIn(nil, where.names[1])
+    if where.count == 2 then return Fmt(L["%1$s and %2$s"], first, where.names[2]) end
+    return Fmt(L["%s and around"], first)
+end
+
+-- `text` (a whole clause) with In(where) after it.
+local function WithIn(text, where)
+    local place = In(where)
+    return place and Fmt(L["%1$s %2$s##zone"], text, place) or text
 end
 
 -- Every run in a session, in the order they happened: "ran Deadmines",
@@ -316,29 +415,36 @@ local function RunWords(runs)
         if run.raid then raids = raids + 1 else dungeons = dungeons + 1 end
     end
     if #runs >= 3 then
-        if raids == 0 then return "ran " .. Count(dungeons, "dungeon", "dungeons") end
-        if dungeons == 0 then return "raided " .. Times(raids) end
-        return "ran " .. Count(dungeons, "dungeon", "dungeons") .. " and " .. Count(raids, "raid", "raids")
+        local ran = ns.Plural(dungeons, L["%d dungeon|%d dungeons##plural"])
+        if raids == 0 then return Fmt(L["ran %s"], ran) end
+        if dungeons == 0 then return Fmt(L["raided %s##times"], Times(raids)) end
+        return Fmt(L["ran %1$s and %2$s"], ran, ns.Plural(raids, L["%d raid|%d raids##plural"]))
     end
     local first, second = runs[1], runs[2]
-    local verb = first.raid and "raided " or "ran "
-    if not second then return verb .. first.name end
+    if not second then return Fmt(first.raid and L["raided %s"] or L["ran %s"], first.name) end
     if first.raid ~= second.raid then
-        return verb .. first.name .. " and " .. (second.raid and "raided " or "ran ") .. second.name
+        return Fmt(first.raid and L["raided %1$s and ran %2$s"] or L["ran %1$s and raided %2$s"],
+            first.name, second.name)
     end
-    if first.name == second.name then return verb .. first.name .. " twice" end
-    return verb .. first.name .. " and " .. second.name
+    if first.name == second.name then
+        return Fmt(first.raid and L["raided %s twice"] or L["ran %s twice"], first.name)
+    end
+    return Fmt(first.raid and L["raided %1$s and %2$s"] or L["ran %1$s and %2$s"], first.name, second.name)
 end
 
 -- The strong stories: a run, then a level. Each gives the headline's
 -- variants on its own and the words it takes after a semicolon. A run's
 -- `words` keep the session's time off it: the time is the whole session's,
 -- not any one dungeon's ("Together for 42 min; ran Sunken Temple").
+local function Upper(text)
+    return G.Capital(text)
+end
+
 local function RunStory(episode)
     local runs = {}
     for _, child in ipairs(episode.all) do
         if child.kind == "visit" and child.visit then
-            runs[#runs + 1] = { name = child.visit.name or "a dungeon", time = child.time or 0,
+            runs[#runs + 1] = { name = child.visit.name or L["a dungeon"], time = child.time or 0,
                 raid = child.visit.instanceType == "raid" }
         end
     end
@@ -346,7 +452,7 @@ local function RunStory(episode)
     table.sort(runs, function(a, b) return a.time < b.time end)
     local words = RunWords(runs)
     return { said = "dungeon", placed = true, words = words,
-        lead = { words:gsub("^%l", string.upper) .. " together" }, tail = words }
+        lead = { Upper(Fmt(L["%s together"], words)) }, tail = words }
 end
 
 local LevelWords
@@ -364,24 +470,25 @@ local function LevelStory(episode, guid, name, lead)
 end
 
 function LevelWords(me, name, lead, theirs, mine)
+    local function You(template, ...) return Fmt(Format.You(me, template), ...) end
     if theirs and mine then
         if theirs == mine then
-            return { said = "level", lead = { "Reached lv " .. mine .. " together" },
-                tail = Format.You(me, "{you}") .. " both reached lv " .. mine }
+            return { said = "level", lead = { Fmt(L["Reached lv %d together"], mine) },
+                tail = You(L["{you} both reached lv %d"], mine) }
         end
-        local text = Format.You(me, "{You}") .. " reached lv " .. mine .. ", " .. name .. " lv " .. theirs
-        return { said = "level", lead = { text }, tail = Format.You(me, "{you}") .. " reached lv " .. mine
-            .. ", " .. name .. " lv " .. theirs }
+        return { said = "level", lead = { You(L["{You} reached lv %1$d, %2$s lv %3$d"], mine, name, theirs) },
+            tail = You(L["{you} reached lv %1$d, %2$s lv %3$d"], mine, name, theirs) }
     elseif theirs then
         return { said = "level",
-            lead = { name .. " reached lv " .. theirs .. " at " .. Format.You(me, "{your}") .. " side",
-                name .. " reached lv " .. theirs .. " with " .. Format.You(me, "{you}") },
-            tail = name .. " reached lv " .. theirs }
+            lead = { You(L["%1$s reached lv %2$d at {your} side"], name, theirs),
+                You(L["%1$s reached lv %2$d with {you}"], name, theirs) },
+            tail = Fmt(L["%1$s reached lv %2$d"], name, theirs) }
     end
-    local with = lead == "quest" and " while questing with " or " with "
+    local with = lead == "quest" and L["{You} reached lv %1$d while questing with %2$s"]
+        or L["{You} reached lv %1$d with %2$s"]
     return { said = "level",
-        lead = { Format.You(me, "{You}") .. " reached lv " .. mine .. with .. name },
-        tail = Format.You(me, "{you}") .. " reached lv " .. mine }
+        lead = { You(with, mine, name) },
+        tail = You(L["{you} reached lv %d"], mine) }
 end
 
 -- A rough patch: three deaths, or two close together. Theirs, the user's
@@ -391,17 +498,17 @@ local function RoughStory(episode, guid, name)
     local total = mine + theirs
     if not (total >= ROUGH or (total >= ROUGH_PAIR and close)) then return nil end
     local me = episode.session.me
-    local You, you, your = Format.You(me, "{You}"), Format.You(me, "{you}"), Format.You(me, "{your}")
+    local function You(template, ...) return Fmt(Format.You(me, template), ...) end
     local lead
     if theirs == 0 then
-        lead = { You .. " died " .. Times(mine) .. " with " .. name .. " close by" }
+        lead = { You(L["{You} died %1$s with %2$s close by"], Times(mine), name) }
     elseif mine == 0 then
-        lead = { name .. " died " .. Times(theirs) .. " at " .. your .. " side",
-            name .. " died " .. Times(theirs) .. " with " .. you .. " close by" }
+        lead = { You(L["%1$s died %2$s at {your} side"], name, Times(theirs)),
+            You(L["%1$s died %2$s with {you} close by"], name, Times(theirs)) }
     else
-        lead = { You .. " and " .. name .. " died " .. Times(total) .. " between you",
-            Times(total):gsub("^(%d+) times$", "%1 deaths") .. " between " .. you .. " and " .. name }
-        if total < ROUGH then lead[2] = nil end
+        lead = { You(L["{You} and %1$s died %2$s between you"], name, Times(total)) }
+        -- From three: "3 deaths between you and Feivel".
+        if total >= ROUGH then lead[2] = You(L["%1$d deaths between {you} and %2$s"], total, name) end
     end
     return { said = "deaths", lead = lead, over = true }
 end
@@ -410,38 +517,47 @@ local function RareStory(episode)
     local rares = Rares(episode)
     if #rares == 0 then return nil end
     local names = {}
-    for i = 1, math.min(2, #rares) do names[i] = Curly(rares[i].name or "a rare") end
-    return { said = "rare", lead = { "Hunted " .. table.concat(names, " and ") .. " together" }, over = true }
+    for i = 1, math.min(2, #rares) do names[i] = Curly(rares[i].name or L["a rare"]) end
+    local hunted = names[2] and Fmt(L["%1$s and %2$s"], names[1], names[2]) or names[1]
+    return { said = "rare", lead = { Fmt(L["Hunted %s together"], hunted) }, over = true }
 end
 
 -- The place stories, weakest last.
 local function PlaceStory(episode, where, lead)
-    local verb = LEAD[lead] or "Together"
+    local verb = LEAD[lead] or L["Together"]
     if where.journey then
-        return { lead = { "Went from " .. where.journey[1] .. " to " .. where.journey[2] .. " together",
-            "Travelled from " .. where.journey[1] .. " to " .. where.journey[2] .. " together" },
+        local from, to = ns.ZoneIn(nil, where.journey[1], "from"), ns.ZoneIn(nil, where.journey[2], "to")
+        return { lead = { Fmt(L["Went %1$s %2$s together##zone"], from, to),
+            Fmt(L["Travelled %1$s %2$s together##zone"], from, to) },
             placed = true, over = true }
     end
     if where.city and where.top then
         local only = where.top == TRAM and where.count == 1
-        local place = only and "on the Deeprun Tram" or (where.top == TRAM and ("in " .. where.names[1]) or ("in " .. where.top))
+        local place = only and L["on the Deeprun Tram"]
+            or ns.ZoneIn(nil, where.top == TRAM and where.names[1] or where.top)
         if where.top == TRAM and not only then
             for _, n in ipairs(where.names) do
-                if n ~= TRAM then place = "in " .. n end
+                if n ~= TRAM then place = ns.ZoneIn(nil, n) end
             end
         end
-        return { lead = { "Kept company " .. place, "Kept each other company " .. place }, placed = true }
+        return { lead = { Fmt(L["Kept company %s##zone"], place), Fmt(L["Kept each other company %s##zone"], place) },
+            placed = true }
     end
     if where.top and where.share >= SETTLED then
-        local place = where.sub and (" at " .. where.sub .. " in " .. where.top) or (" in " .. where.top)
-        return { lead = { verb .. place }, placed = true }
+        -- A subzone has no id to say "at" with: the headline's spot, after
+        -- a dot at its end ("Quested together for 1 h 6 min  ·  Sentinel
+        -- Hill, Westfall").
+        if where.sub then
+            return { lead = { verb }, placed = true, spot = Spot(where.sub, where.top) }
+        end
+        return { lead = { Fmt(L["%1$s %2$s##zone"], verb, ns.ZoneIn(nil, where.top)) }, placed = true }
     end
-    return { lead = { verb .. In(where) }, placed = true }
+    return { lead = { WithIn(verb, where) }, placed = true }
 end
 
 local function SessionHeadline(episode, guid)
     local seed = episode.session and episode.session.id or 0
-    local name = guid and ns.Characters.Name(guid) or "They"
+    local name = guid and ns.Characters.Name(guid) or L["They"]
     local lead = episode.activities and episode.activities[1]
     local where = Where(episode)
     local said = {}
@@ -459,19 +575,19 @@ local function SessionHeadline(episode, guid)
     local text = Pick(story.lead, seed)
     if story.said then said[story.said] = true end
     -- A run and the place stories have said where; the rest say it here.
-    if not story.placed then text = text .. In(where) end
+    if not story.placed then text = WithIn(text, where) end
     if episode.seconds >= SHORT then
         if story.words then
-            text = "Together for " .. Format.Duration(episode.seconds) .. "; " .. story.words
+            text = Fmt(L["Together for %1$s; %2$s"], Format.Duration(episode.seconds), story.words)
         else
-            text = text .. (story.over and " over " or " for ") .. Format.Duration(episode.seconds)
+            text = Fmt(story.over and L["%1$s over %2$s"] or L["%1$s for %2$s##duration"], text, Format.Duration(episode.seconds))
         end
     end
     if strong then
-        text = text .. "; " .. strong.tail
+        text = Fmt(L["%1$s; %2$s"], text, strong.tail)
         said[strong.said] = true
     end
-    return text, said
+    return Dot(text, story.spot), said
 end
 
 -- Everyone in the visit but the user and the person whose page this is.
@@ -486,49 +602,55 @@ local function OtherMembers(visit, guid)
 end
 
 -- "with Kaelith, Brom and 2 others".
-local MEMBERS = { max = 3, shown = 2, more = "others" }
+local MEMBERS = { max = 3, shown = 2, more = ns.UI.Format.OTHERS }
 
 local function Members(visit, guid)
     local names = {}
-    for _, member in ipairs(OtherMembers(visit, guid)) do names[#names + 1] = member.first or "someone" end
+    for _, member in ipairs(OtherMembers(visit, guid)) do names[#names + 1] = member.first or L["someone"] end
     local list = Format.List(names, MEMBERS)
-    return list and ("with " .. list)
+    return list and Fmt(L["with %s"], list)
 end
+
+-- The counts the details line keeps, each one key (ns.Plural).
+local DEATHS = L["%d death|%d deaths##plural"]
+local TRADES = L["%d trade|%d trades##plural"]
 
 -- "Wailing Caverns, 52 min, 5 of 8 bosses", then deaths, wipes, who else
 -- was there and the bosses by name.
 local function VisitText(episode, guid)
     local visit = episode.visit
-    local text = (visit.name or "An instance") .. ", " .. Format.Duration(episode.seconds)
+    local text = Fmt(L["%1$s, %2$s"], visit.name or L["An instance"], Format.Duration(episode.seconds))
     if visit.difficulty and visit.difficulty ~= "Normal" then
-        text = text .. " (" .. visit.difficulty .. ")"
+        text = Fmt(L["%1$s (%2$s)##difficulty"], text, visit.difficulty)
     end
     local bosses = visit.bossesKilled or {}
     if visit.bossTotal then
-        text = text .. (", %d of %d bosses"):format(#bosses, visit.bossTotal)
+        text = Fmt(L["%1$s, %2$s"], text, ns.Plural(visit.bossTotal,
+            L["%1$d of %2$d boss|%1$d of %2$d bosses##plural"], #bosses, visit.bossTotal))
     elseif #bosses > 0 then
-        text = text .. ", " .. Count(#bosses, "boss", "bosses")
+        text = Fmt(L["%1$s, %2$s"], text, ns.Plural(#bosses, L["%d boss|%d bosses##plural"]))
     end
 
     local facts = {}
-    if (visit.deaths or 0) > 0 then facts[#facts + 1] = Count(visit.deaths, "death", "deaths") end
+    if (visit.deaths or 0) > 0 then facts[#facts + 1] = ns.Plural(visit.deaths, DEATHS) end
     local wipes = ns.DungeonRun.Wipes(visit)
-    if wipes > 0 then facts[#facts + 1] = Count(wipes, "wipe", "wipes") end
+    if wipes > 0 then facts[#facts + 1] = ns.Plural(wipes, L["%d wipe|%d wipes##plural"]) end
     facts[#facts + 1] = Members(visit, guid)
-    if #bosses > 0 then facts[#facts + 1] = "killed " .. table.concat(bosses, ", ") end
+    if #bosses > 0 then facts[#facts + 1] = Fmt(L["killed %s##timeline"], Join(bosses)) end
     return text, facts
 end
 
 -- TLN-6: every trade in the episode, summed, once the headline says "traded".
 local function TradeFact(t)
     local parts = {}
-    if #t.given > 0 then parts[#parts + 1] = "gave " .. Items(t.given) end
-    if t.moneyGiven > 0 then parts[#parts + 1] = "gave " .. Format.Money(t.moneyGiven) end
-    if #t.received > 0 then parts[#parts + 1] = "got " .. Items(t.received) end
-    if t.moneyReceived > 0 then parts[#parts + 1] = "got " .. Format.Money(t.moneyReceived) end
-    if #parts == 0 then return t.trades > 1 and Count(t.trades, "trade", "trades") or nil end
-    local text = table.concat(parts, "; ")
-    return t.trades > 1 and (t.trades .. " trades: " .. text) or text
+    if #t.given > 0 then parts[#parts + 1] = Fmt(L["gave %s"], Items(t.given)) end
+    if t.moneyGiven > 0 then parts[#parts + 1] = Fmt(L["gave %s"], Format.Money(t.moneyGiven)) end
+    if #t.received > 0 then parts[#parts + 1] = Fmt(L["got %s"], Items(t.received)) end
+    if t.moneyReceived > 0 then parts[#parts + 1] = Fmt(L["got %s"], Format.Money(t.moneyReceived)) end
+    if #parts == 0 then return t.trades > 1 and ns.Plural(t.trades, TRADES) or nil end
+    local text = Join(parts, L["%1$s; %2$s"])
+    return t.trades > 1 and ns.Plural(t.trades, L["%1$d trade: %2$s|%1$d trades: %2$s##plural"], t.trades, text)
+        or text
 end
 
 -- One quest by its title in curly quotes, when the client knows it;
@@ -537,9 +659,9 @@ local function QuestFact(quests)
     if #quests == 1 then
         local Q = C_QuestLog
         local title = Q and Q.GetTitleForQuestID and ns.Plain(Q.GetTitleForQuestID(quests[1]))
-        if type(title) == "string" and title ~= "" then return "\226\128\156" .. title .. "\226\128\157" end
+        if type(title) == "string" and title ~= "" then return Fmt(L["\226\128\156%s\226\128\157"], title) end
     end
-    return #quests > 0 and Count(#quests, "quest", "quests") or nil
+    return #quests > 0 and ns.Plural(#quests, L["%d quest|%d quests##plural"]) or nil
 end
 
 -- The details line, in a fixed order: quests, rares, their level, trades,
@@ -556,17 +678,17 @@ local function Facts(episode, guid, said)
 
     if named.quest and p then Add(QuestFact(p.quests or {})) end
     if named.rare and not said.rare and #Rares(episode) > 0 then
-        Add("killed " .. RareNames(Rares(episode)))
+        Add(Fmt(L["killed %s##timeline"], RareNames(Rares(episode))))
     end
 
     if not said.level and p and p.levelStart and p.levelEnd and p.levelEnd > p.levelStart then
-        Add((guid and ns.Characters.Name(guid) or "They") .. " reached lv " .. p.levelEnd)
+        Add(Fmt(L["%1$s reached lv %2$d"], guid and ns.Characters.Name(guid) or L["They"], p.levelEnd))
     end
 
     if named.trade then
         Add(TradeFact(t))
     elseif t.chatterTrades > 0 then
-        Add(Count(t.chatterTrades, "trade", "trades"))
+        Add(ns.Plural(t.chatterTrades, TRADES))
     end
 
     -- Deaths with a line of their own (Timeline's death items) are not
@@ -579,7 +701,7 @@ local function Facts(episode, guid, said)
         for i = 1, #episode.all do
             if episode.all[i].kind == "death" then deaths = deaths - 1 end
         end
-        if deaths > 0 then Add(Count(deaths, "death", "deaths")) end
+        if deaths > 0 then Add(ns.Plural(deaths, DEATHS)) end
     end
 
     -- TLN-4: a session counts its visits; each one tells its own story.
@@ -591,11 +713,11 @@ local function Facts(episode, guid, said)
             if child.visit.instanceType == "raid" then raids = raids + 1 else dungeons = dungeons + 1 end
         end
     end
-    if dungeons > 0 then Add(Count(dungeons, "dungeon", "dungeons")) end
-    if raids > 0 then Add(Count(raids, "raid", "raids")) end
+    if dungeons > 0 then Add(ns.Plural(dungeons, L["%d dungeon|%d dungeons##plural"])) end
+    if raids > 0 then Add(ns.Plural(raids, L["%d raid|%d raids##plural"])) end
 
-    if t.chat >= 3 then Add(Count(t.chat, "message", "messages")) end
-    if t.other > 0 then Add(Count(t.other, "other interaction", "other interactions")) end
+    if t.chat >= 3 then Add(ns.Plural(t.chat, L["%d message|%d messages##plural"])) end
+    if t.other > 0 then Add(ns.Plural(t.other, L["%d other interaction|%d other interactions##plural"])) end
 
     return facts
 end
@@ -618,8 +740,8 @@ local function EpisodeText(episode, guid)
     local shown = {}
     for i = 1, math.min(budget, #facts) do shown[i] = facts[i] end
     if episode.session and not episode.session.endedAt then
-        shown[#shown + 1] = "still going"
-        facts[#facts + 1] = "still going"
+        shown[#shown + 1] = L["still going"]
+        facts[#facts + 1] = L["still going"]
     end
 
     local text = visitText or sessionText or Headline(episode, episode.headline)
@@ -641,14 +763,14 @@ local function DescribeNote(note, guid)
 
     local others = {}
     for _, other in ipairs(ns.Notes.Others(note, guid)) do
-        others[#others + 1] = ns.Characters.FullName(other) or "someone"
+        others[#others + 1] = ns.Characters.FullName(other) or L["someone"]
     end
-    if #others > 0 then full[#full + 1] = "Also about " .. Format.List(others) .. "." end
+    if #others > 0 then full[#full + 1] = Fmt(L["Also about %s."], Format.List(others)) end
 
-    local written = "Written at " .. date("%H:%M", note.time)
-    if note.zone then written = written .. " in " .. note.zone end
-    full[#full + 1] = written .. "."
-    full[#full + 1] = "Click to change or delete it."
+    local clock = date("%H:%M", note.time)
+    full[#full + 1] = note.zone and Fmt(L["Written at %1$s %2$s.##zone"], clock, ns.ZoneIn(note.mapID, note.zone))
+        or Fmt(L["Written at %s."], clock)
+    full[#full + 1] = L["Click to change or delete it."]
     return text, table.concat(full, "\n")
 end
 
@@ -670,10 +792,12 @@ function ns.UI.DescribeItem(item, guid)
         local first, last = ups[1].row.context or {}, ups[#ups].row.context or {}
         local from, to = first.from or ((first.level or 1) - 1), last.level or "?"
         local name = guid and ns.Characters.Name(guid)
-        local text = ("%s from level %s to %s"):format(name and (name .. " went") or "Went", from, to)
+        local text = name and Fmt(L["%1$s went from level %2$s to %3$s"], name, from, to)
+            or Fmt(L["Went from level %1$s to %2$s"], from, to)
         local full = { text }
         for _, up in ipairs(ups) do
-            full[#full + 1] = date("%H:%M", up.time) .. "  level " .. tostring(up.row.context and up.row.context.level or "?")
+            full[#full + 1] = Fmt(L["%1$s  level %2$s"], date("%H:%M", up.time),
+                tostring(up.row.context and up.row.context.level or "?"))
         end
         return when, text, nil, "levelup", table.concat(full, "\n")
     elseif item.kind == "deaths" then
@@ -684,42 +808,53 @@ function ns.UI.DescribeItem(item, guid)
             if d.death.guid == guid then theirs = theirs + 1 else mine, me = mine + 1, d.death.guid end
             full[#full + 1] = date("%H:%M", d.time) .. "  " .. DeathText(d.death, guid)
         end
-        local function Times(n) return n == 1 and "once" or (n == 2 and "twice") or (n .. " times") end
         local parts = {}
-        if mine > 0 then parts[#parts + 1] = Format.You(me, "{You}") .. " died " .. Times(mine) end
+        if mine > 0 then parts[#parts + 1] = Fmt(Format.You(me, L["{You} died %s"]), Times(mine)) end
         if theirs > 0 then
-            local name = ns.Characters.Name(guid) or "They"
-            parts[#parts + 1] = (mine > 0 and name or (name .. " died")) .. " " .. Times(theirs)
+            local name = ns.Characters.Name(guid) or L["They"]
+            parts[#parts + 1] = Fmt(mine > 0 and L["%1$s %2$s"] or L["%1$s died %2$s"], name, Times(theirs))
         end
-        local text = table.concat(parts, ", ")
+        local text = Join(parts)
         table.insert(full, 1, text)
         return when, text, nil, "death", table.concat(full, "\n")
     elseif item.kind == "rare" then
-        return when, "Killed " .. (item.rare.name or "a rare"), nil, "rare"
+        return when, Fmt(L["Killed %s##timeline"], item.rare.name or L["a rare"]), nil, "rare"
     elseif item.kind == "death" then
         -- Said "there", the tooltip still names the place.
         return when, DeathText(item.death, guid, item.there), nil, "death",
             item.there and DeathText(item.death, guid) or nil
     elseif item.kind == "around" then
         local stretch = item.around
-        local text = "Seen around"
-        local places = Places(stretch.zones)
-        if places then text = text .. " " .. places end
+        local places = Places(stretch.zones, Around)
         local seconds = stretch.last - stretch.start
-        if seconds >= 60 then text = text .. " for " .. Format.Duration(seconds) end
+        local long = seconds >= 60 and Format.Duration(seconds)
+        local text
+        if places and long then text = Fmt(L["Seen %1$s for %2$s##zone"], places, long)
+        elseif places then text = Fmt(L["Seen %s##zone"], places)
+        elseif long then text = Fmt(L["Seen around for %s"], long)
+        else text = L["Seen around"] end
         return when, text, nil, "around"
     elseif item.kind == "note" then
         local text, full = DescribeNote(item.note, guid)
         return when, text, nil, "note", full
     elseif item.kind == "first" then
         local first = item.first
-        local place = ns.UI.JourneyText.Place(first.mapID, first.subZone)
-        return when, "First seen" .. (place and (" at " .. place) or "")
-            .. (first.level and (", level " .. first.level) or ""), nil, "added"
+        -- The zone "at" its phrase; a subzone, which has no id, after a dot.
+        local zone = first.mapID and ns.MapName(first.mapID) or nil
+        local sub = first.subZone
+        if sub == "" or sub == zone then sub = nil end
+        local place = not sub and zone and ns.ZoneIn(first.mapID, zone, "at")
+        local text
+        if place and first.level then text = Fmt(L["First seen %1$s, level %2$s##zone"], place, first.level)
+        elseif place then text = Fmt(L["First seen %s##zone"], place)
+        elseif first.level then text = Fmt(L["First seen, level %s"], first.level)
+        else text = L["First seen"] end
+        return when, Dot(text, sub and Spot(sub, zone)), nil, "added"
     elseif item.kind == "added" then
         local context = item.entry.addedContext
-        local place = context and context.zone and (" in " .. context.zone) or ""
-        return when, "Added to the diary" .. place, nil, "added"
+        local zone = context and context.zone
+        return when, zone and Fmt(L["Added to the diary %s##zone"], ns.ZoneIn(context.mapID, zone))
+            or L["Added to the diary"], nil, "added"
     end
 
     local kind = ns.Rows.Get(item.row.type)
@@ -732,8 +867,12 @@ end
 -- (Features/<Name>/, .claude/skills/new-feature/folder.md) to tell its own rows
 -- (Core/Rows.lua's `text`) as these do: Items(list) "2x [Linen Cloth],
 -- [Copper Ore]"; Quote(text, fallback) 'Said: "hello"', or the fallback
--- alone; Place(row) " in Hillsbrad Foothills", or ""; Foe(row) the
--- creature in a witness's row as Your Diary names a killer ("a Kobold
--- Vermin"), or nil.
+-- alone; Place(row, unplaced) "in Hillsbrad Foothills" for the kind's own
+-- "##zone" template, or nil (no zone, or the kind's text asked without its
+-- place: `text(row, guid, unplaced)`); Spot(subZone, zone) "Sentinel Hill,
+-- Westfall", a place with no id, and Dot(text, spot) the line with it after
+-- a middle dot; Join(list, template) a list joined by "%1$s, %2$s##list"
+-- (or `template`); Foe(row) the creature in a witness's row as Your Diary
+-- names a killer ("a Kobold Vermin"), or nil.
 ns.UI.TimelineText = { IsEpisode = IsEpisode, OtherMembers = OtherMembers, DescribeNote = DescribeNote,
-    Items = Items, Quote = Quote, Place = Place, Foe = Foe }
+    Items = Items, Quote = Quote, Place = Place, Spot = Spot, Dot = Dot, Join = Join, Foe = Foe }

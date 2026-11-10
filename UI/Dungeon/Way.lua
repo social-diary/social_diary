@@ -88,46 +88,49 @@ local LEVELS = { ink = 9, catcher = 20, slip = 30 }
 DungeonPage.WAY = { SLIP = SLIP, PENCIL = PENCIL, PEN = PEN, LEVELS = LEVELS }
 
 -- The words (plain and literal, as the user asked: no house voice here).
+local L = ns.L
 local WORDS = {
-    adjust = "Adjust Path",
-    adjustTip = { "Adjust Path", "Draw the way you went on this run. It starts from the usual way through." },
-    adjustOwnTip = { "Adjust Path", "Change the path you drew for this run." },
-    heading = "DRAWING YOUR PATH",
-    hint = "Click the map to add a point. Click a boss to add a stop. Click stairs or a door to add a step. "
-        .. "Ctrl-click a line to insert a point. Drag a point to move it. Right-click a point to delete it.",
-    none = "No point selected. New points go at the end.",
-    selected = "Point %d of %d selected.",
-    cut = "The path ends at point %d. Click a grey point to join it back up.",
-    joined = "Joined the path back up.",
-    joinedLeft = "Joined the path back up. Left out: %s.",
-    full = "The path is full (at most %d points).",
-    reset = "Reset the path for this run?\n\nThe path you drew is removed and the usual way through shows again."
-        .. "\n\nThis cannot be undone.",
-    resetButton = "Reset Path",
+    adjust = L["Adjust Path"],
+    adjustTip = { L["Adjust Path"], L["Draw the way you went on this run. It starts from the usual way through."] },
+    adjustOwnTip = { L["Adjust Path"], L["Change the path you drew for this run."] },
+    heading = L["DRAWING YOUR PATH"],
+    hint = L["Click the map to add a point. Click a boss to add a stop. Click stairs or a door to add a step. Ctrl-click a line to insert a point. Drag a point to move it. Right-click a point to delete it."],
+    none = L["No point selected. New points go at the end."],
+    selected = L["Point %1$d of %2$d selected."],
+    cut = L["The path ends at point %d. Click a grey point to join it back up."],
+    joined = L["Joined the path back up."],
+    joinedLeft = L["Joined the path back up. Left out: %s."],
+    full = L["The path is full (at most %d points)."],
+    reset = L["Reset the path for this run?\n\nThe path you drew is removed and the usual way through shows again.\n\nThis cannot be undone."],
+    resetButton = L["Reset Path"],
     buttons = {
-        { key = "done", label = "Done", tip = "Stop drawing and keep the path." },
-        { key = "undo", label = "Undo", tip = "Take back the last change." },
-        { key = "previous", label = "Previous Point", tip = "Select the point before the selected one." },
-        { key = "next", label = "Next Point", tip = "Select the point after the selected one." },
-        { key = "delete", label = "Delete Point", tip = "Delete the selected point." },
-        { key = "cut", label = "Set early End point", tip = "End the path at the selected point. The rest turns grey. "
-            .. "Draw on from here, then click a grey point to join it back up. If you don't, Done joins the first "
-            .. "grey point." },
-        { key = "clear", label = "Clear", apart = true, tip = "Remove every point, to draw the path from the start." },
-        { key = "reset", label = "Reset", apart = true, tip = "Remove the path you drew for this run and show the "
-            .. "usual way through again." },
+        { key = "done", label = L["Done"], tip = L["Stop drawing and keep the path."] },
+        { key = "undo", label = L["Undo"], tip = L["Take back the last change."] },
+        { key = "previous", label = L["Previous Point"], tip = L["Select the point before the selected one."] },
+        { key = "next", label = L["Next Point"], tip = L["Select the point after the selected one."] },
+        { key = "delete", label = L["Delete Point"], tip = L["Delete the selected point."] },
+        { key = "cut", label = L["Set early End point"], tip = L["End the path at the selected point. The rest turns grey. Draw on from here, then click a grey point to join it back up. If you don't, Done joins the first grey point."] },
+        { key = "clear", label = L["Clear"], apart = true, tip = L["Remove every point, to draw the path from the start."] },
+        { key = "reset", label = L["Reset"], apart = true, tip = L["Remove the path you drew for this run and show the usual way through again."] },
     },
     -- A marker by its kind, for the tooltip.
-    kinds = { up = "Stairs up", down = "Stairs down", left = "Passage", right = "Passage", entrance = "Entrance",
-        exit = "Exit", portal = "Portal", trigger = "Trigger" },
-    step = "Click to add this step to the path.",
-    stepLinked = "Click to add this step to the path, and its other end.",
-    stop = "Click to add a stop at this boss.",
-    point = "Point %d. Drag to move it. Right-click to delete it.",
-    pointFixed = "Point %d. Right-click to delete it.",
-    grey = "Click to join the path back up here.",
+    kinds = { up = L["Stairs up"], down = L["Stairs down"], left = L["Passage"], right = L["Passage"], entrance = L["Entrance"],
+        exit = L["Exit"], portal = L["Portal"], trigger = L["Trigger"] },
+    step = L["Click to add this step to the path."],
+    stepLinked = L["Click to add this step to the path, and its other end."],
+    stop = L["Click to add a stop at this boss."],
+    point = L["Point %d. Drag to move it. Right-click to delete it."],
+    pointFixed = L["Point %d. Right-click to delete it."],
+    grey = L["Click to join the path back up here."],
 }
 DungeonPage.WAY.WORDS = WORDS
+
+-- The points left out, as a list is written: "4, 5, 6".
+local function Listed(items)
+    local text = items[1] and tostring(items[1]) or ""
+    for i = 2, #items do text = ns.Fmt(L["%1$s, %2$s##list"], text, items[i]) end
+    return text
+end
 
 --------------------------------------------------------------------------
 -- The pieces, made the first time a run's map is laid
@@ -804,7 +807,7 @@ local function Status(view, said)
     elseif gap then
         slip.statusText = WORDS.cut:format(gap - 1)
     elseif at then
-        slip.statusText = WORDS.selected:format(at, n)
+        slip.statusText = ns.Fmt(WORDS.selected, at, n)
     else
         slip.statusText = WORDS.none
     end
@@ -956,7 +959,7 @@ function DungeonPage.WayClick(view, button)
         local gap = pen:Gap()
         if gap and hit.i >= gap then
             local dropped = pen:Connect(hit.i)
-            local said = dropped and (#dropped > 0 and WORDS.joinedLeft:format(table.concat(dropped, ", "))
+            local said = dropped and (#dropped > 0 and WORDS.joinedLeft:format(Listed(dropped))
                 or WORDS.joined) or nil
             return Changed(view, said)
         end

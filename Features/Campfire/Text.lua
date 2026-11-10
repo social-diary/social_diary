@@ -8,11 +8,12 @@ local addonName, ns = ...
 local Campfire = ns.Campfire
 local Text = ns.UI.JourneyText
 local Capital, MapName, When = Text.Capital, Text.MapName, Text.When
+local L, Fmt = ns.L, ns.Fmt
 
 -- The margin's slip for a campfire on a plate (Slip.lua): the user's own
 -- words (14 Oct), exactly, lower case and all, however many fires the
 -- plate has. Not to be reworded.
-Campfire.WORDS = "sat by a campfire"
+Campfire.WORDS = L["sat by a campfire"]
 
 -- The subzone a plate's campfires (records { t, subZone, ... }) all share,
 -- or nil where they differ, where one has none, or where it is only the
@@ -29,12 +30,13 @@ function Campfire.At(fires, zone)
 end
 
 -- The fire's mark and its slip, under the mouse: "Sat by a campfire", then
--- where ("In Lushwater Oasis", where there is a subzone that is not the
--- zone's name) and when ("Yesterday, 21:40, at level 12").
+-- where ("Lushwater Oasis", on a line of its own, where there is a subzone
+-- that is not the zone's name: it has no id to say "in" with) and when
+-- ("Yesterday, 21:40, at level 12").
 function Campfire.Tip(fire, now)
     local lines = {}
     local sub = fire.subZone
-    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = "In " .. sub end
+    if type(sub) == "string" and sub ~= "" and sub ~= MapName(fire.mapID) then lines[#lines + 1] = sub end
     local j = ns.Journey.For and ns.Journey.For(ns.ownGUID)
     local level = j and ns.JourneyRecap and ns.JourneyRecap.LevelAt(j, fire.t or 0) or nil
     lines[#lines + 1] = When(fire.t or 0, level, now)
@@ -47,14 +49,16 @@ end
 -- or "A campfire, yesterday, 21:40" with no place to name.
 function Campfire.Describe(fire)
     local sub = fire.subZone
-    local place = type(sub) == "string" and sub ~= "" and sub or "A campfire"
-    return place .. ", " .. ns.UI.Format.At(fire.t or 0, ns.Now())
+    local place = type(sub) == "string" and sub ~= "" and sub or L["A campfire"]
+    return Fmt(L["%1$s, %2$s"], place, ns.UI.Format.At(fire.t or 0, ns.Now()))
 end
 
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
 -- campfire") found no room in the margin, so the words say it, last of
 -- everything and as short as the rest of the list (", and a campfire"),
--- or lead where nothing else does ("By a campfire in Lushwater Oasis.").
+-- or lead where nothing else does: its place first, then the fire in its
+-- tail place ("Lushwater Oasis, and a campfire."), or "By a campfire."
+-- where there is no place to name.
 -- With the slip beside the plate the words say nothing of it, but where
 -- the fire is all there is they name its place ("Lushwater Oasis.") for
 -- the slip to finish. "A campfire", sat by once or more at one place;
@@ -66,9 +70,18 @@ end
 --
 -- Its lead (`at` 140) comes after a long stay (120) and the company (130),
 -- before a level's pin (150); its tail (`at` 90) after every other kind's.
+local function One(fires)
+    return #fires == 1 or Campfire.At(fires) ~= nil
+end
+
 local function Camped(fires)
-    if #fires == 1 or Campfire.At(fires) then return "a campfire" end
-    return "campfires"
+    return One(fires) and L["a campfire"] or L["campfires"]
+end
+
+-- The lead where the words say it and there is no place: "By a campfire",
+-- "By campfires", whole, as a translation's case goes with its noun.
+local function By(fires)
+    return One(fires) and L["By a campfire"] or L["By campfires"]
 end
 
 Text.RegisterCaption("campfire", {
@@ -76,7 +89,16 @@ Text.RegisterCaption("campfire", {
     take = function(m) return m.campfire end,
     lead = { at = 140, say = function(fires, c)
         local spot = Campfire.At(fires, MapName(c.plate.mapID))
-        if c.said.campfire then return "By " .. Camped(fires) .. (spot and (" in " .. spot) or "") end
+        -- The place is a subzone (no id): it never follows a preposition
+        -- (10 Nov, for translations; "By a campfire in Lushwater Oasis"
+        -- was one). It leads alone, a noun phrase as the caption's other
+        -- leads are, and the fire goes in the tail's own place as `rest`,
+        -- so the list joins it as it joins every kind: "Lushwater Oasis,
+        -- and a campfire.", "Lushwater Oasis, a duel won, and a campfire."
+        if c.said.campfire then
+            if spot then return spot, Camped(fires) end
+            return By(fires)
+        end
         return spot
     end },
     tail = { at = 90, say = function(fires, c) return c.said.campfire and Camped(fires) or nil end },

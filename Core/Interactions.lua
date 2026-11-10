@@ -110,7 +110,7 @@ function Interactions.Fights(guid)
             else
                 t.deaths = t.deaths + 1
             end
-            if not t.last or row.time >= t.last then t.last, t.zone = row.time, row.zone end
+            if not t.last or row.time >= t.last then t.last, t.zone, t.mapID = row.time, row.zone, row.mapID end
         end
     end
     if not t.last then return nil end

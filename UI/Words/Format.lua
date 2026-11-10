@@ -9,34 +9,53 @@ local addonName, ns = ...
 local Format = {}
 ns.UI.Format = Format
 
+local L, Fmt = ns.L, ns.Fmt
+local G = ns.Locale.grammar
+
+-- The calendar's names in the reader's language: the client's date() writes
+-- English ones on every client, so they are looked up by number instead.
+local MONTHS = { L["January"], L["February"], L["March"], L["April"], L["May"], L["June"], L["July"],
+    L["August"], L["September"], L["October"], L["November"], L["December"] }
+local MONTHS_SHORT = { L["Jan"], L["Feb"], L["Mar"], L["Apr"], L["May##short"], L["Jun"], L["Jul"],
+    L["Aug"], L["Sep"], L["Oct"], L["Nov"], L["Dec"] }
+local WEEKDAYS = { L["Sunday"], L["Monday"], L["Tuesday"], L["Wednesday"], L["Thursday"], L["Friday"],
+    L["Saturday"] }
+
+-- `time`'s month ("October"), its short form ("Oct"), its weekday ("Monday").
+function Format.Month(time) return MONTHS[tonumber(date("%m", time))] end
+function Format.MonthShort(time) return MONTHS_SHORT[tonumber(date("%m", time))] end
+function Format.Weekday(time) return WEEKDAYS[tonumber(date("%w", time)) + 1] end
+
+-- "6 Oct 2026" (a short date with its year), "6 Oct" without.
+function Format.ShortDate(time, withYear)
+    local day = tonumber(date("%d", time))
+    if withYear then return Fmt(L["%1$d %2$s %3$s"], day, Format.MonthShort(time), date("%Y", time)) end
+    return Fmt(L["%1$d %2$s"], day, Format.MonthShort(time))
+end
+
 --------------------------------------------------------------------------
 -- Formatting
 --------------------------------------------------------------------------
 
 function Format.Duration(seconds)
     local minutes = math.floor((seconds or 0) / 60)
-    if minutes < 60 then return minutes .. " min" end
+    if minutes < 60 then return Fmt(L["%d min"], minutes) end
     local hours = math.floor(minutes / 60)
     minutes = minutes % 60
-    if minutes == 0 then return hours .. " h" end
-    return ("%d h %d min"):format(hours, minutes)
+    if minutes == 0 then return Fmt(L["%d h"], hours) end
+    return Fmt(L["%d h %d min"], hours, minutes)
 end
 
 -- DAT-4: stored as server epoch, shown relative or in local time.
 function Format.Ago(time, now)
-    if not time then return "never" end
+    if not time then return L["never"] end
     now = now or ns.Now()
     local days = math.floor((now - time) / ns.DAY)
-    if days < 1 then return "today" end
-    if days < 2 then return "yesterday" end
-    if days < 14 then return days .. " days ago" end
-    if days < 60 then return math.floor(days / 7) .. " weeks ago" end
-    return date("%d %b %Y", time)
-end
-
--- "1 time", "3 times".
-function Format.Count(n, one, many)
-    return n .. " " .. (n == 1 and one or many)
+    if days < 1 then return L["today"] end
+    if days < 2 then return L["yesterday"] end
+    if days < 14 then return ns.Plural(days, L["%d day ago|%d days ago##plural"]) end
+    if days < 60 then return ns.Plural(math.floor(days / 7), L["%d week ago|%d weeks ago##plural"]) end
+    return Format.ShortDate(time, true)
 end
 
 -- "Mulgore", "Mulgore and Durotar", "Mulgore, Durotar and The Barrens".
@@ -45,11 +64,23 @@ end
 --   max      past this many names, only `shown` of them and a count of the
 --            rest: "Mulgore, Durotar and 2 more"
 --   shown    how many to name then (default `max`)
---   more     the word for the rest (default "more"; "others" for people)
+--   more     the rest, as a "##plural" template taking the names and the
+--            count (default Format.MORE, "%1$s and %2$d more";
+--            Format.OTHERS for people)
 --   oxford   a comma before the last "and" once there are three or more,
 --            for lists of clauses rather than names
 --
 -- nil for an empty list.
+Format.MORE = L["%1$s and %2$d more|%1$s and %2$d more##plural"]
+Format.OTHERS = L["%1$s and %2$d other|%1$s and %2$d others##plural"]
+
+-- names[1], ..., names[last], joined by the list's comma.
+local function Commas(names, last)
+    local text = names[1]
+    for i = 2, last do text = Fmt(L["%1$s, %2$s##list"], text, names[i]) end
+    return text
+end
+
 function Format.List(names, opts)
     local n = #names
     if n == 0 then return nil end
@@ -57,12 +88,13 @@ function Format.List(names, opts)
 
     if opts.max and n > opts.max then
         local shown = opts.shown or opts.max
-        return ("%s and %d %s"):format(table.concat(names, ", ", 1, shown), n - shown, opts.more or "more")
+        local head, rest, more = Commas(names, shown), n - shown, opts.more or Format.MORE
+        return ns.Plural(rest, more, head, rest)
     end
 
     if n == 1 then return names[1] end
-    if n == 2 then return names[1] .. " and " .. names[2] end
-    return table.concat(names, ", ", 1, n - 1) .. (opts.oxford and ", and " or " and ") .. names[n]
+    local last = (opts.oxford and n > 2) and L["%1$s, and %2$s##list"] or L["%1$s and %2$s"]
+    return Fmt(last, Commas(names, n - 1), names[n])
 end
 
 --------------------------------------------------------------------------
@@ -84,9 +116,11 @@ end
 -- 2025". Without it, never -- for a page that only reaches back as far as
 -- the buffer does.
 function Format.DayMonth(time, now)
-    local text = tonumber(date("%d", time)) .. date(" %B", time)
-    if now and date("%Y", time) ~= date("%Y", now) then text = text .. date(" %Y", time) end
-    return text
+    local day = tonumber(date("%d", time))
+    if now and date("%Y", time) ~= date("%Y", now) then
+        return Fmt(L["%1$d %2$s %3$s"], day, Format.Month(time), date("%Y", time))
+    end
+    return Fmt(L["%1$d %2$s"], day, Format.Month(time))
 end
 
 -- A heading for the day `time` falls on: "Today", "Yesterday", else
@@ -94,9 +128,9 @@ end
 function Format.DayLabel(time, now)
     now = now or ns.Now()
     local back = DaysBack(time, now)
-    if back == 0 then return "Today" end
-    if back == 1 then return "Yesterday" end
-    return date("%A, ", time) .. Format.DayMonth(time, now)
+    if back == 0 then return L["Today"] end
+    if back == 1 then return L["Yesterday"] end
+    return Fmt(L["%1$s, %2$s"], Format.Weekday(time), Format.DayMonth(time, now))
 end
 
 -- "today at 21:43", "yesterday at 18:02", "on 12 Sep at 18:02"; the year is
@@ -106,32 +140,33 @@ function Format.At(time, now)
     local clock = date("%H:%M", time)
     local back = DaysBack(time, now)
 
-    if back == 0 then return "today at " .. clock end
-    if back == 1 then return "yesterday at " .. clock end
-    if date("%Y", time) == date("%Y", now) then
-        return date("on %d %b at ", time) .. clock
-    end
-    return date("on %d %b %Y at ", time) .. clock
+    if back == 0 then return Fmt(L["today at %s"], clock) end
+    if back == 1 then return Fmt(L["yesterday at %s"], clock) end
+    local sameYear = date("%Y", time) == date("%Y", now)
+    return Fmt(L["on %1$s at %2$s"], Format.ShortDate(time, not sameYear), clock)
 end
 
 -- The profile's "last seen" line, from a character record's `seen`.
 function Format.SeenText(seen, now)
-    if not seen then return "Not seen nearby yet." end
+    if not seen then return L["Not seen nearby yet."] end
 
-    -- Subzone first, as every place is written: "Goldshire, Elwynn Forest".
-    local place = seen.zone
-    if place and seen.subZone and seen.subZone ~= seen.zone then
-        place = seen.subZone .. ", " .. place
+    -- A subzone has no phrase of its own after "in" (ns.ZoneIn): the place
+    -- follows a dot then, subzone first, as every place is written: "Last
+    -- seen today at 21:43 · Goldshire, Elwynn Forest".
+    local at = Format.At(seen.time, now)
+    if seen.zone and seen.subZone and seen.subZone ~= seen.zone then
+        return Fmt(L["Last seen %1$s · %2$s"], at, Fmt(L["%1$s, %2$s"], seen.subZone, seen.zone))
     end
-
-    return "Last seen " .. Format.At(seen.time, now) .. (place and (" in " .. place) or "")
+    if seen.zone then return Fmt(L["Last seen %1$s %2$s##zone"], at, ns.ZoneIn(seen.mapID, seen.zone)) end
+    return Fmt(L["Last seen %s"], at)
 end
 
--- "once", "twice", "5 times".
+-- "once", "twice", "5 times". "twice" is a word English has for 2, not a
+-- plural form: a locale without one leaves it empty, and 2 takes the
+-- plural like any other number.
 function Format.Times(n)
-    if n == 1 then return "once" end
-    if n == 2 then return "twice" end
-    return n .. " times"
+    if n == 2 and L["twice"] ~= "" then return L["twice"] end
+    return ns.Plural(n, L["once|%d times##plural"])
 end
 
 -- The score with a foe, from Interactions.Fights: "You've killed them twice and
@@ -145,15 +180,17 @@ function Format.FightsText(fights, em, short)
     em = em or tostring
     local kills
     if fights.kills > 0 then
-        local who = (short or fights.yours == fights.kills) and "You've"
-            or fights.yours == 0 and "Your group has" or "You and your group have"
-        kills = who .. " killed them " .. em(Format.Times(fights.kills))
+        local who = (short or fights.yours == fights.kills) and L["You've killed them %s"]
+            or fights.yours == 0 and L["Your group has killed them %s"] or L["You and your group have killed them %s"]
+        kills = Fmt(who, em(Format.Times(fights.kills)))
     end
-    local deaths = fights.deaths > 0 and ("killed you " .. em(Format.Times(fights.deaths))) or nil
+    local deaths = fights.deaths > 0 and em(Format.Times(fights.deaths)) or nil
 
-    if kills and deaths then return kills .. (short and ", they've " or " and they've ") .. deaths .. "." end
-    if kills then return kills .. "." end
-    if deaths then return "They've " .. deaths .. "." end
+    if kills and deaths then
+        return Fmt(short and L["%1$s, they've killed you %2$s."] or L["%1$s and they've killed you %2$s."], kills, deaths)
+    end
+    if kills then return Fmt(L["%s."], kills) end
+    if deaths then return Fmt(L["They've killed you %s."], deaths) end
     return nil
 end
 
@@ -164,9 +201,9 @@ function Format.Money(copper)
     local rest = copper % 100
 
     local parts = {}
-    if gold > 0 then parts[#parts + 1] = gold .. "g" end
-    if silver > 0 then parts[#parts + 1] = silver .. "s" end
-    if rest > 0 or #parts == 0 then parts[#parts + 1] = rest .. "c" end
+    if gold > 0 then parts[#parts + 1] = Fmt(L["%dg"], gold) end
+    if silver > 0 then parts[#parts + 1] = Fmt(L["%ds"], silver) end
+    if rest > 0 or #parts == 0 then parts[#parts + 1] = Fmt(L["%dc"], rest) end
     return table.concat(parts, " ")
 end
 
@@ -220,13 +257,15 @@ end
 function Format.You(me, text)
     if Format.IsYou(me) then return (text:gsub("{(.-)}", "%1")) end
     local name = Format.YouName(me)
+    local forms = G.YOU_FOR or YOU_FOR
     return (text:gsub("{(.-)}", function(word)
-        local form = YOU_FOR[word:lower()]
+        local form = forms[word:lower()]
+        if type(form) == "function" then return form(name) end
         return form and form:format(name) or word
     end))
 end
 
-local RACE_NAMES = { Scourge = "Undead", NightElf = "Night Elf" }
+local RACE_NAMES = { Scourge = L["Undead"], NightElf = L["Night Elf"] }
 
 function Format.RaceName(record)
     if record.raceID and C_CreatureInfo and C_CreatureInfo.GetRaceInfo then
@@ -251,7 +290,7 @@ end
 function Format.WhoLine(record, guild, dropOwn)
     record = record or {}
     local parts = {}
-    if record.level then parts[#parts + 1] = "Level " .. record.level end
+    if record.level then parts[#parts + 1] = Fmt(L["Level %d"], record.level) end
     parts[#parts + 1] = Format.RaceName(record)
     parts[#parts + 1] = Format.ClassName(record)
 
@@ -259,7 +298,8 @@ function Format.WhoLine(record, guild, dropOwn)
     local own = dropOwn == "always" or (dropOwn and record.faction == UnitFactionGroup("player"))
     if not own and (record.faction == "Horde" or record.faction == "Alliance") then
         local hex = record.faction == "Horde" and ns.Style.HEX.horde or ns.Style.HEX.alliance
-        text = text .. (text ~= "" and "  ·  " or "") .. "|cff" .. hex .. record.faction .. "|r"
+        local faction = record.faction == "Horde" and L["Horde"] or L["Alliance"]
+        text = text .. (text ~= "" and "  ·  " or "") .. "|cff" .. hex .. faction .. "|r"
     end
 
     if guild then text = text .. "  |cff" .. ns.Style.HEX.faded .. "<" .. guild .. ">|r" end

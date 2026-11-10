@@ -16,6 +16,13 @@
 local addonName, ns = ...
 
 local Format = ns.UI.Format
+local L, Fmt = ns.L, ns.Fmt
+local G = ns.Locale.grammar
+
+-- The first letter up, as a line starts (a locale's own, umlauts too).
+local function Capital(text)
+    return G.Capital(text)
+end
 
 local PersonText = {}
 ns.UI.PersonText = PersonText
@@ -27,7 +34,7 @@ PersonText.GATES = 2
 
 -- What the note slip says before there is a note: today's line, kept, as
 -- Edit is still there to click.
-PersonText.NO_NOTE = "No note yet. Click Edit to write one."
+PersonText.NO_NOTE = L["No note yet. Click Edit to write one."]
 
 -- Your Diary's words (UI/Journey/Text/), loaded before this file is ever
 -- asked, looked up when called.
@@ -39,11 +46,10 @@ local function JText() return ns.UI.JourneyText end
 -- ("11 Oct 2025"), the fitter's fallback where the long form will not fit.
 local function Day(t, now, short)
     local label = Format.DayLabel(t, now)
-    if label == "Today" or label == "Yesterday" then return label:lower() end
+    if label == L["Today"] then return L["today"] end
+    if label == L["Yesterday"] then return L["yesterday"] end
     if not short then return Format.DayMonth(t, now) end
-    local text = tonumber(date("%d", t)) .. date(" %b", t)
-    if date("%Y", t) ~= date("%Y", now) then text = text .. date(" %Y", t) end
-    return text
+    return Format.ShortDate(t, date("%Y", t) ~= date("%Y", now))
 end
 PersonText.Day = Day
 
@@ -58,14 +64,14 @@ function PersonText.FirstMet(s, now)
     local seen = s.record and s.record.seen
     local sub
     if met then
-        sub = s.levelThen and ("at level " .. s.levelThen) or nil
+        sub = s.levelThen and Fmt(L["at level %d"], s.levelThen) or nil
     elseif seen then
-        sub = "last seen " .. Day(seen.time, now, true)
+        sub = Fmt(L["last seen %s"], Day(seen.time, now, true))
     end
     local t = met and s.firstMet or s.entry.addedAt
-    if not t then return met and "First met" or "Added to the diary", nil, sub end
-    local lead = met and "First met " or "Added "
-    local long, short = lead .. Day(t, now), lead .. Day(t, now, true)
+    if not t then return met and L["First met"] or L["Added to the diary"], nil, sub end
+    local lead = met and L["First met %s"] or L["Added %s"]
+    local long, short = Fmt(lead, Day(t, now)), Fmt(lead, Day(t, now, true))
     if short == long then short = nil end
     return long, short, sub
 end
@@ -82,11 +88,11 @@ function PersonText.Tally(s)
     local seconds = s.seconds or 0
     local together
     if seconds >= 60 then
-        together = Format.Duration(seconds) .. " together"
+        together = Fmt(L["%s together##duration"], Format.Duration(seconds))
     elseif seconds > 0 then
-        together = "under a minute together"
+        together = L["under a minute together"]
     end
-    return "Met " .. Format.Times(n), math.min(n, PersonText.GATES * 5), together
+    return Capital(Fmt(L["Met %s"], Format.Times(n))), math.min(n, PersonText.GATES * 5), together
 end
 
 -- Where they were last seen, as one line of a tooltip: "Last seen today at
@@ -105,8 +111,8 @@ function PersonText.TallyTip(s, now)
     now = now or ns.Now()
     local heading = PersonText.Tally(s)
     if not heading then return nil end
-    local lines = { "Each time you grouped, traded or talked nearby" }
-    if s.lastMet then lines[#lines + 1] = "Last met " .. Format.At(s.lastMet, now) end
+    local lines = { L["Each time you grouped, traded or talked nearby"] }
+    if s.lastMet then lines[#lines + 1] = Fmt(L["Last met %s"], Format.At(s.lastMet, now)) end
     lines[#lines + 1] = PersonText.Seen(s, now)
     return heading, lines
 end
@@ -132,12 +138,12 @@ end
 function PersonText.LevelTip(s)
     local before, after = PersonText.Level(s)
     if not before then return nil end
-    return "Their level", { before .. " when you first met", after .. " now" }
+    return L["Their level"], { Fmt(L["%s when you first met"], before), Fmt(L["%s now"], after) }
 end
 
 -- The plate's tooltip, over the print outside a mark: one name for one
 -- thing, the side tab's (UI/Journal/Profile.lua).
-PersonText.PLATE = { "Where you saw them", { "Click to open the map." } }
+PersonText.PLATE = { L["Where you saw them"], { L["Click to open the map."] } }
 
 --------------------------------------------------------------------------
 -- The plate's marks
@@ -155,27 +161,26 @@ function PersonText.MetTip(words, t, now)
     local lines = {}
     if words and words ~= "" then lines[1] = words end
     lines[#lines + 1] = When(t, now)
-    return "Where you first met", lines
+    return L["Where you first met"], lines
 end
 function PersonText.AddedTip(t, now)
-    return "Added to the diary", { When(t, now) }
+    return L["Added to the diary"], { When(t, now) }
 end
 
 -- Their first sighting, in hindsight.
 function PersonText.FirstSeenTip(t, now)
-    return "First seen", { When(t, now) }
+    return L["First seen"], { When(t, now) }
 end
 
 -- Time together (a session's ring): "Together for 1 h 5 min", when.
 function PersonText.TogetherTip(seconds, t, now)
-    local title = (seconds or 0) >= 60 and ("Together for " .. Format.Duration(seconds)) or "Together"
+    local title = (seconds or 0) >= 60 and Fmt(L["Together for %s"], Format.Duration(seconds)) or L["Together"]
     return title, { When(t, now) }
 end
 
 -- A word said within earshot: "They said", the words between the book's
 -- curly quotes, when.
-local SAID = { say = "They said", yell = "They yelled" }
-local OPEN, CLOSE = "\226\128\156", "\226\128\157"
+local SAID = { say = L["They said"], yell = L["They yelled"] }
 
 -- A row on the plate (a trade, a /say, a fight, a feature's): its words.
 -- A fight is WorldPvP's own sentence with "them" for the name and no
@@ -188,18 +193,17 @@ function PersonText.RowTip(row, guid, now)
     local lines = {}
     local title
     if spec.fight == "kill" then
-        title = ns.UI.Format.You(row.me, c.by and "{Your} group killed them" or "{You} killed them")
+        title = ns.UI.Format.You(row.me, c.by and L["{Your} group killed them"] or L["{You} killed them"])
     elseif spec.fight == "death" then
-        title = "They" .. ns.UI.Format.You(row.me, c.probable and " probably killed {you}" or " killed {you}")
-        if c.spell then lines[1] = "With " .. c.spell end
+        title = ns.UI.Format.You(row.me, c.probable and L["They probably killed {you}"] or L["They killed {you}"])
+        if c.spell then lines[1] = Fmt(L["With %s"], c.spell) end
     elseif SAID[row.type] then
         title = SAID[row.type]
         local said = row.excerpt and JText().Written(row.excerpt)
-        if said and said ~= "" then lines[1] = OPEN .. said .. CLOSE end
+        if said and said ~= "" then lines[1] = Fmt(L["\226\128\156%s\226\128\157"], said) end
     elseif spec.text then
-        title = spec.text(row, guid)
-        -- The place is the map's to say.
-        if row.zone then title = title:gsub(" in " .. row.zone:gsub("%p", "%%%0") .. "$", "") end
+        -- The place is the map's to say: the kind's words without it.
+        title = spec.text(row, guid, true)
     else
         title = row.type
     end
@@ -214,18 +218,18 @@ function PersonText.NoteTip(note, guid, now)
     local lines = { Text.Written(note.text) }
     local others = {}
     for about in pairs(note.about or {}) do
-        if about ~= guid then others[#others + 1] = Text.Who(about) or "someone" end
+        if about ~= guid then others[#others + 1] = Text.Who(about) or L["someone"] end
     end
     table.sort(others)
-    if #others > 0 then lines[#lines + 1] = "Also about " .. Text.List(others) end
+    if #others > 0 then lines[#lines + 1] = Fmt(L["Also about %s"], Text.List(others)) end
     lines[#lines + 1] = When(note.time, now)
-    return "Your note", lines
+    return L["Your note"], lines
 end
 
 -- A dungeon's door: its name (it says what the door is, not where),
 -- how long inside, when.
 function PersonText.DoorTip(name, seconds, t, now)
-    return name or "An instance", { Format.Duration(seconds or 0) .. " inside", When(t, now) }
+    return name or L["An instance"], { Fmt(L["%s inside"], Format.Duration(seconds or 0)), When(t, now) }
 end
 
 -- Where they were last seen: when, and the place as every place is
@@ -233,15 +237,15 @@ end
 function PersonText.SeenTip(seen, now)
     local lines = { When(seen.time, now) }
     local place = seen.zone
-    if place and seen.subZone and seen.subZone ~= seen.zone then place = seen.subZone .. ", " .. place end
+    if place and seen.subZone and seen.subZone ~= seen.zone then place = Fmt(L["%1$s, %2$s"], seen.subZone, place) end
     if place then lines[#lines + 1] = place end
-    return "Last seen", lines
+    return L["Last seen"], lines
 end
 
 -- Anything else on the timeline put on the plate (a rare killed, a while
 -- seen around): its timeline words and when.
 function PersonText.ItemTip(words, t, now)
-    return words or "Together", { When(t, now) }
+    return words or L["Together"], { When(t, now) }
 end
 
 --------------------------------------------------------------------------
@@ -265,40 +269,43 @@ end
 --   nextDay    ... on the next calendar day, 12 h or more after
 --   dayBefore  ... the calendar day before (the hinge came first)
 --   later, earlier, daysLater, daysEarlier   ... "{duration} later", "{n}
---              days later" and their mirrors, as format strings
+--              days later" and their mirrors, as templates (ns.Fmt; the
+--              days ns.Plural)
 --   levels     note 2's sub line, both levels known; `mine` only yours
---   beside     a hinge off the print where they were beside you (a trade,
---              a /say); `stood` where only you are placed (a group join, a
---              whisper: the diary keeps your position, never theirs)
+--   stood      a hinge off the print where only you are placed (a group
+--              join, a whisper: the diary keeps your position, never
+--              theirs); where they were beside you (a trade, a /say) the
+--              zone's phrase alone (ns.ZoneIn, "in Durotar")
 --   joinLevels how the levels join a place on one line
---   more       the ledger's count past its lines
---   seenDays   the seen line's day count, before Format.SeenText
+--   more       the ledger's count past its lines (ns.Plural)
+--   seenDays   the seen line's day count, Format.SeenText after it
+--              (ns.Plural)
 --   until      the foot strip's name; `words` under it; `add` its link
 PersonText.GLIMPSE = {
-    notYet = "Not in your diary yet",
-    click = "Click to see their page, pencilled in",
-    first = "First seen",
-    after = "After that",
-    moments = "Moments later",
-    nextDay = "The next day",
-    dayBefore = "The day before",
-    later = "%s later", earlier = "%s earlier",
-    daysLater = "%d days later", daysEarlier = "%d days earlier",
-    levels = "you at level %d, they at %d", mine = "at level %d",
-    beside = "in %s", stood = "you were in %s",
-    joinLevels = "%s  \194\183  %s",
-    more = "and %d more",
-    seenDays = "Seen on %d days since %s. ",
-    ["until"] = "Pencilled in until %s",
-    words = "Strangers are forgotten after %s. Once in your diary, all of this is kept for good.",
-    add = "Add %s to your diary",
+    notYet = L["Not in your diary yet"],
+    click = L["Click to see their page, pencilled in"],
+    first = L["First seen"],
+    after = L["After that"],
+    moments = L["Moments later"],
+    nextDay = L["The next day"],
+    dayBefore = L["The day before"],
+    later = L["%s later"], earlier = L["%s earlier"],
+    daysLater = L["%d day later|%d days later##plural"], daysEarlier = L["%d day earlier|%d days earlier##plural"],
+    levels = L["you at level %1$d, they at %2$d"], mine = L["at level %d"],
+    stood = L["you were %s##zone"],
+    joinLevels = L["%1$s  \194\183  %2$s"],
+    more = L["and %d more|and %d more##plural"],
+    seenDays = L["Seen on %1$d day since %2$s. %3$s|Seen on %1$d days since %2$s. %3$s##plural"],
+    ["until"] = L["Pencilled in until %s"],
+    words = L["Strangers are forgotten after %s. Once in your diary, all of this is kept for good."],
+    add = L["Add %s to your diary"],
 }
 local GW = PersonText.GLIMPSE
 
 -- A time with its first letter up: "Yesterday at 14:05", "On 3 Nov at
 -- 14:05" (Format.At, as a line of its own starts).
 local function AtCapital(t, now)
-    return (Format.At(t, now):gsub("^%l", string.upper))
+    return Capital(Format.At(t, now))
 end
 
 -- The tooltip of a stranger's name that opens their glimpse (a margin
@@ -317,9 +324,9 @@ function PersonText.GlimpseFirst(first, now)
     now = now or ns.Now()
     local zone = first.mapID and ns.MapName(first.mapID) or nil
     local place = zone
-    if zone and first.subZone and first.subZone ~= zone then place = first.subZone .. ", " .. zone end
+    if zone and first.subZone and first.subZone ~= zone then place = Fmt(L["%1$s, %2$s"], first.subZone, zone) end
     if place then return GW.first, place, Format.At(first.t, now) end
-    return GW.first, AtCapital(first.t, now), first.level and GW.mine:format(first.level) or nil
+    return GW.first, AtCapital(first.t, now), first.level and Fmt(GW.mine, first.level) or nil
 end
 
 -- How long after the first sighting (at `from`) the hinge came (at `t`),
@@ -333,10 +340,10 @@ local function After(from, t, now)
     if gap < 60 then return GW.moments end
     local days = math.floor((ns.DayStart(math.max(t, from)) - ns.DayStart(math.min(t, from))) / ns.DAY + 0.5)
     if gap < 12 * 60 * 60 or days == 0 then
-        return (d > 0 and GW.later or GW.earlier):format(Format.Duration(gap))
+        return Fmt(d > 0 and GW.later or GW.earlier, Format.Duration(gap))
     end
     if days == 1 then return d > 0 and GW.nextDay or GW.dayBefore end
-    return (d > 0 and GW.daysLater or GW.daysEarlier):format(days)
+    return ns.Plural(days, d > 0 and GW.daysLater or GW.daysEarlier)
 end
 PersonText.GlimpseAfter = After
 
@@ -353,16 +360,17 @@ function PersonText.GlimpseHinge(row, first, onPrint, now, guid)
     local line = spec.text and spec.text(row, guid) or row.type
     local levels
     if row.myLevel and row.theirLevel then
-        levels = GW.levels:format(row.myLevel, row.theirLevel)
+        levels = Fmt(GW.levels, row.myLevel, row.theirLevel)
     elseif row.myLevel then
-        levels = GW.mine:format(row.myLevel)
+        levels = Fmt(GW.mine, row.myLevel)
     end
     local heading = After(first and first.t, row.time, now)
     if onPrint then return heading, line, levels, nil end
     local zone = ns.RowZone(row)
     if not zone then return heading, line, levels, nil end
-    local place = (spec.proximity and GW.beside or GW.stood):format(zone)
-    return heading, line, place, levels and GW.joinLevels:format(place, levels) or nil
+    local phrase = ns.ZoneIn(row.mapID, zone)
+    local place = spec.proximity and phrase or Fmt(GW.stood, phrase)
+    return heading, line, place, levels and Fmt(GW.joinLevels, place, levels) or nil
 end
 
 -- A ledger line's day, short ("today", "yesterday", "3 Nov"), for its
@@ -379,7 +387,7 @@ function PersonText.GlimpseRow(row, guid)
 end
 
 function PersonText.GlimpseMore(n)
-    return GW.more:format(n)
+    return ns.Plural(n, GW.more)
 end
 
 -- The seen line: Recently nearby's tooltip written on the page. The day
@@ -391,7 +399,7 @@ function PersonText.GlimpseSeen(g, now)
     local text = Format.SeenText(seen, now)
     if seen and not text:find("%.$") then text = text .. "." end
     if g.seen and (g.seen.days or 0) > 1 and g.seen.since then
-        text = GW.seenDays:format(g.seen.days, Format.DayMonth(g.seen.since, now)) .. text
+        text = ns.Plural(g.seen.days, GW.seenDays, g.seen.days, Format.DayMonth(g.seen.since, now), text)
     end
     return text
 end
@@ -403,7 +411,7 @@ end
 function PersonText.GlimpseFoot(g, short, days, now)
     now = now or ns.Now()
     local t = g["until"] or now
-    local long = GW["until"]:format(Format.DayMonth(t, now))
-    local brief = GW["until"]:format(Day(t, now, true))
-    return long, brief ~= long and brief or nil, GW.words:format(days), GW.add:format(short or g.name or "")
+    local long = Fmt(GW["until"], Format.DayMonth(t, now))
+    local brief = Fmt(GW["until"], Day(t, now, true))
+    return long, brief ~= long and brief or nil, Fmt(GW.words, days), Fmt(GW.add, short or g.name or "")
 end

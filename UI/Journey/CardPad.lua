@@ -34,6 +34,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local CardSheet = ns.UI.YourDiary.CardSheet
@@ -44,13 +46,13 @@ local function View()
 end
 
 local PROMPT = {
-    choose = { "PAD1", "Choose", main = true },
-    write = { "PAD1", "Write", main = true },
-    done = { "PAD1", "Done writing", main = true },
-    names = { "PADDDOWN", "Go to the names" },
-    away = { "PAD2", "Put the card away" },
-    stop = { "PAD2", "Stop writing" },
-    line = { "PAD2", "Back to the line" },
+    choose = { "PAD1", L["Choose"], main = true },
+    write = { "PAD1", L["Write"], main = true },
+    done = { "PAD1", L["Done writing"], main = true },
+    names = { "PADDDOWN", L["Go to the names"] },
+    away = { "PAD2", L["Put the card away"] },
+    stop = { "PAD2", L["Stop writing"] },
+    line = { "PAD2", L["Back to the line"] },
 }
 
 -- How far over the slip the box is drawn: over its controls and the names a
@@ -339,7 +341,7 @@ function scope.legend()
     if not (view and at) then return {} end
     local out = {}
     if at.kind == "switch" then
-        out[1] = { "PAD1", at.frame:GetChecked() and "Untick" or "Tick", main = true }
+        out[1] = { "PAD1", at.frame:GetChecked() and L["Untick"] or L["Tick"], main = true }
     elseif at.kind == "field" then
         out[1] = at.frame:HasFocus() and PROMPT.done or PROMPT.write
         if at.person and at.person.found:IsShown() then out[#out + 1] = PROMPT.names end

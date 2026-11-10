@@ -33,6 +33,7 @@ local Hunter = {}
 ns.Hunter = Hunter
 
 local Journey = ns.Journey
+local L = ns.L
 
 --------------------------------------------------------------------------
 -- Tames: a pet the hunter tamed and kept
@@ -142,8 +143,8 @@ end
 ns.JourneyRecap.RegisterMoment("tame", { order = 90, list = "tames", field = "tame", rank = 1,
     custom = {
         creature = "beast",
-        label = "Tamed Pet",
-        heading = "A pet tamed",
+        label = L["Tamed Pet"],
+        heading = L["A pet tamed"],
         group = "other",
         offer = function()
             local _, class = UnitClass("player")
@@ -152,9 +153,9 @@ ns.JourneyRecap.RegisterMoment("tame", { order = 90, list = "tames", field = "ta
         -- A line of a menu, where a spot merges several or one is hidden.
         describe = function(tame) return Hunter.Describe(tame) end,
         fields = {
-            { key = "name", type = "text", label = "Name", hint = "the name you gave it, or leave this empty" },
-            { key = "beast", type = "text", label = "Beast" },
-            { key = "family", type = "text", label = "Family", hint = "Wolf, Cat, Boar…" },
-            { key = "petLevel", type = "number", min = 1, max = 60, label = "Level" },
+            { key = "name", type = "text", label = L["Name"], hint = L["the name you gave it, or leave this empty"] },
+            { key = "beast", type = "text", label = L["Beast"] },
+            { key = "family", type = "text", label = L["Family"], hint = L["Wolf, Cat, Boar…"] },
+            { key = "petLevel", type = "number", min = 1, max = 60, label = L["Level"] },
         },
     } })

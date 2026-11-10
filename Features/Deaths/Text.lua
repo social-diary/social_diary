@@ -10,23 +10,31 @@ local addonName, ns = ...
 local Deaths = ns.Deaths
 local Text = ns.UI.JourneyText
 local Capital, Glue, NUMBER, Times = Text.Capital, Text.Glue, Text.NUMBER, Text.Times
+local L, Fmt = ns.L, ns.Fmt
+
+-- Words and what it did them with: "Sunscale Lashtail, with Bite".
+local function With(text, spell)
+    return spell and Fmt(L["%1$s, with %2$s"], text, spell) or text
+end
 
 -- The killer card (Card.lua): what the creature did, under its name:
 -- "killed you", "killed you twice", "killed you three times", held
 -- together as a margin note's phrases are.
 function Deaths.Killed(n)
     n = n or 1
-    if n == 1 then return Glue("killed you") end
-    if n == 2 then return Glue("killed you twice") end
-    return Glue("killed you " .. (NUMBER[n] or tostring(n)) .. " times")
+    -- Once says no count, and English has a word for two that is no plural
+    -- category (as Text.Times has them); the rest is the count's plural.
+    if n == 1 then return Glue(L["killed you"]) end
+    if n == 2 then return Glue(L["killed you twice"]) end
+    return Glue(Fmt(L["killed you %s##times"], ns.Plural(n, L["%s time|%s times##plural"], NUMBER[n] or tostring(n))))
 end
 
 -- A creature's rank, as a tooltip says it.
-local RANK = { elite = "Elite", rare = "Rare", rareelite = "Rare elite", worldboss = "Boss" }
+local RANK = { elite = L["Elite"], rare = L["Rare"], rareelite = L["Rare elite"], worldboss = L["Boss"] }
 
 -- What the world killed you with (the death recap's environmental kinds).
-local WORLD = { FALLING = "A fall", DROWNING = "Drowned", FATIGUE = "Exhaustion", FIRE = "Fire", LAVA = "Lava",
-    SLIME = "Slime" }
+local WORLD = { FALLING = L["A fall"], DROWNING = L["Drowned"], FATIGUE = L["Exhaustion"], FIRE = L["Fire"],
+    LAVA = L["Lava"], SLIME = L["Slime"] }
 
 -- The killer card's tooltip: the creature's name, its rank, how often it
 -- killed you on the plate and with what, and when it last did. A killer
@@ -34,10 +42,9 @@ local WORLD = { FALLING = "A fall", DROWNING = "Drowned", FATIGUE = "Exhaustion"
 function Deaths.KillerTip(k, now)
     local lines = {}
     if RANK[k.rank] then lines[#lines + 1] = RANK[k.rank] end
-    lines[#lines + 1] = Times(k.count or 1, "Killed you here", "Killed you here %s")
-        .. (k.spell and (", with " .. k.spell) or "")
-    if k.last then lines[#lines + 1] = "The last time " .. ns.UI.Format.At(k.last, now) end
-    if k.probable then lines[#lines + 1] = "As near as the diary could tell" end
+    lines[#lines + 1] = With(Times(k.count or 1, L["Killed you here"], L["Killed you here %s"]), k.spell)
+    if k.last then lines[#lines + 1] = Fmt(L["The last time %s"], ns.UI.Format.At(k.last, now)) end
+    if k.probable then lines[#lines + 1] = L["As near as the diary could tell"] end
     return k.name, lines
 end
 
@@ -53,7 +60,7 @@ function Deaths.DeathCross(count, deaths)
         if key then
             local line = at[key]
             if not line then
-                line = { n = 0, name = d.name or WORLD[d.environment:upper()] or "The world" }
+                line = { n = 0, name = d.name or WORLD[d.environment:upper()] or L["The world"] }
                 at[key] = line
                 lines[#lines + 1] = line
             end
@@ -63,10 +70,15 @@ function Deaths.DeathCross(count, deaths)
     end
     local out = {}
     for i, line in ipairs(lines) do
-        out[i] = line.name .. (line.spell and (", with " .. line.spell) or "")
-            .. (line.n == 2 and ", twice" or line.n > 2 and (", " .. line.n .. " times") or "")
+        local text = With(line.name, line.spell)
+        if line.n == 2 and L["twice"] ~= "" then
+            text = Fmt(L["%1$s, %2$s"], text, L["twice"])
+        elseif line.n > 2 then
+            text = Fmt(L["%1$s, %2$s"], text, ns.Plural(line.n, L["once|%d times##plural"]))
+        end
+        out[i] = text
     end
-    return Times(math.max(count or 0, #(deaths or {}), 1), "Died here", "Died here %s"), out
+    return Times(math.max(count or 0, #(deaths or {}), 1), L["Died here"], L["Died here %s"]), out
 end
 
 -- The deaths there: "a death", "two deaths". The plate's moments of kind
@@ -88,12 +100,11 @@ end
 -- which says how that fight went and nothing of the one the player wrote.
 do
     local function Count(n)
-        if n == 1 then return "a death" end
-        return (NUMBER[n] or tostring(n)) .. " deaths"
+        return ns.Plural(n, L["a death|%s deaths##plural"], NUMBER[n] or tostring(n))
     end
     local function Died(n, c)
         local killer = c.said.death
-        return Count(n) .. (killer and (", to " .. killer) or "")
+        return killer and Fmt(L["%1$s, to %2$s"], Count(n), killer) or Count(n)
     end
     local function Inserted(c)
         return c.lists.killedBy and #c.lists.killedBy or 0

@@ -24,12 +24,14 @@ local addonName, ns = ...
 local Slash = {}
 ns.Slash = Slash
 
+local L, Fmt = ns.L, ns.Fmt
+
 local function Group(prefix, header)
     return { prefix = prefix, header = header, list = {}, byName = {} }
 end
 
 local groups = {
-    [""] = Group("/sd", "commands:"),
+    [""] = Group("/sd", L["commands:"]),
     sightings = Group("/sd sightings"),
 }
 
@@ -99,9 +101,10 @@ local function ResolveArgument(text, unitFallback)
         if guid then return guid end
 
         if hits == 0 then
-            ns.Print("no character called |cffffffff%s|r on record.", text)
+            ns.Print(L["no character called |cffffffff%s|r on record."], text)
         else
-            ns.Print("|cffffffff%s|r matches %d characters -- add the surname.", text, hits)
+            ns.Print(ns.Plural(hits, L["%1$s matches %2$d character -- add the surname.|%1$s matches %2$d characters -- add the surname.##plural"],
+                "|cffffffff" .. text .. "|r", hits))
         end
         return nil
     end
@@ -133,17 +136,25 @@ end
 local function CommandRemove(text)
     local guid = ResolveArgument(text, true)
     if not guid then
-        ns.Print("usage: |cffffd100/sd remove <name>|r, or target them first.")
+        ns.Print(L["usage: |cffffd100/sd remove <name>|r, or target them first."])
         return
     end
 
     if not ns.Diary.IsDiary(guid) then
-        ns.Print("|cffffffff%s|r is not in the diary.", ns.Characters.FullName(guid) or guid)
+        ns.Print(L["|cffffffff%s|r is not in the diary."], ns.Characters.FullName(guid) or guid)
         return
     end
 
     -- DIA-7's choice lives in the popup, so both entry points offer it.
     ns.UI.ConfirmRemove(guid)
+end
+
+-- A day in chat, "06 Oct 2026" (or "06 Oct"), its month in the reader's
+-- language: the client's date() writes English names on every client.
+local function ChatDay(time, withYear)
+    local month = ns.UI.Format.MonthShort(time)
+    if withYear then return Fmt(L["%1$s %2$s %3$s##chat date"], date("%d", time), month, date("%Y", time)) end
+    return Fmt(L["%1$s %2$s##chat date"], date("%d", time), month)
 end
 
 local function CommandList()
@@ -154,17 +165,17 @@ local function CommandList()
         local tags = #entry.tags > 0 and ("  |cffffd100" .. table.concat(entry.tags, ", ") .. "|r") or ""
         DEFAULT_CHAT_FRAME:AddMessage(("   %-22s %s%s"):format(
             ns.Characters.FullName(entry.guid) or entry.guid,
-            date("%d %b %Y", entry.addedAt), tags))
+            ChatDay(entry.addedAt, true), tags))
     end
 
-    ns.Print("%d diary entr%s.", #entries, #entries == 1 and "y" or "ies")
+    ns.Print(ns.Plural(#entries, L["%d diary entry.|%d diary entries.##plural"]))
 end
 
 -- PRV-3: any character, in the diary or not. Name only: forgetting whoever
 -- happens to be targeted is too easy to do by accident.
 local function CommandForget(text)
     if not text or text == "" then
-        ns.Print("usage: |cffffd100/sd forget <name>|r")
+        ns.Print(L["usage: |cffffd100/sd forget <name>|r"])
         return
     end
     local guid = ResolveArgument(text, false)
@@ -181,7 +192,7 @@ end
 local MapName = ns.MapName
 
 local function RowZone(row)
-    return ns.RowZone(row) or (row.mapID and ("map " .. row.mapID)) or "?"
+    return ns.RowZone(row) or (row.mapID and Fmt(L["map %s"], row.mapID)) or "?"
 end
 
 -- JNL-3's data: the last 24 hours (or `hours`), grouped by zone.
@@ -208,32 +219,34 @@ local function SightingRecent(text)
             local entry = group[i]
             local row = entry.row
             -- Wide enough for "yesterday at 18:02" and "on 12 Sep at 18:02".
-            DEFAULT_CHAT_FRAME:AddMessage(("      %-22s lvl %-3s %-18s %s%s%s"):format(
+            DEFAULT_CHAT_FRAME:AddMessage("      " .. Fmt(L["%1$-22s lvl %2$-3s %3$-18s %4$s%5$s%6$s"],
                 ns.Characters.FullName(entry.guid) or entry.guid,
                 tostring(row.level or "?"), ns.UI.Format.At(ns.Sightings.Last(row), now), row.src or "",
-                row.hostile and "  |cffc04040hostile|r" or "",
-                ns.Diary.IsDiary(entry.guid) and "  |cffffd100[diary]|r" or ""))
+                row.hostile and ("  |cffc04040" .. L["hostile##chat"] .. "|r") or "",
+                ns.Diary.IsDiary(entry.guid) and ("  |cffffd100[" .. L["diary##chat tag"] .. "]|r") or ""))
         end
         if #group > 8 then
-            DEFAULT_CHAT_FRAME:AddMessage(("      |cff808080and %d more|r"):format(#group - 8))
+            DEFAULT_CHAT_FRAME:AddMessage("      |cff808080" .. ns.Plural(#group - 8, L["and %d more|and %d more##plural"]) .. "|r")
         end
     end
 
-    ns.Print("%d character%s seen in the last %s hour%s.", #list, #list == 1 and "" or "s",
-        tostring(hours), hours == 1 and "" or "s")
+    -- Two counts: the hours are a phrase of their own ("24 hours"), in the
+    -- sentence that counts the characters.
+    ns.Print(ns.Plural(#list, L["%1$d character seen in the last %2$s.|%1$d characters seen in the last %2$s.##plural"],
+        #list, ns.Plural(hours, L["%s hour|%s hours##plural"], tostring(hours))))
 end
 
 local function SightingsOf(text)
     local guid = ResolveArgument(text, true)
     if not guid then
-        if not text or text == "" then ns.Print("usage: |cffffd100/sd sightings of <name>|r, or target them.") end
+        if not text or text == "" then ns.Print(L["usage: |cffffd100/sd sightings of <name>|r, or target them."]) end
         return
     end
 
     local name = ns.Characters.FullName(guid) or guid
     local summary = ns.Sightings.Summary(guid)
     if not summary then
-        ns.Print("no sightings of |cffffffff%s|r.", name)
+        ns.Print(L["no sightings of |cffffffff%s|r."], name)
         return
     end
 
@@ -242,22 +255,26 @@ local function SightingsOf(text)
         zones[#zones + 1] = ("%s %d"):format(type(key) == "number" and (MapName(key) or key) or key, n)
     end
 
-    ns.Print("|cffffffff%s|r: %d sighting(s), %s to %s, level %s-%s%s", name, summary.count,
-        date("%d %b %Y", summary.first), date("%d %b %Y %H:%M", summary.last),
-        tostring(summary.levelMin or "?"), tostring(summary.levelMax or "?"),
-        summary.hostile and (", hostile %d time(s)"):format(summary.hostile) or "")
-    DEFAULT_CHAT_FRAME:AddMessage("   " .. table.concat(zones, ", "))
+    local template = summary.hostile
+        and L["|cffffffff%1$s|r: %2$d sighting(s), %3$s to %4$s, level %5$s-%6$s, hostile %7$d time(s)"]
+        or L["|cffffffff%1$s|r: %2$d sighting(s), %3$s to %4$s, level %5$s-%6$s"]
+    ns.Print(Fmt(template, name, summary.count,
+        ChatDay(summary.first, true), ChatDay(summary.last, true) .. date(" %H:%M", summary.last),
+        tostring(summary.levelMin or "?"), tostring(summary.levelMax or "?"), summary.hostile))
+    local joined = zones[1] or ""
+    for i = 2, #zones do joined = Fmt(L["%1$s, %2$s##list"], joined, zones[i]) end
+    DEFAULT_CHAT_FRAME:AddMessage("   " .. joined)
 
     local rows = ns.Sightings.For(guid)
     for i = #rows, math.max(1, #rows - 9), -1 do
         local row = rows[i]
-        DEFAULT_CHAT_FRAME:AddMessage(("   %s%s  %s%s  lvl %s  %s%s"):format(
-            date("%d %b %H:%M", row.time),
+        DEFAULT_CHAT_FRAME:AddMessage("   " .. Fmt(L["%1$s%2$s  %3$s%4$s  lvl %5$s  %6$s%7$s"],
+            ChatDay(row.time) .. date(" %H:%M", row.time),
             row.last and date("-%H:%M", row.last) or "      ",
-            (row.subZone and (row.subZone .. ", ") or "") .. RowZone(row),
-            row.x and (" (you at %.1f, %.1f)"):format(row.x * 100, row.y * 100) or "",
+            row.subZone and Fmt(L["%1$s, %2$s"], row.subZone, RowZone(row)) or RowZone(row),
+            row.x and (" " .. Fmt(L["(you at %1$.1f, %2$.1f)"], row.x * 100, row.y * 100)) or "",
             tostring(row.level or "?"), row.src or "",
-            row.hostile and "  |cffc04040hostile|r" or ""))
+            row.hostile and ("  |cffc04040" .. L["hostile##chat"] .. "|r") or ""))
     end
 end
 
@@ -274,25 +291,25 @@ local function SightingCity(text)
                 or ns.Plain(C_Map.GetBestMapForUnit("player"))
         end
         if key == nil or key == "sanctuary" then
-            ns.Print("nothing to %s here.", verb)
+            ns.Print(verb == "add" and L["nothing to add here."] or L["nothing to remove here."])
             return
         end
 
         Capture.SetCity(key, verb == "add")
-        ns.Print("%s %s the city list.", type(key) == "number" and (MapName(key) or key) .. " (" .. key .. ")" or key,
-            verb == "add" and "added to" or "removed from")
+        local city = type(key) == "number" and (MapName(key) or key) .. " (" .. key .. ")" or key
+        ns.Print(verb == "add" and L["%s added to the city list."] or L["%s removed from the city list."], city)
     end
 
     local here = ns.City()
     for _, city in ipairs(Capture.Cities()) do
         local key = city.key
         DEFAULT_CHAT_FRAME:AddMessage(("   %s %-8s %s%s"):format(
-            city.on and "|cff40c040on |r" or "|cff808080off|r", tostring(key),
-            type(key) == "number" and (MapName(key) or "") or "",
-            here == key and "  |cffffd100<- you are here|r" or ""))
+            city.on and ("|cff40c040%-3s|r"):format(L["on##switch"]) or ("|cff808080%-3s|r"):format(L["off##switch"]),
+            tostring(key), type(key) == "number" and (MapName(key) or "") or "",
+            here == key and ("  |cffffd100" .. L["<- you are here"] .. "|r") or ""))
     end
-    ns.Print("here: map %s, %s -- %s.", tostring(ns.Plain(C_Map.GetBestMapForUnit("player"))),
-        tostring(ns.Plain(GetRealZoneText())), here and "a city" or "not a city")
+    ns.Print(Fmt(here and L["here: map %1$s, %2$s -- a city."] or L["here: map %1$s, %2$s -- not a city."],
+        tostring(ns.Plain(C_Map.GetBestMapForUnit("player"))), tostring(ns.Plain(GetRealZoneText()))))
 end
 
 -- The switch answers with the status report when Dev/ is loaded.
@@ -304,22 +321,22 @@ local Register = Slash.Register
 
 -- JNL-4: the bare command is the journal, like every addon's main window.
 Register("journal", function() ns.UI.ToggleJournal() end,
-    "open the journal (also plain |cffffd100/sd|r)", { alias = { "" } })
-Register("add", CommandAdd, "add your target to the diary, or |cffffd100/sd add <name>|r")
-Register("remember", function() ns.UI.TogglePicker() end, "open the Remember this picker")
-Register("list", CommandList, "list diary entries")
-Register("remove", CommandRemove, "remove <name> from the diary")
+    L["open the journal (also plain |cffffd100/sd|r)"], { alias = { "" } })
+Register("add", CommandAdd, L["add your target to the diary, or |cffffd100/sd add <name>|r"])
+Register("remember", function() ns.UI.TogglePicker() end, L["open the Remember this picker"])
+Register("list", CommandList, L["list diary entries"])
+Register("remove", CommandRemove, L["remove <name> from the diary"])
 Register("sightings", function(rest) Dispatch(groups.sightings, rest) end,
-    "sighting capture; |cffffd100/sd sightings help|r for more")
-Register("settings", function() ns.UI.ShowSettings() end, "open the settings")
-Register("about", function() ns.UI.ShowIntro() end, "show the introduction again")
-Register("forget", CommandForget, "delete everything about <name>, in the diary or not")
+    L["sighting capture; |cffffd100/sd sightings help|r for more"])
+Register("settings", function() ns.UI.ShowSettings() end, L["open the settings"])
+Register("about", function() ns.UI.ShowIntro() end, L["show the introduction again"])
+Register("forget", CommandForget, L["delete everything about <name>, in the diary or not"])
 -- Not a dev command: the extra chat messages (ns.Debug) a bug report
 -- wants, in a release too. In development it also lists the dev commands.
 Register("debug", function()
     ns.db.settings.debug = not ns.db.settings.debug
-    ns.Print("debug %s.", ns.db.settings.debug and "on" or "off")
-end, "turn extra chat messages on or off, for reporting a bug")
+    ns.Print(ns.db.settings.debug and L["debug on."] or L["debug off."])
+end, L["turn extra chat messages on or off, for reporting a bug"])
 
 local function Sub(name, fn, help, opts)
     opts = opts or {}
@@ -327,11 +344,11 @@ local function Sub(name, fn, help, opts)
     Register(name, fn, help, opts)
 end
 
-Sub("recent", SightingRecent, "who was seen in the last 24 hours, by zone", { usage = "recent [hours]" })
-Sub("of", SightingsOf, "one character's sightings, or your target's", { usage = "of <name>" })
+Sub("recent", SightingRecent, L["who was seen in the last 24 hours, by zone"], { usage = L["recent [hours]"] })
+Sub("of", SightingsOf, L["one character's sightings, or your target's"], { usage = L["of <name>"] })
 -- No "add|remove": |r is the client's colour reset and would eat the r.
-Sub("city", SightingCity, "the city list; without an id, the map you are on",
-    { usage = "city [add or remove] [mapID]" })
+Sub("city", SightingCity, L["the city list; without an id, the map you are on"],
+    { usage = L["city [add or remove] [mapID]"] })
 SLASH_SOCIALDIARY1 = "/sd"
 SLASH_SOCIALDIARY2 = "/socialdiary"
 

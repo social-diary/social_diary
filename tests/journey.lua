@@ -685,11 +685,11 @@ local joined = table.concat(lines, " | ")
 Check(not joined:find("Mulgore for") and not joined:find("for 40 min") and not joined:find(", then "),
     "the zone-list sentence is still in the prose: " .. joined)
 Check(not joined:find("Went into"), "the dungeon sentence is still in the prose: " .. joined)
-Check(joined:find("Half an hour of fighting at Red Cloud Mesa%."), "the stops sentence: " .. joined)
+Check(joined:find("Red Cloud Mesa meant half an hour of fighting%."), "the stops sentence: " .. joined)
 Check(not joined:find("mostly fighting") and not joined:find("Longest"), "the stops read like a log: " .. joined)
 Check(joined:find("Flew to The Barrens"), "the flight line")
 -- Where the time went and the flight are one paragraph.
-Check(lines[2] and lines[2]:find("Red Cloud Mesa%. Flew to The Barrens%.$"),
+Check(lines[2] and lines[2]:find("Red Cloud Mesa meant half an hour of fighting%. Flew to The Barrens%.$"),
     "the stops and the flight are not one paragraph")
 Check(not Text.Lines(e11, t0 + 10000)[2] or not Text.Lines(e11, t0 + 10000)[2]:find("Wailing Caverns"),
     "the dungeon is told in the prose")
@@ -708,7 +708,7 @@ do
     for _, line in ipairs({ a, b }) do
         local _, n = line:gsub("fighting", "")
         Check(n == 1, "the deed is repeated: " .. line)
-        Check(line:find("Windshear Crag") and line:find("quests at The Crossroads"), "the later stops: " .. line)
+        Check(line:find("Windshear Crag") and line:find("The Crossroads for quests"), "the later stops: " .. line)
     end
 end
 -- The stops are told from then to now, not longest first: a short fight,
@@ -756,7 +756,7 @@ do
     noted.notes = {}
     Eq(Text.Note(noted), nil, "a note without one")
 end
-Check(Text.Lines(e11, t0 + 10000)[1]:find("^Reached on .* in The Crossroads, The Barrens"), "level 11's opening")
+Check(Text.Lines(e11, t0 + 10000)[1]:find("^Reached on .* \194\183 The Crossroads, The Barrens"), "level 11's opening")
 for _, line in ipairs(lines) do
     Check(not line:find("%d+/%d+") and not line:find("%%"), "a counter in the recap: " .. line)
 end
@@ -864,7 +864,7 @@ Eq(date("%w", weeks[1].week), "1", "a week does not start on Monday")
 Eq(date("%H:%M", weeks[1].week), "00:00", "a week does not start at midnight")
 Eq(#weeks[1].places, 2, "the first week's zones")
 Eq(weeks[1].reached.subZone, "Bloodhoof Village", "where the cap was reached")
-Check(Text.Lines(weeks[1], base)[1]:find("^Reached level 12 in Bloodhoof Village"), "the cap line: "
+Check(Text.Lines(weeks[1], base)[1]:find("^Reached level 12 on .* \194\183 Bloodhoof Village"), "the cap line: "
     .. Text.Lines(weeks[1], base)[1])
 Check(Text.Title(weeks[2]):find("^WEEK OF "), "a week's title")
 mock.maxLevel = 60

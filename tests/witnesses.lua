@@ -231,16 +231,16 @@ end
 mock.subZone = "Red Cloud Mesa"
 local row, line = Watched(1)
 Eq(row and row.context.watched, 1, "a second's look")
-Eq(line, "Bram saw you die to a Plainstrider in Red Cloud Mesa", "under 1.5 s, and in the subzone")
+Eq(line, "Bram saw you die to a Plainstrider  ·  Red Cloud Mesa, Mulgore", "under 1.5 s, and in the subzone")
 row, line = Watched(2, 0.6)
 Eq(row and row.context.watched, 1.4, "the fraction of a second counts")
-Eq(line, "Bram saw you die to a Plainstrider in Red Cloud Mesa", "1.4 s")
+Eq(line, "Bram saw you die to a Plainstrider  ·  Red Cloud Mesa, Mulgore", "1.4 s")
 row, line = Watched(2)
-Eq(line, "Bram watched you die to a Plainstrider in Red Cloud Mesa", "from 1.5 s")
+Eq(line, "Bram watched you die to a Plainstrider  ·  Red Cloud Mesa, Mulgore", "from 1.5 s")
 row, line = Watched(4)
-Eq(line, "Bram watched you die to a Plainstrider in Red Cloud Mesa", "4 s")
+Eq(line, "Bram watched you die to a Plainstrider  ·  Red Cloud Mesa, Mulgore", "4 s")
 row, line = Watched(5)
-Eq(line, "Bram mercilessly watched you die to a Plainstrider in Red Cloud Mesa", "from 5 s")
+Eq(line, "Bram mercilessly watched you die to a Plainstrider  ·  Red Cloud Mesa, Mulgore", "from 5 s")
 mock.subZone = ""
 
 -- A look broken counts for as long as it ran; a new one starts again.

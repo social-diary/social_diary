@@ -33,14 +33,15 @@ local CREASE = {
     crumple = 0.5, drift = 0.4, edge = 0.6, wander = 0, shift = 3, lean = 2,
     curl = { lift = 5, pull = 3 },
 }
+local L = ns.L
 local WORDS = {
-    title = "About this map",
+    title = L["About this map"],
     paragraphs = {
-        "There is no navigation data inside dungeons, so the diary has to work out where things happened.",
-        "It uses a default route, the usual way through, to pinpoint the spots.",
-        "If you went another way on a run, use Adjust Path at the top of the map to draw your own.",
+        L["There is no navigation data inside dungeons, so the diary has to work out where things happened."],
+        L["It uses a default route, the usual way through, to pinpoint the spots."],
+        L["If you went another way on a run, use Adjust Path at the top of the map to draw your own."],
     },
-    ok = "Got it",
+    ok = L["Got it"],
 }
 DungeonPage.TUTORIAL = { NOTE = NOTE, WORDS = WORDS }
 

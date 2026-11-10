@@ -47,6 +47,7 @@
 local addonName, ns = ...
 
 local Style = ns.Style
+local L = ns.L
 local FONT = Style.FONT
 local BOOK = ns.UI.Journal.BOOK
 
@@ -306,7 +307,7 @@ end
 -- once; placed by LayoutNav, again on every refresh, since a collapsed
 -- group's rows come and go.
 local function BuildNav(parent)
-    page.version, page.heading = ns.UI.Journal.PageHeading(parent, "Settings")
+    page.version, page.heading = ns.UI.Journal.PageHeading(parent, L["Settings"])
     page.nav, page.brackets = {}, {}
 
     local subs = {}
@@ -348,7 +349,7 @@ local function BuildNav(parent)
         Style.PlaySound("pageTurn")
         ns.UI.ShowIntro()
     end)
-    page.intro:SetText("Show the introduction again")
+    page.intro:SetText(L["Show the introduction again"])
     page.intro:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", BOOK.LEFT_X + BOOK.LEFT_W, -BOOK.BOOK_H + 22)
 end
 
@@ -380,7 +381,7 @@ end
 
 -- The grey ribbon's page, the book's last (UI/Journal/Pages.lua).
 ns.UI.Journal.RegisterPage("settings", {
-    order = 40, ribbon = { colour = "gray", label = "Settings" }, leaf = -1, buildOrder = 60,
+    order = 40, ribbon = { colour = "gray", label = L["Settings"] }, leaf = -1, buildOrder = 60,
     build = function(container) BuildPage(container) end,
     refresh = function() SettingsUI.Refresh() end,
     title = function() return page and page.heading end,

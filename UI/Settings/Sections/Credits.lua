@@ -7,6 +7,7 @@
 
 local addonName, ns = ...
 
+local L, Fmt = ns.L, ns.Fmt
 local Style = ns.Style
 local FONT = Style.FONT
 local BOOK = ns.UI.Journal.BOOK
@@ -20,13 +21,13 @@ local TESTERS = { "Tabi Lorang", "Gunther Guntherino", "Mooguy Mooperson", "Koko
 -- Licensing's lines before and after the map art: the addon's own, then
 -- what it ships.
 local LICENCE = {
-    "Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License.",
-    "Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later.",
-    "Creature positions along dungeon routes: TrinityCore and VMaNGOS, via advocaite/TrinityCore, GPL v2 or later.",
+    L["Social Diary is released under the GNU General Public License v3 or later. Versions up to 1.7.0 were under the MIT License."],
+    L["Dungeon maps, bosses, routes and loot tables: Dungeon Crawler Forever by Per, GPL v3 or later."],
+    L["Creature positions along dungeon routes: TrinityCore and VMaNGOS, via advocaite/TrinityCore, GPL v2 or later."],
 }
-local FONTS = "The Neuton Italic font: SIL Open Font License 1.1."
+local FONTS = L["The Neuton Italic font: SIL Open Font License 1.1."]
 -- Read while the game runs, never shipped: a credit under the thanks.
-local QUESTIE = "Questie and QuestieDB, which Social Diary reads from while the game runs, if you have them installed."
+local QUESTIE = L["Questie and QuestieDB, which Social Diary reads from while the game runs, if you have them installed."]
 
 -- A line of the page, wrapped to the column, `indent` in.
 local function Line(pane, c, text, font, indent, gap)
@@ -43,14 +44,14 @@ end
 local function MapArt(credit)
     local who = credit.text:gsub("^Map art:%s*", "")
     local dungeons = ns.UI.Format.List(credit.dungeons)
-    return dungeons and ("Map art by %s, for %s."):format(who, dungeons) or ("Map art by %s."):format(who)
+    return dungeons and Fmt(L["Map art by %1$s, for %2$s."], who, dungeons) or Fmt(L["Map art by %s."], who)
 end
 
 local function BuildCredits(pane, c)
     local page = SettingsUI.page
 
-    c:Heading("Thanks")
-    Line(pane, c, "Willing impromptu Beta Testers:", FONT.body, 0, 8)
+    c:Heading(L["Thanks"])
+    Line(pane, c, L["Willing impromptu Beta Testers:"], FONT.body, 0, 8)
     page.testers = {}
     for i, name in ipairs(TESTERS) do
         local line = Style.Text(pane, FONT.strong)
@@ -59,7 +60,7 @@ local function BuildCredits(pane, c)
     end
     page.questieCredit = Line(pane, c, QUESTIE, FONT.body, 0, 8)
 
-    c:Heading("Licensing")
+    c:Heading(L["Licensing"])
     page.licensing = {}
     local function Add(text) page.licensing[#page.licensing + 1] = Line(pane, c, text) end
     for _, text in ipairs(LICENCE) do Add(text) end
@@ -67,5 +68,5 @@ local function BuildCredits(pane, c)
     Add(FONTS)
 end
 
-SettingsUI.RegisterSection("credits", { order = 58, label = "Credits", parent = "about",
-    about = "Testers, sources and licences", build = BuildCredits })
+SettingsUI.RegisterSection("credits", { order = 58, label = L["Credits"], parent = "about",
+    about = L["Testers, sources and licences"], build = BuildCredits })

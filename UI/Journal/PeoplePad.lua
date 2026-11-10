@@ -76,6 +76,8 @@
 
 local addonName, ns = ...
 
+local L = ns.L
+
 local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 
@@ -84,33 +86,33 @@ local function Journal() return Pad.Scope("journal") end
 local function Profile() return J.journal and J.journal.profile end
 
 local PROMPT = {
-    title = { { "PADDUP", "PADDDOWN" }, "Go to the list", main = true },
-    open = { "PAD1", "Open their page", main = true },
-    write = { "PAD1", "Write", main = true },
-    done = { "PAD1", "Done writing", main = true },
-    stop = { "PAD2", "Stop writing" },
-    choose = { "PAD1", "Choose", main = true },
-    sorts = { { "PADDLEFT", "PADDRIGHT" }, "Sort another way" },
-    marks = { "PAD1", "Show marks", main = true },
-    map = { "PAD3", "See the map" },
-    person = { "PAD1", "Go to their page", main = true },
-    unfold = { "PAD1", "See the rest", main = true },
-    fold = { "PAD1", "Fold it up", main = true },
-    run = { "PAD1", "Open the map", main = true },
-    runSheet = { "PAD1", "Open the sheet", main = true },
-    story = { "PAD1", "See their story", main = true },
-    seen = { "PAD1", "See where you saw them", main = true },
-    tabs = { "PADDRIGHT", "Go to the tabs" },
-    back = { "PAD2", "Back to the list" },
-    backPlate = { "PAD2", "Back to the plate" },
-    away = { "PAD2", "Put the map away" },
-    note = { "PAD1", "Change the note", main = true },
-    addNote = { "PAD1", "Add a note", main = true },
-    edit = { "PAD1", "Write about them", main = true },
-    add = { "PAD1", "Add to the diary", main = true },
-    glimpse = { "PADDRIGHT", "Go to their page" },
-    backStart = { "PAD2", "Back to the left page" },
-    stopKey = { "PAD2", "Stop listening" },
+    title = { { "PADDUP", "PADDDOWN" }, L["Go to the list"], main = true },
+    open = { "PAD1", L["Open their page"], main = true },
+    write = { "PAD1", L["Write"], main = true },
+    done = { "PAD1", L["Done writing"], main = true },
+    stop = { "PAD2", L["Stop writing"] },
+    choose = { "PAD1", L["Choose"], main = true },
+    sorts = { { "PADDLEFT", "PADDRIGHT" }, L["Sort another way"] },
+    marks = { "PAD1", L["Show marks"], main = true },
+    map = { "PAD3", L["See the map"] },
+    person = { "PAD1", L["Go to their page"], main = true },
+    unfold = { "PAD1", L["See the rest"], main = true },
+    fold = { "PAD1", L["Fold it up"], main = true },
+    run = { "PAD1", L["Open the map"], main = true },
+    runSheet = { "PAD1", L["Open the sheet"], main = true },
+    story = { "PAD1", L["See their story"], main = true },
+    seen = { "PAD1", L["See where you saw them"], main = true },
+    tabs = { "PADDRIGHT", L["Go to the tabs"] },
+    back = { "PAD2", L["Back to the list"] },
+    backPlate = { "PAD2", L["Back to the plate"] },
+    away = { "PAD2", L["Put the map away"] },
+    note = { "PAD1", L["Change the note"], main = true },
+    addNote = { "PAD1", L["Add a note"], main = true },
+    edit = { "PAD1", L["Write about them"], main = true },
+    add = { "PAD1", L["Add to the diary"], main = true },
+    glimpse = { "PADDRIGHT", L["Go to their page"] },
+    backStart = { "PAD2", L["Back to the left page"] },
+    stopKey = { "PAD2", L["Stop listening"] },
 }
 
 local function Run(frame, script, ...)

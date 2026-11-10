@@ -273,6 +273,13 @@ Strips.Strike = Strike
 -- strip:SetNote({ level = { then, now }, seed, tip }), then Layout: a tag
 -- the size of what is written on it, "Level 17" printed with "17" struck
 -- out, "22" in the hand beside it.
+-- The printed words round the old level, and what comes before it (the
+-- strike starts there): "Level 17", or "17" first in another language.
+local function LevelWords(figures)
+    local text = ns.Fmt(ns.L["Level %s##level tag"], "\1")
+    return (text:gsub("\1", figures)), text:match("^(.-)\1") or ""
+end
+
 function Strips.Level(parent)
     local printed, hand, strokes
     local hooks = {}
@@ -284,7 +291,7 @@ function Strips.Level(parent)
             hand:SetFont(Style.NEUTON_ITALIC, L.hand, "")
         end
         local lv = note.level or {}
-        printed:SetText("Level " .. tostring(lv[1] or ""))
+        printed:SetText((LevelWords(tostring(lv[1] or ""))))
         hand:SetText(tostring(lv[2] or ""))
         local w = math.ceil(L.pad + Width(printed) + 2 + L.gap + Width(hand) + 2 + LOOK.overhang + L.pad)
         note.size = { w, L.h }
@@ -308,10 +315,12 @@ function Strips.Level(parent)
         -- Through the old figures, not the word.
         local note = strip.note or {}
         local figures = tostring((note.level or {})[1] or "")
-        printed:SetText("Level ")
+        local words, before = LevelWords(figures)
+        printed:SetText(before)
         local lead = Width(printed)
-        printed:SetText("Level " .. figures)
+        printed:SetText(before .. figures)
         local fw = math.max(1, Width(printed) - lead)
+        printed:SetText(words)
         local pts = Strike(Seed(note.seed or "level"), left + lead, fw, 1, 11)
         for k = 1, #pts - 1 do
             strokes:Stroke(pts[k][1], pts[k][2], pts[k + 1][1], pts[k + 1][2], STRIKE.width, STRIKE.alpha)

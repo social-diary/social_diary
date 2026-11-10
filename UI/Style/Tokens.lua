@@ -349,6 +349,12 @@ local function Darken(r, g, b)
     return ("%02x%02x%02x"):format(r * scale * 255, g * scale * 255, b * scale * 255)
 end
 
+-- Capitals for a heading or a rubric, by the reader's language
+-- (ns.Locale.grammar.Upper).
+function Style.Upper(text)
+    return ns.Locale.grammar.Upper(text)
+end
+
 function Style.Inkify(text)
     if type(text) ~= "string" then return text end
     text = text:gsub("|cn[^:|]-IQ(%d+):", function(quality)
