@@ -46,8 +46,10 @@ diary there would say it, not word for word.
 ## 2. A new locale's files
 
 - `Locales/<id>/Grammar.lua`, first in the TOC of the locale's files. It
-  begins `if not ns.Locale.Is("<id>") then return end`, then replaces what
-  the language needs in `ns.Locale.grammar`:
+  begins `ns.Locale.Offer("<id>", "<the language's own name>")` (so the
+  Language page in Settings lists it on every client: "Deutsch",
+  "Русский"), then `if not ns.Locale.Is("<id>") then return end`, then
+  replaces what the language needs in `ns.Locale.grammar`:
   - `PluralForm(n)` and `PLURAL_FORMS` (CLDR, integers; the rule's row
     goes into `RULES` in `tests/locale.lua`);
   - `Upper`, `Capital` (letters outside ASCII);
