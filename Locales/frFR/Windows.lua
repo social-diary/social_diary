@@ -40,7 +40,7 @@ ns.Locale.Add("frFR", {
     ["Oh — hello. I'm your new diary."] = "Oh, bonjour. Je suis ton nouveau journal.",
     ["Your diary, still here whenever you're ready."] = "Ton journal, toujours là quand tu voudras.",
     ["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."] = "J’écris le nom des personnes que tu rencontres, tout seul, pour que dans quelques mois tu saches encore qui elles étaient. Ce n’est que du crayon, jusqu’à ce que tu repasses quelqu’un à l’encre.",
-    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personnes au crayon.",
+    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "J’ai déjà noté une personne au crayon.|J’ai déjà noté %d personne au crayon.|J’ai déjà noté %d personnes au crayon.",
     -- UI/Windows/Intro/Torn.lua
     ["Open me"] = "Ouvre-moi",
     -- UI/Windows/Intro/Tour.lua
@@ -112,10 +112,10 @@ ns.Locale.Add("frFR", {
     ["You've met once, %s."] = "Tu as croisé cette personne une fois, %s.",
     ["You've crossed paths %1$s, last %2$s %3$s.##zone"] = "Tu as croisé cette personne %1$s, la dernière fois %2$s %3$s.",
     ["You've crossed paths %1$s, last %2$s."] = "Tu as croisé cette personne %1$s, la dernière fois %2$s.",
-    ["Your %1$s match with them, %2$s.##zone"] = "Ton %1$s match avec cette personne, %2$s.",
-    ["Your %s match with them."] = "Ton %s match avec cette personne.",
-    ["Your %1$s match against them, %2$s.##zone"] = "Ton %1$s match contre cette personne, %2$s.",
-    ["Your %s match against them."] = "Ton %s match contre cette personne.",
+    ["Your %1$s match with them, %2$s.##zone"] = "Ta %1$s partie avec cette personne, %2$s.",
+    ["Your %s match with them."] = "Ta %s partie avec cette personne.",
+    ["Your %1$s match against them, %2$s.##zone"] = "Ta %1$s partie contre cette personne, %2$s.",
+    ["Your %s match against them."] = "Ta %s partie contre cette personne.",
     ["Somewhere %s.##zone"] = "Quelque part %s.",
     ["Placing the toast"] = "Placement de l’alerte",
     ["Your toasts"] = "Tes alertes",

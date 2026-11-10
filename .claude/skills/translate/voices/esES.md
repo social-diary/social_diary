@@ -17,6 +17,14 @@ native's first look.
   (no "el jugador", "cansado"): use the name, a verb, or "esa persona".
   Plural "they" (a group) is the masculine-neutral plural only where
   unavoidable ("se vieron"). (?)
+- **Gender from the game** (second pass, 10 Nov 2026): a participle or
+  adjective that agrees with the reader or a named character takes the
+  forms, `<you:Al nuevo titular/A la nueva titular>`, `<1:solo/sola>`
+  (`Locales/Locale.lua`, "A person's gender"). Only where the key names
+  the character (a value that is a player's name) or the reader; a word
+  about a third person in a key with no name stays masculine or is said
+  impersonally ("Se añadió al diario", not "Añadido al diario").
+  Verbs in the pretérito need no forms, so most lines need none.
 - `{you}` braces: the brace holds the **verb phrase with its reader form**
   ("{Mataste} a Bram"); the other-character form is the same phrase in
   the third person with the name before it ("%s mató"). A braced word is
@@ -38,13 +46,21 @@ native's first look.
 - Inverted marks ¿ ¡ are required. Exclamation marks only where the
   English has its two allowed ones.
 - Dates: "6 de octubre", with the year only when not this year: "6 de
-  octubre de 2025". Weekdays lower-case ("el lunes"). Time 24 h, "18:30".
-  No ordinals in dates. Months lower-case. No zero padding.
-- Numbers in words up to ten, as English; figures after. Decimal comma,
+  octubre de 2025"; short "6 oct", "6 oct 2025". Weekdays lower-case ("el
+  lunes"). No ordinals in dates. Months lower-case. No zero padding.
+- Time 24 h, the hour unpadded (`G.Clock`): "18:30", "9:05". In a
+  sentence "a las 18:30", and the words always write "a las %s": `G.Agree`
+  turns "las 1:05" into "la 1:05".
+- Numbers in words up to ten, as English; figures after. The word for 1
+  is "un"; where it arrives as a value before a feminine noun, mark it
+  `%s<f>` and `G.Agree` writes "una" ("victorias: %2$s<f>"). Where the
+  count is the plural's own, the first form says it whole instead ("cayó
+  uno|cayeron %s", "una caza lenta|%s cazas lentas"). Decimal comma,
   thousands separated by a no-break space or a dot (follow the helpers).
   Number and unit together with the no-break space the code uses.
-- Ordinals: "25.º" (`grammar.Ordinal`); words "primero, segundo…" take
-  the noun's gender per `##context` key.
+- Ordinals: "25.º", and "25.ª" for a death or a match (`grammar.Ordinal`
+  with the word list's context); words "primero, segundo…" take the noun's
+  gender per `##context` key ("primer intento", "primera partida").
 - **No middle dots, ever.**
 - Case: sentence case. Month and day names lower-case. Proper names keep
   their case (*Social Diary*, *Tu diario* for "Your Diary" (?)).
@@ -105,6 +121,8 @@ cards, key-binding column, tickets, Settings labels, tab names, map keys,
 not "Un reencuentro con alguien").
 
 ## Not settled
-- Gender of "they" for a stranger; gendered ordinal (º/ª) in
-  `Format.Ordinal` (no noun to agree with).
+- Gender of "they" for a stranger with no name in the key ("Un
+  adversario se unió a tu grupo", "Añadido"): masculine for now.
 - Whether "Tu diario" or "Mi diario" fits the tab name.
+- "You and they" is the third person plural ("Se cruzaron una vez",
+  "Entre tú y Feivel murieron…"), never vosotros ("os cruzasteis"). (?)

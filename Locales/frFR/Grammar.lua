@@ -36,9 +36,10 @@ G.Capital = function(text)
     return lead .. Up(first) .. rest
 end
 
--- "25e", "1er", and "1re" for a feminine noun: the death ("mort") of the
--- word lists.
-local FEMININE = { death = true }
+-- "25e", "1er", and "1re" for a feminine noun: the death ("mort") and the
+-- match ("partie") of the word lists. A noun changed here changes in the
+-- words too (`first##death`, `first##match`: "première").
+local FEMININE = { death = true, match = true }
 G.Ordinal = function(n, context)
     if n == 1 then return FEMININE[context] and "1re" or "1er" end
     return n .. "e"
@@ -81,22 +82,33 @@ G.Genitive = De
 
 -- The reader's words, each with its form for another character's name.
 -- Filled after the translation (every braced word in Locales/frFR/).
+-- Where a participle agrees with the reader, the words hold both braces
+-- in the reader's forms, "<you:{t’a sauvé}/{t’a sauvée}>": the form is
+-- picked first (by the sex of the character the row is about), then
+-- looked up here, so each form has its line.
 G.YOU_FOR = {
     -- The reader as the subject: "%s a tué".
-    ["tu as péri"] = "%s a péri", ["tu y as péri"] = "%s y a péri",
-    ["tu as succombé"] = "%s a succombé", ["tu as probablement succombé"] = "%s a probablement succombé",
+    ["tu es mort"] = "%s est mort", ["tu es morte"] = "%s est morte",
+    ["tu y es mort"] = "%s y est mort", ["tu y es morte"] = "%s y est morte",
+    ["tu as été tué"] = "%s a été tué", ["tu as été tuée"] = "%s a été tuée",
+    ["tu y as été tué"] = "%s y a été tué", ["tu y as été tuée"] = "%s y a été tuée",
     ["tu as tué"] = "%s a tué", ["tu as atteint"] = "%s a atteint",
     ["tu as chuchoté"] = "%s a chuchoté", ["tu as partagé"] = "%s a partagé",
     ["tu as fui"] = "%s a fui", ["tu as fait"] = "%s a fait", ["tu as gagné"] = "%s a gagné",
     ["tu as perdu"] = "%s a perdu", ["tu as abandonné"] = "%s a abandonné",
     ["vous avez tous les deux atteint"] = "%s et cette personne ont tous deux atteint",
     ["toi et"] = "%s et", ["avez"] = "ont",
-    -- The reader as the object: "%s a tué %s" (the name follows the verb).
-    ["t’a tué"] = "a tué %s", ["t’a probablement tué"] = "a probablement tué %s",
-    ["t’a regardé mourir"] = "a regardé mourir %s", ["t’a vu mourir"] = "a vu mourir %s",
-    ["a essayé de te sauver"] = "a essayé de sauver %s", ["t’a sauvé"] = "a sauvé %s",
-    -- The reader after a preposition, or as a possessor.
-    ["toi"] = "%s", ["ton"] = "le",
+    -- The reader as the object: "%s a tué %s" (the name follows the verb,
+    -- so the participle no longer agrees).
+    ["t’a tué"] = "a tué %s", ["t’a tuée"] = "a tué %s",
+    ["t’a probablement tué"] = "a probablement tué %s", ["t’a probablement tuée"] = "a probablement tué %s",
+    ["t’a regardé mourir"] = "a regardé mourir %s", ["t’a regardée mourir"] = "a regardé mourir %s",
+    ["t’a vu mourir"] = "a vu mourir %s", ["t’a vue mourir"] = "a vu mourir %s",
+    ["a essayé de te sauver"] = "a essayé de sauver %s",
+    ["t’a sauvé"] = "a sauvé %s", ["t’a sauvée"] = "a sauvé %s",
+    -- The reader after a preposition, or as a possessor ("ta partie":
+    -- another character's is "la partie", their name not said).
+    ["toi"] = "%s", ["ta"] = "la",
     ["ton groupe"] = function(name) return "le groupe " .. De(name) end,
     ["à tes côtés"] = function(name) return "aux côtés " .. De(name) end,
 }

@@ -1,86 +1,86 @@
 # frFR: code changes the translation needs (for a separate branch)
 
-Found while translating frFR (10 Nov 2026). Nothing here was worked round in
-`Locales/frFR/` except where marked "worked round"; each key was translated
-as well as its template allows. Items that esES also found are marked (= esES n).
-See `esES-code-changes.md`; most of these hooks help both languages.
+Found while translating frFR (10 Nov 2026). The framework items of the
+first pass were built on `translations` (see `../code-changes.md`,
+"Status"), and the second pass over the words (10 Nov 2026) wrote the
+French back where a hook now allows it. What is left open is listed first;
+what was resolved is kept below, short, so a reader can see why a sentence
+reads as it does. Items that esES also found are marked (= esES n).
 
-## Framework faults
+## Still open
 
-1. **Zone and dungeon phrases need article, contraction and elision** (= esES 1).
-   `PLACE` is a plain template, so French cannot say "en Durotar", "dans les
-   Tarides", "au Mulgore", "à Hurlevent", and "près d’Orgrimmar" / "autour
-   d’Orgrimmar" elide before a vowel. Plain `PLACE` is "à %s" / "près de %s" /
-   "autour de %s": wrong for most names. Let `grammar.PLACE[role]` be a function
-   of the bare name, and fill `ZONES`, `DUNGEONS`, `SUBZONES` from the frFR
-   client (not done: names come from the game). Also `PLACE.into` "à %s" is
-   wrong for "The way %s" and "first arrival %s" captions (Caption.lua:146,153).
-2. **Plural rule: 0 and 1 share form 1, so a first form must show the count**
-   (tests/locale.lua). `once|%d times##plural` (UI/Words/Format.lua:192, used
-   by `Format.Times`) is "1 fois" where French says "une fois". Either let
-   the check accept a first form without the count when the locale says so,
-   or give `Times` a French path for 1. Same for `once|%s times##plural`
-   (UI/Journey/Text/Match.lua:31): **left untranslated** (a `%.0s` workaround
-   was written by a translator and removed). Also "a note|%d notes"-style keys
-   had to be reworded to show the count.
-3. **Number words are masculine** (`NUMBER[1]` = "un", `Said(1)`,
-   UI/Journey/Text/Grammar.lua:93): "un chasse", "un fois" break with feminine
-   nouns, so masculine nouns were chosen on purpose (match, décès, mot,
-   moment critique, duel). Needs a gender-aware count (`one##f`), as for
-   ordinals. Rows affected: Hunts, CloseCalls, Deaths, QuestFinales span,
-   Journey "we fell", match page.
-4. **Ordinals have no gender** (= esES 2). `Format.Ordinal(n)`/`grammar.Ordinal`:
-   "1er" is always masculine; "1re", "première" (death ordinals, "11e partie")
-   cannot agree. Pass the noun's context.
-5. **Dates**. `Format.DayMonth` / `DayLabel` write "6 October" shaped dates:
-   French needs **"1er"** for the first of the month ("1er octobre"; today
-   it shows "1 octobre"), and "le" before a bare date ("Écrit le 6 octobre",
-   NoteSheet.lua:237; "Ajouté le …"). Add `grammar.Day(n)`. Also the sitting
-   label (`##month day`, Time.lua:99) builds from `Ordinal`: reads "25e oct.",
-   French writes "25 oct." (= esES 3). The weekday and date key `%1$s, %2$s`
-   (Format.lua:136) takes a comma, French has none ("lundi 6 octobre").
-   Chat dates (Slash.lua:156) are zero padded "06 oct 2026". "Pencilled in
-   until %s" breaks if `Day()` returns "aujourd’hui" ("jusqu’au aujourd’hui").
-   The short date `%1$d %2$s` is shared with the long one.
-6. **Clock**. The code writes `date("%H:%M")` ("18:30", Format.lua:140,
-   Timeline.lua:815,838, Nearby.lua:199, Slash.lua:262,272); French writes
-   "18 h 30". Add `grammar.Clock(h, m)`.
-7. **Decimals** (= esES 5). `%.1f seconds` gives "2.5", French "2,5".
-8. **Genitive and possessive in a template**: `"%s's %2$s"` (a creature's
-   spell, Timeline.lua:122) cannot become "%2$s de %1$s" with elision, so it
-   is written "%1$s : %2$s". `G.Genitive` exists but a template cannot call it.
-   `{your} %s match together`: the other-character form is "le …" and the
-   owner is lost (a function in `YOU_FOR` cannot see the noun).
-9. **Compound subject, singular verb** (= esES 10). Witnesses.Caption: "Numa
-   et un autre" takes "ont essayé" but the deed text is singular. Needs a
-   plural-aware deed.
-10. **`Capital(Did(w))`** (Witnesses.Text Tip/Tips): the deed "t’a sauvé face à
-    Hogger" is capitalised into a line with no subject. Needs a line-start form.
-11. **Creature and item plurals and articles**. `G.Plural` returns the name,
-    so "31 Plainstrider"; `ItemWord` leaves "7 drop" (fallback word).
-    `KillerName` has no article, so the Witnesses option "Article / Disable
-    (“A Hogger”)" does nothing in French (hide it for frFR).
+1. **Zone and dungeon names** (= esES 1). `PLACE` elides ("près d’Orgrimmar")
+   and every name of a list takes its own preposition, but "en Durotar",
+   "dans les Tarides", "au Mulgore", "à Hurlevent" need the client's names:
+   `ZONES`, `DUNGEONS`, `SUBZONES` stay empty until someone exports them from
+   the frFR client. `PLACE.into` "à %s" still reads oddly in "The way %s" and
+   "first arrival %s" captions (Caption.lua:146,153).
+5. **"Pencilled in until %s"** (Person.lua:415) takes the short day, which
+   may be "aujourd’hui": "Au crayon jusqu’au %s" breaks then ("jusqu’au
+   aujourd’hui"). The template cannot choose "au"/"à". "Added %s" and "First
+   met %s" stay "Ajout : %s", "Première rencontre : %s" for the same reason.
+   The `/sd` chat dates keep the code's zero padding ("06 oct.",
+   Slash.lua:156: `date("%d")`).
+8. **Genitive in a template**: `"%1$s's %2$s"` (a creature's spell,
+   Timeline.lua:122) is still "%1$s : %2$s" (no elision in a template).
+   `{your} %s match together`: another character's form is "la %s partie"
+   (`YOU_FOR["ta"] = "la"`), the owner unnamed; a function in `YOU_FOR`
+   cannot see the noun.
+11. **Creature and item plurals** (D3, accepted): `G.Plural` returns the
+    name, so "31 Plainstrider"; `ItemWord` leaves "7 objet" for the fallback.
 12. **Duel series** (Duels/Kind.lua:114-131): the second count cannot agree
-    with "perdu/perdus"; rewritten as a label list ("victoires 3, défaites 1").
-13. **A braced word serving two prepositions**: `{you}##from` for "Atteint par
-    toi" and "l’a pris à toi": the preposition sits outside the brace.
-14. **Markup scan reads a plural separator plus a letter** (`|r`, `|c`, `|n`,
-    `|T`, `|H`, `|A`) as client markup (tests/locale.lua `Markup`): a plural
-    form cannot start with "r", "c", "n" ("nous", "contact"). Two keys were
-    reworded; the check should look for the real escape only after a start or
-    whitespace.
-15. **Same-day English tests**: Reunion/Words.lua `When()` tests the word "ago"
-    (`when:find("ago$")`), English-bound; it works in French only by its digit test.
-16. **List joiner and `Format.List`** (Credits.lua:47): "et" vs commas must come
-    from a hook; check in the client.
-17. **Command tokens stay English** (`recent`, `of`, `city add/remove`,
-    Slash.lua:347-351) and `recent %s` (Candidates.lua:132) shows the raw English
-    row kind: no fault, noted for readers.
-18. **`%-3s` padding counts bytes** (= esES 9) where accents appear.
-19. **Gendered participles for a person** (= esES 12): French agrees with the
-    sex, avoided throughout with avoir-verbs and nouns (“t’a tué” is written
-    without “tuée” for a woman reader). The character's `sex` is stored; a
-    gender-aware `YOU_FOR` and `Format.You` could agree.
+    with "perdu/perdus"; still a label list ("victoires 3, défaites 1").
+22. **Two people's gender at once**: "{You} and %1$s died %2$s between you"
+    would agree with both ("Toi et Numa êtes mortes"); a form picks by one
+    person, so it stays "{Toi et} %1$s {avez} péri".
+20. **The reader's sex at load.** Words that agree with the reader without
+    braces (`"killed you"`, `"Died here"`, the witness deeds) are resolved
+    once, as the locale loads, from `UnitSex("player")`. Check in the client
+    that it is known that early; if not, a woman reads "t’a tué".
+21. **`{you}##subject`** ("{toi}") is the fallback for a dungeon line about
+    the page's own character that has no sentence of its own ("%s snagged
+    it": "Toi l’a pris"). No line reaches it today; if one does, it needs
+    its own template, as `"{You} rolled a %d"` has.
+
+## Resolved (second pass, 10 Nov 2026)
+
+2. **Three plural forms** (1, then 0, then the rest). Form 1 leaves the count
+   out wherever the English's first form does: "une fois", "un combat",
+   "une note", "une mort", "une chasse chanceuse", "une chaîne terminée",
+   "un autre", "une semaine", "une personne y est déjà". `once|%s
+   times##plural` (Match.lua) is written.
+3. **Number words with a feminine noun.** Form 1 holds the article itself
+   now, which covers every count of one; `%s<f>` is used where a number word
+   arrives in a sentence that is not a count of its own noun (the match
+   page's "une partie, une gagnée"). The natural nouns are back: "mort" for
+   "décès", "note" for "mot", "partie" for "match" (the battleground's
+   word, as Settings and the hints already said; `FEMININE.match` in
+   Grammar.lua and `first##match` "première" changed with it).
+4. **Ordinals take their noun**: "1re mort", "1re partie".
+5. (part) **Dates**: "1er octobre" (`G.Day`), "lundi 6 octobre" with no
+   comma, "25 oct." on the sitting label, "Écrit le 6 octobre" (the note's
+   date is always a date).
+6. **Clock**: "18 h 05" in sentences (`G.Clock`).
+7. **Decimals**: "2,5 secondes".
+9. **Several witnesses** take the plural deed (`##many`): "Numa et un autre
+   t’ont sauvée".
+10. **A deed starting a tooltip line** (`##line`): the tooltip's other lines
+    already drop their subject ("A rejoint ton combat", "Ne se battait
+    pas"), so the line form is the singular deed ("T’a sauvée face à
+    Hogger"), with its gender.
+13. `{you}##from` / `{you}##by` are their own keys.
+14. The markup scan reads each plural form on its own: "rencontre il y a
+    moins de %s jours" is back.
+15. `Format.Ago` says whether it gave a date ("le 12 sept.").
+16. The list joiner is `grammar.ListEnd` (French needs none).
+17. The picker's recent reasons have their own words ("t’a chuchoté
+    récemment", "a rejoint ton groupe récemment").
+18. `/sd` lists pad by characters.
+19. **Gender** (D1): participles agree with the reader (`<you:tué/tuée>`;
+    braced, `<you:{t’a sauvé}/{t’a sauvée}>`) and with a named character
+    (`<1:est mort/est morte/a péri>`, the third for a sex not known and for
+    "Cette personne"). Deaths say "tu es morte", "Zuri a été tuée par
+    Hogger" instead of "tu as péri"/"tu as succombé".
 
 ## Names not verified against the client (never filled from memory)
 - `ZONES`, `DUNGEONS`, `SUBZONES`: all empty.
@@ -89,4 +89,5 @@ See `esES-code-changes.md`; most of these hooks help both languages.
   in English; battleground short names "Chanteguerres", "Arathi", "Alterac"
   are from memory.
 - Profession ranks "apprenti / compagnon / expert / artisan", "coup fatal",
-  quest verbs "accepter / rendre", "/dire", "Réglages" vs "Options".
+  quest verbs "accepter / rendre", "/dire", "Réglages" vs "Options",
+  "partie" for a battleground match.

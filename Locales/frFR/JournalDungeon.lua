@@ -100,7 +100,7 @@ ns.Locale.Add("frFR", {
     ["dropped for %s"] = "butin pour %s",
     ["dropped for %s on the way"] = "butin pour %s en chemin",
     ["%1$s, dropped for %2$s"] = "%1$s, butin pour %2$s",
-    ["One item for someone else|%s items for others##plural"] = "%s objet pour quelqu’un d’autre|%s objet pour quelqu’un d’autre|%s objets pour d’autres",
+    ["One item for someone else|%s items for others##plural"] = "Un objet pour quelqu’un d’autre|%s objet pour quelqu’un d’autre|%s objets pour d’autres",
     ["drowning"] = "noyade",
     ["falling"] = "chute",
     ["fatigue"] = "fatigue",
@@ -140,7 +140,7 @@ ns.Locale.Add("frFR", {
     ["Or add them later"] = "Ou ajoute plus tard",
     ["Or press a button"] = "Ou appuie sur un bouton",
     ["Everyone you cross paths with is saved for %s."] = "Chaque personne croisée est gardée pendant %s.",
-    ["One is there already.|%d are there already.##plural"] = "%d personne y est déjà.|%d personne y est déjà.|%d personnes y sont déjà.",
+    ["One is there already.|%d are there already.##plural"] = "Une personne y est déjà.|%d personne y est déjà.|%d personnes y sont déjà.",
 
     -- UI/Journal/HintPad.lua
     ["Put the hint away"] = "Ranger l’astuce",
@@ -217,7 +217,7 @@ ns.Locale.Add("frFR", {
     ["tag: %s"] = "étiquette : %s",
     ["relationship: %s"] = "relation : %s",
     ["met %s##zone"] = "rencontre %s",
-    ["met in the last %s day|met in the last %s days##plural"] = "contact il y a moins de %s jour|contact il y a moins de %s jour|contact il y a moins de %s jours",
+    ["met in the last %s day|met in the last %s days##plural"] = "rencontre il y a moins d’un jour|rencontre il y a moins de %s jour|rencontre il y a moins de %s jours",
     ["%d in the diary"] = "%d dans le journal",
     ["nobody yet"] = "personne pour l’instant",
     ["%1$d of %2$d"] = "%1$d sur %2$d",

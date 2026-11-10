@@ -13,17 +13,25 @@ native's first look. Companion: `frFR-code-changes.md` (framework faults).
   ("Quête terminée ensemble pendant 1 h 5 min").
 - The diary calls itself **le journal** ("D'après ce que le journal a pu
   voir"), never "je". Sample notes the player wrote stay first person.
-- **Gender.** French agrees participles and adjectives with the person. The
-  player's own sex is not known to the text and neither is a stranger's.
-  So: prefer verbs that take **avoir** ("tu as atteint", "tu as tué",
-  "tu as trouvé"), present tense, infinitives and noun phrases. Avoid
-  être-verbs with a participle ("tu es arrivé", "mort", "parti"): reword
-  ("tu as atteint", "tu as succombé", "tu as pris la route"). Never write
-  the "(e)" or middle-dot inclusive forms.
+- **Gender.** French agrees participles and adjectives with the person,
+  and the game says each character's sex (`Locales/Locale.lua`, "A
+  person's gender"). Write the natural sentence and let the forms agree:
+  `<you:tué/tuée>` for the reader, `<1:est mort/est morte/a péri>` for the
+  character named in the key's first value (check at the call site that it
+  is a player character's name). Where braces hold the participle, brace
+  each form whole, `<you:{t’a sauvé}/{t’a sauvée}>`, and give each its
+  line in `YOU_FOR`. "Tu es morte", "Zuri a été tuée par Hogger", "t’a
+  vue mourir" replace the first pass's "tu as péri", "tu as succombé".
+  For another character, a third form covers a sex not known (a typed
+  name, an old row, the value "Cette personne"): an avoir-verb there ("a
+  péri"), never "(e)" or a middle dot. For the reader two forms are
+  enough (the masculine is the fallback). A sentence about two people at
+  once ("toi et Numa") keeps its avoir-verb.
 - Other players: the **name**, or **cette personne** where English says
   "they". Never "il" or "elle" for someone we know nothing about; a group
   "they" is "eux" only where unavoidable, preferably the names or "tous".
-  No "le joueur", no adjectives that agree ("fatigué").
+  No "le joueur", and no adjective that agrees with someone whose sex no
+  value carries ("cette personne", a group).
 - `{you}` braces: the brace holds the **verb phrase in its reader form**
   ("{Tu as tué} Bram"); the other-character form is the third person with
   the name ("%s a tué"). A braced word is looked up lower-case in
@@ -50,23 +58,32 @@ native's first look. Companion: `frFR-code-changes.md` (framework faults).
   Exclamation marks only where the English has its two allowed ones
   ("Ton premier objet vert !").
 - Dates: "6 octobre", with the year only when not this year ("6 octobre
-  2025"). Months and weekdays lower-case ("le lundi"). **1er** for the
-  first of the month: not producible, see code changes. No zero padding.
-- Time: French writes "18 h 30"; the code writes 18:30 (see code
-  changes). In translated text use "18 h 30" only when the template holds
-  the time in words; otherwise leave the code's form.
+  2025"); "1er octobre" (`G.Day`); "lundi 6 octobre", no comma. Months and
+  weekdays lower-case. "le" before a date where the value is always a
+  date ("Écrit le 6 octobre"); where it may be "aujourd’hui" or "hier", a
+  colon instead ("Ajout : hier"). No zero padding (the `/sd` chat dates
+  keep the code's).
+- Time: "18 h 05" in sentences (`G.Clock`); the timeline's time column and
+  the `/sd` lists keep "18:05".
 - Numbers in words up to ten, as English; figures after. Decimal comma.
+- **Counts.** A plural value has three forms: 1, then 0 (singular, with
+  the figure: "0 combat"), then the rest. Form 1 leaves the count out
+  wherever the English's first form does ("une fois", "une note", "un
+  autre"), and holds the article itself, so a number word never has to
+  agree there. Where a number word arrives in another sentence before a
+  feminine noun, mark it `%s<f>` ("un" becomes "une").
   Thousands with a no-break space. Number and unit together by the
   no-break space the code uses.
-- Ordinals: "25e", "1er" (`grammar.Ordinal`); words "premier, deuxième…"
-  take the noun's gender per `##context` key (premier / première).
+- Ordinals: "25e", "1er", "1re" for a feminine noun (`grammar.Ordinal`,
+  its `FEMININE` table: death and match); the words "première,
+  deuxième…" of `##death` and `##match` agree with "mort" and "partie".
 - **No middle dots, ever.**
 - Case: sentence case. Months, days, languages lower-case. Proper names
   keep their case (*Social Diary*, *Ton journal* for "Your Diary" (?)).
 - Elision: the translator writes "d’" / "l’" by hand where the word after
   is fixed text. Before a game-supplied name or a value, rewrite so no
-  elision is needed ("autour de" and "près de" before a bare name break
-  on a vowel name: a framework fault, see code changes).
+  elision is needed; a place's preposition elides in `PLACE` ("près
+  d’Orgrimmar", "autour d’Orgrimmar"), a name's "de" in `G.Genitive`.
 
 ## Game terms (as the frFR client says them; verify in the client)
 | English | French |
@@ -82,6 +99,7 @@ native's first look. Companion: `frFR-code-changes.md` (framework faults).
 | pet (hunter) | familier |
 | dungeon | donjon |
 | battleground | champ de bataille |
+| match (battleground) | partie (?) |
 | World PvP | JcJ en monde ouvert (?) |
 | boss | boss |
 | wipe | anéantissement du groupe (?) |
@@ -127,4 +145,5 @@ not "Des retrouvailles avec quelqu’un").
 - Gender of "they" for a stranger; "cette personne" can get repetitive.
 - "alerte", "fiche", "aperçu" as the diary's words (?).
 - Whether "Ton journal" or "Mon journal" fits the tab name.
-- "1er" and "18 h 30" forms need code (see code changes).
+- "partie" for a battleground match (the first pass mixed "match" and
+  "partie"; the second chose "partie" throughout).

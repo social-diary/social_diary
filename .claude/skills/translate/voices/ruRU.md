@@ -6,22 +6,42 @@ voice (`/copywriter` §1 to §6) because the project has no Russian speaker.
 changes a decision, change it here too. Marked (?) = a guess worth a
 native's first look.
 
-## The one hard problem: gender
-Russian past tense and short participles agree with the subject's gender
-("пришёл / пришла", "убит / убита"). The diary knows neither the reader's
-nor a stranger's. So **no finite past-tense verb or short participle may
-have the reader or a stranger as its singular subject**. The ways out, in
-order of preference:
-1. A noun phrase or the verb's own noun: "12-й уровень, 6 октября",
-   "Встреча в Элвиннском лесу".
-2. An impersonal or indefinite-plural verb: "тебя убили", "тебе встретился
-   Брам", "тебе не удалось".
-3. A dative or genitive construction: "от руки Брама", "у тебя".
-4. A verb whose subject is a thing, the diary or a group (plural past is
-   gender-free: "они встретились", "вы сыграли").
-5. Present tense (the historic present is natural in Russian diaries).
-Past tense of a thing agrees with the thing ("уровень достигнут",
-"поединок завершился"). Where nothing works, leave the key and report it.
+## Gender: the forms in the words (second pass, 10 Nov 2026)
+Russian past tense and short participles agree with the subject's sex.
+The framework now knows it (the game's own sex of each character, and of
+the one playing), so **write the past tense and pick the form**:
+`%1$s <1:погиб/погибла>`, `{Ты} <you:погиб/погибла>` (Locales/Locale.lua,
+"A person's gender"). Never rebuild a sentence round a colon, a noun label,
+an impersonal plural or the historic present only to dodge a gender.
+- `<N:...>` only where value N is a player character's name (from
+  `ns.Characters.Name/FullName`, a group member's first name). Creature,
+  item, boss and zone names cannot be matched: a creature as subject keeps
+  a wording that needs no agreement ("убили тебя", "виновник — %s").
+- **Two forms, masculine first**, is the house default: with the sex not
+  known the first is used, the masculine is Russian's ordinary fallback,
+  and it agrees with the stand-in name "Этот персонаж" (`They`,
+  `They##someone`, `them##killed`). A subject with no name value at all
+  is written "Этот персонаж убил {тебя}" (masculine, agreeing with
+  "персонаж").
+- A **third form** only where the name may be one the player typed (a
+  custom card) or a scoreboard's and the masculine would be a guess: the
+  present ("сбегает"), or the old colon wording inside the form
+  (`%1$s<1: убил тебя/ убила тебя/: тебя убили> %2$s`).
+- A line that starts with the reader: "{Ты} ..." (the capital is in
+  `YOU_FOR`, since string.lower leaves Cyrillic alone), or the capital
+  inside the forms (`<you:Ты отдыхал/Ты отдыхала>`).
+- Where a deed is a value with no name in its template
+  (Witnesses.Deed: "saved you" under a name), no form can reach it: those
+  stay in the present ("спасает тебя"), as do the `##line` deeds.
+- The fallbacks still in use, in order: a noun phrase; an impersonal or
+  indefinite-plural verb where the subject is no person ("тебя убили" by a
+  creature); a dative or genitive; a plural subject ("вы", "мы").
+
+## Number words
+`a##one` is "один"; a number word before a feminine or neuter noun carries
+`<f>` / `<n>` after its placeholder (`%s<f> заметка` gives "одна заметка",
+"две заметки"; `%s<n> поражение`). Nominative only: a number word in a
+case-governed slot ("после двух", "во всех трёх") stays after a colon.
 
 ## Address and people
 - **ты**, lower case, never вы for the player. The diary says "ты" only
@@ -38,16 +58,17 @@ Past tense of a thing agrees with the thing ("уровень достигнут"
 - `{you}` braces: brace the shortest reader word that changes ("{тебя}",
   "{тебе}", "{твоя}"); every braced word goes into `YOU_FOR`, lower case,
   with its form for another character's name. A braced word is **not**
-  capitalised in the other form, so never brace a sentence's first word.
+  capitalised in the other form, so brace a sentence's first word only
+  where that form begins with the name ("{Ты}" is "%s"; never "{твоя
+  группа}" first: "Этого персонажа убила {твоя группа}").
 
 ## Tense
-- **Prose** (Your Diary, profile, tour): the gender rule above; events in
-  noun phrases, impersonal verbs or the present, state in the present
-  ("Ему уже 14-й уровень" is wrong: "Теперь у него 14-й уровень" is
-  gendered only by "него", acceptable for a stranger because the diary
-  says "у этого персонажа 14-й уровень" (?)).
-- **Ledger** (rows, tooltips): short, no subject ("Задание выполнено
-  вместе за 1 ч 5 мин", "убили тебя дважды").
+- **Prose** (Your Diary, profile, tour) and **rows** (timeline, toasts):
+  the past tense, with the gender forms ("Брам погиб рядом с «…»",
+  "Ты задержалась у «…» на полчаса", "Нума спасла тебя"). State in the
+  present ("Брам теперь на 14-м уровне").
+- **Ledger** (tooltip lines, margin notes): short, often no subject
+  ("Задание выполнено вместе за 1 ч 5 мин", "убили тебя дважды").
 
 ## Typography
 - Quotes: **«…»**, nested „…“. Apostrophe not needed. Ellipsis: …
@@ -60,9 +81,9 @@ Past tense of a thing agrees with the thing ("уровень достигнут"
 - Numbers in words up to ten, as English; figures after. Decimal comma.
   Number and unit together with the no-break space the code uses.
   Counts always through the three plural forms (1 / 2-4 / 5+, 21 is "one").
-- Ordinals: "25-й" (`grammar.Ordinal`, masculine only: see the code
-  changes); words "первый, второй…" take the noun's gender per
-  `##context` key.
+- Ordinals: "25-й", "13-я" for a death (`grammar.Ordinal(n, context)`);
+  words "первый, второй…" take the noun's gender per `##context` key.
+  A date's day is the figure: "25 окт" (`grammar.Day`).
 - **No middle dots, ever.**
 - Case: sentence case. Months and weekdays lower case. Proper names keep
   their case (*Social Diary*; "Твой дневник" for "Your Diary" (?)).
@@ -124,7 +145,9 @@ key-binding column, tickets, Settings labels, tab names, map keys,
 not "Ты снова встретил кого-то").
 
 ## Not settled
-- How to say "they" of one stranger without gender.
+- How to say "they" of one stranger where no name is in the template
+  ("They said", "They whispered", the picker's reasons): still "они" or an
+  impersonal plural.
 - "Твой дневник" or "Дневник" as the tab name.
-- Whether a gender-aware record (the character's stored `sex`) is wanted
-  later: see `ruRU-code-changes.md`.
+- Whether the masculine as the unknown-sex default reads well, or a
+  native prefers the third form ("погиб(ла)") in more places.

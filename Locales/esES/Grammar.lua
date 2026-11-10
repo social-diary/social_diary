@@ -40,6 +40,24 @@ G.Day = function(n) return tostring(n) end
 -- "3,2"
 G.DECIMAL = ","
 
+-- The hour unpadded, 24 h: "18:30", "9:05", "1:05".
+G.Clock = function(h, m) return ("%d:%02d"):format(h, m) end
+
+-- The last pass over every filled template (Locales/Locale.lua, ns.Fmt):
+--   "un" before a feminine noun, when the number word arrives as a value:
+--   the words mark it "%s<f>" ("victorias: una"); the mark goes either way.
+--   The hour's article: the templates say "a las %s", and one o'clock is
+--   "a la 1:05" (Clock gives the hour alone, the article is the words').
+G.Agree = function(text)
+    if text:find("<f>", 1, true) then
+        text = text:gsub("%f[%a]([Uu]n)<f>", "%1a"):gsub("<f>", "")
+    end
+    if text:find("las 1:", 1, true) then
+        text = text:gsub("%f[%a]([Ll])as 1:(%d%d)", "%1a 1:%2")
+    end
+    return text
+end
+
 -- "y" is "e" before a word that starts with the sound i ("e Inés", "e
 -- Hilda"; not before "hie", "y hierro").
 G.ListEnd = function(head, last)

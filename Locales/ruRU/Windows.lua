@@ -38,7 +38,7 @@ ns.Locale.Add("ruRU", {
     ["Oh — hello. I'm your new diary."] = "О, привет. Я твой новый дневник.",
     ["Your diary, still here whenever you're ready."] = "Твой дневник всё ещё здесь, когда придёт время.",
     ["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."] = "Я сам записываю всех, кого ты встречаешь, чтобы и через месяцы было ясно, кто это был. Это лишь карандаш, пока ты не запишешь кого-то чернилами.",
-    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "Я уже записал карандашом %d человека|Я уже записал карандашом %d человека|Я уже записал карандашом %d человек",
+    ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "Я уже записал карандашом %d человека.|Я уже записал карандашом %d человека.|Я уже записал карандашом %d человек.",
     -- UI/Windows/Intro/Torn.lua
     ["Open me"] = "Открой меня",
     -- UI/Windows/Intro/Tour.lua

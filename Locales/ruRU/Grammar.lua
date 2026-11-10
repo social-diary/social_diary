@@ -81,7 +81,11 @@ G.Genitive = function(name) return name end
 -- Filled after the translation (every braced word in Locales/ruRU/).
 G.YOU_FOR = {
     ["ты"] = "%s", ["тебя"] = "%s", ["тебе"] = "%s", ["тобой"] = "%s",
-    ["вы"] = "%s и они", ["ты сбегаешь"] = "%s сбегает", ["ты умираешь"] = "%s умирает",
+    -- A sentence's first word: string.lower leaves Cyrillic as it is, so
+    -- the capital is looked up as written.
+    ["Ты"] = "%s",
+    ["у тебя"] = "у %s", ["твоя группа"] = "группа %s",
+    ["вы"] = "%s и они", ["ты умираешь"] = "%s умирает",
     ["твоей руки"] = "руки %s", ["руки твоей группы"] = "руки группы %s",
 }
 

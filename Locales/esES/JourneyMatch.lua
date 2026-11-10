@@ -36,7 +36,7 @@ ns.Locale.Add("esES", {
     ["%1$s  %2$s##ticket"] = "%1$s  %2$s",
     ["The other side"] = "El otro bando",
     ["%1$s, %2$d##side"] = "%1$s, %2$d",
-    ["Turn the board over, %1$d of %2$d"] = "Dar la vuelta a la tabla, %1$d de %2$d",
+    ["Turn the board over, %1$d of %2$d"] = "Dar la vuelta al marcador, %1$d de %2$d",
     ["Turn the roll over, %1$d of %2$d"] = "Dar la vuelta a la lista, %1$d de %2$d",
     ["%1$s killed you %2$s"] = "%1$s te mató %2$s",
     ["your %s match with them"] = "tu %s partida con esa persona",
@@ -53,7 +53,7 @@ ns.Locale.Add("esES", {
     ["Took their flag %s."] = "Capturaste su bandera %s.",
     ["Brought ours back %s."] = "Devolviste la nuestra %s.",
     ["The rest went unwritten."] = "El resto quedó sin escribir.",
-    ["%1$s match, %2$s won, %3$s|%1$s matches, %2$s won, %3$s##plural"] = "Una partida, victorias: %2$s, %3$s|%1$s partidas, victorias: %2$s, %3$s",
+    ["%1$s match, %2$s won, %3$s|%1$s matches, %2$s won, %3$s##plural"] = "Una partida, %2$s<f> ganada, %3$s|%1$s partidas, victorias: %2$s<f>, %3$s",
     ["none##won"] = "ninguna",
     ["You never fell, took their flag %1$s and brought ours back %2$s."] = "Nunca caíste, capturaste su bandera %1$s y devolviste la nuestra %2$s.",
     ["You never fell, took their flag %s."] = "Nunca caíste y capturaste su bandera %s.",
@@ -99,7 +99,7 @@ ns.Locale.Add("esES", {
 
     -- UI/Journey/Text/Tips.lua
     ["Levels %1$d to %2$d"] = "Niveles del %1$d al %2$d",
-    ["%1$s at %2$s##date"] = "%1$s, %2$s",
+    ["%1$s at %2$s##date"] = "%1$s a las %2$s",
     ["From %1$s to %2$s##days"] = "Desde %1$s hasta %2$s",
     ["Today from %1$s to %2$s"] = "Hoy de %1$s a %2$s",
     ["Yesterday from %1$s to %2$s"] = "Ayer de %1$s a %2$s",

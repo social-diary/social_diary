@@ -98,7 +98,7 @@ ns.Locale.Add("esES", {
     ["on the first"] = "a la primera",
     ["after %s"] = "tras %s",
     ["after just %s"] = "tras solo %s",
-    ["dropped"] = "botín",
+    ["dropped"] = "salió",
     ["first##the first"] = "primera",
     ["the first"] = "la primera",
     ["It took %1$s to get %2$s."] = "Costó %1$s conseguir %2$s.",
