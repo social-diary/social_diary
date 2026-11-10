@@ -1224,8 +1224,7 @@ ns.Locale.Add("enUS", {
     ["Who gets one, how often, and where"] = "Who gets one, how often, and where",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "no interactions yet",
-    ["%d interaction on record"] = "%d interaction on record",
-    ["%d interactions on record"] = "%d interactions on record",
+    ["%d interaction on record|%d interactions on record##plural"] = "%d interaction on record|%d interactions on record",
     ["Added %1$s in %2$s  ·  %3$s"] = "Added %1$s in %2$s  ·  %3$s",
     ["Added %1$s  ·  %2$s"] = "Added %1$s  ·  %2$s",
     ["What happened? What should you remember about them?"] = "What happened? What should you remember about them?",

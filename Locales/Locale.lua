@@ -82,3 +82,41 @@ function ns.T(key, ...)
     if select("#", ...) == 0 then return L[key] end
     return ns.Fmt(L[key], ...)
 end
+
+--------------------------------------------------------------------------
+-- Plurals (CLDR). A sentence that counts is one key ending in "##plural",
+-- written as its English forms, singular first, split by "|":
+--
+--   ns.Plural(rows, L["%d interaction on record|%d interactions on record##plural"])
+--
+-- A locale's words hold as many forms as its rule has (German two,
+-- Russian three: "one|few|many"), in CLDR's order. The rule is the
+-- locale's: grammar.PluralForm(n) says which form n takes, 1-based, and
+-- grammar.PLURAL_FORMS how many forms there are. Never decide by n == 1 in
+-- the code: French takes the singular for 0, Russian for 21.
+--
+-- A form may leave the number out ("a note|%d notes") only where its
+-- category is the number 1 alone; tests/locale.lua checks each locale.
+-- WoW's own "|" escapes (|cff..|r, |T..|t) can't go inside a "##plural"
+-- value: colour goes round the call.
+
+-- English (and German) rule: 1 is "one", everything else "other".
+Locale.grammar.PluralForm = function(n) return n == 1 and 1 or 2 end
+Locale.grammar.PLURAL_FORMS = 2
+
+-- The forms of a "##plural" value, in order.
+function Locale.Forms(text)
+    local forms = {}
+    for form in (text .. "|"):gmatch("([^|]*)|") do forms[#forms + 1] = form end
+    return forms
+end
+
+-- `text`'s form for `n`, filled with the values after it, or with `n`
+-- alone when none follow: ns.Plural(3, L["%d fight|%d fights##plural"]).
+function ns.Plural(n, text, ...)
+    local forms = Locale.Forms(text)
+    local i = Locale.grammar.PluralForm(math.abs(n or 0))
+    local form = forms[math.max(1, math.min(i, #forms))]
+    if select("#", ...) == 0 then return ns.Fmt(form, n) end
+    return ns.Fmt(form, ...)
+end

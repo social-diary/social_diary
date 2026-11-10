@@ -56,7 +56,7 @@ function Entry.Meta(guid, draft)
     if not entry then return "" end
     local rows = ns.Interactions.Count(guid)
     local count = rows == 0 and L["no interactions yet"]
-        or Fmt(rows == 1 and L["%d interaction on record"] or L["%d interactions on record"], rows)
+        or ns.Plural(rows, L["%d interaction on record|%d interactions on record##plural"])
     if draft then return "  " .. count end
     local place = entry.addedContext and entry.addedContext.zone
     local day = Format.DayMonth(entry.addedAt, ns.Now())

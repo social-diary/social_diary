@@ -200,6 +200,16 @@ here.
 - **Positional placeholders** (`%1$s`, `%2$d`) whenever a template has two
   or more values, so a translation can reorder them. In one template all
   positional or none. `%%` for a literal percent.
+- **Counts go through `ns.Plural`**, never `n == 1 and L[a] or L[b]`:
+  one key ending in `##plural`, its English forms singular first, split by
+  `|`: `ns.Plural(rows, L["%d interaction on record|%d interactions on record##plural"])`.
+  A locale writes as many forms as its rule has, in CLDR order (German 2,
+  Russian 3: one|few|many); `grammar.PluralForm(n)` picks one (French
+  takes the singular for 0, Russian for 21). A form may drop the number
+  ("a fight|%d fights") only where it means exactly 1, so translations to
+  French or Russian keep the number in every form. No `|cff..|r` inside a
+  plural value: colour goes round the call. The values after the text
+  fill the form; with none, the count does.
 - **One English word, two meanings**: add a context, `L["May##short"]`;
   the English shown is the part before `##`.
 - **Never translate data**: saved values, table keys, event and setting
@@ -215,5 +225,5 @@ here.
 - After changing keys: `luajit Dev/Locale/extract.lua` (rewrites
   `Locales/enUS.lua`), then `luajit tests/run.lua` (tests/locale.lua checks
   every locale in the TOC has words for every key, with matching
-  placeholders) and `luajit tests/run.lua --locale <id>` (the whole suite
+  placeholders, and plural words with one form per category of its rule) and `luajit tests/run.lua --locale <id>` (the whole suite
   under that locale: no addon errors).
