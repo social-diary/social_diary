@@ -147,6 +147,7 @@ do
     Eq(chose.Locale.client, "enUS", "whatever the client's is")
     Eq(chose.L["May##short"], "May", "a language with no words reads the English")
     Eq(chose.Locale.Settle("xxXX"), false, "and it applied")
+    chose.Locale.offered = { chose.Locale.offered[1] }   -- whatever locales the TOC loads
     chose.Locale.Offer("xxXX", "Xxish")
     chose.Locale.Offer("xxXX", "Xxish")
     Eq(#chose.Locale.offered, 2, "a locale is offered once")
