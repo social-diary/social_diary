@@ -14,6 +14,9 @@ local ns = T.Boot()
 local Pad = ns.UI.Pad
 local Menu = Pad.Menu
 local Locale = ns.Locale
+-- Only English here, whatever locales the TOC loads: the test offers its
+-- own made-up languages.
+Locale.offered = { Locale.offered[1] }
 local SettingsUI = ns.UI.Settings
 
 mock.RunTimers()
