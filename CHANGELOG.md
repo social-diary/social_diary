@@ -4,7 +4,7 @@
 
 This is a big update: It brings new Views for Battlegrounds that show many social events. Currently, only Warsong Gulch provides a custom View. The other BG's will follow.
 
-Next, Social Diary is now available in Spanish, French, Russian and (soon) German! These new languages are still early, so expect some Text clipping and odd wording.
+Next, Social Diary is now available in Spanish, French, Russian and German! These new languages are still early, so expect some Text clipping and odd wording.
 
 ### Shiny new Things
 
