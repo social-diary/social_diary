@@ -363,6 +363,7 @@ end
 
 local function BuildSheet()
     local panel = ns.UI.Chrome.Panel("SocialDiaryEntryFrame", SHEET_W, SHEET_H, nil, { bare = true, closeOutset = 10 })
+    ns.UI.Scale.Register(panel, SHEET_W, SHEET_H)
     Style.EntryPaper(panel)
     Style.Ribbon(panel, SHEET_W - 96, 22, 82)
     ns.On("SD_PAPER_CHANGED", function() panel:ApplyGrain() end)

@@ -82,7 +82,7 @@ local MODULES = {
     YourDiary = true, JourneyPlate = true, JourneyText = true, JourneyLook = true, JourneyMargin = true,
     DungeonMap = true, DungeonPage = true, Hints = true, HintSlip = true,
     PersonText = true, PersonStrips = true, PersonPlate = true, Clippings = true, PersonHeader = true,
-    Glimpse = true, Pad = true,
+    Glimpse = true, Pad = true, Scale = true,
 }
 
 local function IsModule(v)

@@ -114,6 +114,11 @@ local ACCOUNT_SETTINGS = {
     -- update (2.x to 3.0), linking the Changelog (Core/Hints.lua's
     -- Installed). Its own switch, beside Show hints.
     showUpdateHint = true,
+    -- "Diary Size" (Settings > Interface): the diary's windows, in percent
+    -- of their designed size, 100 to 200, held to what fits the screen
+    -- (UI/Kit/Scale.lua). The account's: a screen is the person's, not the
+    -- character's.
+    diaryScale = 100,
     -- The diary's language: "auto" (the client's) or a locale's id
     -- ("deDE"). Read as the files load, before InitDB, straight from the
     -- saved table (Locales/Locale.lua); a change applies after a reload.

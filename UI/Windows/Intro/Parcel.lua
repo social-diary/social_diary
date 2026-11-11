@@ -39,14 +39,22 @@ local function Build()
     BuildTorn(host, S)
     host.counts = { teeth = S.teeth, textures = S.made }
 
+    -- Where it hangs: the state's middle on the screen's, SCENE.y below
+    -- its top, in the scene's own units (so at the diary's size too).
+    function host:Place()
+        local state = self.state or "wrapped"
+        self:ClearAllPoints()
+        self:SetPoint("TOP", UIParent, "TOP", SCENE.w / 2 - (SCENE.middle[state] - SCENE.left), SCENE.y)
+    end
+    -- SCENE.scale times the diary's size (UI/Kit/Scale.lua).
+    ns.UI.Scale.Register(host, SCENE.w, SCENE.h - SCENE.y, { base = SCENE.scale, place = host.Place })
+
     function host:Lay()
         local flat = ns.Setting("flatSheets") == true
         local state = ns.Setting("parcelOpened") and "torn" or "wrapped"
         local maker = UnitFactionGroup("player") == "Horde" and "goblin" or "gnome"
         self.state, self.maker = state, maker
-        self:SetScale(SCENE.scale)
-        self:ClearAllPoints()
-        self:SetPoint("TOP", UIParent, "TOP", SCENE.w / 2 - (SCENE.middle[state] - SCENE.left), SCENE.y)
+        self:Place()
         for _, shadow in ipairs(S.shadows) do shadow:SetShown(not flat and not shadow.never) end
         for _, edge in ipairs(self.edges) do edge:Lay(flat) end
         self.wrapped:SetShown(state == "wrapped")

@@ -237,6 +237,8 @@ local function Build()
     local panel = ns.UI.Chrome.Panel("SocialDiaryJournalFrame", WIDTH, HEIGHT, nil, { bare = true, closeOutset = 8 })
     -- Below the entry dialog, which opens on top of it from the Edit button.
     panel:SetFrameStrata("HIGH")
+    -- As large as the player chose (Settings > Interface, UI/Kit/Scale.lua).
+    ns.UI.Scale.Register(panel, WIDTH, HEIGHT)
     Style.Cover(panel, COVER, COVER + LEFT_PAGE)
 
     panel.book = Style.Book(panel, LEFT_PAGE, BOOK_W, BOOK_H)

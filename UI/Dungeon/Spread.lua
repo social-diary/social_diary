@@ -560,6 +560,11 @@ local function Build()
         if event == "PLAYER_REGEN_ENABLED" then return Settle() end
         if self:IsShown() and J.visit then DungeonPage.Refresh() end
     end)
+    -- The book grew or shrank under it (the diary's size, UI/Kit/Scale.lua):
+    -- fitted again at the book's new scale.
+    ns.UI.Scale.OnChange(function()
+        if host:IsShown() and J.visit then DungeonPage.Refresh() end
+    end)
     -- Shut with the book; opened again, the book opens on the person.
     book:HookScript("OnHide", function() DungeonPage.Close(true) end)
     Settle()

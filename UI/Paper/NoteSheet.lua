@@ -303,6 +303,8 @@ local function BuildQuick()
     host:SetToplevel(true)
     host:Hide()
     UISpecialFrames[#UISpecialFrames + 1] = "SocialDiaryNoteFrame"
+    -- As large as the book (Settings > Interface, UI/Kit/Scale.lua).
+    ns.UI.Scale.Register(host, SHEET.w + 60, SHEET.h + 60)
 
     host.note = ns.UI.NoteSheet.New(host)
     host.note.onDone = function() host:Hide() end

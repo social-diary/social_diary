@@ -68,6 +68,7 @@ local FILES = {
     "hints",
     "hints_ui",
     "paper_grain",
+    "diary_scale",
     "minimap",
     "sightings",
     "timeline",

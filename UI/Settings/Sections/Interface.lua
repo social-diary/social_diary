@@ -1,6 +1,6 @@
 -- Settings: Interface (UI/Settings/Page.lua lists the sections; the
 -- controls are UI/Settings/Kit.lua's): tooltips, the minimap button, how
--- the book looks, the hints on the pages and the one after a major update.
+-- the book looks and how large, the hints on the pages and the one after a major update.
 -- Its subpages are Toasts.lua, Shortcuts.lua, Dungeons.lua and Language.lua
 -- beside it,
 -- always listed under it.
@@ -18,6 +18,10 @@ local INDENT = Kit.INDENT
 
 -- The paper's grain, in percent of its designed strength.
 local GRAIN = { min = 0, max = 200, step = 25, unit = "%", mark = 100 }
+-- The diary's size, in percent (UI/Kit/Scale.lua). Settled: the book it
+-- lies in grows once the mouse lets go, not under the drag.
+local RANGE = ns.UI.Scale.RANGE
+local SIZE = { min = RANGE.min, max = RANGE.max, step = RANGE.step, unit = "%", mark = 100, settle = true }
 
 local function BuildInterface(pane, c)
     local page = SettingsUI.page
@@ -33,6 +37,9 @@ local function BuildInterface(pane, c)
 
     c:Heading(L["Look and Feel"])
     page.paperGrain = Kit.Slider(c, L["Paper Texture Intensity"], "paperGrain", GRAIN, Style.SetGrain)
+    page.diaryScale = Kit.Slider(c, L["Diary Size"], "diaryScale", SIZE,
+        function() ns.UI.Scale.Apply() end,
+        L["On a smaller screen, the diary grows only as large as fits. Applies to every character."])
     page.bookStack = Switch(c, L["Simulate Page Turns"], "bookStack", nil,
         function() ns.UI.Journal.TurnStack() end,
         L["New Diary entries add pages, and the book turns to the new page."])

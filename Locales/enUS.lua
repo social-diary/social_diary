@@ -1414,6 +1414,8 @@ ns.Locale.Add("enUS", {
     ["Show a button on the minimap"] = "Show a button on the minimap",
     ["Look and Feel"] = "Look and Feel",
     ["Paper Texture Intensity"] = "Paper Texture Intensity",
+    ["Diary Size"] = "Diary Size",
+    ["On a smaller screen, the diary grows only as large as fits. Applies to every character."] = "On a smaller screen, the diary grows only as large as fits. Applies to every character.",
     ["Simulate Page Turns"] = "Simulate Page Turns",
     ["New Diary entries add pages, and the book turns to the new page."] = "New Diary entries add pages, and the book turns to the new page.",
     ["Flat paper only"] = "Flat paper only",

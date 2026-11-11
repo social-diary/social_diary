@@ -48,8 +48,9 @@ local function BuildRow(panel, index)
 end
 
 local function Build()
-    local panel = ns.UI.Chrome.Panel("SocialDiaryPickerFrame", 380,
-        52 + MAX_ROWS * ROW_HEIGHT + 40, L["Remember this"])
+    local height = 52 + MAX_ROWS * ROW_HEIGHT + 40
+    local panel = ns.UI.Chrome.Panel("SocialDiaryPickerFrame", 380, height, L["Remember this"])
+    ns.UI.Scale.Register(panel, 380, height)
 
     panel.rows = {}
     for i = 1, MAX_ROWS do

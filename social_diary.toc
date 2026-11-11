@@ -124,6 +124,8 @@ Core/ChangelogData.lua
 Core/Slash.lua
 
 UI/Kit/Chrome.lua
+# The diary's size (Settings > Interface): the windows register as they are built.
+UI/Kit/Scale.lua
 UI/Kit/List.lua
 UI/Words/Format.lua
 # The Style files in UI/Style/Tokens.lua's order: Draw before Book, which

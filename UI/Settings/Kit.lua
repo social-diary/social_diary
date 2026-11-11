@@ -18,6 +18,7 @@ local FIELD_W, UNIT_W = 34, 34  -- a number's line, and the word after it
 local SCALE_W, READING_W = 170, 38  -- a slider's scale, and what it reads, on the right
 local CHOICE_GAP = 12            -- between a choice's sentence and what is chosen
 local SECTION_GAP = 14
+local HINT_GAP = 2               -- between a slider's row and its hint, as a switch's
 
 --------------------------------------------------------------------------
 -- Laying out a column
@@ -113,8 +114,10 @@ local function Column(parent, x, y, width)
 
     -- "Paper Texture Intensity ---+--- 100%": the sentence on the left and the
     -- scale and its reading on the right, the reading on the column's edge.
-    -- `.slider` is the scale; `spec` is Style.Slider's.
-    function column:Slider(text, spec, get, set)
+    -- `.slider` is the scale; `spec` is Style.Slider's. `hint`, if any, is
+    -- its small print, close under the row and across the column, as a
+    -- switch's is under its label (the scale leaves no room beside it).
+    function column:Slider(text, spec, get, set, hint)
         local row = CreateFrame("Frame", nil, self.parent)
 
         row.label = Style.Text(row, FONT.body)
@@ -128,13 +131,23 @@ local function Column(parent, x, y, width)
         row.slider.reading:SetPoint("RIGHT", row, "TOPRIGHT", 0, 1 - row.slider.height / 2)
 
         local height = math.max(18, row.label:GetStringHeight())
+        if hint then
+            row.hint = Style.Text(row, FONT.small)
+            row.hint:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(height + HINT_GAP))
+            row.hint:SetWidth(self.width)
+            row.hint:SetText(hint)
+            height = height + HINT_GAP + row.hint:GetStringHeight()
+        end
         row:SetSize(self.width, height)
         row.group = self.group
 
         function row:Refresh() self.slider:Refresh() end
-        function row:SetAvailable(available) self.slider:SetAvailable(available) end
+        function row:SetAvailable(available)
+            self.slider:SetAvailable(available)
+            if self.hint then self.hint:SetAlpha(available and 1 or 0.45) end
+        end
 
-        return self:Place(row, height)
+        return self:Place(row, height, nil, hint and 8)
     end
 
     -- "Write the diary in ......... English": the sentence on the left and
@@ -248,12 +261,13 @@ local function Number(c, text, unit, key, min, max, after)
     return row
 end
 
-local function Slider(c, text, key, spec, after)
+-- `hint` is its small print, as a switch's.
+local function Slider(c, text, key, spec, after, hint)
     local page = SettingsUI.page
     local row = c:Slider(text, spec, function() return Saved()[key] end, function(v)
         ns.SetSetting(key, v)
         if after then after(v) end
-    end)
+    end, hint)
     page.controls[#page.controls + 1] = row
     return row
 end

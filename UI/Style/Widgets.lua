@@ -712,7 +712,11 @@ end
 -- place, says the value with `spec.unit` after it. `spec` is min, max, step,
 -- unit, and `mark`, the value whose tick is longer, if any. Refresh shows
 -- `get()`, put on the scale; only a move to another step reaches `set`, so
--- a drag writes once per step.
+-- a drag writes once per step. With `spec.settle`, what the mouse moves
+-- while it is held down is only read out, and written once it lets go (or
+-- the slider is hidden under it): for a setting that changes the window
+-- the slider lies on, which would otherwise grow under the drag. A step
+-- from the keyboard or the pad (Nudge) is written at once.
 function Style.Slider(parent, width, spec, get, set)
     local INK, STRONG = Style.INK, Style.INK_STRONG
     local min, max, step = spec.min, spec.max, spec.step
@@ -783,6 +787,12 @@ function Style.Slider(parent, width, spec, get, set)
         if available then self:Enable() else self:Disable() end
     end
 
+    -- What the scale shows, written if it is not what is kept.
+    local function Write(self)
+        local stepped = Style.OnScale(self:GetValue() or min, min, max, step)
+        if stepped ~= Style.OnScale(get(), min, max, step) then set(stepped) end
+    end
+
     slider:SetScript("OnEnter", function(self) Ink(not self.unavailable) end)
     slider:SetScript("OnLeave", function() Ink(false) end)
     slider:SetScript("OnValueChanged", function(self, value)
@@ -794,8 +804,20 @@ function Style.Slider(parent, width, spec, get, set)
             return
         end
         Show(stepped)
-        if stepped ~= Style.OnScale(get(), min, max, step) then set(stepped) end
+        if not self.held then Write(self) end
     end)
+    if spec.settle then
+        slider:SetScript("OnMouseDown", function(self)
+            if not self.unavailable then self.held = true end
+        end)
+        local function LetGo(self)
+            if not self.held then return end
+            self.held = nil
+            Write(self)
+        end
+        slider:SetScript("OnMouseUp", LetGo)
+        slider:SetScript("OnHide", LetGo)
+    end
 
     return slider
 end

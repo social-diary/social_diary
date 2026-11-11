@@ -14,6 +14,7 @@ Next, Social Diary is now available in Spanish, French, Russian and (soon) Germa
 - The Addon is now translated into Spanish, French and Russian (thanks CarnVanBeck)
     - A new _Language_ page in _Settings_ picks the diary's language
     - Corrections to the machine translations are welcome
+- Theres now a UI Scale Option inside _Interface_ Settings
 
 ## [3.0.2]
 

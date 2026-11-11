@@ -95,25 +95,32 @@ local WARN_RULE = { inset = 4, outer = 2, gap = 2, inner = 1, alpha = 0.85 }
 --------------------------------------------------------------------------
 
 -- Where the card lies (settings.toastAt): its top's offset from the top
--- middle of the screen, so it stays put across resolutions the way the
--- default does. Nil for the default, CARD.top below the top.
+-- middle of the screen, in the screen's units, so it stays put across
+-- resolutions and diary sizes the way the default does. Nil for the
+-- default, CARD.top below the top.
 local function Anchor(host)
     local at = ns.Setting("toastAt")
     local x, y = 0, CARD.top
     if type(at) == "table" and type(at.x) == "number" and type(at.y) == "number" then x, y = at.x, at.y end
+    -- An offset is measured in the card's own units, which the diary's
+    -- size (UI/Kit/Scale.lua) makes larger than the screen's.
+    local scale = host:GetScale() or 1
     host:ClearAllPoints()
-    host:SetPoint("TOP", UIParent, "TOP", x, y)
+    host:SetPoint("TOP", UIParent, "TOP", x / scale, y / scale)
 end
 
 -- Reads back where it was dragged to, keeps that, and anchors it there
--- again. The frame is the screen's child at the same scale, so the two
--- measure alike. Not the client's own record of a frame moved by hand:
--- that one the addon could not move or reset.
+-- again. The frame is the screen's child at the diary's size: what it
+-- reads of itself is in its own units, the screen's times its scale, and
+-- kept in the screen's. Not the client's own record of a frame moved by
+-- hand: that one the addon could not move or reset.
 local function Remember(host)
     local x, top = host:GetCenter(), host:GetTop()
     local screenX, screenTop = UIParent:GetCenter(), UIParent:GetTop()
     if x and top and screenX and screenTop then
-        ns.db.settings.toastAt = { x = math.floor(x - screenX + 0.5), y = math.floor(top - screenTop + 0.5) }
+        local scale = host:GetScale() or 1
+        ns.db.settings.toastAt = { x = math.floor(x * scale - screenX + 0.5),
+            y = math.floor(top * scale - screenTop + 0.5) }
     end
     host:SetUserPlaced(false)
     Anchor(host)
@@ -142,6 +149,9 @@ local function Build()
     host:SetMovable(true)
     host:SetClampedToScreen(true)
     host:SetClampRectInsets(30, -30, -30, 30)
+    -- As large as the diary (UI/Kit/Scale.lua), before it is anchored:
+    -- its offset is read at its scale. A new size lays it where it was.
+    ns.UI.Scale.Register(host, CARD.w + 60, CARD.h + 60, { place = Anchor })
     Anchor(host)
     host:Hide()
 
