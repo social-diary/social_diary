@@ -286,6 +286,10 @@ local function Rubric(strip)
     end
     return n
 end
+-- (the first Warsong is told by time, tests/battleground_story_ui.lua: its
+-- board is the board view, from the story's corner stub)
+Check(bg.story ~= nil and not Strips("clip"), "a Warsong told by time opens on its board")
+YD.OpenMatchBoard(true)
 local clip = Strips("clip")
 Check(clip, "the board not clipped in")
 Check(Rubric(clip) > 0, "Tester (in the diary) not underlined in rubric")
@@ -323,6 +327,7 @@ Eq(page.mode .. ":" .. tostring(page.session), "matches:" .. evening.key, "the w
 
 -- Repeats: the third Warsong's strips say which match it was with them.
 YD.OpenMatch(evening.matches[3].id)
+YD.OpenMatchBoard(true)
 local sayings = {}
 for k = 1, 5 do
     local list = bg.used["strip:note" .. k]
@@ -368,6 +373,7 @@ Matches.Rollup(nil, 0)
 local first = evening.matches[1]
 Check(first.rolled and first.lost > 0, "setup: the first Warsong rolled up")
 YD.OpenMatch(first.id)
+YD.OpenMatchBoard(true)
 Check(bg.plan.lost ~= nil, "the lost records not drawn")
 local lostSaid
 for _, fs in ipairs(Strips("clip").bg.texts) do

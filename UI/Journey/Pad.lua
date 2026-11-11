@@ -160,6 +160,13 @@ local PROMPT = {
     turnBoard = { "PAD1", L["Turn the board over"], main = true },
     turnRoll = { "PAD1", L["Turn the roll over"], main = true },
     backEvening = { "PAD2", L["Back to the battlegrounds"] },
+    -- A Warsong told by time (battleground-page-v2.md, "With the
+    -- controller"). Worded by /copywriter (11 Nov).
+    board = { "PAD1", L["See the board"], main = true },
+    story = { "PAD1", L["Back to the match"], main = true },
+    line = { "PAD1", L["Look along the line"], main = true },
+    backLine = { "PAD2", L["Back to the line"] },
+    backStory = { "PAD2", L["Back to the match"] },
 }
 
 -- The whole map with the pad: `speed` card px a second the right stick
@@ -408,12 +415,68 @@ function BuildMatch(f, page)
                 local now = scope.focus
                 if now then now:Focus(ticket, "match") end
             end
-        elseif not (kind == "ticket" or kind == "turn" or ((kind == "row" or kind == "hand") and pad.kept)) then
-            -- (the title, a strip, a stranger by hand, your note, the lost
-            -- records: only the tooltip)
+        elseif kind == "stub" then
+            -- (a Warsong told by time: its board view opens, the pad on its
+            -- title; B there comes back onto the stub)
+            item.press = function()
+                hit:Click("LeftButton")
+                local now = scope.focus
+                if now then now:Focus("title", "match") end
+            end
+        elseif kind == "story" then
+            -- (the board view's "Back to the match": onto the stub)
+            item.press = function()
+                hit:Click("LeftButton")
+                local now = scope.focus
+                if now then now:Focus("stub", "match") end
+            end
+        elseif not (kind == "ticket" or kind == "turn"
+            or ((kind == "row" or kind == "hand" or kind == "strip") and pad.kept)) then
+            -- (the title, a strip of no one in the diary, a stranger by
+            -- hand, your note, the lost records: only the tooltip)
             item.press = function() end
         end
-        f:Add("match", item)
+        -- (a line's marks are walked only inside it: group `storymarks`)
+        if kind ~= "mark" then f:Add("match", item) end
+    end
+    -- A Warsong told by time (UI/Journey/MatchStory.lua): each line is a
+    -- stop of its own (outlined, as a plate is); A takes the pad in among
+    -- its marks, in time along it (its branches' forks, the scores, the
+    -- stains and the crosses: their tooltips only); B leaves onto the line.
+    local lines = YourDiary.StoryLines()
+    if scope.inStoryLine and not lines[scope.inStoryLine] then
+        scope.inStoryLine = nil
+        if f.group == "storymarks" then f:Within("match") end
+    end
+    for _, line in ipairs(lines) do
+        local b = line.box
+        local corners = { { b.x, b.y }, { b.x + b.w, b.y }, { b.x + b.w, b.y + b.h }, { b.x, b.y + b.h } }
+        local board = page.bg and page.bg.board
+        f:Add("match", {
+            key = line.key, kind = "line", line = line.i, marks = #line.marks,
+            available = function() return board ~= nil and board:IsShown() end,
+            center = function() return b.x + b.w / 2, -(b.y + b.h / 2) end,
+            outline = function() return { anchor = board, corners = corners, level = board:GetFrameLevel() + 1 } end,
+            enter = function() end, leave = function() end,
+            press = function()
+                if #line.marks == 0 then return end
+                scope.inStoryLine = line.i
+                Pad.Refresh()
+                if not (scope.focus and scope.focus:EnterGroup("storymarks")) then scope.inStoryLine = nil end
+            end,
+        })
+    end
+    local line = scope.inStoryLine and lines[scope.inStoryLine]
+    if line then
+        for _, hit in ipairs(line.marks) do
+            local b = hit.box
+            f:Add("storymarks", {
+                key = hit.pad.key, frame = hit, ring = true,
+                available = function() return hit:IsShown() end,
+                center = function() return b.x + b.w / 2, -(b.y + b.h / 2) end,
+                press = function() end,
+            })
+        end
     end
 end
 
@@ -541,6 +604,7 @@ function scope.build(f)
     f:Group("full", { mode = "spatial", reveal = RevealOnMap })
     f:Group("run", { mode = "spatial" })
     f:Group("match", { mode = "spatial" })
+    f:Group("storymarks", { mode = "spatial" })
     f:Group("title", { mode = "list" })
 
     -- (a ribbon just turned: the title alone, until the first D-pad press)
@@ -693,6 +757,23 @@ function scope.back()
     if at and at.group == "marks" then
         scope.inPlate = nil
         f:EnterGroup("page")
+        return true
+    end
+    if at and at.group == "storymarks" then
+        -- (out of a story's line, onto the line)
+        local key = "line:" .. tostring(scope.inStoryLine)
+        scope.inStoryLine = nil
+        Pad.Refresh()
+        if not f:Focus(key, "match") then f:EnterGroup("match") end
+        return true
+    end
+    if at and at.group == "match" and page.mode == "match" and page.matchBoard then
+        -- (the board view of a Warsong told by time: back to its story,
+        -- onto the stub it was opened from)
+        Style.PlaySound("pageTurn")
+        YourDiary.OpenMatchBoard(false)
+        local now = scope.focus
+        if now then now:Focus("stub", "match") end
         return true
     end
     if at and at.group == "match" and page.mode == "match" and page.matchBack then
@@ -869,13 +950,26 @@ function scope.legend()
             out[1] = PROMPT.match
         elseif k == "back" then
             out[1] = PROMPT.evening
-        elseif (k == "row" or k == "hand") and at.kept then
+        elseif (k == "row" or k == "hand" or k == "strip") and at.kept then
             out[1] = PROMPT.person
         elseif k == "turn" then
             out[1] = page and page.mode == "matches" and PROMPT.turnRoll or PROMPT.turnBoard
+        elseif k == "stub" then
+            out[1] = PROMPT.board
+        elseif k == "story" then
+            out[1] = PROMPT.story
+        elseif k == "line" and (at.marks or 0) > 0 then
+            out[1] = PROMPT.line
         end
-        out[#out + 1] = (page and page.mode == "match" and page.matchBack) and PROMPT.backEvening or PROMPT.backLeft
+        if page and page.mode == "match" and page.matchBoard then
+            out[#out + 1] = PROMPT.backStory
+        else
+            out[#out + 1] = (page and page.mode == "match" and page.matchBack) and PROMPT.backEvening or PROMPT.backLeft
+        end
         return out
+    end
+    if at.group == "storymarks" then
+        return { PROMPT.backLine }
     end
     if at.group == "marks" then
         local out = { PROMPT.whole }

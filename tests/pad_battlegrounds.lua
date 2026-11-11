@@ -147,6 +147,10 @@ Eq(At().key, "ticket:" .. m3.id, "A on the back link not back on the ticket")
 Section("a match: its parts reached, a diary person's row opens their page, a strip only its tooltip")
 
 Press("PAD1")
+-- (the third Warsong is told by time: its board is the board view, walked
+-- here as v1's page; the story's own walk is tests/battleground_story_ui.lua)
+YourDiary.OpenMatchBoard(true)
+Pad.Refresh()
 keys = Walk("title")
 Check(keys.back and keys.note, "the back link or your note not reached")
 Check(keys["row:" .. ns.TestData.GUID], "Tester's row not reached")

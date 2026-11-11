@@ -446,6 +446,9 @@ function OpenMatch(id, i)
     GameTooltip:Hide()
     page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
     page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "match", nil, nil, id, nil
+    -- (a Warsong told by time opens on its story, not the board view it
+    -- was left on: UI/Journey/MatchStory.lua)
+    page.matchBoard = nil
     Rebuild(true, n)
     DrawRight()
 end

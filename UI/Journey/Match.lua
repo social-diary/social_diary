@@ -608,7 +608,9 @@ end
 
 -- A cross, the tally, "you fell n times", then `deeds` on the next line,
 -- turned on a plane at x, y. Returns its box.
-local function FootNote(bg, x, y, turnDeg, deaths, deeds)
+-- `said`, where given, is the first line's words in place of "you fell n
+-- times" (the v2 page's foot, Text.StoryFoot).
+local function FootNote(bg, x, y, turnDeg, deaths, deeds, said)
     local L, T = LOOK, LOOK.tally
     local plane, turn = Plane(bg, "note", x, y, turnDeg)
     local function Bar(lx, ly, w, h, colour, more)
@@ -638,7 +640,7 @@ local function FootNote(bg, x, y, turnDeg, deaths, deeds)
         lx = lx + 2
     end
     local head = Font(Line(), Style.NEUTON_ITALIC, L.words.fell, G)
-    head:SetText(Text.MatchFell(deaths))
+    head:SetText(said or Text.MatchFell(deaths))
     local w = PlaceText(plane, turn, head, lx, 8)
     local h = 20
     if deeds then
@@ -847,11 +849,21 @@ end
 -- Draws match `match` of piece `e` across the right page. `back`: the
 -- session's key where it has an overview (its way back). Returns how many
 -- plates it shows (none).
+-- A Warsong told by time (Core/MatchStory.lua's story) is drawn as the v2
+-- page instead (UI/Journey/MatchStory.lua, YourDiary.DrawStory), and this
+-- board is its "board view", opened from the page's corner stub
+-- (page.matchBoard): there "Back to the match" leads back to the story.
 function YourDiary.DrawMatch(e, match, back)
+    local page = YourDiary.page
+    local boardView = page and page.matchBoard == match.id
+    if not boardView and YourDiary.DrawStory and ns.MatchStory and ns.MatchStory.Has(match) then
+        local shown = YourDiary.DrawStory(e, match, back)
+        if shown then return shown end
+    end
     local bg = Board()
     bg.board:Show()
     Begin(bg)
-    bg.match, bg.session = match, nil
+    bg.match, bg.session, bg.story = match, nil, nil
     local L = LOOK
 
     -- The title first (the pad lands on it as the page opens).
@@ -873,6 +885,19 @@ function YourDiary.DrawMatch(e, match, back)
             YourDiary.OpenMatches(back)
         end)
         link.pad.kind, link.pad.key = "back", "back"
+    end
+
+    -- The board view of a Warsong told by time: its way back to the story,
+    -- at the top's right end, where the story's stub lay.
+    if boardView then
+        local words = YourDiary.STORY_WORDS.backToMatch
+        local w = Measure(bg, words, Style.FRIZ, L.words.link)
+        local B = ns.MatchStoryPage.STORY.stub
+        local link = LinkWord(bg, words, B.x + B.w - w, MATCH.back.y, false, nil, function()
+            Style.PlaySound("pageTurn")
+            YourDiary.OpenMatchBoard(false)
+        end)
+        link.pad.kind, link.pad.key = "story", "story"
     end
 
     -- The board, or the slip of names where it never read.
@@ -1262,6 +1287,21 @@ function YourDiary.DrawEvening(e, session)
     for _, under in ipairs(bg.columns) do under:Hide() end
     return 0
 end
+
+--------------------------------------------------------------------------
+-- The kit, for the v2 page drawn on the same board (UI/Journey/MatchStory.lua)
+--------------------------------------------------------------------------
+
+-- The same pieces, pools and hits: the story's page is drawn on this board,
+-- so what one page leaves unused the other's Finish hides, and the pad finds
+-- both pages' hits the one way (MatchParts).
+YourDiary.MatchKit = {
+    Board = Board, Begin = Begin, Next = Next, Finish = Finish, Font = Font, Measure = Measure, Wrap = Wrap,
+    Words = Words, Stroke = Stroke, Strip = Strip, LayStrip = LayStrip, StripText = StripText,
+    StripLine = StripLine, StripUnder = StripUnder, StripIcon = StripIcon, StripDone = StripDone,
+    Pennant = Pennant, Hit = Hit, LinkWord = LinkWord, Tip = Tip, Title = Title, FootNote = FootNote,
+    DeathsTip = DeathsTip, LOOK = LOOK,
+}
 
 --------------------------------------------------------------------------
 -- For the page and the pad

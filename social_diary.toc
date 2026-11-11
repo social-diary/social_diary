@@ -100,6 +100,10 @@ Core/DungeonPace.lua
 Core/RunPage.lua
 # A battleground's pages laid out (UI/Journey/Match.lua draws them).
 Core/MatchPage.lua
+# A Warsong told by time: carries, fights, phases, strips (Core/Matches.lua's story).
+Core/MatchStory.lua
+# Its page laid out: lines, branches, stains, crosses, the band of strips (UI/Journey/MatchStory.lua draws it).
+Core/MatchStoryPage.lua
 Core/Roster.lua
 Core/Reunions.lua
 Core/Timeline.lua
@@ -181,6 +185,7 @@ UI/Journey/Text/Caption.lua
 UI/Journey/Text/Margin.lua
 UI/Journey/Text/Run.lua
 UI/Journey/Text/Match.lua
+UI/Journey/Text/MatchStory.lua
 UI/Journal/Book.lua
 UI/Journal/Pages.lua
 UI/Journal/Pad.lua
@@ -197,6 +202,7 @@ UI/Journey/Full.lua
 UI/Journey/Empty.lua
 UI/Journey/Run.lua
 UI/Journey/Match.lua
+UI/Journey/MatchStory.lua
 UI/Journey/Page.lua
 UI/Journey/CardSheet.lua
 UI/Journey/Pad.lua

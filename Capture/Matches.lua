@@ -191,6 +191,251 @@ local function Unit(unit)
 end
 
 --------------------------------------------------------------------------
+-- The story: flag lines, your fights, who fell to whom
+--------------------------------------------------------------------------
+--
+-- What the probe showed (rounds 2-4, 10 Nov 2026, Warsong; the dossier's
+-- Probe section):
+--   flag lines    CHAT_MSG_BG_SYSTEM_* are plain in a match and name the
+--                 carrier: "The Horde flag was picked up by First Surname!",
+--                 "... dropped by ...", "The Alliance Flag was returned to
+--                 its base by ...", "First Surname captured the Horde flag!",
+--                 "The flags are now placed at their bases." English only:
+--                 the server sends them as text (another client language
+--                 simply records no flags, and the page keeps the board).
+--   your fights   the damage meter (C_DamageMeter) is open in a match: each
+--                 of your fights is a numbered session with its length; per
+--                 source a name and class (plain on both sides), enemies
+--                 marked by factionGroup / sourceDisplayType 2. Sessions say
+--                 nothing of when they were, so a fight is stamped with the
+--                 PLAYER_REGEN_ENABLED that ended it.
+--   deaths        the meter's deaths (type 9) per session: name, the second
+--                 into the session, a deathRecapID; ours all, theirs some.
+--                 A recap names the killer only while it is among the newest
+--                 ~28, so the fights are walked after each of yours, not
+--                 once at the end.
+--   near          (unproven, probe round 4) while a flag is out, whether its
+--                 carrier is near you: their nameplate, your target or
+--                 mouseover, and for ours UnitInRange on their raid unit.
+--                 Counted in seconds, kept on the pick-up's line.
+
+local WALK_AFTER = 1.5   -- seconds after your fight ends: its session is listed
+local DMG, DEATHS = 0, 9 -- Enum.DamageMeterType's DamageDone and Deaths
+local SIDE_ENEMY = 2     -- sourceDisplayType of an enemy source
+
+local function OwnName()
+    return Matches.Name(ns.NameFromUnit("player"))
+end
+
+local function Sessions()
+    if not (C_DamageMeter and C_DamageMeter.GetAvailableCombatSessions) then return {} end
+    local ok, list = pcall(C_DamageMeter.GetAvailableCombatSessions)
+    if not ok or type(list) ~= "table" or ns.IsSecret(list) then return {} end
+    local out = {}
+    for _, s in ipairs(list) do
+        local okS, id, dur = pcall(function() return s.sessionID, s.durationSeconds end)
+        id, dur = okS and P(id), okS and P(dur)
+        if type(id) == "number" then out[#out + 1] = { id = id, dur = type(dur) == "number" and dur or 0 } end
+    end
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return out
+end
+
+local function Highest()
+    local list = Sessions()
+    return list[#list] and list[#list].id or 0
+end
+
+-- The sources of one session and type, plain parts only.
+local function Sources(id, kind)
+    local ok, session = pcall(C_DamageMeter.GetCombatSessionFromID, id, kind)
+    if not ok or type(session) ~= "table" or ns.IsSecret(session) then return {} end
+    local okL, list = pcall(function() return session.combatSources end)
+    if not okL or type(list) ~= "table" then return {} end
+    local out = {}
+    for _, src in ipairs(list) do
+        local okS, r = pcall(function()
+            return { name = P(src.name), class = P(src.classFilename), me = P(src.isLocalPlayer),
+                enemy = P(src.factionGroup) ~= nil or P(src.sourceDisplayType) == SIDE_ENEMY,
+                at = P(src.deathTimeSeconds), recap = P(src.deathRecapID) }
+        end)
+        if okS and r then out[#out + 1] = r end
+    end
+    return out
+end
+
+-- Who dealt a death, by its recap: the overkill event's source name.
+local function RecapKiller(recapID)
+    if type(recapID) ~= "number" or recapID <= 0 or not (C_DeathRecap and C_DeathRecap.GetRecapEvents) then return nil end
+    local ok, events = pcall(C_DeathRecap.GetRecapEvents, recapID)
+    if not ok or type(events) ~= "table" or ns.IsSecret(events) then return nil end
+    local killer
+    for _, e in ipairs(events) do
+        local okE, overkill, name = pcall(function() return e.overkill, e.sourceName end)
+        if okE and type(P(overkill)) == "number" and P(overkill) > 0 then killer = Matches.Name(P(name)) end
+    end
+    return killer
+end
+
+local fightEnds = {}   -- epoch seconds your fights ended, not yet walked
+
+-- Writes every session since the last walk as a fight.
+local function Walk(match)
+    if not (C_DamageMeter and C_DamageMeter.GetCombatSessionFromID) then return end
+    match.meter = match.meter or { from = Highest(), seen = nil }
+    local meter = match.meter
+    meter.seen = meter.seen or meter.from
+    local own = OwnName()
+    for _, s in ipairs(Sessions()) do
+        if s.id > meter.seen then
+            meter.seen = s.id
+            local ended = table.remove(fightEnds, 1) or ns.Now()
+            local f = { t = Matches.Rel(match, ended - s.dur), dur = s.dur, us = {}, them = {}, deaths = {} }
+            for _, src in ipairs(Sources(s.id, DMG)) do
+                local name = Matches.Name(src.name)
+                if src.class and (name or src.me) then
+                    local ref = src.me and "0" or Matches.Ref(match, name, own)
+                    if ref then
+                        local side = src.enemy and f.them or f.us
+                        side[#side + 1] = ref
+                    end
+                    if name and not src.me then
+                        Seen(match, { name = name, class = src.class,
+                            side = src.enemy and (match.faction and 1 - match.faction) or match.faction })
+                    end
+                end
+            end
+            for _, src in ipairs(Sources(s.id, DEATHS)) do
+                local name = Matches.Name(src.name)
+                local who = src.me and "0" or Matches.Ref(match, name, own)
+                if who then
+                    local killer = RecapKiller(src.recap)
+                    f.deaths[#f.deaths + 1] = { who = who,
+                        at = f.t + (type(src.at) == "number" and src.at or 0),
+                        killer = killer and Matches.Ref(match, killer, own) or nil }
+                end
+            end
+            Matches.Fight(match, f)
+        end
+    end
+    wipe(fightEnds)
+end
+ns._test.MatchWalk = Walk
+
+local function InCombat()
+    return P(UnitAffectingCombat and UnitAffectingCombat("player")) == true
+end
+
+ns.On("PLAYER_REGEN_ENABLED", function()
+    local match = Matches.Current()
+    if not match then return end
+    fightEnds[#fightEnds + 1] = ns.Now()
+    ns.After(WALK_AFTER, function()
+        -- In a fight again already: its session is still running, so the
+        -- next end walks both.
+        if match.state == "open" and not InCombat() then Walk(match) end
+    end)
+end)
+
+-- Open carries: [flag] = { line, name, ref, unit, near }.
+local carries = {}
+
+local function RaidUnit(name)
+    for i = 1, (Call(GetNumGroupMembers) or 0) do
+        local unit = "raid" .. i
+        if Matches.Name(ns.NameFromUnit(unit)) == name then return unit end
+    end
+end
+
+local function CarryEnd(match, flag)
+    local c = carries[flag]
+    if not c then return end
+    carries[flag] = nil
+    if c.line and c.near then Matches.Near(match, c.line, c.near) end
+end
+
+local FLAG = { Horde = 0, Alliance = 1 }
+
+-- One flag line, as the client printed it.
+local function FlagLine(msg)
+    local match = Matches.Current()
+    msg = P(msg)
+    if not match or type(msg) ~= "string" then return end
+    if msg:find("^Let the battle for ") then Matches.Began(match) return end
+    local own = OwnName()
+    local word, who = msg:match("^The (%a+) [Ff]lag was picked up by (.+)!$")
+    if word and FLAG[word] then
+        local flag = FLAG[word]
+        CarryEnd(match, flag)
+        local name = Matches.Name(who)
+        local ref = Matches.Ref(match, name, own)
+        carries[flag] = { line = Matches.Flag(match, nil, "p", flag, ref), name = name, near = 0,
+            me = ref == "0", unit = name and RaidUnit(name) }
+        return
+    end
+    word, who = msg:match("^The (%a+) [Ff]lag was dropped by (.+)!$")
+    if word and FLAG[word] then
+        CarryEnd(match, FLAG[word])
+        Matches.Flag(match, nil, "d", FLAG[word], Matches.Ref(match, Matches.Name(who), own))
+        return
+    end
+    word = msg:match("^The (%a+) [Ff]lag was returned to its base")
+    if word and FLAG[word] then
+        who = msg:match(" by (.+)!$")
+        CarryEnd(match, FLAG[word])
+        Matches.Flag(match, nil, "r", FLAG[word], who and Matches.Ref(match, Matches.Name(who), own) or nil)
+        return
+    end
+    who, word = msg:match("^(.+) captured the (%a+) [Ff]lag!$")
+    if word and FLAG[word] then
+        CarryEnd(match, FLAG[word])
+        Matches.Flag(match, nil, "c", FLAG[word], Matches.Ref(match, Matches.Name(who), own))
+        return
+    end
+    if msg:find("placed at their bases", 1, true) then
+        for flag in pairs(carries) do CarryEnd(match, flag) end
+        Matches.Flag(match, nil, "x")
+    end
+end
+ns._test.MatchFlagLine = FlagLine
+
+-- Is the carrier near you this second?
+local function Is(unit, name)
+    if not UnitExists(unit) then return false end
+    return Matches.Name(ns.NameFromUnit(unit)) == name
+end
+
+local function Near(c)
+    if Is("target", c.name) or Is("mouseover", c.name) then return true end
+    if c.unit and UnitInRange then
+        local ok, inRange = pcall(UnitInRange, c.unit)
+        if ok and P(inRange) == true then return true end
+    end
+    if C_NamePlate and C_NamePlate.GetNamePlates then
+        local ok, plates = pcall(C_NamePlate.GetNamePlates)
+        if ok and type(plates) == "table" then
+            for _, plate in ipairs(plates) do
+                local unit = plate.namePlateUnitToken
+                if unit and Is(unit, c.name) then return true end
+            end
+        end
+    end
+    return false
+end
+
+ns.Every(1, function()
+    if not next(carries) then return end
+    if not Matches.Current() then wipe(carries) return end
+    for _, c in pairs(carries) do
+        if not c.me and c.name and Near(c) then c.near = c.near + 1 end
+    end
+end)
+
+for _, event in ipairs({ "CHAT_MSG_BG_SYSTEM_ALLIANCE", "CHAT_MSG_BG_SYSTEM_HORDE", "CHAT_MSG_BG_SYSTEM_NEUTRAL" }) do
+    ns.On(event, function(_, msg) FlagLine(msg) end)
+end
+
+--------------------------------------------------------------------------
 -- In and out
 --------------------------------------------------------------------------
 
@@ -201,7 +446,11 @@ local function Open(info)
     local match, new = Matches.Enter({ map = info.map, mapName = info.mapName,
         faction = FactionIndex((UnitFactionGroup("player"))),
         level = type(level) == "number" and level or nil }, ns.Now())
-    if new then ns.Debug("Match opened: %s (%s).", tostring(info.mapName), tostring(info.map)) end
+    if new then
+        ns.Debug("Match opened: %s (%s).", tostring(info.mapName), tostring(info.map))
+        -- The meter's sessions so far are the world's; the match's start after.
+        if C_DamageMeter then match.meter = { from = Highest() } end
+    end
     if RequestBattlefieldScoreData then pcall(RequestBattlefieldScoreData) end
     Gather(true)
     return match
@@ -294,6 +543,9 @@ local function Complete(winner, duration)
     duration = P(duration)
     if type(duration) ~= "number" then duration = Call(C_PvP and C_PvP.GetActiveMatchDuration) end
     Matches.Complete(match, winner, duration, ns.Now())
+    -- The last fight may still be running: it is the match's all the same.
+    local okW = pcall(Walk, match)
+    if not okW then ns.Debug("The meter could not be read at the end.") end
     ns.Debug("Match complete: winner %s, %s s.", tostring(winner), tostring(duration))
     if RequestBattlefieldScoreData then pcall(RequestBattlefieldScoreData) end
     sweeping = match.id
@@ -343,7 +595,17 @@ end)
 ns.On("PLAYER_ENTERING_WORLD", function() ns.After(1, Check) end)
 ns.On("ZONE_CHANGED_NEW_AREA", function() Check() end)
 ns.On("PVP_MATCH_ACTIVE", function() Check() end)
-ns.On("PVP_MATCH_STATE_CHANGED", function() Check() end)
+ns.On("PVP_MATCH_STATE_CHANGED", function()
+    Check()
+    -- The gates open: the moment the state turns Engaged (a record opened
+    -- later, by a /reload or a late join, keeps t0 unread; the story then
+    -- counts back from the match's own duration).
+    local match = Matches.Current()
+    local state = Call(C_PvP and C_PvP.GetActiveMatchState)
+    if match and Enum and Enum.PvPMatchState and state == Enum.PvPMatchState.Engaged then
+        Matches.Began(match)
+    end
+end)
 ns.On("PVP_MATCH_COMPLETE", function(_, winner, duration) Complete(winner, duration) end)
 ns.On("UPDATE_BATTLEFIELD_SCORE", function() Gather(false) end)
 ns.On("GROUP_ROSTER_UPDATE", function() Gather(false) end)

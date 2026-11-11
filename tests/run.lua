@@ -26,6 +26,8 @@ local FILES = {
     "pvp",
     "battlegrounds",
     "matches",
+    "match_story",
+    "battleground_story_ui",
     "battleground_page",
     "battleground_social",
     "journey",

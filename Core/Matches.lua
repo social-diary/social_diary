@@ -25,6 +25,29 @@
 --                   player (Pack); the user's own row among them
 --   lost            the strangers' rows let go when the match rolled up
 --   rolled          true once rolled up (Rollup)
+--
+--   The story (Warsong; .claude/ui-proposal/battleground-page-v2.md, from
+--   the probe's rounds 2-4, 10 Nov 2026). Every time is whole seconds after
+--   startedAt; Core/MatchStory.lua reads them back as a story:
+--   t0              when the battle began (the gates opened), when it was read
+--   pool            { "First Surname", ... } the names the story refers to,
+--                   by index; "0" in a reference is the user. A forgotten or
+--                   rolled-up stranger's name is "" (their place stays)
+--   flags           { "t;kind;flag;who;near", ... } the match's flag lines:
+--                   kind p picked up, d dropped, r returned, c captured, x
+--                   both flags placed at their bases; flag 0 the Horde's,
+--                   1 the Alliance's (the scoreboard's numbering); who a pool
+--                   reference or empty; near (on a p, once its carry ended)
+--                   the seconds its carrier was near the user (nameplate,
+--                   target, mouseover, raid range: unproven, probe round 4)
+--   fights          { "t;dur;us;them;deaths", ... } the user's fights, one
+--                   per damage meter session: t its start, dur its seconds,
+--                   us and them the people in it (pool references joined by
+--                   ","; the meter says who was there, not who hit whom),
+--                   deaths "who:at:killer" joined by ",": at seconds after
+--                   startedAt, killer a reference when the recap named one
+--   meter           { from, seen } capture's place in the meter's numbered
+--                   sessions (kept across a /reload; gone once closed)
 -- }
 --
 -- A player is one string, not a table, to keep a forty-a-side match small
@@ -296,6 +319,120 @@ function Matches.Board(match, rows)
     match.board = true
 end
 
+--------------------------------------------------------------------------
+-- The story's substrate (the header's t0, pool, flags, fights)
+--------------------------------------------------------------------------
+
+-- Caps, as players and deaths have: a long match's fights and flag lines.
+local MAX_POOL, MAX_FLAGS, MAX_FIGHTS = 120, 120, 80
+
+-- The pool reference for a name: "0" for the user, else its index (added
+-- when new), or nil (no name, or the pool is full).
+function Matches.Ref(match, name, own)
+    if not match or not name then return nil end
+    if own and Key(own) == Key(name) then return "0" end
+    match.pool = match.pool or {}
+    local key = Key(name)
+    for i, n in ipairs(match.pool) do
+        if Key(n) == key then return tostring(i) end
+    end
+    if #match.pool >= MAX_POOL then return nil end
+    match.pool[#match.pool + 1] = name
+    return tostring(#match.pool)
+end
+
+-- The name a reference stands for: "0" is `own` (or true), "" or a blank
+-- place nil.
+function Matches.RefName(match, ref, own)
+    if ref == nil or ref == "" then return nil end
+    if ref == "0" then return own or true end
+    local n = match.pool and match.pool[tonumber(ref)]
+    if n == nil or n == "" then return nil end
+    return n
+end
+
+-- Seconds after startedAt.
+local function Rel(match, now)
+    return math.max(0, math.floor((now or ns.Now()) - (match.startedAt or 0) + 0.5))
+end
+Matches.Rel = Rel
+
+-- The gates opened (kept the first time it is read).
+function Matches.Began(match, now)
+    if match and match.t0 == nil then match.t0 = Rel(match, now) end
+end
+
+-- A flag line: kind "p", "d", "r", "c" or "x"; flag 0 or 1 (nil for x); who
+-- a reference or nil. Returns the line's index (a pick-up's `near` is
+-- written there later by Matches.Near).
+function Matches.Flag(match, now, kind, flag, who)
+    if not match then return nil end
+    match.flags = match.flags or {}
+    if #match.flags >= MAX_FLAGS then return nil end
+    match.flags[#match.flags + 1] = table.concat({ Rel(match, now), kind, flag or "", who or "", "" }, ";")
+    return #match.flags
+end
+
+-- The seconds a carry's carrier was near the user, on its pick-up line.
+function Matches.Near(match, index, secs)
+    local line = match and match.flags and match.flags[index]
+    if not line or type(secs) ~= "number" then return end
+    local t, kind, flag, who = line:match("^([^;]*);([^;]*);([^;]*);([^;]*);")
+    if kind ~= "p" then return end
+    match.flags[index] = table.concat({ t, kind, flag, who, math.floor(secs) }, ";")
+end
+
+-- Unpacked: { t, kind, flag, who, near }, in order.
+function Matches.Flags(match)
+    local out = {}
+    for _, line in ipairs(match and match.flags or {}) do
+        local t, kind, flag, who, near = line:match("^([^;]*);([^;]*);([^;]*);([^;]*);([^;]*)$")
+        if t then
+            out[#out + 1] = { t = tonumber(t) or 0, kind = kind, flag = tonumber(flag),
+                who = who ~= "" and who or nil, near = tonumber(near) }
+        end
+    end
+    return out
+end
+
+-- One of the user's fights: f = { t, dur, us = { ref... }, them = { ref... },
+-- deaths = { { who, at, killer }... } }, times already relative.
+function Matches.Fight(match, f)
+    if not match or not f then return end
+    match.fights = match.fights or {}
+    if #match.fights >= MAX_FIGHTS then return end
+    local deaths = {}
+    for _, d in ipairs(f.deaths or {}) do
+        if d.who then deaths[#deaths + 1] = d.who .. ":" .. math.floor(d.at or f.t) .. ":" .. (d.killer or "") end
+    end
+    match.fights[#match.fights + 1] = table.concat({ math.floor(f.t), math.floor(f.dur or 0),
+        table.concat(f.us or {}, ","), table.concat(f.them or {}, ","), table.concat(deaths, ",") }, ";")
+end
+
+local function Refs(s)
+    local out = {}
+    for r in (s or ""):gmatch("[^,]+") do out[#out + 1] = r end
+    return out
+end
+
+-- Unpacked: { t, dur, us = { ref... }, them = { ref... }, deaths = { { who,
+-- at, killer } } }, in the order fought.
+function Matches.Fights(match)
+    local out = {}
+    for _, line in ipairs(match and match.fights or {}) do
+        local t, dur, us, them, deaths = line:match("^([^;]*);([^;]*);([^;]*);([^;]*);([^;]*)$")
+        if t then
+            local f = { t = tonumber(t) or 0, dur = tonumber(dur) or 0, us = Refs(us), them = Refs(them), deaths = {} }
+            for who, at, killer in deaths:gmatch("([^:,]*):([^:,]*):([^:,]*)") do
+                f.deaths[#f.deaths + 1] = { who = who, at = tonumber(at) or f.t, killer = killer ~= "" and killer or nil }
+            end
+            out[#out + 1] = f
+        end
+    end
+    table.sort(out, function(a, b) return a.t < b.t end)
+    return out
+end
+
 -- Ends the match: "complete", "noboard" or "left".
 function Matches.Close(match, state, now)
     if not match then return end
@@ -305,6 +442,7 @@ function Matches.Close(match, state, now)
     match.endedAt = match.endedAt or now
     match.duration = match.duration or (match.endedAt - match.startedAt)
     match.seenAt = nil
+    match.meter = nil
     if ns.db.meta.openMatch == match.id then ns.db.meta.openMatch = nil end
 end
 
@@ -539,6 +677,11 @@ function Matches.Rollup(now, keep)
         m.players = kept
         m.lost = (m.lost or 0) + lost
         m.rolled = true
+        -- The story keeps its shape (branches, stains, crosses); only the
+        -- strangers' names in it go, as their rows did.
+        for j, n in ipairs(m.pool or {}) do
+            if n ~= "" and not Matches.Who({ name = n }, names) then m.pool[j] = "" end
+        end
     end
 end
 
@@ -563,6 +706,9 @@ function Matches.Forget(guid)
             if p.guid == guid or (not p.guid and SameName(name, p.name)) then
                 table.remove(m.players, i)
             end
+        end
+        for j, n in ipairs(m.pool or {}) do
+            if name and SameName(name, n) then m.pool[j] = "" end
         end
     end
 end
