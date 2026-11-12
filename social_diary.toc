@@ -387,6 +387,26 @@ Features/Classes/Hunter/Mark.lua
 Features/Classes/Hunter/Card.lua
 Features/Classes/Hunter/Capture.lua
 
+# Gathering: the herbs picked and the ore mined, where they were. It hears
+# UNIT_SPELLCAST_SENT, which only the hunter's capture shares (reads the
+# cast, keeps nothing this reads), and the three events that end a cast,
+# which nothing else hears; so it sits anywhere in the block
+# (Features/Gathering/Capture.lua's header).
+Features/Gathering/Kind.lua
+Features/Gathering/Text.lua
+Features/Gathering/Mark.lua
+Features/Gathering/Capture.lua
+
+# Fishing: the catches, a loot window that is fishing loot. It hears
+# LOOT_OPENED and LOOT_CLOSED, which the hunts' capture and the firsts' hear
+# too; this reads only the loot slots and writes only its own list, which
+# neither reads, so it sits anywhere in the block
+# (Features/Fishing/Capture.lua's header).
+Features/Fishing/Kind.lua
+Features/Fishing/Text.lua
+Features/Fishing/Mark.lua
+Features/Fishing/Capture.lua
+
 Capture/Menus.lua
 Capture/Group.lua
 Capture/Instances.lua
@@ -417,6 +437,7 @@ Features/Witnesses/Capture.lua
 Dev/Art.lua
 Dev/Diagnostics.lua
 Dev/LootProbe.lua
+Dev/FishingProbe.lua
 Dev/HandTest.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua
@@ -439,4 +460,6 @@ Features/Witnesses/Dev.lua
 Features/Hunts/Dev.lua
 Features/Duels/Dev.lua
 Features/Classes/Hunter/Dev.lua
+Features/Gathering/Dev.lua
+Features/Fishing/Dev.lua
 #@end-do-not-package@

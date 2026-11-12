@@ -322,6 +322,19 @@ ns.Locale.Add("enUS", {
     ["%1$s from %2$s"] = "%1$s from %2$s",
     ["%1$s: %2$s"] = "%1$s: %2$s",
     ["%s, a gift"] = "%s, a gift",
+    -- Features/Fishing/Text.lua
+    ["Fished up %s"] = "Fished up %s",
+    ["Fished something up"] = "Fished something up",
+    ["Fished here %s##times"] = "Fished here %s",
+    ["%d more"] = "%d more",
+    -- Features/Gathering/Text.lua
+    ["Mined %s"] = "Mined %s",
+    ["Picked %s"] = "Picked %s",
+    ["Mined some ore"] = "Mined some ore",
+    ["Picked an herb"] = "Picked an herb",
+    ["Gathered here %s##times"] = "Gathered here %s",
+    ["Mined here %s##times"] = "Mined here %s",
+    ["Picked here %s##times"] = "Picked here %s",
     -- Features/Hunts/Kind.lua
     ["%1$s, %2$d killed"] = "%1$s, %2$d killed",
     ["Expected"] = "Expected",
