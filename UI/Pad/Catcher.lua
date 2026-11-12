@@ -415,10 +415,12 @@ local function Down(self, key)
     self.acted = false
     local scope = Pad.Top()
     if not (scope and Input.Active() and Host(scope) == self.host) or Combat() then return false end
-    self.downs[key] = true
+    -- (only a press that does something is held: an unused one's release
+    -- does nothing either)
     -- (B and Escape act on their release: closing on the press would leave
     -- the release to whatever is under the book)
     if key == BACK or IsEscape(key) then
+        self.downs[key] = true
         self.acted = true
         return false
     end
@@ -427,6 +429,7 @@ local function Down(self, key)
     local taken = Dispatch(scope, key)
     Pad.pressing = false
     if not taken then return false end
+    self.downs[key] = true
     self.acted = true
     if DIRS[key] then self:Repeat(key) end
     ShowLegend(Pad.Top())
