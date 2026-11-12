@@ -72,8 +72,12 @@ local HANG = 14
 -- sits (its centre, from the left), `size` how big it is, `mid` how far
 -- down its first line's middle is from its words' top, `leading` between
 -- its wrapped lines.
+-- (The version is in Goodmountain, whose tall letters reach 0.21 em over
+-- the line's box, UI/Journal/Header.lua's GOOD: `VERSION_RISE` px at its
+-- size, kept as room above it, or the list's top edge cuts them off.)
+local VERSION_RISE = 4
 local LINE = {
-    version = { font = FONT.personNameLeast, pad = 0, after = 2 },
+    version = { font = FONT.personNameLeast, pad = VERSION_RISE, after = 2 },
     summary = { font = FONT.noteQuoted, pad = SPACE.lead - 2, after = 3, leading = SPACE.leading },
     group = { font = FONT.headingRubricLarge, pad = SPACE.group - 3, after = 3, indent = HANG,
         bullet = 5, size = 6, mid = 6, paraph = true },
@@ -91,7 +95,8 @@ local GROUP_RULE = { gap = 7, alpha = 0.45 }
 -- `after` and `at`), the hairline `gap` px under it, and SPACE.release
 -- under the hairline before the next version; their alphas.
 local DIVIDER = { at = SPACE.release - 3, gap = 3, alpha = 0.85, hair = 0.45 }
-DIVIDER.height = DIVIDER.at + DIVIDER.gap + 1 + SPACE.release
+-- (the version's own room above it is part of that air)
+DIVIDER.height = DIVIDER.at + DIVIDER.gap + 1 + SPACE.release - VERSION_RISE
 
 -- "_Your Diary_" in the strong ink, the underscores gone.
 local function Emphasis(text)
