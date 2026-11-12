@@ -290,6 +290,8 @@ local function Build()
         x = x + RIBBON_W + RIBBON_GAP
     end
 
+    -- Built: for what hangs on the book's chrome from a file of its own.
+    ns.Fire("SD_JOURNAL_BUILT", panel)
     return panel
 end
 

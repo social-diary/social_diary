@@ -67,6 +67,7 @@ local FILES = {
     "settings_language",
     "hints",
     "hints_ui",
+    "suggest",
     "paper_grain",
     "diary_scale",
     "minimap",

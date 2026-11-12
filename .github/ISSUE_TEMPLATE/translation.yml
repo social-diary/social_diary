@@ -1,0 +1,61 @@
+name: Translation
+description: A line of Social Diary reads oddly or wrongly in your language.
+title: "[Translation] "
+labels: ["translation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping the diary read well in your language. Most of this form is filled in for you when you send it from the game (_Suggest Translation_ at the top of the open diary). Check it, add anything that helps, and submit.
+
+  - type: input
+    id: locale
+    attributes:
+      label: Language
+      description: The diary's language, as its code (deDE, esES, frFR, ruRU, ...).
+      placeholder: deDE
+    validations:
+      required: true
+
+  - type: input
+    id: addon-version
+    attributes:
+      label: Social Diary version
+      description: Shown next to the heading in Social Diary's Settings.
+      placeholder: "4.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: english
+    attributes:
+      label: The English original
+      description: The English the line is translated from, if the game could find it. Empty is fine.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: current
+    attributes:
+      label: As the diary shows it now
+      description: The line as it reads in the game.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Your suggestion
+      description: How it should read. A word on why helps, if it isn't obvious.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images in here. For clipped text, a screenshot helps most.
+    validations:
+      required: false

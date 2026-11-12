@@ -114,6 +114,15 @@ local ACCOUNT_SETTINGS = {
     -- update (2.x to 3.0), linking the Changelog (Core/Hints.lua's
     -- Installed). Its own switch, beside Show hints.
     showUpdateHint = true,
+    -- A notice the first time the diary is read in a translation (each
+    -- language once, Core/Hints.lua's Languages): it is machine-made, and
+    -- how to suggest a better wording. Its own switch, beside the update's.
+    showLanguageHint = true,
+    -- The "Suggest Translation" slip behind the book's top edge, where the
+    -- diary reads a translation (UI/Windows/Suggest/Strip.lua): out or
+    -- put away, Settings > Language. The account's, as the language is.
+    -- An added field: an older table gets it from here, no step.
+    showSuggestStrip = true,
     -- "Diary Size" (Settings > Interface): the diary's windows, in percent
     -- of their designed size, 100 to 200, held to what fits the screen
     -- (UI/Kit/Scale.lua). The account's: a screen is the person's, not the
@@ -137,6 +146,9 @@ local HINTS = {
     sittingShown = 0,
     opens = 0,
     remembers = 0,
+    -- [locale id] = when the translation's notice was shown in it. New in
+    -- 4.0 as a plain table: no step fills it, an older record gets it empty.
+    languages = {},
 }
 
 local CHARACTER_SETTINGS = {
@@ -353,8 +365,12 @@ function ns.Setting(key)
     return ns.db.settings[key]
 end
 
+-- SetSetting says so (SD_SETTING_CHANGED, Core/Events.lua), once the value
+-- is written, so what a setting shows or hides follows it at once without
+-- the settings page knowing who that is.
 function ns.SetSetting(key, value)
     ns.db.settings[key] = value
+    if ns.Fire then ns.Fire("SD_SETTING_CHANGED", key, value) end
 end
 
 function ns.SettingDefault(key)

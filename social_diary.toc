@@ -298,6 +298,13 @@ UI/Windows/Intro/Torn.lua
 UI/Windows/Intro/Parcel.lua
 UI/Windows/Intro/Tour.lua
 UI/Windows/Intro/Pad.lua
+# Suggest a better wording (UI/Windows/Suggest/Lookup.lua): on a translation
+# only, a line of the diary picked and a correction sent. Self-contained:
+# the folder and these lines are all of it.
+UI/Windows/Suggest/Lookup.lua
+UI/Windows/Suggest/Pick.lua
+UI/Windows/Suggest/Sheet.lua
+UI/Windows/Suggest/Strip.lua
 UI/Blizzard/SocialTab.lua
 UI/Blizzard/Bindings.lua
 UI/Blizzard/Minimap.lua

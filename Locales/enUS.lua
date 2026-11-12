@@ -673,6 +673,10 @@ ns.Locale.Add("enUS", {
     ["Fresh Pages"] = "Fresh Pages",
     ["Social Diary %s is here, with a few new things to find."] = "Social Diary %s is here, with a few new things to find.",
     ["See what’s new"] = "See what’s new",
+    ["Translated Pages"] = "Translated Pages",
+    ["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."] = "The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome.",
+    ["Go to Language"] = "Go to Language",
+    ["Suggest Translation"] = "Suggest Translation",
     ["Old Scoreboards"] = "Old Scoreboards",
     ["In %d match, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.|In %d matches, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.##plural"] = "In %d match, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.|In %d matches, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.",
     ["Keep more"] = "Keep more",
@@ -1428,6 +1432,8 @@ ns.Locale.Add("enUS", {
     ["Show hints again"] = "Show hints again",
     ["Show a hint after a big update"] = "Show a hint after a big update",
     ["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."] = "When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character.",
+    ["Show a hint about a new language"] = "Show a hint about a new language",
+    ["The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character."] = "The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character.",
     ["Interface"] = "Interface",
     -- UI/Settings/Sections/Language.lua
     ["The game's language"] = "The game's language",
@@ -1441,6 +1447,8 @@ ns.Locale.Add("enUS", {
     ["Translations"] = "Translations",
     ["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."] = "Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome.",
     ["Go to Feedback"] = "Go to Feedback",
+    ["Show the “Suggest Translation” slip"] = "Show the “Suggest Translation” slip",
+    ["The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character."] = "The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character.",
     ["The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language."] = "The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language.",
     ["The diary is written in %s once the interface reloads."] = "The diary is written in %s once the interface reloads.",
     ["Language"] = "Language",
@@ -1636,6 +1644,19 @@ ns.Locale.Add("enUS", {
     ["Your toasts"] = "Your toasts",
     ["will appear where you leave this card."] = "will appear where you leave this card.",
     ["%1$s %2$s##sentences"] = "%1$s %2$s",
+    -- UI/Windows/Suggest/Pick.lua
+    ["Click the line you want to change. Right-click or Escape to stop."] = "Click the line you want to change. Right-click or Escape to stop.",
+    -- UI/Windows/Suggest/Sheet.lua
+    ["A better wording"] = "A better wording",
+    ["As the diary has it"] = "As the diary has it",
+    ["In English"] = "In English",
+    ["Your wording"] = "Your wording",
+    ["How should it read?"] = "How should it read?",
+    ["Make the link"] = "Make the link",
+    ["The diary couldn’t find the English for this line. It goes as it is shown."] = "The diary couldn’t find the English for this line. It goes as it is shown.",
+    ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Copy this link into your browser. It opens a GitHub issue with everything filled in.",
+    -- UI/Windows/Suggest/Strip.lua
+    ["Pick a line in the diary and suggest how it should read."] = "Pick a line in the diary and suggest how it should read.",
     -- UI/Words/Format.lua
     ["April"] = "April",
     ["February"] = "February",

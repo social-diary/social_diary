@@ -2,7 +2,8 @@
 -- the sections; the controls are UI/Settings/Kit.lua's): the language the
 -- diary is written in (the account setting `language`: "auto", the game
 -- client's, or a locale's id), what waits for a reload, and where to send
--- a correction. Which language is read, and when, is Locales/Locale.lua's
+-- a correction, and, where a translation is read, whether the "Suggest
+-- Translation" slip is out on the book. Which language is read, and when, is Locales/Locale.lua's
 -- ("Which language"): this page only writes the setting and says how it
 -- stands.
 --
@@ -111,7 +112,18 @@ local function BuildLanguage(pane, c)
     end)
     page.languageFeedback:SetText(L["Go to Feedback"])
     page.languageFeedback.group = r.group
-    r:Place(page.languageFeedback, 18)
+    r:Place(page.languageFeedback, 18, 0, 8)
+
+    -- The "Suggest Translation" slip on the book (UI/Windows/Suggest/): out
+    -- or put away, the account setting showSuggestStrip. Only where there
+    -- can be a slip: a translation read, and the folder loaded. An English
+    -- diary has no row, and nothing is placed for one. The slip follows the
+    -- setting itself (SD_SETTING_CHANGED): this page only writes it.
+    if Locale.id ~= "enUS" and ns.UI.Suggest then
+        page.showSuggestStrip = Kit.Switch(r, L["Show the “Suggest Translation” slip"], "showSuggestStrip", nil, nil,
+            L["The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character."])
+    end
+    rest:SetHeight(math.max(120, -r.y))
 
     page.controls[#page.controls + 1] = {
         Refresh = function()

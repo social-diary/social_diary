@@ -176,6 +176,19 @@ Eq(P:Section(), "feedback", "the link did not open Feedback")
 Check(P.panes.feedback:IsShown() and not P.panes.language:IsShown(), "the panes did not swap")
 Check(P.nav.feedback:IsShown(), "Feedback's row is not listed")
 
+-- The "Suggest Translation" slip's switch is a translation's (tests/
+-- suggest.lua has it on a German diary): none on English, the way to
+-- Feedback the last thing placed, the setting on all the same.
+Eq(ns.Locale.id, "enUS", "setup: the diary reads English")
+Eq(P.showSuggestStrip, nil, "a switch for the slip on an English diary")
+Eq(ns.Setting("showSuggestStrip"), true, "the slip's setting is not on by default")
+Check(ns.IsAccountSetting("showSuggestStrip"), "the slip's setting is not the account's")
+local switches = 0
+for _, child in ipairs({ P.languageRest:GetChildren() }) do
+    if child.tick then switches = switches + 1 end
+end
+Eq(switches, 0, "a switch laid under the translations on English")
+
 --------------------------------------------------------------------------
 Section("with the pad: the choice and both links are reached")
 
@@ -204,6 +217,8 @@ Eq(Prompt(), "See the choices", "the choice's prompt")
 Press("PADDDOWN")
 Eq(At().frame, P.languageFeedback, "down: not the way to Feedback (nothing waits: no reload to stand on)")
 Eq(Prompt(), "Choose", "a link's prompt")
+Press("PADDDOWN")
+Eq(At().frame, P.languageFeedback, "down again: something under Feedback on an English diary")
 Press("PADDUP")
 Eq(At().frame, P.language.choice, "up: not back on the choice")
 

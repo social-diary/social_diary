@@ -65,6 +65,11 @@ local function BuildInterface(pane, c)
     -- update rather than of something on a page. The account's too.
     page.showUpdateHint = Switch(c, L["Show a hint after a big update"], "showUpdateHint", nil, nil,
         L["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."])
+    -- The notice the first time the diary is read in a translation (the
+    -- translation hint, UI/Journal/Hints.lua): its own switch, as the
+    -- update's, and the account's too.
+    page.showLanguageHint = Switch(c, L["Show a hint about a new language"], "showLanguageHint", nil, nil,
+        L["The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character."])
 end
 
 SettingsUI.RegisterSection("interface", { order = 20, label = L["Interface"],

@@ -28,6 +28,9 @@
 --   version   the addon's version at the last login (Hints.Installed).
 --   update    the version a major update brought, until its notice has
 --             been shown or the Changelog read (Hints.Update).
+--   languages [locale id] = when the translation's notice was shown in that
+--             language (Hints.LanguageSeen): each language once, so a
+--             reader who changes to another later hears of it again.
 --
 -- Hints.Register(id, spec), each a hint (UI/Journal/Hints.lua):
 --   order     which goes first where two could show at once
@@ -304,6 +307,24 @@ end
 function Hints.UpdateRead()
     local s = State()
     if s then s.update = nil end
+end
+
+--------------------------------------------------------------------------
+-- Languages: the translation's notice, once per language
+--------------------------------------------------------------------------
+
+-- Whether the notice has been shown in `id` ("deDE").
+function Hints.LanguageSeen(id)
+    local s = State()
+    return s ~= nil and type(s.languages) == "table" and s.languages[id] ~= nil
+end
+
+-- Shown in `id`: not again in that language.
+function Hints.LanguageShown(id, now)
+    local s = State()
+    if not s or not id then return end
+    if type(s.languages) ~= "table" then s.languages = {} end
+    s.languages[id] = now or Now()
 end
 
 -- /sd hint <id> (Dev/Hints.lua).

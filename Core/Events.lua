@@ -29,6 +29,17 @@
 --                              Paper Texture Intensity setting).
 --                              Fired by UI/Style/Art.lua and UI/Style/Book.lua;
 --                              the journal's book repaints.
+--   SD_JOURNAL_BUILT (panel)   the journal's book was built (its first
+--                              opening), with its frame. Fired by
+--                              UI/Journal/Book.lua; what hangs on its
+--                              chrome from a file of its own follows it
+--                              (UI/Windows/Suggest/Strip.lua).
+--   SD_SETTING_CHANGED (key, value)  a setting was written through
+--                              ns.SetSetting (Core/DB.lua), with its name
+--                              and the value now saved. Fired after the
+--                              write, whether or not the value differs.
+--                              What a setting shows or hides follows it
+--                              (UI/Windows/Suggest/Strip.lua).
 --   SD_WORLD_SETTLED ()        a few seconds after entering the world (a
 --                              login, a /reload, a loading screen), when the
 --                              client has loaded what the character holds

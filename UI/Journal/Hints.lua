@@ -104,6 +104,63 @@ Hints.Register("major-update", {
     end,
 })
 
+-- e) News, not teaching: the first time the book opens in a translation
+-- (any language but English that the diary has words for), once for each
+-- language, on whatever page it opens on, past the clocks, behind its own
+-- switch (showLanguageHint, Interface beside the update's). It comes after
+-- the update's notice, never in the same opening as another notice, so the
+-- two come over two openings. Its link begins picking a line to correct
+-- (UI/Windows/Suggest/), or, with the pad in hand or without that folder,
+-- turns to the Language page, where the same is said.
+local function LanguageName(id)
+    for _, offer in ipairs(ns.Locale.offered) do
+        if offer.id == id then return offer.name end
+    end
+    return id
+end
+
+-- Whether a line can be picked from the notice's link: the folder is there
+-- and the pad not in hand.
+local function CanSuggest()
+    local Suggest = ns.UI.Suggest
+    return Suggest ~= nil and Suggest.Available()
+end
+
+local function ToLanguage()
+    ns.UI.ShowSettings("language")
+    local Pad = ns.UI.Pad
+    local scope = Pad.Scope and Pad.Scope("settings")
+    if scope and scope.focus and Pad.Top() == scope then
+        scope.focus:Remember("nav", "nav:language")
+        scope.focus:EnterGroup("nav")
+    end
+    Pad.Refresh()
+end
+
+Hints.Register("translation", {
+    order = 1.5,
+    page = "any",
+    notice = true,
+    setting = "showLanguageHint",
+    dwell = 1.5,
+    eligible = function()
+        local id = ns.Locale.id
+        return id ~= "enUS" and ns.Locale.Offers(id) and not Hints.LanguageSeen(id)
+            and HintsUI.noticeOpen ~= Hints.Opens()
+    end,
+    shown = function() Hints.LanguageShown(ns.Locale.id) end,
+    words = function()
+        local suggest = CanSuggest()
+        return { title = L["Translated Pages"],
+            body = Fmt(L["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."],
+                LanguageName(ns.Locale.id)),
+            link = suggest and L["Suggest Translation"] or L["Go to Language"],
+            onLink = function()
+                if CanSuggest() then ns.UI.Suggest.Start() else ToLanguage() end
+            end }
+    end,
+})
+
 -- d) News, not teaching: old battleground scoreboards are about to fade
 -- (Core/Matches.lua's roll-up), at 25, 10, 5, 4, 3, 2 and 1 matches
 -- before it starts, each step once (Matches.Warned). On whatever page the
@@ -197,6 +254,8 @@ function HintsUI.Look(now)
     -- Read before Shown: a notice's words may name what Shown clears.
     local words = spec.words()
     showing, laidOn = spec, ctx.view
+    -- The opening a notice came in: the translation's waits for the next.
+    if spec.notice then HintsUI.noticeOpen = Hints.Opens() end
     Hints.Shown(spec.id)
     ns.UI.HintSlip.Show(J.journal.views[ctx.view], ctx.view, words, Put)
     Told()
