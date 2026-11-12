@@ -132,4 +132,6 @@ ns.Locale.Add("esES", {
     ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Copia este enlace en tu navegador. Abre una incidencia de GitHub con todo rellenado.",
     -- UI/Windows/Suggest/Strip.lua
     ["Pick a line in the diary and suggest how it should read."] = "Elige una línea del diario y propón cómo debería leerse.",
+    -- UI/Windows/Intro/Tour.lua
+    ["Wolfskin Bracers"] = "Brazales de piel de lobo",
 })

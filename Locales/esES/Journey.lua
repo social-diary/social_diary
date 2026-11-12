@@ -230,4 +230,7 @@ ns.Locale.Add("esES", {
     ["levels %1$d to %2$d"] = "niveles %1$d a %2$d",
     ["level %s"] = "nivel %s",
     ["a fight|%d fights##plural"] = "un combate|%d combates",
+    -- UI/Journey/Empty.lua
+    ["The Barrens"] = "Los Baldíos",
+    ["Stonetalon Mountains"] = "Sierra Espolón",
 })

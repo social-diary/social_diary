@@ -11,8 +11,8 @@ ns.Locale.Add("deDE", {
     ["A fight, %1$s into the match##story"] = "Ein Kampf, %1$s nach Spielbeginn",
     ["%1$d of us against %2$d of them##story"] = "%1$d von uns gegen %2$d von ihnen",
     ["%1$s fell at %2$s##story"] = "%1$s um %2$s gefallen",
-    -- "%1$s fell to %3$s at %2$s##story": left in English (the killer may be
-    -- "you##story", which the carriers' list needs in the nominative).
+    -- The killer may be "du" (nominative), so it follows a colon.
+    ["%1$s fell to %3$s at %2$s##story"] = "%1$s um %2$s gefallen, Todesstoß: %3$s",
     ["%1$s carried their flag##story"] = "%1$s mit ihrer Flagge unterwegs",
     ["%1$s carried our flag##story"] = "%1$s mit unserer Flagge unterwegs",
     ["Brought home at %1$s##story"] = "Um %1$s heimgebracht",
@@ -27,6 +27,7 @@ ns.Locale.Add("deDE", {
     ["someone##story"] = "jemand",
 
     -- UI/Journey/Text/MatchStory.lua
+    ["%1$s against %2$s##outnumbered"] = "%1$s gegen %2$s",
     -- "zum dritten Mal": the ordinal after "zum" (past twelve, "zum 13. Mal").
     ["first##time"] = "ersten",
     ["fourth##time"] = "vierten",
