@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- In Korean and Chinese Clients, Box / Tofu Characters no longer appear in place of no-break spaces
+
 ## [4.0.0]
 
 This big update brings battleground Views, starting with Warsong Gulch, and the diary in German, Spanish, French and Russian. Both are still early, so please send feedback and translation suggestions on GitHub!

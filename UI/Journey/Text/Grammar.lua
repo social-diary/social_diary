@@ -49,9 +49,9 @@ local G = ns.Locale.grammar
 -- How a time is written in Your Diary's words: the number held to its
 -- unit by a no-break space (UTF-8 `nbsp`), so "55 min" never breaks across
 -- two lines as "55" and "min". `keep` is the one switch: off, plain
--- spaces again, should the client's fonts draw no glyph for it or its
--- wrapping not honour it (to check in the client).
-local SPACE = { keep = true, nbsp = "\194\160" }
+-- spaces again, on a client whose fonts draw a box for it (Locale.nbsp,
+-- Locales/Locale.lua: the Chinese and Korean clients).
+local SPACE = { keep = ns.Locale.nbsp ~= " ", nbsp = "\194\160" }
 
 local function Glue(text)
     if not SPACE.keep then return text end

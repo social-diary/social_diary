@@ -480,3 +480,52 @@ for _, id in ipairs(LOCALES) do
             :format(id, #order - #missing, #order, #missing, id))
     end
 end
+
+--------------------------------------------------------------------------
+-- A client whose fonts draw a box for a no-break space (Locale.nbsp): the
+-- Chinese and Korean clients read plain spaces, everywhere the words come
+-- from; every other client keeps the space that holds.
+Section("no-break spaces, by the client's fonts")
+do
+    local NB = "\194\160"
+    local KEY = "%1$s saved {you} at %2$s%%\194\160health"
+
+    for _, id in ipairs({ "enUS", "deDE", "ruRU" }) do
+        local ns = GrammarNs(id)
+        Eq(ns.Locale.nbsp, NB, id .. " keeps the no-break space")
+        Eq(ns.UI.JourneyText.Duration(55 * 60):find(NB, 1, true) ~= nil, true, id .. ": a time holds to its unit")
+    end
+    Check(GrammarNs("enUS").L[KEY]:find(NB, 1, true), "an English client's words keep theirs")
+
+    for _, id in ipairs({ "zhCN", "zhTW", "koKR" }) do
+        local ns = GrammarNs(id)
+        local Text = ns.UI.JourneyText
+        Eq(ns.Locale.nbsp, " ", id .. " reads a plain space")
+        Eq(Text.Duration(55 * 60), "55 min", id .. ": a time")
+        Eq(Text.LedgerTime(93 * 60), "1 h 33", id .. ": the ledger's time")
+        Eq(Text.Glue("killed you twice"), "killed you twice", id .. ": glued words")
+        Eq(ns.L[KEY], "%1$s saved {you} at %2$s%% health", id .. ": a key's own English")
+        Eq(ns.Fmt("%d" .. NB .. "min", 4), "4 min", id .. ": a filled template")
+        Eq(ns.Locale.Spaces("3" .. NB .. "h"), "3 h", id .. ": Locale.Spaces")
+    end
+
+    -- The fonts are the client's whatever language the diary reads: a
+    -- Chinese client reading French, whose words and grammar are full of
+    -- them ("3 h 05", "Bravo !").
+    local saved, wasLocale, wasNs = rawget(_G, "SocialDiaryDB"), _G.GetLocale, T.ns
+    _G.SocialDiaryDB = { settings = { language = "frFR" } }
+    _G.GetLocale = function() return "zhCN" end
+    local french = T.Load()
+    _G.SocialDiaryDB, _G.GetLocale, T.ns = saved, wasLocale, wasNs
+    Eq(french.Locale.id, "frFR", "a Chinese client reading French")
+    Eq(french.Locale.nbsp, " ", "reads a plain space all the same")
+    Eq(french.Locale.grammar.Clock(3, 5), "3 h 05", "in what the locale's grammar returns")
+    Eq(GrammarOf("frFR").Clock(3, 5), "3" .. NB .. "h" .. NB .. "05", "which a French client keeps")
+    Check(french.L[KEY] ~= KEY and not french.L[KEY]:find(NB, 1, true), "and in its words: " .. french.L[KEY])
+    local held = {}
+    for key, text in pairs(french.L) do
+        if type(text) == "string" and text:find(NB, 1, true) then held[#held + 1] = key end
+    end
+    Eq(#held, 0, "no French word keeps one there")
+    Eq(type(french.Locale.grammar.PluralForm(2)), "number", "a grammar function's other values come back as they are")
+end

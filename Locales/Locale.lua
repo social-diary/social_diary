@@ -64,6 +64,46 @@ local Locale = {
 }
 ns.Locale = Locale
 
+-- A no-break space holds a figure to its unit ("55 min", "6% health"), in
+-- the words and in what Your Diary glues (UI/Journey/Text/Grammar.lua). On
+-- these clients every font of the diary is the client's own file for its
+-- alphabet (UI/Style/Tokens.lua, NOT_ROMAN), and that file draws a box for
+-- it: seen on zhCN (ARKai_T, a player's report, 12 Nov); zhTW and koKR are
+-- taken the same way unseen, as a line that may wrap costs less than a box.
+-- A Russian client's files are the Latin ones with Cyrillic added, and keep
+-- it. There the space is a plain one, by the client and not the language
+-- read, as the fonts are:
+--   Locale.nbsp          the space that holds: no-break, or plain here
+--   Locale.Spaces(text)  `text` with no no-break space the fonts can't draw
+-- Every word looked up (ns.L), every template filled (ns.Fmt), every place
+-- phrase and whatever a locale's grammar function returns goes through it.
+local NBSP = "\194\160"
+local NO_NBSP = { zhCN = true, zhTW = true, koKR = true }
+Locale.nbsp = NO_NBSP[client] and " " or NBSP
+
+local function Spaces(text, ...)
+    if Locale.nbsp ~= NBSP and type(text) == "string" then text = text:gsub(NBSP, Locale.nbsp) end
+    return text, ...
+end
+Locale.Spaces = Spaces
+
+-- A locale's grammar writes its own ("%d\194\160h\194\160%02d"), and not
+-- all of it comes back through ns.Fmt: each function a locale sets is
+-- wrapped as it is set, its first value cleaned.
+if Locale.nbsp ~= NBSP then
+    local own = {}
+    Locale.grammar = setmetatable({}, {
+        __index = own,
+        __newindex = function(_, key, value)
+            if type(value) == "function" then
+                local fn = value
+                value = function(...) return Spaces(fn(...)) end
+            end
+            own[key] = value
+        end,
+    })
+end
+
 -- A locale says it is there, by the name its own readers call it
 -- ("Deutsch", "Русский"): the first line of its Grammar.lua, before the
 -- `Is` guard, so it is listed on every client.
@@ -113,7 +153,7 @@ Locale.English = English
 -- client every lookup comes here, the ones in a page's drawing too.
 local L = setmetatable({}, {
     __index = function(t, key)
-        local text = English(key)
+        local text = Spaces(English(key))
         rawset(t, key, text)
         return text
     end,
@@ -196,7 +236,7 @@ function Locale.Add(id, words)
                     text = Locale.You(text, UnitSex and UnitSex("player") or nil)
                 end
             end
-            rawset(L, key, text)
+            rawset(L, key, (Spaces(text)))
         end
     end
     return true
@@ -238,8 +278,8 @@ local function Fill(template, ...)
 end
 function ns.Fmt(template, ...)
     local agree = Locale.grammar.Agree
-    if agree then return agree(Fill(template, ...)) end
-    return Fill(template, ...)
+    if agree then return (Spaces(agree(Fill(template, ...)))) end
+    return (Spaces(Fill(template, ...)))
 end
 
 -- A key looked up and filled: ns.T("Met %s", name).
@@ -335,10 +375,10 @@ local function Phrase(own, id, name, role)
     role = role or "in"
     local words = id and own[id]
     local own = words and words[role]
-    if type(own) == "function" then return own(name or "") end
-    if own then return own end
+    if type(own) == "function" then return (Spaces(own(name or ""))) end
+    if own then return (Spaces(own)) end
     local template = Locale.grammar.PLACE[role] or ENGLISH_PLACE[role] or ENGLISH_PLACE["in"]
-    if type(template) == "function" then return template(name or "") end
+    if type(template) == "function" then return (Spaces(template(name or ""))) end
     return ns.Fmt(template, name or "")
 end
 
