@@ -36,7 +36,7 @@
 --   Pad.Refresh()   after anything that may change which scope has the pad
 --                   or what is on it (a page turned, a section shown)
 --   Pad.Top()       the scope that has the pad, or nil
-∫--
+--
 -- The D-pad moves the focus and A presses it, for the top scope with a
 -- focus model; its parents' keys come after its own. A catcher that is on
 -- takes EVERY press and stick, and never passes one on (the handler never
