@@ -36,15 +36,23 @@
 --   Pad.Refresh()   after anything that may change which scope has the pad
 --                   or what is on it (a page turned, a section shown)
 --   Pad.Top()       the scope that has the pad, or nil
---
+∫--
 -- The D-pad moves the focus and A presses it, for the top scope with a
--- focus model; its parents' keys come after its own. A press nothing takes
--- goes on to the game (the handler returns true: it propagates), so the
--- character moves and the action bars work with the book open, in combat
--- too. The button that stands in for Escape (GamePadEmulateEsc) is never
--- taken: the book closes on it through UISpecialFrames as it always has. A
--- button set up as Shift, Ctrl or Alt is taken only by a scope that names
--- it in `keys`.
+-- focus model; its parents' keys come after its own. A catcher that is on
+-- takes EVERY press and stick, and never passes one on (the handler never
+-- returns true): a press passed on from our handler runs the game's
+-- binding tainted by us (the client, 12 Nov 2026: GAMEPADACTIONBUTTON6 and
+-- GAMEPADRIGHTTARGETMODIFIER ran tainted, wrote tainted values into the
+-- target markers and the buff frame, and the game errored on secret values
+-- until /reload; the Escape stand-in passed on got SetPreferredGamepad-
+-- InteractTarget forbidden). So with the book holding the pad, the pad
+-- does not move the character or use the action bars. In combat the pad
+-- is the game's: every catcher is off (the book stays open for the mouse),
+-- and it comes back to the book when combat ends. The button that stands
+-- in for Escape (GamePadEmulateEsc) is taken too, and on its release our
+-- windows in UISpecialFrames are hidden from here, as the game's Escape
+-- would. A button set up as Shift, Ctrl or Alt does something only for a
+-- scope that names it in `keys`.
 --
 -- Only path B of the API guide (§6): EnableGamePadButton on frames of our
 -- own, which are not protected, so it is allowed in combat; no override
@@ -378,21 +386,48 @@ Pad.Back = Back
 
 local catchers = setmetatable({}, { __mode = "k" })
 
+-- In combat the pad is the game's (see the header): set from the events,
+-- as InCombatLockdown is still false while PLAYER_REGEN_DISABLED is heard.
+local fighting = false
+local function Combat()
+    return fighting or (InCombatLockdown ~= nil and InCombatLockdown()) and true or false
+end
+Pad.Combat = Combat
+
+-- The Escape stand-in, on its release: our windows in UISpecialFrames
+-- hidden, as the game's Escape does them (CloseSpecialWindows), but from
+-- here, so no binding of the game's runs from our handler. Gone through as
+-- the list stood at the press: a window that stands in for another
+-- (UI/Dungeon/Spread.lua's StandIn) closes alone, as with the keyboard.
+local function CloseOurs()
+    local names = {}
+    for i, name in ipairs(UISpecialFrames or {}) do names[i] = name end
+    for _, name in ipairs(names) do
+        local frame = type(name) == "string" and name:find("^SocialDiary") and _G[name]
+        if frame and frame:IsShown() then frame:Hide() end
+    end
+end
+Pad.CloseOurs = CloseOurs
+
+-- (Never returns true: see the header. Every return is a press taken;
+-- `acted` says whether anything was done with it, for the tests.)
 local function Down(self, key)
+    self.acted = false
     local scope = Pad.Top()
-    if not (scope and Input.Active() and Host(scope) == self.host) then return true end
-    if IsEscape(key) or (Emulated(key) and not Claims(scope, key)) then return true end
+    if not (scope and Input.Active() and Host(scope) == self.host) or Combat() then return false end
     self.downs[key] = true
-    -- (B acts on its release: closing on the press would leave the release
-    -- to whatever is under the book)
-    if key == BACK then return false end
+    -- (B and Escape act on their release: closing on the press would leave
+    -- the release to whatever is under the book)
+    if key == BACK or IsEscape(key) then
+        self.acted = true
+        return false
+    end
+    if Emulated(key) and not Claims(scope, key) then return false end
     Pad.pressing = true
     local taken = Dispatch(scope, key)
     Pad.pressing = false
-    if not taken then
-        self.downs[key] = nil
-        return true
-    end
+    if not taken then return false end
+    self.acted = true
     if DIRS[key] then self:Repeat(key) end
     ShowLegend(Pad.Top())
     return false
@@ -400,11 +435,15 @@ end
 
 local function Up(self, key)
     if self.repeatKey == key then self:Repeat(nil) end
-    -- (only a release whose press we took: a button held as the book
-    -- opened is the game's to the end)
-    if not self.downs[key] then return true end
+    -- (only a release whose press we took acts: a button held as the book
+    -- opened is the game's to the end, and its release never comes here)
+    self.acted = self.downs[key] == true
+    if not self.downs[key] then return false end
     self.downs[key] = nil
-    if key == BACK then
+    if Combat() then return false end
+    if IsEscape(key) then
+        CloseOurs()
+    elseif key == BACK then
         local scope = Pad.Top()
         if scope then Back(scope) end
         ShowLegend(Pad.Top())
@@ -429,7 +468,8 @@ end
 -- A stick moved (the client says when it changes, not every frame: the
 -- guide's §6). Past the deadzone and taken by the scope, it is held and
 -- moved by on each frame (StickUpdate); back in the deadzone, let go. A
--- stick no scope takes goes on to the game (the camera, the character).
+-- stick no scope takes is taken all the same (see the header: nothing is
+-- passed on); sticks are on only for a scope that asks for them.
 local function StickUpdate(ticker, elapsed)
     local c = ticker.catcher
     local scope = Pad.Top()
@@ -446,18 +486,20 @@ local function Stick(self, stick, x, y, len)
     x, y = x or 0, y or 0
     len = len or math.sqrt(x * x + y * y)
     local held = self.sticks[stick]
+    self.acted = held ~= nil
     if len < DEADZONE then
         self.sticks[stick] = nil
         if not next(self.sticks) then self.ticker:SetScript("OnUpdate", nil) end
-        return not held
+        return false
     end
     local scope = Pad.Top()
-    local s = scope and Input.Active() and Host(scope) == self.host and Sticky(scope)
-    if not s then return true end
+    local s = scope and Input.Active() and Host(scope) == self.host and not Combat() and Sticky(scope)
+    if not s then return false end
     -- (measured from the deadzone's edge: 0 there, 1 pushed all the way)
     local k = math.min(1, (len - DEADZONE) / (1 - DEADZONE)) / len
     local sx, sy, sl = x * k, y * k, len * k
-    if not held and not s.stick(s, stick, sx, sy, sl, 0) then return true end
+    if not held and not s.stick(s, stick, sx, sy, sl, 0) then return false end
+    self.acted = true
     self.sticks[stick] = { sx, sy, sl }
     self.ticker:SetScript("OnUpdate", StickUpdate)
     return false
@@ -543,7 +585,8 @@ end
 
 function Pad.Refresh()
     Watch()
-    local active = Input.Active()
+    -- (in combat the pad is the game's: everything put down, the book open)
+    local active = Input.Active() and not Combat()
     if not active then return PutDown() end
     local top = Pad.Top()
     local topHost = top and Host(top)
@@ -585,4 +628,12 @@ function Pad.Refresh()
 end
 
 Input.OnChange(function() Pad.Refresh() end)
+ns.On("PLAYER_REGEN_DISABLED", function()
+    fighting = true
+    Pad.Refresh()
+end)
+ns.On("PLAYER_REGEN_ENABLED", function()
+    fighting = false
+    Pad.Refresh()
+end)
 Pad.Glyphs.OnChange(function() ShowLegend(Pad.Top()) end)

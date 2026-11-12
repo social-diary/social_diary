@@ -1149,27 +1149,39 @@ _G.IsUsingGamepad = function() return M.pad.using end
 _G.IsKeyDown = function(key) return M.keysDown[key] == true end
 
 -- A pad button pressed (down true) or let go on a frame, as the client
--- delivers it: only to a frame taking pad buttons. Returns whether it went
--- on past the frame (the handler's propagate), true for a frame not taking
--- them.
+-- delivers it: only to a frame taking pad buttons. Returns whether nothing
+-- was done with it (M.PadUnused), true for a frame not taking them; a
+-- handler that passes it on errors.
 function M.PadPress(frame, key, down)
     if not frame:IsGamePadButtonEnabled() then return true end
     local fn = frame.scripts[down and "OnGamePadButtonDown" or "OnGamePadButtonUp"]
     if not fn then return true end
-    return fn(frame, key) == true
+    return M.PadUnused(frame, fn(frame, key))
+end
+
+-- A frame taking the pad never passes a press on (UI/Pad/Catcher.lua's
+-- header: the game's binding would run tainted by the addon), so what the
+-- PadPress and PadStick helpers give back is whether nothing was done with
+-- it: the frame's `acted` false (true where the frame doesn't say).
+function M.PadUnused(frame, propagate)
+    if propagate == true then
+        error("a pad press passed on from an addon's handler: the game's binding runs tainted", 3)
+    end
+    if frame.acted == nil then return false end
+    return not frame.acted
 end
 
 -- A pad's stick moved on a frame (stick its config name, "Right",
 -- "Camera", "Left", "Movement"; x, y in -1..1), as the client delivers it:
--- only to a frame taking sticks. Returns whether it went on past the frame
--- (the handler's propagate), true for a frame not taking them. The client
+-- only to a frame taking sticks. Returns whether nothing was done with it
+-- (M.PadUnused), true for a frame not taking them. The client
 -- says when a stick changes, not every frame: a test runs the frames
 -- itself (the catcher's ticker's OnUpdate).
 function M.PadStick(frame, stick, x, y)
     if not frame:IsGamePadStickEnabled() then return true end
     local fn = frame.scripts.OnGamePadStick
     if not fn then return true end
-    return fn(frame, stick, x, y, math.sqrt(x * x + y * y)) == true
+    return M.PadUnused(frame, fn(frame, stick, x, y, math.sqrt(x * x + y * y)))
 end
 
 -- Macros, for the book Settings puts on an action bar: M.macros holds the

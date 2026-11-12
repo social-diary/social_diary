@@ -32,7 +32,7 @@ Background, if you need more than this file:
    manager may only be **read**.
 
 2. **Only path B.** Our own unprotected frames take pad buttons
-   (`EnableGamePadButton`), so it works in combat.
+   (`EnableGamePadButton`); never a protected frame.
    - No override bindings for navigation.
    - Never `SetBinding` for the player, except the key setter
      (`UI/Kit/Keys.lua`), where they choose the key. That's their opt-in,
@@ -49,11 +49,27 @@ Background, if you need more than this file:
      control of its own kind (`.diaryMacro`): A picks it up as a click
      does. Words for it say what to do, never what doesn't work.
 
-3. **Additive.** The pad never takes a press it doesn't use.
-   - Unclaimed buttons go on to the game (movement, camera, action bars),
-     with the book open, in combat too.
-   - The Escape stand-in (`GamePadEmulateEsc`) is never taken. Windows
-     close on it through `UISpecialFrames`, as with the keyboard.
+3. **Never pass a press on.** A catcher that is on takes every button
+   and stick (its handlers never return `true`). A press passed on from
+   our handler runs the game's binding **tainted by us** (the client,
+   12 Nov 2026: `GAMEPADACTIONBUTTON6` and `GAMEPADRIGHTTARGETMODIFIER`
+   ran tainted, wrote into the target markers and the buff frame, and
+   thousands of "secret number value" errors followed until `/reload`; the
+   Escape stand-in passed on got `SetPreferredGamepadInteractTarget`
+   forbidden). This replaced the old "additive" rule.
+   - While the diary has the pad, the pad doesn't move the character or
+     use the action bars. Closing it (B, Escape's stand-in) gives the pad
+     back.
+   - **In combat the pad is the game's:** on `PLAYER_REGEN_DISABLED` every
+     catcher goes off and the look is put away; the book stays open for
+     the mouse. On `PLAYER_REGEN_ENABLED` the pad comes back to it
+     (`Pad.Combat()`).
+   - The Escape stand-in (`GamePadEmulateEsc`) is taken too; on its
+     release `Pad.CloseOurs()` hides our `SocialDiary*` windows in
+     `UISpecialFrames`, as the game's Escape would.
+   - The mock enforces it: `mock.PadPress` / `PadStick` error on a handler
+     that returns `true`, and return whether nothing was done with the
+     press (the catcher's `acted`).
 
 4. **A window takes the pad only if the player opened it.**
    - Call `Pad.Opened(frame)` on the player's path into it.
@@ -275,7 +291,8 @@ local function Press(key) mock.PadPress(catcher, key, true); mock.PadPress(catch
   - every new thing is reachable;
   - A does what the click does;
   - B returns one level, to where the pad was;
-  - unclaimed buttons propagate;
+  - nothing is ever passed on (the mock errors), and in combat the
+    catcher is off;
   - items offer no click;
   - a window not opened by the player doesn't take the pad;
   - the mouse taking over gives every colour back;

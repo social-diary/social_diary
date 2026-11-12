@@ -130,13 +130,13 @@ Eq(welcome.keyStatus:GetText(), ns.UI.Settings.Macro.SAID.padClick, "the pad's l
 Check(book:IsShown(), "A on the book closed the journal")
 Eq(At().kind, "book", "picking it up moved the pad")
 
--- In a fight the book fades, and the pad passes over it.
+-- In a fight the book fades, and the pad is the game's (UI/Pad/Catcher.lua).
 mock.cursor = nil
 mock.inCombat = true
 mock.fire("PLAYER_REGEN_DISABLED")
 Pad.Refresh()
 Check(remember.unavailable, "the book not faded in a fight")
-Check(At() == nil or At().kind ~= "book", "the pad stands on a faded book")
+Check(not catcher:IsGamePadButtonEnabled(), "the book kept the pad in a fight")
 remember:Click("LeftButton")
 Eq(mock.cursor, nil, "a faded book picked up")
 mock.inCombat = false

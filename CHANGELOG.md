@@ -16,6 +16,10 @@ Next, Social Diary is now available in Spanish, French, Russian and German! Thes
     - Corrections to the machine translations are welcome
 - Theres now a UI Scale Option inside _Interface_ Settings
 
+### Fixes
+
+- Using the diary with a controller no longer breaks buffs and targeting
+
 ## [3.0.2]
 
 This Updates brings small but important UX fixes. Especially the red ink spills that mark your combat zones in _Your Diary_ are now more clearly computed and displayed.

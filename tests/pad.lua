@@ -59,11 +59,13 @@ Check(catcher:IsGamePadButtonEnabled(), "the book's catcher not taking buttons")
 Eq(#Taking(), 1, "frames taking pad buttons")
 
 --------------------------------------------------------------------------
-Section("presses nobody takes go on to the game")
+Section("presses nobody uses are taken all the same, never passed on")
 
-for _, key in ipairs({ "PAD3", "PAD4", "PADDUP", "PADLTRIGGER", "PADBACK", "PADLSTICK" }) do
+-- (passed on from our handler, the game's binding runs tainted: the
+-- mock errors on a handler that returns true, UI/Pad/Catcher.lua's header)
+for _, key in ipairs({ "PAD3", "PAD4", "PADDUP", "PADLTRIGGER", "PADLSTICK", "PADRTRIGGER" }) do
     local down, up = Press(catcher, key)
-    Check(down and up, key .. " kept from the game")
+    Check(down and up, key .. " did something")
 end
 Eq(J.view, keys[1], "a press nobody takes turned the book")
 
@@ -82,19 +84,41 @@ Press(catcher, "PADRSHOULDER")
 Eq(J.view, keys[1], "RB on the last: round to the first")
 
 --------------------------------------------------------------------------
-Section("in combat the pad still turns the book")
+Section("in combat the pad is the game's; the book stays open")
 
 mock.inCombat = true
-Press(catcher, "PADRSHOULDER")
-Eq(J.view, keys[2], "RB in combat")
+mock.fire("PLAYER_REGEN_DISABLED")
+Check(book:IsShown(), "the book closed in combat")
+Check(not catcher:IsGamePadButtonEnabled(), "the book kept the pad in combat")
+Eq(Pad.Top() and Pad.Top().key, "journal", "the book's scope gone in combat")
+-- (still lit, as a press could be on its way)
+catcher:EnableGamePadButton(true)
+Check(mock.PadPress(catcher, "PADRSHOULDER", true), "a press used in combat")
+mock.PadPress(catcher, "PADRSHOULDER", false)
+Eq(J.view, keys[1], "RB turned the book in combat")
 mock.inCombat = false
+mock.fire("PLAYER_REGEN_ENABLED")
+Check(catcher:IsGamePadButtonEnabled(), "the pad not back on the book after combat")
+Press(catcher, "PADRSHOULDER")
+Eq(J.view, keys[2], "RB after combat")
 
 --------------------------------------------------------------------------
 Section("Escape's stand-in and the modifiers")
 
+-- Escape's stand-in is taken, and its release puts our windows away from
+-- here, as the game's Escape would (never the game's binding).
 mock.cvars.GamePadEmulateEsc = "PAD3"
-Check(mock.PadPress(catcher, "PAD3", true), "the Escape button taken")
+Eq(mock.PadPress(catcher, "PAD3", true), false, "the Escape button's press unused")
+Check(book:IsShown(), "closed on Escape's press")
+Eq(mock.PadPress(catcher, "PAD3", false), false, "the Escape button's release unused")
+Check(not book:IsShown(), "Escape's stand-in did not close the book")
 mock.cvars.GamePadEmulateEsc = nil
+ns.UI.ShowJournal()
+Check(catcher:IsGamePadButtonEnabled(), "the book opened again does not take the pad")
+-- (the default stand-in, the Back button)
+Press(catcher, "PADBACK")
+Check(not book:IsShown(), "the Back button did not close the book")
+ns.UI.ShowJournal()
 -- (the book names the shoulders, so it takes them set up as Ctrl too)
 mock.cvars.GamePadEmulateCtrl = "PADRSHOULDER"
 Press(catcher, "PADRSHOULDER")
