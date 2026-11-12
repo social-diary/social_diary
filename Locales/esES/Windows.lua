@@ -119,4 +119,17 @@ ns.Locale.Add("esES", {
     ["Your toasts"] = "Tus avisos",
     ["will appear where you leave this card."] = "aparecerán donde dejes esta tarjeta.",
     ["%1$s %2$s##sentences"] = "%1$s %2$s",
+    -- UI/Windows/Suggest/Pick.lua
+    ["Click the line you want to change. Right-click or Escape to stop."] = "Haz clic en la línea que quieras cambiar. Clic derecho o Escape para dejarlo.",
+    -- UI/Windows/Suggest/Sheet.lua
+    ["A better wording"] = "Una redacción mejor",
+    ["As the diary has it"] = "Como lo tiene el diario",
+    ["In English"] = "En inglés",
+    ["Your wording"] = "Tu redacción",
+    ["How should it read?"] = "¿Cómo debería leerse?",
+    ["Make the link"] = "Crear el enlace",
+    ["The diary couldn’t find the English for this line. It goes as it is shown."] = "El diario no encontró el inglés de esta línea. Se envía tal como se muestra.",
+    ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Copia este enlace en tu navegador. Abre una incidencia de GitHub con todo rellenado.",
+    -- UI/Windows/Suggest/Strip.lua
+    ["Pick a line in the diary and suggest how it should read."] = "Elige una línea del diario y propón cómo debería leerse.",
 })

@@ -298,4 +298,14 @@ ns.Locale.Add("deDE", {
 
     -- UI/Windows/Reunion/Pad.lua
     ["Move the toast"] = "Einblendung verschieben",
+
+    -- UI/Settings/Sections/Interface.lua
+    ["Show a hint about a new language"] = "Hinweis zu einer neuen Sprache zeigen",
+    ["The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character."] =
+        "Wenn das Tagebuch zum ersten Mal in einer anderen Sprache geschrieben ist, sagt das Buch, dass die Übersetzung maschinell erstellt ist und wie du eine bessere Formulierung vorschlagen kannst. Gilt für jeden Charakter.",
+
+    -- UI/Settings/Sections/Language.lua
+    ["Show the “Suggest Translation” slip"] = "Zettel „Übersetzung vorschlagen“ zeigen",
+    ["The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character."] =
+        "Der Zettel steht oben am Buch und lässt dich eine Zeile wählen und vorschlagen, wie sie lauten soll. Gilt für jeden Charakter.",
 })

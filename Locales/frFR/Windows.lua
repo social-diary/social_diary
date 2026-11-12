@@ -121,6 +121,17 @@ ns.Locale.Add("frFR", {
     ["Your toasts"] = "Tes alertes",
     ["will appear where you leave this card."] = "apparaîtront là où tu laisseras cette fiche.",
     ["%1$s %2$s##sentences"] = "%1$s %2$s",
+    -- UI/Windows/Suggest
+    ["Click the line you want to change. Right-click or Escape to stop."] = "Clique sur la ligne à changer. Clic droit ou Échap pour arrêter.",
+    ["A better wording"] = "Une meilleure formulation",
+    ["As the diary has it"] = "Tel que le journal le dit",
+    ["In English"] = "En anglais",
+    ["Your wording"] = "Ta formulation",
+    ["How should it read?"] = "Comment faudrait-il le dire ?",
+    ["Make the link"] = "Créer le lien",
+    ["The diary couldn’t find the English for this line. It goes as it is shown."] = "Le journal n’a pas trouvé l’anglais de cette ligne. Elle part telle qu’elle s’affiche.",
+    ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Copie ce lien dans ton navigateur. Il ouvre un ticket GitHub déjà rempli.",
+    ["Pick a line in the diary and suggest how it should read."] = "Choisis une ligne du journal et propose comment elle devrait se lire.",
     -- Unassigned
     ["The Barrens"] = "Les Tarides",
     ["Stonetalon Mountains"] = "Les Serres-Rocheuses",

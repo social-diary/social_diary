@@ -102,6 +102,10 @@ ns.Locale.Add("ruRU", {
     ["Show hints again"] = "Показать советы снова",
     ["Show a hint after a big update"] = "Совет после крупного обновления",
     ["When a new major version such as 3.0 is installed, the book points you to what changed. Applies to every character."] = "Когда устанавливается новая крупная версия, например 3.0, книга подскажет, что изменилось. Действует для всех персонажей.",
+    ["Diary Size"] = "Размер дневника",
+    ["On a smaller screen, the diary grows only as large as fits. Applies to every character."] = "На небольшом экране дневник вырастет лишь настолько, насколько поместится. Действует для всех персонажей.",
+    ["Show a hint about a new language"] = "Совет о новом языке",
+    ["The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character."] = "Когда дневник впервые написан на другом языке, книга сообщает, что перевод сделан машиной, и подсказывает, как предложить формулировку получше. Действует для всех персонажей.",
     ["Interface"] = "Интерфейс",
     -- UI/Settings/Sections/Memory.lua
     ["%1$d in the diary, %2$s, %3$s, %4$s and %5$s.  About %6$d KB on disk."] = "Людей в дневнике: %1$d; %2$s, %3$s, %4$s и %5$s.  Около %6$d КБ на диске.",
@@ -191,5 +195,7 @@ ns.Locale.Add("ruRU", {
     ["The diary can't change language on this game client, because your choice reaches it too late. It stays in the game's language."] = "Дневник не может сменить язык в этом клиенте игры: твой выбор доходит до него слишком поздно. Он остаётся на языке игры.",
     ["Translations"] = "Переводы",
     ["Every language but English was machine-translated, so some lines may read oddly or wrongly. Text clipping is likely to occur also. Corrections are welcome."] = "Все языки, кроме английского, переведены машинно, поэтому некоторые строки могут звучать странно или неверно. Вероятно, текст местами будет обрезан. Исправления приветствуются.",
+    ["Show the “Suggest Translation” slip"] = "Показывать листок «Предложить перевод»",
+    ["The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character."] = "Листок виден наверху книги: на нём можно выбрать строку и предложить, как она должна звучать. Действует для всех персонажей.",
     ["Go to Feedback"] = "Перейти к обратной связи",
 })

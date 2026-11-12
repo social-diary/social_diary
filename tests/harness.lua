@@ -181,13 +181,16 @@ function H.Run(dir, files, args)
 
     mock = dofile(here .. "/wowmock.lua")
     CaptureChat()
+    -- The mock's GetLocale, put back before every file: a file that sets
+    -- another and fails before it restores it leaves the rest English.
+    local mockLocale = _G.GetLocale
 
     local failed, ran = {}, 0
     for _, name in ipairs(files) do
         if Wanted(name, only) then
             ran = ran + 1
             mock.Reset()
-            if locale then _G.GetLocale = function() return locale end end
+            if locale then _G.GetLocale = function() return locale end else _G.GetLocale = mockLocale end
             said, section = {}, nil
             local before = checks
 

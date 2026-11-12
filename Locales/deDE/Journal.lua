@@ -383,4 +383,11 @@ ns.Locale.Add("deDE", {
     ["First seen"] = "Zuerst gesehen",
     ["Added to the diary %s##zone"] = "Ins Tagebuch eingetragen %s",
     ["Added to the diary"] = "Ins Tagebuch eingetragen",
+
+    -- UI/Journal/Hints.lua
+    ["Translated Pages"] = "Übersetzte Seiten",
+    ["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."] =
+        "Das Tagebuch ist jetzt auf %s geschrieben. Die Übersetzung ist noch frisch und maschinell erstellt, rechne also mit seltsamen Zeilen und abgeschnittenem Text. Korrekturen sind willkommen.",
+    ["Suggest Translation"] = "Übersetzung vorschlagen",
+    ["Go to Language"] = "Zur Spracheinstellung",
 })

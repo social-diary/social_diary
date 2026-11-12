@@ -119,4 +119,17 @@ ns.Locale.Add("ruRU", {
     ["Your toasts"] = "Твои уведомления",
     ["will appear where you leave this card."] = "появятся там, где ты оставишь эту карточку.",
     ["%1$s %2$s##sentences"] = "%1$s %2$s",
+    -- UI/Windows/Suggest/Pick.lua
+    ["Click the line you want to change. Right-click or Escape to stop."] = "Щёлкни по строке, которую хочешь изменить. Правая кнопка мыши или Escape — отмена.",
+    -- UI/Windows/Suggest/Sheet.lua
+    ["A better wording"] = "Формулировка получше",
+    ["As the diary has it"] = "Как сейчас в дневнике",
+    ["In English"] = "По-английски",
+    ["Your wording"] = "Твоя формулировка",
+    ["How should it read?"] = "Как это должно звучать?",
+    ["Make the link"] = "Создать ссылку",
+    ["The diary couldn’t find the English for this line. It goes as it is shown."] = "Дневник не нашёл английского текста этой строки. Она уйдёт так, как показана.",
+    ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Скопируй эту ссылку в браузер. Она откроет задачу на GitHub, где всё уже заполнено.",
+    -- UI/Windows/Suggest/Strip.lua
+    ["Pick a line in the diary and suggest how it should read."] = "Выбери строку в дневнике и предложи, как она должна звучать.",
 })

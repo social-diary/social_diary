@@ -85,6 +85,10 @@ ns.Locale.Add("frFR", {
     ["Adds RP profile data to diary entries. Not available until it's ported to Forever."] = "Ajoute les données de profil RP aux entrées du journal. Indisponible tant qu’il n’est pas porté sur Forever.",
     ["Integrations"] = "Intégrations",
     -- UI/Settings/Sections/Interface.lua
+    ["Diary Size"] = "Taille du journal",
+    ["On a smaller screen, the diary grows only as large as fits. Applies to every character."] = "Sur un écran plus petit, le journal ne grandit que jusqu’à ce qui tient. S’applique à tous les personnages.",
+    ["Show a hint about a new language"] = "Signaler une nouvelle langue",
+    ["The first time the diary is written in another language, the book says the translation is machine-made and how to suggest a better wording. Applies to every character."] = "La première fois que le journal est écrit dans une autre langue, le livre précise que la traduction est faite par machine et explique comment proposer une meilleure formulation. S’applique à tous les personnages.",
     ["Tooltips"] = "Infobulles",
     ["Add diary lines to player tooltips"] = "Ajouter des lignes du journal aux infobulles des joueurs",
     ["For everyone else, how often you have seen them"] = "Pour les autres, le nombre de croisements",
@@ -181,6 +185,8 @@ ns.Locale.Add("frFR", {
     ["Toasts can get annoying for people you play with all the time."] = "Les alertes peuvent lasser pour les personnes avec qui tu joues tout le temps.",
     ["Toasts"] = "Alertes",
     -- UI/Settings/Sections/Language.lua
+    ["Show the “Suggest Translation” slip"] = "Afficher le feuillet « Suggérer une traduction »",
+    ["The slip stands at the top of the book and lets you pick a line and suggest how it should read. Applies to every character."] = "Le feuillet se tient en haut du livre : il te laisse choisir une ligne et proposer comment elle devrait se lire. S’applique à tous les personnages.",
     ["Language"] = "Langue",
     ["Change the Diary's Language"] = "Changer la langue du journal",
     ["The game's language"] = "La langue du jeu",

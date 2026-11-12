@@ -156,6 +156,10 @@ ns.Locale.Add("ruRU", {
     ["Old Scoreboards"] = "Старые таблицы результатов",
     ["In %d match, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.|In %d matches, your oldest battleground scoreboards begin to lose their strangers. The people in your diary stay on them.##plural"] = "Через %d матч таблицы результатов самых старых полей боя начнут терять незнакомцев. Люди из твоего дневника на них останутся.|Через %d матча таблицы результатов самых старых полей боя начнут терять незнакомцев. Люди из твоего дневника на них останутся.|Через %d матчей таблицы результатов самых старых полей боя начнут терять незнакомцев. Люди из твоего дневника на них останутся.",
     ["Keep more"] = "Хранить дольше",
+    ["Translated Pages"] = "Переведённые страницы",
+    ["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."] = "Дневник теперь написан на языке: %s. Перевод ранний и сделан машиной, так что возможны странные строки и обрезанный текст. Исправления приветствуются.",
+    ["Suggest Translation"] = "Предложить перевод",
+    ["Go to Language"] = "К настройкам языка",
 
     -- UI/Journal/Nearby.lua
     ["Dealt with"] = "Контакты",
