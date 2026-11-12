@@ -2,21 +2,20 @@
 
 ## [Unreleased]
 
-This is a big update: It brings new Views for Battlegrounds that show many social events. Currently, only Warsong Gulch provides a custom View. The other BG's will follow.
+## [4.0.0]
 
-Next, Social Diary is now available in Spanish, French, Russian and German! These new languages are still early, so expect some Text clipping and odd wording.
+This big update brings battleground Views, starting with Warsong Gulch, and the diary in German, Spanish, French and Russian. Both are still early, so please send feedback and translation suggestions on GitHub!
 
 ### Shiny new Things
 
 - _Your Diary_ now keeps your battleground matches, with an evening's overview
   - _Toasts_ and timelines tell of diary people you meet there
-  - New _Battlegrounds_ settings choose how many full scoreboards stay
-- The Addon is now translated into Spanish, French and Russian (thanks CarnVanBeck)
-    - A new _Language_ page in _Settings_ picks the diary's language
-    - Corrections to the machine translations are welcome
-- A note greets you the first time the diary speaks your language
-- Pick any line in a translated diary and suggest a better wording
-- Theres now a UI Scale Option inside _Interface_ Settings
+  - New _Battlegrounds_ settings choose how many full scoreboards are saved
+- The diary is now translated into German, Spanish, French and Russian (thanks CarnVanBeck)
+  - A new _Language_ page in _Settings_ picks the diary's language
+- Suggest a better wording for any line in a translated diary
+  - A note greets you the first time the diary speaks your language
+- A new UI scale option in _Interface_ settings
 
 ### Fixes
 

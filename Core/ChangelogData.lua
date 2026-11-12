@@ -7,6 +7,21 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.0.0",
+        summary = "This big update brings battleground Views, starting with Warsong Gulch, and the diary in German, Spanish, French and Russian. Both are still early, so please send feedback and translation suggestions on GitHub!",
+        groups = {
+            { heading = "Shiny new Things", entries = {
+                { text = "_Your Diary_ now keeps your battleground matches, with an evening's overview", sub = { { text = "_Toasts_ and timelines tell of diary people you meet there" }, { text = "New _Battlegrounds_ settings choose how many full scoreboards are saved" } } },
+                { text = "The diary is now translated into German, Spanish, French and Russian", thanks = "CarnVanBeck", sub = { { text = "A new _Language_ page in _Settings_ picks the diary's language" } } },
+                { text = "Suggest a better wording for any line in a translated diary", sub = { { text = "A note greets you the first time the diary speaks your language" } } },
+                { text = "A new UI scale option in _Interface_ settings" },
+            } },
+            { heading = "Fixes", entries = {
+                { text = "Using the diary with a controller no longer breaks buffs and targeting" },
+            } },
+        },
+    },
+    {
         version = "3.0.2",
         summary = "This Updates brings small but important UX fixes. Especially the red ink spills that mark your combat zones in _Your Diary_ are now more clearly computed and displayed.",
         groups = {
@@ -53,18 +68,6 @@ ns.Changelog = {
                 { text = "Nearby _Toasts_ and last-seen places ignore group members who are far away" },
                 { text = "Items in the _Dungeon View_ can be shift-clicked and ctrl-clicked" },
                 { text = "A rare killed again in one session is named once on the timeline" },
-            } },
-        },
-    },
-    {
-        version = "2.3.0",
-        summary = "This Update adds support for non-latin languages and pencilled-in preview pages for strangers in _Your Diary_.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "Strangers in _Your Diary_ open a pencilled-in preview of their page" },
-            } },
-            { heading = "Fixes", entries = {
-                { text = "Names and places now show on Russian, Korean and Chinese clients" },
             } },
         },
     },
