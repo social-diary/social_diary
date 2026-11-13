@@ -500,11 +500,21 @@ do
     for _, id in ipairs({ "zhCN", "zhTW", "koKR" }) do
         local ns = GrammarNs(id)
         local Text = ns.UI.JourneyText
+        -- A client with its own words (zhCN) reads them, so only the space
+        -- is checked there; one without (zhTW, koKR) reads the English.
+        local own = ns.Locale.id == id
+        local function Plain(got, english, what)
+            if own then
+                Check(not tostring(got):find(NB, 1, true), id .. ": " .. what .. " holds no no-break space: " .. tostring(got))
+            else
+                Eq(got, english, id .. ": " .. what)
+            end
+        end
         Eq(ns.Locale.nbsp, " ", id .. " reads a plain space")
-        Eq(Text.Duration(55 * 60), "55 min", id .. ": a time")
-        Eq(Text.LedgerTime(93 * 60), "1 h 33", id .. ": the ledger's time")
+        Plain(Text.Duration(55 * 60), "55 min", "a time")
+        Plain(Text.LedgerTime(93 * 60), "1 h 33", "the ledger's time")
         Eq(Text.Glue("killed you twice"), "killed you twice", id .. ": glued words")
-        Eq(ns.L[KEY], "%1$s saved {you} at %2$s%% health", id .. ": a key's own English")
+        Plain(ns.L[KEY], "%1$s saved {you} at %2$s%% health", "a key's words")
         Eq(ns.Fmt("%d" .. NB .. "min", 4), "4 min", id .. ": a filled template")
         Eq(ns.Locale.Spaces("3" .. NB .. "h"), "3 h", id .. ": Locale.Spaces")
     end
