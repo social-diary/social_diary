@@ -93,14 +93,26 @@ G.YOU_FOR = {
 
 -- The plain preposition per role. The client's name arrives bare, in the
 -- nominative, and Russian declines it ("в Дуротаре"): that cannot be done
--- here, so the name is set in quotes after the preposition and reads as a
--- title ("в «Дуротар»"), the same for a zone, a subzone and a dungeon.
--- ZONES, DUNGEONS, SUBZONES stay empty: see ruRU-code-changes.md.
+-- here, so a noun stands before the name and takes the case, and the name
+-- follows in quotes, as it comes ("в зоне «Дуротар»", "из зоны «Дуротар»").
+-- A zone and a subzone are "зона" (as the client calls both); a dungeon is
+-- "подземелье", for every instance (no names, only the noun).
+-- ZONES and SUBZONES stay empty: see ruRU-code-changes.md.
 G.PLACE = {
-    ["in"] = "в «%s»", to = "в «%s»", from = "из «%s»", into = "в «%s»",
-    through = "через «%s»", near = "рядом с «%s»", at = "у «%s»",
-    around = "вокруг «%s»", round = "вокруг «%s»",
+    ["in"] = "в зоне «%s»", to = "в зону «%s»", from = "из зоны «%s»", into = "в зону «%s»",
+    through = "через зону «%s»", near = "рядом с зоной «%s»", at = "в зоне «%s»",
+    around = "по зоне «%s»", round = "по зоне «%s»",
 }
+local DUNGEON = {
+    ["in"] = "в подземелье «%s»", to = "в подземелье «%s»", from = "из подземелья «%s»",
+    into = "в подземелье «%s»", through = "через подземелье «%s»",
+    near = "рядом с подземельем «%s»", at = "в подземелье «%s»",
+    around = "по подземелью «%s»", round = "по подземелью «%s»",
+}
+for role, template in pairs(DUNGEON) do
+    DUNGEON[role] = function(name) return (template:gsub("%%s", function() return name end)) end
+end
+G.DUNGEONS = setmetatable(G.DUNGEONS or {}, { __index = function() return DUNGEON end })
 
 -- Names for more than one, and a killer's name in a sentence: the client's
 -- names decline in ways that cannot be known here, so they stay as they come.

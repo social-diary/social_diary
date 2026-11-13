@@ -31,8 +31,9 @@ something. What is still open, in short:
 1. **[open]** (A2, D2) **Case: names cannot decline.** Zone, dungeon, creature, item, boss and
    character names arrive bare (nominative) and Russian needs a case after
    nearly every preposition ("в Дуротаре", "от Брама", "с Брамом"). Today
-   `grammar.PLACE` puts the name in quotes after the preposition
-   ("в «Дуротар»") and killers/opponents/boss names are rebuilt after a
+   `grammar.PLACE` puts a declined noun before the quoted name
+   ("в зоне «Дуротар»", "в подземелье «…»"; 13 Nov 2026, it was
+   "в «Дуротар»" before) and killers/opponents/boss names are rebuilt after a
    colon ("Противник: %s", "Убийцы: %s", "после босса: %s"). Needs, in the
    framework: `PLACE[role]` and a name-keyed `ZONES/DUNGEONS/SUBZONES` to be
    functions or to take a case (`ns.ZoneIn(mapID, name, role)` already has

@@ -8,11 +8,12 @@
 
 ### Changes
 
-- It's now more likely to _get lucky_ on a quest item hunt, now requiring just half of expected kills instead of an eighth.
+- It's now more likely to _get lucky_ on a quest item hunt, now requiring just half of expected kills instead of an eighth
 
 ### Fixes
 
 - In Korean and Chinese Clients, Box / Tofu Characters no longer appear in place of no-break spaces
+- Language Fixes for ruRU
 
 ## [4.0.0]
 

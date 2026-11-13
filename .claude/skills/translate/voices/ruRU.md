@@ -64,13 +64,18 @@ case-governed slot ("после двух", "во всех трёх") stays after
 
 ## Tense
 - **Prose** (Your Diary, profile, tour) and **rows** (timeline, toasts):
-  the past tense, with the gender forms ("Брам погиб рядом с «…»",
-  "Ты задержалась у «…» на полчаса", "Нума спасла тебя"). State in the
+  the past tense, with the gender forms ("Брам погиб рядом с зоной «…»",
+  "Ты задержалась в зоне «…» на полчаса", "Нума спасла тебя"). State in the
   present ("Брам теперь на 14-м уровне").
 - **Ledger** (tooltip lines, margin notes): short, often no subject
   ("Задание выполнено вместе за 1 ч 5 мин", "убили тебя дважды").
 
 ## Typography
+- Places: a noun takes the case and the client's name follows in quotes,
+  undeclined: "в зоне «Доланаар»", "в зону", "из зоны", "рядом с зоной";
+  a dungeon "в подземелье «…»" (`Grammar.lua`, `PLACE` and `DUNGEONS`).
+  Never a bare preposition before a quoted name ("в «Доланаар»"): it
+  reads as a missed case (player report, 13 Nov 2026).
 - Quotes: **«…»**, nested „…“. Apostrophe not needed. Ellipsis: …
   (one character). Dash: the long dash — only where Russian needs it
   (subject and predicate); never a hyphen as a dash.
