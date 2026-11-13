@@ -105,11 +105,11 @@ ns.Locale.Add("zhCN", {
     ["%1$s %2$s##dropped when"] = "%1$s %2$s",
     ["It took %1$s to get %2$s."] = "用了%1$s才获得%2$s。",
     ["It took %1$s to get %2$s, %3$s."] = "用了%1$s才获得%2$s，%3$s。",
-    ["one more slow hunt|%s more slow hunts##plural"] = "又有%s场漫长的狩猎",
-    ["one more lucky hunt|%s more lucky hunts##plural"] = "又有%s场幸运狩猎",
-    ["another lucky hunt|%s more lucky hunts##plural"] = "又有%s场幸运狩猎",
+    ["one more slow hunt|%s more slow hunts##plural"] = "还有%s场漫长的狩猎",
+    ["one more lucky hunt|%s more lucky hunts##plural"] = "还有%s场幸运狩猎",
+    ["another lucky hunt|%s more lucky hunts##plural"] = "还有%s场幸运狩猎",
     -- Features/LevelUps/Kind.lua
-    ["%1$s is now level %2$s"] = "%1$s现在是%2$s级",
+    ["%1$s is now level %2$s"] = "%1$s现在达到%2$s级",
     ["Now level %s"] = "现在%s级",
     -- Features/Met/Kind.lua
     ["Someone You Met"] = "你相遇的人",

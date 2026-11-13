@@ -53,7 +53,7 @@ ns.Locale.Add("zhCN", {
     ["%"] = "%",
     ["Health left"] = "剩余生命值",
     -- Features/CloseCalls/Text.lua
-    ["another|%s others##plural"] = "另外%s个",
+    ["another|%s others##plural"] = "其他%s个",
     ["Got away from %1$s with %2$s."] = "从%1$s手中逃脱，剩余%2$s。",
     ["Got out of a fight with %s."] = "从与%s的战斗中脱身。",
     ["Rare Elite"] = "稀有精英",
@@ -69,12 +69,12 @@ ns.Locale.Add("zhCN", {
     ["%1$s%% health left, against %2$s"] = "与%2$s交手时，剩余%1$s%%生命值。",
     ["%s%% health left"] = "剩余%s%%生命值",
     ["Down to %s%% health at worst"] = "最危急时仅剩%s%%生命值",
-    ["%s close call|%s close calls##plural"] = "险些丧命%s次",
+    ["%s close call|%s close calls##plural"] = "%s次险些丧命",
     ["fought against %s"] = "曾与%s交战",
     ["Left you with %s%% health"] = "你当时仅剩%s%%生命值",
     ["One more was in the fight|%s more were in the fight##plural"] = "还有%s人参战",
     ["And %s.##more"] = "以及%s。",
-    ["one more close call|%s more close calls##plural"] = "又有%s次险些丧命",
+    ["one more close call|%s more close calls##plural"] = "还有%s次险些丧命",
     ["a close call"] = "一次险些丧命",
     ["a close call with %s"] = "与%s的一次险些丧命",
     -- Features/Deaths/Kind.lua

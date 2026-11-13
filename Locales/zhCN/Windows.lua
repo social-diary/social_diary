@@ -11,7 +11,7 @@ ns.Locale.Add("zhCN", {
     ["Tags"] = "标签",
     ["+ add a tag"] = "#NAME?",
     ["Relationship"] = "关系",
-    ["'leveling buddy', 'weirdo', 'Sulfuras Guy', …"] = "'练级伙伴'、'怪人'、'萨弗拉斯男'，……",
+    ["'leveling buddy', 'weirdo', 'Sulfuras Guy', …"] = "'练级伙伴'、'怪人'、'橙锤大佬'，……",
     ["Note"] = "笔记",
     ["Remove from the diary"] = "从日记中移除",
     ["Done"] = "完成",
