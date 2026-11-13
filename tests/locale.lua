@@ -42,6 +42,9 @@ local RULES = {
     frFR = { forms = 3, [0] = 2, [1] = 1, [2] = 3, [5] = 3, [11] = 3, [21] = 3, [101] = 3 },
     ruRU = { forms = 3, [0] = 3, [1] = 1, [2] = 2, [4] = 2, [5] = 3, [11] = 3, [12] = 3, [14] = 3,
              [21] = 1, [22] = 2, [25] = 3, [101] = 1, [111] = 3, [112] = 3 },
+    -- Chinese has one CLDR category ("other"): every count takes form 1,
+    -- so each plural word shows its figure (OneAlone is false for it).
+    zhCN = { forms = 1, [0] = 1, [1] = 1, [2] = 1, [5] = 1, [11] = 1, [21] = 1, [101] = 1 },
 }
 local function RuleHolds(G, rule, who)
     Eq(G.PLURAL_FORMS, rule.forms, who .. " has the right number of plural forms")
@@ -497,10 +500,15 @@ do
     end
     Check(GrammarNs("enUS").L[KEY]:find(NB, 1, true), "an English client's words keep theirs")
 
+    -- zhCN ships its own word table now, so unlike zhTW/koKR it returns
+    -- Chinese words rather than English fallback. All three read a plain
+    -- space (no no-break space) in their fonts.
     for _, id in ipairs({ "zhCN", "zhTW", "koKR" }) do
+        Eq(GrammarNs(id).Locale.nbsp, " ", id .. " reads a plain space")
+    end
+    for _, id in ipairs({ "zhTW", "koKR" }) do
         local ns = GrammarNs(id)
         local Text = ns.UI.JourneyText
-        Eq(ns.Locale.nbsp, " ", id .. " reads a plain space")
         Eq(Text.Duration(55 * 60), "55 min", id .. ": a time")
         Eq(Text.LedgerTime(93 * 60), "1 h 33", id .. ": the ledger's time")
         Eq(Text.Glue("killed you twice"), "killed you twice", id .. ": glued words")
