@@ -1,33 +1,162 @@
-# Voice: zhCN (Simplified Chinese)
+**# Voice：zhCN（简体中文）**
 
-> **TODO: this voice is not settled yet.** It was skipped when zhCN was
-> first added by user `jasonzxy0825` (13 Nov 2026, Issue #11). The next person who works on zhCN needs to settle it
-> first (§1 of `/translate`), then brings `Locales/zhCN/` in line with it.
-> Expect to change words already there.
+本规范于2026年11月14日确定，依据现有 `Locales/zhCN/` 中的用语，
+并在结合代码上下文逐一检查所有翻译键后完成。最初的翻译是在没有
+语气规范文件的情况下完成的（jasonzxy0825，2026年11月13日，
+Issue #11）；本文件现用于记录当时采用的用语选择，以及本次审校
+所作的修改。`Locales/zhCN/` 现已与本规范保持一致。
 
-`Locales/zhCN/` was written without a voice file and taken in once the
-checks passed (the plurals, the number "two" and the reader's plural
-braces were fixed on the way in). Its current wording is a starting point,
-not a decision. Open points found so far:
+**## 称谓与人物**
+- **你**，绝不使用「您」。日记以平静的语气对单个玩家说话；
+  不使用敬称，也绝不以「我们」代替单数的「我」。
+- 日记在普通叙述中称为**这本日记**，在简短文本中称为**日记**；
+  正式名称为**冒险日记**（插件标题、设置页面、登录邮件中使用）。
+  不要将其音译为「Social Diary」。
+- 其他玩家统一称为**对方**——单复数通用，且不带性别。
+  此用法于2026年11月14日替换了全部75处「他们」：英文的
+  "they/them" 可以指单个人物，而「他们」在描述单个玩家的页面上
+  容易被理解为一群人。如果句子需要补充英文省略的动词，应明确
+  写出（"they whispered" -> 对方发来密语，而不是对方密语）。
+- 玩家**名字**直接使用：前面不加「位／名／个」，中文不需要时
+  后面也不加「的」。名字不区分性别；zhCN 不使用 `\<N:he/she>`
+  或 `\<you:...>`（中文动词没有人称和性别变化）。
+- 读者相关的花括号占位符：`{你}` -> `%s`，`{你的}` -> `%s的`，
+  `{你们}` -> `%s和对方`（`G.YOU_FOR`）。如果花括号中的词会与
+  模板中已有的「的」重复，应修改模板，而不是修改占位符。
+- **一位／每位**用于按人物计数（如一位见证者、每位玩家）；
+  **个**用于按角色计数（如3个角色）；不使用**名**。
 
-- The diary is named 冒险日记 throughout (not a transliteration of Social Diary).
-- "lucky hunt" and "slow hunt" take 场 in some lines and 次 in others.
-- "two" was set to 两 (13 Nov 2026), since it goes before a measure word in
-  nearly every template; a few that stand alone ("%s倒下了", "%1$s对阵%2$s",
-  "曾与%s交战") read oddly with any number word.
-- The reader's plural `{你们}` for another character reads "%s和对方".
-- No native reader has reviewed the translation, and it has had no in-client round.
+**## 时态**
+- 中文通过体貌表达动作状态，而不是通过动词变位表达时态。
+  已完成的动作使用**了**；回顾曾经经历的事情使用**过**；
+  持续存在的状态不加标记。列举发生过的事情时，可以像英文一样
+  省略主语（「在此阵亡」「一起狩猎3次」）。
+- **叙述文本**（Your Diary、个人资料、引导介绍）应像日记一样：
+  句子简短，每句表达一个事实；必要时使用了／过，普通将来时
+  不使用「将会」（例如「你的路还长」）。
+- **记录文本**（列表行、工具提示、卡片、设置页面静默列表）
+  使用短语而不是完整句子：不使用你，除非动作完成本身很重要，
+  否则不使用了。
+- 回顾过去本可能发生的事情（"would meet again"）使用**会／本会**：
+  你们本会在15级再见面。
 
-## Address and people
+**## 排版**
+- 全文统一使用全角标点：**，。：；！？（）「」**。
+  半角标点属于错误（`tests/copy_rules.lua` 也会扫描 `Locales/`）。
+- 引号使用**「…」**，内层使用**『…』**。字符来自
+  `L["“##quote open"]` / `L["”##quote close"]`；模板需要包裹
+  引文时使用 `L["“%s”"]`。绝不使用直引号 `"` 或 `“”`。
+- 省略号统一使用单个字符**…**，绝不使用 `...`。字符串内部
+  换行使用 `\n`，段落之间使用两个换行符。
+- **绝不使用间隔号（·）**。
+- **数字统一使用阿拉伯数字**，包括计数和普通叙述：
+  1次、2次、5次（`twice` = 2次，`once|%d times` = %d次；
+  同一组表达统一使用数字，不使用两次）。只有固定习惯表达中的
+  一／两／三等汉字数字可以保留（一次、第一次、两场皆输），
+  以及代码按键名要求的 `one..twenty` 列表。序数统一使用
+  **第N**（`G.Ordinal`），使用数字，不写第十二。
+- 日期格式为**2026年11月14日**；简短日期为**11月14日**；
+  星期放在日期前（周六，11月14日）。时间使用**18:30**；
+  叙述中的时长使用5分钟／1小时5分钟。
+- 金钱格式为**%d金 / %d银 / %d铜**。
+- 列表项目之间使用**、**，最后两项之间使用**和**
+  （`%1$s、%2$s##list`，最后使用 `%1$s和%2$s`）。
+  **以及**用于连接分句，不用于连接人名或普通列表。
+- 中文与拉丁字母、数字之间不添加空格。例外是需要空格的单位
+  （`%d MB`）以及斜杠命令（`/reload`、`/sd sightings help`），
+  这些必须保持游戏客户端显示的原样。
+- 破折号使用**——**（两个 em dash）。能用逗号时，不要在列表
+  前使用冒号；标签与其对应的值之间使用**：**。
 
-## Tense
+**## 量词规范（每种含义固定使用一个）**
+| 英文 | zhCN | 使用场景 |
+|---|---|---|
+| a match | 场 | 对局、决斗、战场 |
+| a time / a count | 次 | 死亡、击杀、交易、邂逅、副本、团队副本、狩猎、死里逃生 |
+| a pet / a creature | 只 | 宠物、稀有怪物 |
+| a hit (killing blow) | 击 | 致命一击 |
+| a person | 位 | 见证者、玩家 |
+| a character | 个 | 角色 |
+| a quest | 个 | 任务 |
+| a place | 处 | 停留、战场 |
 
-## Typography
+**## 游戏术语（以简体中文游戏客户端用语为准）**
+| 英文 | zhCN |
+|---|---|
+| level | 等级（标签）／%d级（数字后：45级、？？级） |
+| group / party | 小队（官方用语，绝不使用「队伍」） |
+| raid | 团队／团队副本 |
+| dungeon | 副本 |
+| boss | 首领（不使用「Boss」） |
+| rare (creature) | 稀有怪物 |
+| elite (creature) | 精英怪物 |
+| rare elite | 稀有精英 |
+| rare (map mark in a dungeon) | 稀有（地图标记两行标签中保留的简短形式） |
+| item quality: uncommon / rare / epic | 优秀（绿）／精良（蓝）／史诗（紫） |
+| quest | 任务 |
+| duel | 决斗 |
+| battleground | 战场 |
+| match (battleground) | 对局；with/against = 并肩的对局／对抗的对局 |
+| World PvP | 世界PvP |
+| zone | 地区 |
+| flight | 飞行／飞往（目的地） |
+| profession | 专业 |
+| pet / tame | 宠物／驯服 |
+| campfire | 营火 |
+| whisper | 密语 |
+| trade | 交易 |
+| resurrection | 复活 |
+| Horde / Alliance | 部落／联盟 |
+| Need / Greed | 需求／贪婪 |
+| gold / silver / copper | 金／银／铜 |
 
-## Game terms (as the zhCN client says them; verify in the client)
+**## 日记专用词汇（每个英文词固定对应一个中文表达）**
+| 英文 | zhCN |
+|---|---|
+| the diary | 这本日记／日记 |
+| Your Diary | 「你的日记」 |
+| add to the diary | 写进日记／添加到日记 |
+| pencilled in | 用铅笔写下 |
+| inked | 用墨水写定 |
+| remove from the diary | 从日记中移除 |
+| delete (for good) | 删除 |
+| the road / route | 路线 |
+| sighting | 邂逅（记录邂逅、邂逅记录） |
+| reunion | 重逢 |
+| witness | 见证者 |
+| close call | 死里逃生 |
+| lucky hunt | 幸运狩猎 |
+| slow hunt | 拖沓的狩猎 |
+| hunt | 狩猎 |
+| first met / first seen | 初次相遇 |
+| foe | 仇人 |
+| someone to avoid | 想避开的人 |
+| card | 卡片 |
+| page | 页面 |
+| slip | 纸条 |
+| People | 人物 |
+| the look | 外观 |
 
-## The diary's own words (one word each, kept)
+**## 文本长度**
+相同字号下，中文通常比英文短30%至40%，因此即使英文文本
+占满预留空间，中文通常也有余量。真正需要注意的是英文原文
+本身已经很紧凑的界面：Toast卡片、重逢Toast、按键绑定列、
+票券、设置页面标签及其单行说明、标签页名称、地图图例。
+这些位置应优先使用更短、更自然的表达；只有在符合语言习惯时
+才使用四字格，不要为了装饰而刻意使用四字格。
+较长的设置说明（例如日记删除确认、性能警告）应保留完整句子：
+每句话表达一个事实，不要为了压缩长度而省略必要信息。
 
-## Length
-
-## Not settled
+**## 尚未最终确定的事项**
+- **13及以上的序数**目前统一使用阿拉伯数字（第13）；1至12
+  也使用阿拉伯数字（第12），与第一版翻译中使用的第十二不同。
+  这属于风格选择，并非错误。如果后续审校决定恢复第十二，
+  必须一次性修改所有 `##match/##death/##time/##try` 键。
+- **Rare##boss**保留「稀有」，尽管普通稀有生物使用「稀有怪物」：
+  该标记会在地图上显示为两行标签，因此需要使用更短的形式。
+- `one..twenty` 汉字数字列表（`Said`、叙述中的时长）仍然保留；
+  普通计数则使用阿拉伯数字。中文中的一次／两次在这些语境中
+  属于汉字表达，而不是计数形式，因此两种形式可以共存。
+  仍需中文母语者确认：同一行同时出现「两次」和「2次」是否自然。
+- 尚未进行游戏内实际测试：Toast提示的宽度、票券文本行以及
+  设置页面说明的显示效果都尚未测量。
