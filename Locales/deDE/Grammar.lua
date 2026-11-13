@@ -73,15 +73,149 @@ G.YOU_FOR = {
     ["deiner"] = Genitive, ["deines"] = Genitive,
 }
 
--- The plain preposition per role, before the name as the client gives it.
--- Names with an article ("Brachland": "im Brachland", "ins Brachland")
--- need ZONES, filled from a German client; until then they read bare.
-G.PLACE = {
-    ["in"] = "in %s", to = "nach %s", from = "aus %s", into = "nach %s",
-    through = "durch %s", near = "bei %s", at = "bei %s",
-    around = "rund um %s", round = "rund um %s",
+--------------------------------------------------------------------------
+-- A place after its preposition. The client gives the name in the
+-- nominative, with its article where it has one ("Das Brachland", "Die
+-- Sümpfe des Elends", "Der Wald von Elwynn"), or bare ("Durotar",
+-- "Stormwind", "Rotkammgebirge"). The preposition takes the article's
+-- case, and contracts with it:
+--
+--   in       im Brachland, in der Brennenden Steppe, in den Todesminen, in Durotar
+--   to       in das Brachland, in den Wald von Elwynn, nach Stormwind
+--   into     in das Brachland, in Stormwind ("Zum ersten Mal in Stormwind")
+--   from     aus dem Brachland, aus Durotar
+--   through  durch das Brachland, durch Durotar
+--   near/at  beim Wegekreuz, bei Orgrimmar
+--   around   rund um das Brachland, rund um Durotar
+--
+-- The gender is the article's: "Das" neuter, "Der" masculine, "Die"
+-- plural, or feminine where the noun's ending says so (FEMININE). A name
+-- without one takes an article only where its last word ends in a
+-- landscape noun whose gender is known (BARE: "Rotkammgebirge" -> "im
+-- Rotkammgebirge", "Brennende Steppe" -> "in der Brennenden Steppe");
+-- cities and proper names ("Orgrimmar", "Mulgore") stay bare.
+-- After the article an adjective takes -n in the dative ("im
+-- Scharlachroten Kloster") and in the masculine accusative, and a plural
+-- noun takes -n in the dative ("in den Sümpfen des Elends").
+-- A name the rules get wrong goes into ZONES / DUNGEONS / SUBZONES, which
+-- win over all of this, or into GENDER ("n", "m", "f", "p") by its name.
+
+-- The forms per role and gender: the article (or its contraction), and
+-- the case the words after it take ("dat" or "acc"). `bare` is the
+-- preposition before a name with no article.
+local ROLES = {
+    ["in"]  = { bare = "in",       n = "im",           m = "im",           f = "in der",       p = "in den",       case = "dat" },
+    to      = { bare = "nach",     n = "in das",       m = "in den",       f = "in die",       p = "in die",       case = "acc" },
+    into    = { bare = "in",       n = "in das",       m = "in den",       f = "in die",       p = "in die",       case = "acc" },
+    from    = { bare = "aus",      n = "aus dem",      m = "aus dem",      f = "aus der",      p = "aus den",      case = "dat" },
+    through = { bare = "durch",    n = "durch das",    m = "durch den",    f = "durch die",    p = "durch die",    case = "acc" },
+    near    = { bare = "bei",      n = "beim",         m = "beim",         f = "bei der",      p = "bei den",      case = "dat" },
+    around  = { bare = "rund um",  n = "rund um das",  m = "rund um den",  f = "rund um die",  p = "rund um die",  case = "acc" },
 }
--- ZONES, DUNGEONS, SUBZONES stay empty: names come from the game client.
+ROLES.at, ROLES.round = ROLES.near, ROLES.around
+
+-- A name's own gender, where the rules below guess wrong: GENDER["Name"].
+local GENDER = {}
+G.GENDER = GENDER
+
+-- Nouns after "Die" that are feminine singular, not plural, by ending.
+local FEMININE = {
+    "bahn", "schlucht", "steppe", "insel", "burg", "feste", "festung", "zitadelle",
+    "höhle", "grotte", "bucht", "küste", "ebene", "oase", "mine", "halle", "wacht",
+    "klamm", "senke", "spitze", "tiefe", "marsch", "kammer", "arena", "enklave",
+    "kluft", "quelle", "lichtung", "heide", "wüste", "straße", "ruine", "kapelle",
+    "kathedrale", "akademie", "stätte", "zuflucht", "anhöhe", "mühle", "farm", "hütte",
+    "schmiede", "brücke", "grube", "werft", "taverne", "hölle", "allee", "wiese",
+}
+
+-- The last word of a name with no article, for the landscape nouns whose
+-- gender is sure: compounds take their last part's ("Rotkammgebirge").
+local BARE = {
+    { "vorgebirge", "n" }, { "gebirge", "n" }, { "hochland", "n" }, { "land", "n" },
+    { "tal", "n" }, { "moor", "n" }, { "kloster", "n" }, { "verlies", "n" },
+    { "wald", "m" }, { "sumpf", "m" }, { "krater", "m" }, { "abgrund", "m" },
+    { "schlund", "m" }, { "bruch", "m" },
+    { "steppe", "f" }, { "schlucht", "f" }, { "küste", "f" }, { "lichtung", "f" },
+    { "ebene", "f" }, { "wüste", "f" }, { "spitze", "f" },
+    { "marschen", "p" }, { "tiefen", "p" }, { "höhlen", "p" }, { "berge", "p" },
+}
+
+local function Ends(word, ending)
+    return #word >= #ending and word:sub(-#ending) == ending
+end
+
+-- The head noun's words: the name up to its genitive or "von" ("Sümpfe"
+-- in "Sümpfe des Elends"), and what follows, kept as it is.
+local function Split(rest)
+    local head, tail = rest:match("^(.-)( [dv][eo][rsn]? .*)$")
+    if not head or head == "" then return rest, "" end
+    return head, tail
+end
+
+local function LastWord(text)
+    return text:match("([^%s]+)$") or text
+end
+
+-- Adjectives before the noun ("Scharlachrote") take -n; the plural noun
+-- in the dative too, unless it ends in n or s already.
+local function Decline(head, gender, case)
+    local words = {}
+    for word in head:gmatch("[^%s]+") do words[#words + 1] = word end
+    local weak = case == "dat" or (gender == "m" and case == "acc")
+    for i = 1, #words - 1 do
+        if weak and Ends(words[i], "e") then words[i] = words[i] .. "n" end
+    end
+    local noun = words[#words]
+    if noun and gender == "p" and case == "dat" and not noun:find("[nsNS]$") then
+        words[#words] = noun .. "n"
+    end
+    return table.concat(words, " ")
+end
+
+-- The name's gender and the name without its article, or nil (bare).
+local function Article(name)
+    local article, rest = name:match("^([Dd][aei][rse]) (.+)$")
+    local own = GENDER[name]
+    if article then
+        article = article:lower()
+        if article ~= "das" and article ~= "der" and article ~= "die" then article = nil end
+    end
+    if article then
+        if own then return own, rest end
+        if article == "das" then return "n", rest end
+        if article == "der" then return "m", rest end
+        local noun = LastWord(Split(rest)):lower()
+        for _, ending in ipairs(FEMININE) do
+            if Ends(noun, ending) then return "f", rest end
+        end
+        return "p", rest
+    end
+    if own then return own, name end
+    local noun = LastWord(Split(name)):lower()
+    for _, entry in ipairs(BARE) do
+        if Ends(noun, entry[1]) then return entry[2], name end
+    end
+    return nil, name
+end
+
+local function Place(role)
+    local forms = ROLES[role]
+    return function(name)
+        local gender, rest = Article(name)
+        if not gender then return forms.bare .. " " .. name end
+        local head, tail = Split(rest)
+        return forms[gender] .. " " .. Decline(head, gender, forms.case) .. tail
+    end
+end
+
+G.PLACE = {}
+for role in pairs(ROLES) do G.PLACE[role] = Place(role) end
+
+-- Every name of a list takes its own preposition and article: "im
+-- Brachland und in Durotar".
+G.EACH_PLACE = true
+-- ZONES, DUNGEONS, SUBZONES stay empty: names come from the game client,
+-- and the rules above read their articles.
 
 -- A creature's or an item's name for more than one, and a killer's name
 -- in a sentence: German plurals and articles can't be guessed from the

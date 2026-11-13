@@ -30,7 +30,7 @@ ns.Locale.Add("deDE", {
     ["By campfires %s##zone"] = "An Lagerfeuern %s",
 
     -- Features/Chat/Kind.lua: the timeline's lines
-    ["They whispered"] = "Sie haben geflüstert",
+    ["They whispered"] = "Hat geflüstert",
     ["{You} whispered"] = "{Du hast} geflüstert",
     ["Said"] = "Gesagt",
     ["Yelled"] = "Geschrien",
@@ -66,7 +66,7 @@ ns.Locale.Add("deDE", {
     ["who it was, or leave this empty"] = "wer es war, oder leer lassen",
     ["Duels won"] = "Duelle gewonnen",
     ["Duels lost"] = "Duelle verloren",
-    ["They fled"] = "Sie sind geflohen",
+    ["They fled"] = "Sind geflohen",
     ["You fled"] = "Du bist geflohen",
 
     -- Features/Duels/Text.lua: the margin note, the tooltip, the caption
@@ -211,14 +211,14 @@ ns.Locale.Add("deDE", {
     ["a month|%s months##plural"] = "einen Monat|%s Monate",
     ["the end of %s"] = "das Ende von %s",
     ["The end of %s."] = "Das Ende von %s.",
-    ["The end of %1$s, a chain of %2$s begun %3$s %4$s before.##zone"] = "Das Ende von %1$s, einer Kette aus %2$s Quests, %4$s zuvor %3$s begonnen.",
-    ["The end of %1$s, a chain of %2$s begun %3$s before."] = "Das Ende von %1$s, einer Kette aus %2$s Quests, %3$s zuvor begonnen.",
-    ["The end of %1$s, a chain of %2$s."] = "Das Ende von %1$s, einer Kette aus %2$s Quests.",
-    ["A chain of %s"] = "Eine Kette aus %s",
+    ["The end of %1$s, a chain of %2$s begun %3$s %4$s before.##zone"] = "Das Ende von %1$s, einer Reihe aus %2$s Quests, %4$s zuvor %3$s begonnen.",
+    ["The end of %1$s, a chain of %2$s begun %3$s before."] = "Das Ende von %1$s, einer Reihe aus %2$s Quests, %3$s zuvor begonnen.",
+    ["The end of %1$s, a chain of %2$s."] = "Das Ende von %1$s, einer Reihe aus %2$s Quests.",
+    ["A chain of %s"] = "Eine Reihe aus %s",
     ["Begun %1$s, %2$s##zone"] = "Begonnen %1$s, %2$s",
     ["Begun %s"] = "Begonnen %s",
-    ["%1$s, a chain of %2$d quest|%1$s, a chain of %2$d quests##plural"] = "%1$s, eine Kette aus %2$d Quest|%1$s, eine Kette aus %2$d Quests",
-    ["%s chain finished|%s chains finished##plural"] = "%s<f> Kette abgeschlossen|%s Ketten abgeschlossen",
+    ["%1$s, a chain of %2$d quest|%1$s, a chain of %2$d quests##plural"] = "%1$s, eine Reihe aus %2$d Quest|%1$s, eine Reihe aus %2$d Quests",
+    ["%s chain finished|%s chains finished##plural"] = "%s<f> Reihe abgeschlossen|%s Reihen abgeschlossen",
 
     -- Features/Trade/Kind.lua: the timeline's line
     ["gave %s"] = "%s gegeben",

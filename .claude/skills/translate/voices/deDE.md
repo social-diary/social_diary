@@ -78,7 +78,7 @@ second look. Companion, if one is needed: `deDE-code-changes.md`
 | match (battleground) | Partie (?) |
 | World PvP | Welt-PvP |
 | boss | Boss |
-| wipe | Wipe, "gewipt" (as German players say it) |
+| wipe | Wipe, "gewiped" (as German players say it) |
 | run (a dungeon) | Durchlauf |
 | Need / Greed roll | Bedarf / Gier |
 | gold / silver / copper | Gold / Silber / Kupfer (g / s / k) |
@@ -119,9 +119,21 @@ second look. Companion, if one is needed: `deDE-code-changes.md`
 Zones, creatures, items, classes arrive in German without an article
 anyone can know: write the sentence so a bare name reads (as the subject,
 after a colon, after "bei"/"in"/"nach" where no article is needed). Never
-"ein/eine %s" or "des %s". `ZONES`, `DUNGEONS`, `SUBZONES` stay empty
-until someone exports the names from a German client ("im Brachland",
-"ins Schlingendorntal", "am Wegekreuz").
+"ein/eine %s" or "des %s".
+
+Zones, subzones and dungeons are the exception: the client gives them in
+the nominative with their article ("Das Brachland"), and `G.PLACE` in
+`Grammar.lua` reads it (settled 13 Nov 2026, from players' reports of
+"Flog nach Das Brachland", "Zum ersten Mal nach Stormwind"):
+- `in` dative ("im Brachland", "in den Sümpfen des Elends"), `to` "nach"
+  before a bare name and "in" + accusative before an article ("nach
+  Stormwind", "in das Brachland": spelled out, not "ins"), `into` "in"
+  either way ("Zum ersten Mal in Stormwind", "in das Brachland").
+- "Die" is plural unless the noun's ending is feminine (`FEMININE`); a bare
+  name takes an article only for a landscape noun (`BARE`: "-gebirge",
+  "-tal", "-steppe"); cities stay bare.
+- Every name of a list takes its own preposition (`EACH_PLACE`).
+- A name the rules miss goes into `GENDER` or `ZONES`/`SUBZONES`/`DUNGEONS`.
 
 ## Length
 German runs about a third longer than English. Tight surfaces: toast
