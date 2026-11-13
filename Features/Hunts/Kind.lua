@@ -65,7 +65,7 @@ local T = {
     luckKnown = 5,      -- this many drops have been counted
     luckOver = 1.25,    -- with the drop rate known: luckExtra kills more than
                         -- expected, and this many times it (EXT-2)
-    fortune = 8,        -- good luck: an eighth of the kills expected, or fewer (EXT-3)
+    fortune = 2,        -- good luck: half the kills expected, or fewer (EXT-3; 8 until 13 Nov, which hardly ever fired)
     rateDoubt = 1e-4,   -- a drop rate under which a hunt this slow had less than this
                         -- chance is taken for wrong, and the next source tried
 }
@@ -411,8 +411,8 @@ function Hunts.Rated(hunt)
     return hunt.expected ~= nil
 end
 
--- Whether `hunt` was good luck (EXT-3): with the drop rates known, an
--- eighth of the kills expected or fewer (T.fortune). Never without them.
+-- Whether `hunt` was good luck (EXT-3): with the drop rates known,
+-- half of the kills expected or fewer (T.fortune). Never without them.
 function Hunts.GoodLuck(hunt)
     return hunt ~= nil and hunt.expected ~= nil and hunt.kills * T.fortune <= hunt.expected
 end

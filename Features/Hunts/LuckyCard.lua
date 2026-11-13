@@ -9,10 +9,10 @@
 --   the icon     the item's own picture pasted in, the game's stack count
 --                over its corner (HuntCard's ICON, COUNT, Icon and Edge)
 --   the struck   beside it, the drop tables' word, printed (Friz, faded):
---                "expected 58" (Hunts.ExpectedLabel); and over it, the
---                diary's hand has scribbled it out, one pen line of tall
---                zigzag strokes (SCRIBBLE) whose turns all fall outside the
---                figures, so the number still reads underneath
+--                "expected 58" (Hunts.ExpectedLabel); and through it, the
+--                diary's hand has struck it out, one pass of the pen from
+--                left to right through the words' middle (STRIKE), light
+--                enough that the number still reads underneath
 --   the tag      a second, smaller slip of fresher paper taped on over the
 --                card's right side, turned against it, hanging past its
 --                edge; on it the hand says what happened instead: "dropped
@@ -42,7 +42,7 @@
 --
 -- Laid flat ("Flat paper only") both slips lie square, no shadows; the
 -- tag still overlaps and hangs past (the layering is geometry, not an
--- effect); the scribble and the underline are ink and stay.
+-- effect); the strike and the underline are ink and stay.
 
 local addonName, ns = ...
 
@@ -56,7 +56,7 @@ Hunts.LuckyCard = LuckyCard
 -- heading at the hand's own size, else `small`, else on two lines; `gap`
 -- under the heading. The creature's line (XL) `after` px under the struck
 -- row, `creature` px tall. Beside the struck words (XL, M2s) the tag starts
--- `clear` px past the scribble's end, `rise` px above the row's top (or
+-- `clear` px past the strike's end, `rise` px above the row's top (or
 -- under the heading, where the heading runs that far right). Under them
 -- (L, M) it is flush with the card's right, `drop` px under the row, and
 -- lies `land` px on the card, the rest hanging past its foot; at least
@@ -89,22 +89,27 @@ local ROW = { [13] = 17, [11] = 15 }
 local TAG = { pad = { 9, 5, 8, 5 }, line = { [16] = 19, [14] = 17 }, paper = { 0.97, 0.935, 0.84 },
     turn = { 1.8, 3.0 }, shadow = { 0.6, 0.8, 0.40 }, soft = { out = 0.6, blur = 2.0, alpha = 0.26 },
     tape = { w = 22, h = 10, slant = { 39, 51 } } }
--- The scribble over the printed expectation: one pen line of tall zigzag
--- strokes with the route's pen (UI/Ink/Pen.lua: mitred, the nib's share,
--- stroked into quads that share their edges), in ink at `alpha` (a hair of
--- paper shows through, as ink does; the readability comes from the shape,
--- not the alpha). Its turns lie `over` px past the figures' cap band (`cap`
--- of the type's size), so only straight thin diagonals cross the letters;
--- a zig and zag `pitch` of the size apart, each turn off by `jitter` of a
--- stroke; from `lead` px before the words to `tail` past them; slanted
--- `slant` degrees about its middle; each turn rounded `bend` px along its
--- sides, its corner pulled `round` of that into the turn; tapered from
+-- The strike through the printed expectation: a single pass of the route's
+-- pen (UI/Ink/Pen.lua: mitred, the nib's share, stroked into quads that
+-- share their edges), left to right, in ink at `alpha` (a hair of paper
+-- shows through, as ink does; the readability comes from the shape, not
+-- the alpha), `width` px wide before the nib's share (about 1.1 px on the
+-- page: a little lighter than the underline, as it lies on type). A
+-- quadratic, as the underline is: from `lead` px before the words to `tail`
+-- past them, `low` of the type's size under the row's middle (toward the
+-- small letters' middle, so it crosses the figures near theirs), sagging
+-- `sag` px in its middle, tilted `slant` degrees (mostly rising, as a hand
+-- strikes) but never more than `keep` of the figures' half cap band (`cap`
+-- of the size) at either end, so it stays inside the words; each end given
+-- or taken `jitter`; a piece every `step` px, at most `most`; tapered from
 -- `from` of its width over its first `over` px and to `end` over its last
--- `off` px. At most `most` pieces: the pitch widens past that. (An earlier
--- try at .62 of the size a tooth and 1.3 px wide blacked the words out.)
-local SCRIBBLE = { width = 1.0, nib = { angle = 40, thin = 0.6, thick = 1.2 }, alpha = 0.92, pitch = 1.45,
-    cap = 0.70, over = { 2.2, 3.2 }, lead = { 2, 4 }, tail = { 2, 4.5 }, slant = { -4, 2 }, jitter = 0.15,
-    bend = 1.4, round = 0.35, taper = { from = 0.7, over = 4, ["end"] = 0.45, off = 5 }, most = 48 }
+-- `off` px. (Until 13 Nov a scribble: one pen line of tall zigzag strokes
+-- over the words. In the client, the user: too strong over the words,
+-- "let's replace it with a single strikethrough using our pen tech".
+-- `lead` and `tail` are the scribble's, so nothing on the card moved.)
+local STRIKE = { width = 1.15, nib = { angle = 40, thin = 0.6, thick = 1.2 }, alpha = 0.92, cap = 0.70, low = 0.06,
+    lead = { 2, 4 }, tail = { 2, 4.5 }, slant = { -2.4, 0.4 }, keep = 0.5, sag = 0.4, jitter = 0.35, step = 4,
+    taper = { from = 0.8, over = 3, ["end"] = 0.4, off = 7 }, most = 28 }
 -- The underline under "dropped" (at S, the count): the same pen, a
 -- quadratic from `lead` px before the word to `run` past it, `drop` px under
 -- the baseline (through the p's tails, as a hand's underline runs), sagging
@@ -112,13 +117,13 @@ local SCRIBBLE = { width = 1.0, nib = { angle = 40, thin = 0.6, thick = 1.2 }, a
 -- off; each end given or taken `jitter`; a piece every `step` px, at most
 -- `most`; tapered from `from` over `over` px and to `end` over its last
 -- `off`.
-local UNDER = { width = 1.35, nib = SCRIBBLE.nib, drop = 3.4, sag = 0.5, rise = 1.3, lead = 1.5, run = 4,
+local UNDER = { width = 1.35, nib = STRIKE.nib, drop = 3.4, sag = 0.5, rise = 1.3, lead = 1.5, run = 4,
     jitter = 0.4, step = 3.5, taper = { from = 0.85, over = 3, ["end"] = 0.4, off = 7 }, most = 16 }
 -- S, on a light plate's print: the slip's margins, its height (`height`:
 -- its foot `bottom` px inside the print's, so it covers the print's border
 -- and the lowest of the map), its own turn on the print (`turn`, degrees),
 -- the struck words' size and the hand's on the tag (`line` px a line); the
--- tag's margins, `clear` px past the scribble's end, `drop` px under the
+-- tag's margins, `clear` px past the strike's end, `drop` px under the
 -- slip's top, so it hangs past the print's foot onto the page. The item's
 -- icon, `icon` px (and HuntCard's 1 px edge), `gap` px past the tag, stuck
 -- on the slip's right edge with `share` of it on the slip and the rest past
@@ -198,57 +203,30 @@ local function Random(key)
     return function(a, b) return a + (b - a) * rand() end, rand
 end
 
-local function Unit(ax, ay, bx, by)
-    local dx, dy = bx - ax, by - ay
-    local len = math.sqrt(dx * dx + dy * dy)
-    if len < 1e-6 then return 0, 0 end
-    return dx / len, dy / len
-end
-
--- The scribble over printed words from x0, `w` wide, the middle of their
--- cap band at `mid`, type `size` px, seeded by `seed` (a string): its
--- points { { x, y }, ... }; and, for the tests, its turns before they were
--- rounded and slanted, and the band's half height.
-function LuckyCard.Scribble(seed, x0, mid, w, size)
-    local U, rand = Random(seed)
-    local S = SCRIBBLE
-    local half, pitch = S.cap * size / 2, S.pitch * size
-    local xs, xe = x0 - U(S.lead[1], S.lead[2]), x0 + w + U(S.tail[1], S.tail[2])
-    -- Strokes: as many as fit at about half a pitch each, spread evenly;
-    -- each turn makes three points, so past `most` pieces fewer, wider.
-    local n = math.max(3, math.floor((xe - xs) / (pitch / 2) + 0.5))
-    while 3 * n + 1 > S.most and n > 3 do n = n - 1 end
-    local step = (xe - xs) / n
-    local up = rand() < 0.6
-    local raw = { { xs, mid + (up and 1 or -1) * half * 0.35 } }
-    for k = 1, n do
-        local x = k == n and xe or (xs + k * step + U(-S.jitter, S.jitter) * step)
-        raw[#raw + 1] = { x, mid + (up and -1 or 1) * (half + U(S.over[1], S.over[2])) }
-        up = not up
+-- The strike through printed words from x0, `w` wide, their row's middle
+-- at `mid`, type `size` px, seeded by `seed` (a string): its points
+-- { { x, y }, ... }, left to right (STRIKE); and, for the tests, the
+-- figures' half cap band.
+function LuckyCard.Strike(seed, x0, mid, w, size)
+    local U = Random(seed)
+    local S = STRIKE
+    local half = S.cap * size / 2
+    local ax, zx = x0 - U(S.lead[1], S.lead[2]), x0 + w + U(S.tail[1], S.tail[2])
+    local y = mid + S.low * size
+    -- A hand is never level: tilted about its middle, kept inside the words.
+    local most = S.keep * half
+    local tilt = math.max(-most, math.min(most, math.tan(math.rad(U(S.slant[1], S.slant[2]))) * (zx - ax) / 2))
+    local ay, zy = y - tilt + U(-S.jitter, S.jitter), y + tilt + U(-S.jitter, S.jitter)
+    local cx, cy = (ax + zx) / 2, (ay + zy) / 2 + 2 * S.sag
+    local len = math.sqrt((zx - ax) ^ 2 + (zy - ay) ^ 2)
+    local n = math.min(S.most, math.max(3, math.ceil(len / S.step)))
+    local P = {}
+    for i = 0, n do
+        local t = i / n
+        local u = 1 - t
+        P[#P + 1] = { x = u * u * ax + 2 * u * t * cx + t * t * zx, y = u * u * ay + 2 * u * t * cy + t * t * zy }
     end
-    -- The pen lifts on its way back: a last short stroke toward the middle.
-    local last = raw[#raw]
-    raw[#raw + 1] = { last[1] + pitch * 0.2, mid + (last[2] - mid) * -0.2 }
-    -- Each turn rounded: a point `bend` back along each side, the corner
-    -- pulled `round` of that into the turn.
-    local P = { { x = raw[1][1], y = raw[1][2] } }
-    for i = 2, #raw - 1 do
-        local a, b, c = raw[i - 1], raw[i], raw[i + 1]
-        local d1x, d1y = Unit(a[1], a[2], b[1], b[2])
-        local d2x, d2y = Unit(b[1], b[2], c[1], c[2])
-        P[#P + 1] = { x = b[1] - d1x * S.bend, y = b[2] - d1y * S.bend }
-        P[#P + 1] = { x = b[1] + (d2x - d1x) * S.round * S.bend, y = b[2] + (d2y - d1y) * S.round * S.bend }
-        P[#P + 1] = { x = b[1] + d2x * S.bend, y = b[2] + d2y * S.bend }
-    end
-    P[#P + 1] = { x = raw[#raw][1], y = raw[#raw][2] }
-    -- A hand is never level: the whole of it slanted about its middle.
-    local slant = math.rad(U(S.slant[1], S.slant[2]))
-    local cx, co, si = x0 + w / 2, math.cos(slant), math.sin(slant)
-    for _, p in ipairs(P) do
-        local dx, dy = p.x - cx, p.y - mid
-        p.x, p.y = cx + dx * co - dy * si, mid + dx * si + dy * co
-    end
-    return P, raw, half
+    return P, half
 end
 
 -- The underline under a word from x0 to x1, its baseline at `base`: its
@@ -270,7 +248,7 @@ function LuckyCard.Underline(seed, x0, x1, base)
     return P
 end
 
--- `P` drawn with the pen (SCRIBBLE's or UNDER's look): the quads, as
+-- `P` drawn with the pen (STRIKE's or UNDER's look): the quads, as
 -- the pen's primitives (ns.UI.Pen), each vertex's half-width its nib's
 -- share of the width, tapered where the pen lands and where it lifts.
 function LuckyCard.Pen(P, look)
@@ -289,7 +267,7 @@ function LuckyCard.Pen(P, look)
         return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y, look.nib) * t
     end
     local prims = {}
-    Pen.Stroke(prims, 0, P, M, Half, function() return 0 end, function() return SCRIBBLE.alpha end,
+    Pen.Stroke(prims, 0, P, M, Half, function() return 0 end, function() return look.alpha or STRIKE.alpha end,
         Style.INK_STRONG, nil, look.most)
     return prims
 end
@@ -367,7 +345,7 @@ function LuckyCard.New(parent)
     card.icon = Texture(card, "ARTWORK", 6)
     card.count = card:CreateFontString(nil, "OVERLAY")
     card.count:SetFont(COUNT.file, COUNT.size, "OUTLINE")
-    -- The printed words under the scribble (ARTWORK 3), as print lies
+    -- The printed words under the strike (ARTWORK 3), as print lies
     -- under ink.
     card.struck = Style.Text(card, Style.FONT.faded, "ARTWORK")
     card.struck:SetDrawLayer("ARTWORK", 2)
@@ -483,11 +461,11 @@ function LuckyCard.New(parent)
         local label = Hunts.ExpectedLabel(hunt)
         Printed(card.struck, F.struck)
         card.struck:SetText(label)
-        -- (Measured as the proposal's mockup measured it, bare: the scribble's
+        -- (Measured as the proposal's mockup measured it, bare: the strike's
         -- tail runs past the words' end anyway.)
         local sw = Width(card.struck)
-        local sx = icon > 0 and pad[1] + iconH + ICON.gap or pad[1] + SCRIBBLE.lead[2]
-        local send = sx + sw + SCRIBBLE.tail[2]
+        local sx = icon > 0 and pad[1] + iconH + ICON.gap or pad[1] + STRIKE.lead[2]
+        local send = sx + sw + STRIKE.tail[2]
         local rowH = icon > 0 and iconH or ROW[F.struck]
         local W
         if F.side then
@@ -616,15 +594,15 @@ function LuckyCard.New(parent)
             card.item:SetPoint("TOPLEFT", parent, "TOPLEFT", x0, -y0)
             card.item:SetSize(x1 - x0, y1 - y0)
         end
-        -- The drop tables' word, printed, and the hand's scribble over it.
+        -- The drop tables' word, printed, and the hand's strike through it.
         local st = plan.struck
         Printed(card.struck, st.size)
         card.struck:SetText(st.text)
         local sx, sy = C(st.x, mid)
         Put(card, card.struck, sx, sy, st.w + 1, st.size + 4)
-        local P = Centred(LuckyCard.Scribble(seed .. ":s", st.x, mid, st.w, st.size), Wb, Hb)
-        card.scribble = P
-        card.pieces = Ink(card, card.ink, LuckyCard.Pen(P, SCRIBBLE), "ARTWORK", 3)
+        local P = Centred(LuckyCard.Strike(seed .. ":s", st.x, mid, st.w, st.size), Wb, Hb)
+        card.strike = P
+        card.pieces = Ink(card, card.ink, LuckyCard.Pen(P, STRIKE), "ARTWORK", 3)
         -- Who dropped it (XL).
         card.kind:SetShown(plan.creature ~= nil)
         if plan.creature then
@@ -769,7 +747,7 @@ function LuckyCard.PrintPlan(hunt, room)
     p.struck:SetText(label)
     local sw = Width(p.struck)
     local sx = P.pad[1] + 1
-    local send = sx + sw + SCRIBBLE.tail[2]
+    local send = sx + sw + STRIKE.tail[2]
     local box = P.icon + 2 * ICON.edge
     local tagH = P.tagPad[2] + P.line + P.tagPad[4]
     for _, form in ipairs({ "S", "S-" }) do
@@ -899,7 +877,7 @@ function LuckyCard.Print(kit, chosen, slot, seed, flat)
     end
     Put(Colour("edge", INK, flat and LOOK.flatEdge or LOOK.edge), Lx, Ly, plan.Wb + 2, plan.Hb + 2, a)
     Put(Colour("paper", LOOK.paper, 1), Lx, Ly, plan.Wb, plan.Hb, a)
-    -- The drop tables' word, and the scribble over it.
+    -- The drop tables' word, and the strike through it.
     local st = plan.struck
     local mid = P.pad[2] + (plan.Hb - P.pad[2] - P.pad[4]) / 2
     local text = kit.Text("struck")
@@ -907,8 +885,8 @@ function LuckyCard.Print(kit, chosen, slot, seed, flat)
     text:SetText(st.text)
     local tx, ty = To(Lx, Ly, a, st.x + st.w / 2 - plan.Wb / 2, mid - plan.Hb / 2)
     Put(text, tx, ty, st.w + 1, st.size + 4, a)
-    local pieces = Ink("ink", LuckyCard.Pen(OnCard(LuckyCard.Scribble(seed .. ":s", st.x, mid, st.w, st.size),
-        Lx, Ly, a, plan.Wb, plan.Hb), SCRIBBLE))
+    local pieces = Ink("ink", LuckyCard.Pen(OnCard(LuckyCard.Strike(seed .. ":s", st.x, mid, st.w, st.size),
+        Lx, Ly, a, plan.Wb, plan.Hb), STRIKE))
     -- The icon, stuck on the slip's right edge, its count over its corner.
     local ic = plan.icon
     local iconFile, itemID, from = Hunt.Icon(hunt)
@@ -1014,8 +992,8 @@ function LuckyCard.Print(kit, chosen, slot, seed, flat)
         iconHit = Bounds(iconCorners), star = star, itemID = itemID, pieces = pieces, count = count ~= nil }
 end
 
-LuckyCard.LUCKY, LuckyCard.FORMS, LuckyCard.TAG, LuckyCard.SCRIBBLE, LuckyCard.UNDER, LuckyCard.PRINT =
-    LUCKY, FORMS, TAG, SCRIBBLE, UNDER, PRINT
+LuckyCard.LUCKY, LuckyCard.FORMS, LuckyCard.TAG, LuckyCard.STRIKE, LuckyCard.UNDER, LuckyCard.PRINT =
+    LUCKY, FORMS, TAG, STRIKE, UNDER, PRINT
 
 --------------------------------------------------------------------------
 -- In the plate's margin (JourneyMargin.Register)
@@ -1115,7 +1093,7 @@ end
 -- Good luck told on a light plate's print (S): a slip glued over the
 -- print's foot, over the mat and the neat line and under the lifted
 -- corner's shade and the photo corners, its parts from the slip up: its
--- shadow and edge, its stock, the printed words, the scribble, the icon,
+-- shadow and edge, its stock, the printed words, the strike, the icon,
 -- the tag (its shadows, edge, stock, words, the underline) and the tag's
 -- tape. Each part a pool of its own, on the frame over the picture (the
 -- plate's over-kit: its pools are begun, finished and counted with the

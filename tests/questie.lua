@@ -292,13 +292,13 @@ Eq(ns.Hunts.BadLuck(k, { kills = 24, need = 8 }), true, "three an item, no rate"
 Eq(ns.Hunts.BadLuck(k, Luck(24, 30, 8)), false, "three an item, but fewer than expected")
 
 --------------------------------------------------------------------------
-Section("good luck: an eighth of the kills expected (EXT-3)")
+Section("good luck: half the kills expected (EXT-3)")
 
-Eq(ns.Hunts.GoodLuck(Luck(10, 80)), true, "eight times")
-Eq(ns.Hunts.GoodLuck(Luck(10, 79)), false, "7.9 times")
-Eq(ns.Hunts.GoodLuck(Luck(1, 8, 1)), true, "the first kill, at one in eight")
+Eq(ns.Hunts.GoodLuck(Luck(10, 20)), true, "twice")
+Eq(ns.Hunts.GoodLuck(Luck(10, 19)), false, "1.9 times")
+Eq(ns.Hunts.GoodLuck(Luck(1, 2, 1)), true, "the first kill, at one in two")
 Eq(ns.Hunts.GoodLuck({ kills = 1, need = 1 }), false, "no rate, no good luck")
-Eq(ns.Hunts.BadLuck(k, Luck(10, 80)) and ns.Hunts.GoodLuck(Luck(10, 80)), false, "both bad and good")
+Eq(ns.Hunts.BadLuck(k, Luck(10, 20)) and ns.Hunts.GoodLuck(Luck(10, 20)), false, "both bad and good")
 
 local lucky = { kills = 4, need = 7, expected = 58.3, name = "Plainstrider", item = "Plainstrider Meat" }
 Eq(ns.Hunts.Line(lucky), "4" .. NB .. "Plainstriders for 7" .. NB .. "Plainstrider Meat, 54" .. NB
@@ -442,7 +442,8 @@ Eq(R.RANK.fortune, R.RANK.luck, "good luck ranks with bad")
 j.hunts[#j.hunts + 1] = { t = mock.now, mapID = mock.mapID, x = 0.5, y = 0.5, kills = 2, need = 1, expected = 20,
     name = "Plainstrider", item = "Plainstrider Meat", questID = 1 }
 e = R.Gather(j, 0, mock.now + 1, {})
-Eq(#e.fortunes, 1, "the good luck in the entry")
+-- With the 4 for 7 from above, a seventh of its 28 expected: good luck since the half (13 Nov).
+Eq(#e.fortunes, 2, "the good luck in the entry")
 Check(ns.Hunts.Lines(e):find("It took only 2", 1, true), "the good luck in the prose")
 Check(table.concat(Text.Lines(e, mock.now), " "):find("a chain of eight", 1, true), "the finale in the prose")
 

@@ -7,7 +7,7 @@
 --
 -- Drawn with it: the ink trail on Your Diary's plates (the road model, its
 -- tuning and Build: UI/Ink/Trail.lua, loaded after this file), the page's
--- pencil leaders (UI/Journey/Leaders.lua) and the lucky card's scribble
+-- pencil leaders (UI/Journey/Leaders.lua) and the lucky card's strike
 -- (Features/Hunts/LuckyCard.lua). Its table is ns.UI.Pen; the trail's
 -- model is ns.UI.InkTrail. PEN is the very table /sd pen
 -- (Dev/JourneyDebug.lua) changes in place, so it is made here once and

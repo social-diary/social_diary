@@ -130,6 +130,9 @@ function _mitres(P) {
 const _unit = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
 const SCRIBBLE = { width: 1.0, nib: { angle: 40, thin: 0.6, thick: 1.2 }, pitch: 1.45, cap: 0.70, over: [2.2, 3.2],
   lead: [2, 4], tail: [2, 4.5], slant: [-4, 2], bend: 1.4, round: 0.35, jit: 0.15, alpha: 0.92, taper: { from: 0.7, in: 4, end: 0.45, out: 5 } };
+// The lucky card's strike through its printed words (Features/Hunts/LuckyCard.lua, STRIKE): one pass of the pen.
+const STRIKE = { width: 1.15, nib: SCRIBBLE.nib, alpha: 0.92, cap: 0.70, low: 0.06, lead: [2, 4], tail: [2, 4.5], slant: [-2.4, 0.4], keep: 0.5,
+  sag: 0.4, jit: 0.35, step: 4, most: 28, taper: { from: 0.8, in: 3, end: 0.4, out: 7 } };
 const UNDER = { width: 1.35, nib: SCRIBBLE.nib, drop: 3.4, sag: 0.5, rise: 1.3, lead: 1.5, run: 4, jit: 0.4, step: 3.5, taper: { from: 0.85, in: 3, end: 0.4, out: 7 } };
 const TALLY = { gap: 2.5, h: 10, lean: 0.5, jit: [0, 0.6, -0.4, 0.3], over: 1.6, rise: 7.2, width: 1.3, apart: 3.5 };
 
@@ -187,7 +190,19 @@ const K = {
     for (let i = 0; i <= n; i++) { const t = i / n; P.push([(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * c[0] + t * t * z[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * c[1] + t * t * z[1]]); }
     return K.pen(P, { width: U.width, nib: U.nib, taper: U.taper });
   },
-  /** The hand's scribble over printed words from x0, `w` wide, their cap band's middle at `mid`, type `px`. */
+  /** The hand's strike through printed words from x0, `w` wide, their row's middle at `mid`, type `px`: one pass of the pen,
+      left to right, nearly level (the lucky card's, since 13 Nov; its scribble was too strong over the words). */
+  strike(x0, mid, w, px, seed) {
+    const R = _rng(seed), u = (a, b) => a + (b - a) * R(), S = STRIKE, half = S.cap * px / 2;
+    const ax = x0 - u(...S.lead), zx = x0 + w + u(...S.tail), y = mid + S.low * px, most = S.keep * half;
+    const tilt = Math.max(-most, Math.min(most, Math.tan(u(...S.slant) * Math.PI / 180) * (zx - ax) / 2));
+    const ay = y - tilt + u(-S.jit, S.jit), zy = y + tilt + u(-S.jit, S.jit), cx = (ax + zx) / 2, cy = (ay + zy) / 2 + 2 * S.sag;
+    const n = Math.min(S.most, Math.max(3, Math.ceil(Math.hypot(zx - ax, zy - ay) / S.step))), P = [];
+    for (let i = 0; i <= n; i++) { const t = i / n; P.push([(1 - t) * (1 - t) * ax + 2 * (1 - t) * t * cx + t * t * zx, (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * cy + t * t * zy]); }
+    return K.pen(P, { width: S.width, nib: S.nib, taper: S.taper, alpha: S.alpha });
+  },
+  /** A zigzag scribble over printed words from x0, `w` wide, their cap band's middle at `mid`, type `px` (heavy over
+      words: the lucky card gave it up for K.strike; kept for the older mockups that draw it). */
   scribble(x0, mid, w, px, seed) {
     const R = _rng(seed), u = (a, b) => a + (b - a) * R(), S = SCRIBBLE, half = S.cap * px / 2, pitch = S.pitch * px;
     const xs = x0 - u(...S.lead), xe = x0 + w + u(...S.tail);

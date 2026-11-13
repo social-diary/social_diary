@@ -1,8 +1,8 @@
 -- The lucky card (Features/Hunts/LuckyCard.lua, JRN-27): good luck with a quest's
--- drops, the drop tables' "expected 58" printed and scribbled out, a tag
+-- drops, the drop tables' "expected 58" printed and struck out, a tag
 -- of fresher paper taped over it saying what happened instead. Its words
 -- in every size, its sizes by the room it has and its steps down, the
--- scribble and the underline, the hunt it is for, its rank in the margin
+-- strike and the underline, the hunt it is for, its rank in the margin
 -- (after the close call, before the slow hunt), the caption that counts
 -- the rest of the luck; and S, on a light plate's print: the item's icon
 -- stuck on the slip's right edge (60 % on it, 40 % past it), clear of the
@@ -112,28 +112,60 @@ Check(Lucky.Choose({}) == nil and Lucky.Choose({ Mark({ { kind = "fortune" } }, 
 Eq(Lucky.Ratio({ kills = 3 }), math.huge, "no rates, no luck")
 
 --------------------------------------------------------------------------
-Section("the scribble and the underline")
+Section("the strike and the underline")
 
-local S = Lucky.SCRIBBLE
-local P, raw, half = Lucky.Scribble("lucky:4021:1413:14:s", 0, 10, 66, 13)
-Eq(half, S.cap * 13 / 2, "the cap band")
-for k = 2, #raw - 1 do
-    Check(math.abs(raw[k][2] - 10) >= half + S.over[1] - 1e-9, "a turn inside the figures' band: " .. k)
+-- A single pass of the pen through the words (13 Nov: the scribble's
+-- zigzag was too strong over them): left to right, never turning back,
+-- from before the words to past them, inside the figures' cap band with
+-- its own width, nearly level, and one line thick wherever it is cut.
+local S = Lucky.STRIKE
+local function Struck(seed, x0, mid, w, size)
+    local P, half = Lucky.Strike(seed, x0, mid, w, size)
+    Eq(half, S.cap * size / 2, "the cap band: " .. seed)
+    for k = 2, #P do
+        Check(P[k].x > P[k - 1].x, "the strike turns back: " .. seed .. ", " .. k)
+    end
+    local first, last = P[1], P[#P]
+    Check(first.x <= x0 - S.lead[1] + 1e-9 and first.x >= x0 - S.lead[2] - 1e-9, "the strike's start: " .. seed)
+    Check(last.x >= x0 + w + S.tail[1] - 1e-9 and last.x <= x0 + w + S.tail[2] + 1e-9, "the strike's end: " .. seed)
+    for k, p in ipairs(P) do
+        Check(math.abs(p.y - mid) + S.width / 2 * S.nib.thick <= half, "the strike leaves the words: " .. seed .. ", " .. k)
+    end
+    Check(math.abs(last.y - first.y) <= 2 * (S.keep * half + S.jitter) + 1e-9, "the strike's tilt: " .. seed)
+    -- One line, not a zigzag: its run is hardly longer than its span.
+    local run = 0
+    for k = 2, #P do run = run + math.sqrt((P[k].x - P[k - 1].x) ^ 2 + (P[k].y - P[k - 1].y) ^ 2) end
+    Check(run <= (last.x - first.x) * 1.02, "the strike wanders: " .. seed .. ", " .. run)
+    Check(#P - 1 >= 3 and #P - 1 <= S.most, "the strike's pieces: " .. seed .. ", " .. (#P - 1))
+    return P
 end
-Check(raw[1][1] < 0 and raw[#raw - 1][1] >= 66 + S.tail[1] - 1e-9, "the run does not cover the words")
--- Each turn three points (rounded), and the ends: about 25 pieces for
--- "expected 58" at 13 px, as the proposal counted.
-Check(#P - 1 == 3 * (#raw - 2) + 1 and #P - 1 >= 22 and #P - 1 <= 25, "the scribble's pieces: " .. (#P - 1))
-Check(#P - 1 <= S.most, "past the budget")
-local again = Lucky.Scribble("lucky:4021:1413:14:s", 0, 10, 66, 13)
-Check(again[5].x == P[5].x and again[9].y == P[9].y, "the same seed scribbles differently")
-local other = Lucky.Scribble("lucky:852:1413:14:s", 0, 10, 66, 13)
-Check(other[5].x ~= P[5].x or other[5].y ~= P[5].y, "another seed scribbles the same")
-local long = Lucky.Scribble("long", 0, 10, 400, 13)
-Check(#long - 1 <= S.most, "a long run passes the budget: " .. (#long - 1))
+local P = Struck("lucky:4021:1413:14:s", 0, 10, 66, 13)
+-- "expected 58" at 13 px: a piece every `step`, about 18 (the scribble
+-- took 25).
+Check(#P - 1 >= 16 and #P - 1 <= 20, "the strike's pieces: " .. (#P - 1))
+local rising = 0
+for k = 1, 40 do
+    for _, size in ipairs({ 13, 11 }) do
+        local Q = Struck("seed:" .. k .. ":" .. size, 30, 40, 20 + 9 * k, size)
+        if Q[#Q].y < Q[1].y then rising = rising + 1 end
+    end
+end
+Check(rising > 40, "a hand's strike mostly rises: " .. rising .. " of 80")
+local again = Lucky.Strike("lucky:4021:1413:14:s", 0, 10, 66, 13)
+Check(again[5].x == P[5].x and again[9].y == P[9].y, "the same seed strikes differently")
+local other = Lucky.Strike("lucky:852:1413:14:s", 0, 10, 66, 13)
+Check(other[5].x ~= P[5].x or other[5].y ~= P[5].y, "another seed strikes the same")
 local prims = Lucky.Pen(P, S)
 Eq(#prims, #P - 1, "a quad a piece")
-Check(math.abs(prims[1].a - S.alpha) < 1e-9 and prims[1].r == ns.Style.INK_STRONG[1], "the scribble's ink")
+Check(math.abs(prims[1].a - S.alpha) < 1e-9 and prims[1].r == ns.Style.INK_STRONG[1], "the strike's ink")
+-- The pen's line as drawn: under the underline's width everywhere, landing
+-- and lifting thinner than it runs.
+local function Thick(q) return math.sqrt((q.x2 - q.x3) ^ 2 + (q.y2 - q.y3) ^ 2) end
+local widest = 0
+for _, q in ipairs(prims) do widest = math.max(widest, Thick(q)) end
+Check(widest < Lucky.UNDER.width and widest > 0.8, "the strike's width: " .. widest)
+Check(Thick(prims[#prims]) < 0.6 * widest, "the strike does not thin as the pen lifts")
+Eq(Lucky.UNDER.nib, S.nib, "the underline is the strike's pen")
 local U = Lucky.Underline("u", 10, 50, 20)
 Check(#U - 1 <= Lucky.UNDER.most and #U >= 4, "the underline's pieces: " .. #U)
 Check(U[1].y > 20 and U[#U].y > 20 and U[#U].y < U[1].y, "the underline is not under the baseline, rising off")
@@ -168,7 +200,18 @@ Check(tag.x >= xl.plan.struck.x + xl.plan.struck.w + S.tail[2] + Lucky.LUCKY.cle
     "the tag lies on the struck words")
 Eq(xl.plan.W - xl.plan.Wb, Lucky.FORMS.XL.over, "XL's tag hangs past the card")
 Check(xl.tag.box and xl.tag.box[1] == tag.x and xl.tag.box[3] == tag.w, "the tag is not laid where planned")
-Check(xl.pieces == #xl.scribble - 1 and xl.pieces >= 22, "the scribble drawn: " .. xl.pieces)
+Check(xl.pieces == #xl.strike - 1 and xl.pieces >= 3 and xl.pieces <= S.most, "the strike drawn: " .. xl.pieces)
+-- On the card (points from its middle): from before the struck words to
+-- short of the tag, inside the struck row.
+do
+    local st, plan = xl.plan.struck, xl.plan
+    local x0, x1 = xl.strike[1].x + plan.Wb / 2, xl.strike[#xl.strike].x + plan.Wb / 2
+    Check(x0 < st.x and x1 > st.x + st.w and x1 < plan.tag.x, "the strike's span on the card: " .. x0 .. ", " .. x1)
+    for _, p in ipairs(xl.strike) do
+        local y = p.y + plan.Hb / 2
+        Check(y > plan.rowTop and y < plan.rowTop + plan.rowH, "the strike off the struck row: " .. y)
+    end
+end
 local n = 0
 for _, t in ipairs(xl.tag.ink) do if t:IsShown() then n = n + 1 end end
 Check(n >= 4, "the underline is not drawn: " .. n)
@@ -233,13 +276,13 @@ one.item.scripts.OnLeave(one.item)
 Check(one.tag.tip and one.tag.tip()[1][1] == ns.Hunts.Line(HEZRUL), "the tag has not the card's tooltip")
 
 -- Laid flat: both slips square, no shadow under the icon; the tag still
--- over the card's right side, the scribble still drawn.
+-- over the card's right side, the strike still drawn.
 ns.SetSetting("flatSheets", true)
 local flat = New(KOLKAR, 260)
 Check(flat.turn == 0 and flat.tag.turn == 0, "laid flat, a slip turns")
 Check(not flat.iconShadow:IsShown(), "laid flat, the icon has a shadow")
 Check(flat.plan.W > flat.plan.Wb and flat.tag.box[1] < flat.plan.Wb, "laid flat, the tag no longer overlaps")
-Eq(flat.pieces, #flat.scribble - 1, "laid flat, the scribble")
+Eq(flat.pieces, #flat.strike - 1, "laid flat, the strike")
 ns.SetSetting("flatSheets", false)
 local turned = New(KOLKAR, 260)
 Check(turned.turn ~= 0 and turned.tag.turn ~= 0 and (turned.turn > 0) ~= (turned.tag.turn > 0),

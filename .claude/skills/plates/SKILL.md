@@ -352,7 +352,7 @@ The strip and the cards share the turned plane, `UI/Paper/Surface.lua`
 (`ns.UI.Surface`): `New(owner)` (the strip's Out/Screen/In/Place/Quad),
 `Corners`/`Unbend` (a loose sheet's too), `Turned` (a point turned about
 another), `Width` (unbounded) and `Seed` (a string to a number: what a slip
-turns, tears and is scribbled by). Use them, don't copy them; the plate's
+turns, tears and is penned by). Use them, don't copy them; the plate's
 own kit stays inside `Plate.lua`'s `New` for now. `Clamp` is the pen's
 (`ns.UI.Pen.Clamp`); the leaders keep their own (it differs where
 `lo` passes `hi`).

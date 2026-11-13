@@ -361,7 +361,7 @@ function Hunts.Fortune(hunt)
 end
 
 -- The lucky card (LuckyCard.lua, JRN-27): good luck in the margin, the
--- drop tables' "expected 58" printed and scribbled out, and taped over it
+-- drop tables' "expected 58" printed and struck out, and taped over it
 -- a smaller slip in the diary's hand saying what happened instead. The
 -- printed words are Hunts.ExpectedLabel's, as the bad-luck card's.
 --
