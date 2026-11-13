@@ -54,7 +54,7 @@ ns.Locale.Add("zhCN", {
     ["Health left"] = "剩余生命值",
     -- Features/CloseCalls/Text.lua
     ["another|%s others##plural"] = "另外%s个",
-    ["Got away from %1$s with %2$s."] = "从%1$s手中逃脱，剩余生命值%2$s。",
+    ["Got away from %1$s with %2$s."] = "从%1$s手中逃脱，剩余%2$s。",
     ["Got out of a fight with %s."] = "从与%s的战斗中脱身。",
     ["Rare Elite"] = "稀有精英",
     ["Lv %d"] = "等级%d",

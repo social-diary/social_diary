@@ -21,9 +21,9 @@ ns.Locale.Add("zhCN", {
     ["%s's story"] = "%s的故事",
     -- UI/Dungeon/Tutorial.lua
     ["About this map"] = "关于此地图",
-    ["There is no navigation data inside dungeons, so the diary has to work out where things happened."] = "副本内没有导航数据，所以日记需要推断事情发生的位置。",
-    ["It uses a default route, the usual way through, to pinpoint the spots."] = "它使用默认路线，即通常的通行路线，来确定各个地点。",
-    ["If you went another way on a run, use Adjust Path at the top of the map to draw your own."] = "如果你某次走了另一条路，可以用地图顶部的“调整路线”来绘制自己的路线。",
+    ["There is no navigation data inside dungeons, so the diary has to work out where things happened."] = "副本内没有导航数据，\n所以日记需要推断事情发生的位置。",
+    ["It uses a default route, the usual way through, to pinpoint the spots."] = "它使用默认路线，\n即通常的通行路线，来确定各个地点。",
+    ["If you went another way on a run, use Adjust Path at the top of the map to draw your own."] = "如果你某次走了另一条路，\n可以用地图顶部的“调整路线”来绘制自己的路线。",
     ["Got it"] = "知道了",
     -- UI/Dungeon/Way.lua
     ["Adjust Path"] = "调整路线",

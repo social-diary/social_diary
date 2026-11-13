@@ -194,7 +194,7 @@ ns.Locale.Add("zhCN", {
     ["Fought here for %s"] = "在此战斗了%s",
     ["Fought here on and off, %s in all"] = "断断续续在此战斗，共%s",
     ["Quested here briefly"] = "曾在此短暂做任务",
-    ["Quested here for %s"] = "在此做任务了%s",
+    ["Quested here for %s"] = "在此做了%s任务",
     ["Quested here on and off, %s in all"] = "断断续续在此做任务，共%s",
     ["Rested here briefly"] = "曾在此短暂休息",
     ["Rested here for %s"] = "在此休息了%s",
