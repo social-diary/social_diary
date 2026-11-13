@@ -538,4 +538,13 @@ do
     end
     Eq(#held, 0, "no French word keeps one there")
     Eq(type(french.Locale.grammar.PluralForm(2)), "number", "a grammar function's other values come back as they are")
+
+    -- And an English client reading Chinese takes the Chinese files
+    -- (UI/Style/Tokens.lua), so its spaces are plain too.
+    _G.SocialDiaryDB = { settings = { language = "zhCN" } }
+    _G.GetLocale = function() return "enUS" end
+    local chinese = T.Load()
+    _G.SocialDiaryDB, _G.GetLocale, T.ns = saved, wasLocale, wasNs
+    Eq(chinese.Locale.id, "zhCN", "an English client reading Chinese")
+    Eq(chinese.Locale.nbsp, " ", "reads a plain space")
 end

@@ -71,15 +71,16 @@ ns.Locale = Locale
 -- it: seen on zhCN (ARKai_T, a player's report, 12 Nov); zhTW and koKR are
 -- taken the same way unseen, as a line that may wrap costs less than a box.
 -- A Russian client's files are the Latin ones with Cyrillic added, and keep
--- it. There the space is a plain one, by the client and not the language
--- read, as the fonts are:
+-- it. There the space is a plain one, by the client or the language read
+-- (an English client reading Chinese takes the Chinese files), as the fonts
+-- are:
 --   Locale.nbsp          the space that holds: no-break, or plain here
 --   Locale.Spaces(text)  `text` with no no-break space the fonts can't draw
 -- Every word looked up (ns.L), every template filled (ns.Fmt), every place
 -- phrase and whatever a locale's grammar function returns goes through it.
 local NBSP = "\194\160"
 local NO_NBSP = { zhCN = true, zhTW = true, koKR = true }
-Locale.nbsp = NO_NBSP[client] and " " or NBSP
+Locale.nbsp = (NO_NBSP[client] or NO_NBSP[Locale.id]) and " " or NBSP
 
 local function Spaces(text, ...)
     if Locale.nbsp ~= NBSP and type(text) == "string" then text = text:gsub(NBSP, Locale.nbsp) end

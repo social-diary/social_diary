@@ -140,10 +140,18 @@ local OTHER_ALPHABETS = {
 -- face, and Friz, the hand and Goodmountain its text face, as no client has
 -- an italic or a display face in Cyrillic, Hangul or Han. Before this, a
 -- Russian client set its names and zones in the Latin files and read boxes.
+-- The same where the diary reads in one of these languages on a client in
+-- another (Settings, Language): the families carry the words, but what sets
+-- a file by hand at a size of its own (the plates' captions, the margin
+-- cards' hand) took the Latin file and read boxes (zhCN on an English
+-- client, a player's report, 13 Nov 2026). So the client's alphabet, else
+-- the diary's.
 local NOT_ROMAN = { koKR = "korean", zhCN = "simplifiedchinese", zhTW = "traditionalchinese", ruRU = "russian" }
+local ALPHABET = GetLocale and NOT_ROMAN[GetLocale()]
+    or (ns.Locale and NOT_ROMAN[ns.Locale.id])
 
 do
-    local alphabet = GetLocale and NOT_ROMAN[GetLocale()]
+    local alphabet = ALPHABET
     for _, other in ipairs(OTHER_ALPHABETS) do
         if other[1] == alphabet then
             FRIZ, MORPHEUS = other[2], other[3]
@@ -165,7 +173,7 @@ end
 -- `file` at `size` as a family, or nil where it can't be one, or comes back
 -- without its roman font: the plain font is always there to fall back on.
 local function Family(name, file, size)
-    if not CreateFontFamily or not GetLocale or NOT_ROMAN[GetLocale()] then return nil end
+    if not CreateFontFamily or not GetLocale or ALPHABET then return nil end
     local members = { { alphabet = "roman", file = file, height = size, flags = "" } }
     for _, other in ipairs(OTHER_ALPHABETS) do
         members[#members + 1] = { alphabet = other[1], file = file == MORPHEUS and other[3] or other[2],

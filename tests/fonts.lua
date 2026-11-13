@@ -25,7 +25,7 @@ local function Run(env)
     _G.CreateFont = FakeFont
     _G.CreateFontFamily, _G.GetLocale = env.family, env.locale
     local chunk = assert(loadfile("UI/Style/Tokens.lua"))
-    local ns = {}
+    local ns = { Locale = env.reads and { id = env.reads } }
     chunk("social_diary", ns)
     for key, value in pairs(saved) do _G[key] = value end
     return ns.Style
@@ -127,6 +127,25 @@ for _, locale in ipairs({ "koKR", "zhCN", "zhTW", "ruRU" }) do
         Eq(style.GOODMOUNTAIN, text, "Style.GOODMOUNTAIN on a " .. locale .. " client" .. how)
     end
 end
+-- A Latin client reading the diary in one of those languages (Settings,
+-- Language) takes the same files: what sets a file by hand (a plate's
+-- caption, a margin card) read boxes otherwise.
+for _, locale in ipairs({ "koKR", "zhCN", "zhTW", "ruRU" }) do
+    local text, book = OWN[locale][1], OWN[locale][2]
+    for _, env in ipairs({ { family = RealFamily }, {} }) do
+        env.locale, env.reads = English, locale
+        local style = Run(env)
+        local how = env.family and " with families" or " without families"
+        Check(style.FONT.body.members == nil, "a family reading " .. locale .. " on English" .. how)
+        Eq(style.FONT.body.file, text, "Friz reading " .. locale .. " on English" .. how)
+        Eq(style.FONT.title.file, book, "Morpheus reading " .. locale .. " on English" .. how)
+        Eq(style.NEUTON_ITALIC, text, "the hand reading " .. locale .. " on English" .. how)
+        Eq(style.MORPHEUS, book, "Style.MORPHEUS reading " .. locale .. " on English" .. how)
+    end
+end
+local reading = Run({ family = RealFamily, locale = English, reads = "deDE" })
+Eq(reading.NEUTON_ITALIC, "Interface\\AddOns\\social_diary\\Fonts\\Neuton-Italic.ttf", "reading German keeps our hand")
+Check(reading.FONT.body.members ~= nil, "reading German keeps the families")
 -- Every Latin client, with or without families, keeps our own files.
 for _, locale in ipairs({ "enUS", "deDE", "frFR", "esMX", "ptBR", "itIT" }) do
     local style = Run({ locale = function() return locale end })
