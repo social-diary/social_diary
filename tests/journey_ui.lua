@@ -1390,6 +1390,104 @@ do
     mark.scripts.OnMouseUp(mark, "LeftButton")
     Eq(page.mode, "plates", "a click on a mark of the full page did not go back")
     ns.UI.OpenZoneSheet(1412)
+    -- A notch that changes nothing (more wheel at the end of the range, as
+    -- a trackpad's momentum sends): not heard. Nothing drawn, the ease on
+    -- its way not begun again.
+    plate:Wheel(1, 0, 0)
+    plate:Wheel(1, 0, 0)
+    Eq(plate.look.goal.f, FZ.native, "setup: two notches reach the art's own size")
+    pivot.scripts.OnUpdate(pivot, FZ.time / 2)
+    do
+        local before, move, goal, t, shown = plate.look.redraws, plate.look.move, plate.look.goal, plate.look.move.t, plate.look.f
+        Check(move and shown < FZ.native, "setup: mid-ease")
+        for _ = 1, 30 do plate:Wheel(1, 37, -23) end
+        Eq(plate.look.redraws, before, "a notch past the end of the range drew the picture again")
+        Check(plate.look.move == move and move.t == t and plate.look.f == shown, "a notch past the end began the ease again")
+        Check(plate.look.goal == goal, "a notch past the end moved the view")
+        pivot.scripts.OnUpdate(pivot, FZ.time)
+        pivot.scripts.OnUpdate(pivot, FZ.settle / 2)
+        for _ = 1, 30 do plate:Wheel(1, 37, -23) end
+        pivot.scripts.OnUpdate(pivot, FZ.settle / 2)
+        Check(pivot.scripts.OnUpdate == nil, "a notch past the end put the wait off")
+        -- (and the same at the fit)
+        for _ = 1, 4 do plate:Wheel(-1, 0, 0) end
+        pivot.scripts.OnUpdate(pivot, FZ.time / 2)
+        before, move = plate.look.redraws, plate.look.move
+        plate:Wheel(-1, 37, -23)
+        Check(plate.look.redraws == before and plate.look.move == move, "a notch out past the fit was heard")
+    end
+    -- Over the budget (FULLZOOM.budget: the last drawing took longer, a
+    -- zone inked to the caps): a notch draws nothing at once. The picture
+    -- as drawn is scaled toward where the wheel is going, and drawn once,
+    -- when the wheel has stood still.
+    do
+        local clock = mock.clock
+        mock.clockStep = FZ.budget + 1
+        ns.UI.OpenZoneSheet(1412)
+        Check(plate.buildMs > FZ.budget, "setup: a drawing over the budget")
+        local before, drawn = plate.look.redraws or 0, plate.look.drawn
+        local qx, qy = 80, -40
+        local mx, my = plate.look.cx + qx / (f0 * 1002), plate.look.cy + qy / (f0 * 668)
+        plate:Wheel(1, qx, qy)
+        Eq(plate.look.redraws or 0, before, "over the budget, a notch drew the picture at once")
+        Check(plate.look.drawn == drawn and drawn.f == f0, "over the budget, a notch changed what is drawn")
+        Check(math.abs(plate.look.goal.f - f0 * FZ.step) < 1e-9, "over the budget, a notch is not a step closer")
+        Eq(content.recorded.calls.SetScale[1], 1, "over the budget, the picture jumped on the notch")
+        Check(pivot.scripts.OnUpdate, "over the budget, the wheel does not ease")
+        pivot.scripts.OnUpdate(pivot, FZ.time)
+        Check(math.abs(content.recorded.calls.SetScale[1] - FZ.step) < 1e-9,
+            "over the budget, the picture as drawn was not scaled toward the notch's view")
+        Check(math.abs(plate.look.cx + qx / (plate.look.f * 1002) - mx) < 1e-9
+            and math.abs(plate.look.cy + qy / (plate.look.f * 668) - my) < 1e-9,
+            "over the budget, the point under the cursor moved")
+        -- (shifted in the card's own turn: by as far as the middles differ)
+        local point = pivot.recorded.points[1].args
+        local lx, ly = (drawn.cx - plate.look.cx) * plate.look.f * 1002, (drawn.cy - plate.look.cy) * plate.look.f * 668
+        Check(lx * lx + ly * ly > 1 and math.abs(point[3] ^ 2 + point[4] ^ 2 - (lx * lx + ly * ly)) < 1e-6,
+            "over the budget, the picture as drawn was not shifted toward the notch's view")
+        -- A second notch before it has stood still: the wait begins again.
+        pivot.scripts.OnUpdate(pivot, FZ.settle / 2)
+        plate:Wheel(1, qx, qy)
+        Eq(plate.look.goal.f, FZ.native, "setup: the second notch reaches the art's own size")
+        pivot.scripts.OnUpdate(pivot, FZ.time)
+        pivot.scripts.OnUpdate(pivot, FZ.settle / 2)
+        Eq(plate.look.redraws or 0, before, "over the budget, the picture was drawn while the wheel was turning")
+        pivot.scripts.OnUpdate(pivot, FZ.settle / 2)
+        Eq(plate.look.redraws, before + 1, "over the budget, the picture was not drawn once, the wheel still")
+        Eq(plate.look.drawn.f, FZ.native, "once still, the picture was drawn at another zoom than the wheel's")
+        Check(plate.look.drawn.cx == plate.look.cx and plate.look.drawn.cy == plate.look.cy,
+            "once still, the picture was drawn for another view than the one shown")
+        Eq(content.recorded.calls.SetScale[1], 1, "drawn once still, the picture kept a scale")
+        Check(pivot.scripts.OnUpdate == nil, "drawn once still, the wheel's OnUpdate did not stop itself")
+        Check(plate.window[1] == 0 and plate.window[3] == 1, "drawn once still, the zone was not drawn whole")
+        -- Held: the new zoom is still drawn once the wheel is still, and
+        -- the drag goes on over it; its pan once let go, as ever.
+        Check(plate.buildMs > FZ.budget, "setup: still over the budget")
+        local at = { 0, 0 }
+        plate.CursorScreen = function() return at[1], at[2] end
+        before = plate.look.redraws
+        clip.scripts.OnMouseDown(clip, "LeftButton")
+        plate:Wheel(-1, 0, 0)
+        Eq(plate.look.redraws, before, "over the budget and held, a notch drew the picture at once")
+        Check(plate.look.pressed and clip.scripts.OnUpdate, "over the budget, a notch let the drag go")
+        pivot.scripts.OnUpdate(pivot, FZ.time)
+        pivot.scripts.OnUpdate(pivot, FZ.settle)
+        Eq(plate.look.redraws, before + 1, "over the budget and held, the new zoom was not drawn once the wheel was still")
+        Check(math.abs(plate.look.drawn.f - FZ.native / FZ.step) < 1e-9, "held, the zoom drawn is not the wheel's")
+        Check(plate.look.pressed and clip.scripts.OnUpdate, "drawn once still while held, the drag was let go")
+        local held = plate.look.cx
+        at[1] = -30
+        clip.scripts.OnUpdate(clip, 0.016)
+        Check(plate.look.cx > held, "after the drawing once still, the drag did not go on panning")
+        Check(pivot.scripts.OnUpdate == nil, "held, a pan started a drawing")
+        clip.scripts.OnMouseUp(clip, "LeftButton")
+        Eq(page.mode, "full", "a drag over a drawing once still went back")
+        pivot.scripts.OnUpdate(pivot, FZ.settle)
+        Eq(plate.look.redraws, before + 2, "let go after a drawing once still, the pan was not drawn again")
+        mock.clock, mock.clockStep = clock, 0
+        ns.UI.OpenZoneSheet(1412)
+        Eq(plate.buildMs, 0, "setup: back within the budget")
+    end
     plate.CursorScreen = function() return 0, 0 end
 end
 

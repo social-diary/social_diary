@@ -168,6 +168,38 @@ Check(Full().look.goal.f < Plate.FULLZOOM.native, "X not further")
 Settle()
 
 --------------------------------------------------------------------------
+Section("over the budget, a zoom is drawn once the map is still; the pad keeps its mark")
+
+-- (FULLZOOM.budget: where the last drawing took longer, a notch draws
+-- nothing at once. The marks stay as drawn, scaled with the picture, until
+-- the map has stood still; then they are handed round again.)
+for _ = 1, 30 do Press("PAD3") end
+Settle()
+do
+    local plate = Full()
+    plate.buildMs = Plate.FULLZOOM.budget + 1
+    local redraws0, on, f1 = plate.look.redraws or 0, At(), plate.look.goal.f
+    Eq(Press("PAD1"), false, "over the budget, A went on to the game")
+    Eq(Full().look.redraws or 0, redraws0, "over the budget, A drew the map at once")
+    Check(math.abs(Full().look.goal.f - math.min(Plate.FULLZOOM.native, f1 * Plate.FULLZOOM.step)) < 1e-6,
+        "over the budget, A not a notch closer")
+    Check(At() == on and on.available(), "over the budget, the pad left its mark before the map was drawn")
+    Check(Full():InView(on.mx, on.my, 0), "over the budget, zoomed away from the mark")
+    Eq(Legend().PAD3, "Further", "over the budget, X's prompt not there before the map was drawn")
+    Check(Legend().PAD4 ~= nil, "over the budget, no Y on the mark before the map was drawn")
+    Check(parts.pen:IsShown(), "over the budget, the ring put away before the map was drawn")
+    Settle()
+    Eq(Full().look.redraws, redraws0 + 1, "over the budget, the zoom not drawn once, the map still")
+    Eq(At().group, "full", "the pad lost the map once the zoom was drawn")
+    Eq(At().what, on.what, "the pad lost its mark once the zoom was drawn")
+    Check(At().available() and Full():InView(At().mx, At().my, 0), "once drawn, the pad on a mark out of view")
+    -- (as the section before left it: a notch out from the art's own size)
+    for _ = 1, 40 do Press("PAD1") end
+    Press("PAD3")
+    Settle()
+end
+
+--------------------------------------------------------------------------
 Section("the right stick pans; the left stick and a nudge go on to the game")
 
 local cx0, cy0 = Full().look.cx, Full().look.cy

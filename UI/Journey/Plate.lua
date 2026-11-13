@@ -180,13 +180,21 @@ local ZOOM = { scale = 1.16, time = 0.2 }
 -- blurs). Each notch draws the picture at once for where the wheel is
 -- going (it takes a few ms), its marks and lines at that zoom's size, and
 -- eases the drawing in from where it was shown, scaled and shifted, so
--- the ink is right once it is there. A drag only shifts the picture;
+-- the ink is right once it is there. That is while a drawing is quick:
+-- where the last one took more than `budget` ms (plate.buildMs; a zone
+-- inked to the trail's caps is some 3,000 textures, and two notches in a
+-- frame were two such drawings in it), a notch draws nothing. The picture
+-- as it is drawn is eased toward the notch's view, scaled and shifted as
+-- a drag shifts it, and drawn once, `settle` seconds after the wheel has
+-- stood still. A notch that changes nothing (more wheel at either end of
+-- the range, which a trackpad's momentum sends by the dozen) is not
+-- heard at all. A drag only shifts the picture;
 -- `settle` seconds after it lets go the picture is drawn again for the
 -- new window. Either way the rest of the zone is drawn round it (under the card's
 -- margin, clipped) so a drag never runs off the art. No closer than
 -- `native`, the whole zone is no more than its art's own size (a zone's
 -- 1002 by 668 px), not much more than a window and a margin round it.
-local FULLZOOM = { step = 1.25, time = 0.15, settle = 0.25, native = 1, overscan = math.huge }
+local FULLZOOM = { step = 1.25, time = 0.15, settle = 0.25, native = 1, overscan = math.huge, budget = 8 }
 -- Dragging a full page pans it, fitted too (the fit is the zone's whole
 -- height, so most zones run past the card's sides); a press that moves
 -- less than `threshold` px is a click, which goes back.
@@ -2464,7 +2472,9 @@ local function New(parent, slot)
     -- The wheel's easing, then the wait to draw sharp again: one short
     -- OnUpdate on the pivot, stopping itself once it has drawn. Held, only
     -- a new zoom is drawn (a drag draws again once let go); the press is
-    -- carried on over the drawing.
+    -- carried on over the drawing. A zoom the wheel left undrawn (over
+    -- FULLZOOM's budget) is drawn here, once it has stood still: it is the
+    -- view shown that differs from the one drawn then, held or not.
     local Drag
     local function Redraw()
         local pressed = look.pressed
@@ -2523,21 +2533,28 @@ local function New(parent, slot)
     end
 
     -- A notch of the wheel at qx, qy on the card: closer (up) or further,
-    -- the map point there staying under it.
+    -- the map point there staying under it. At either end of the range a
+    -- notch further on changes nothing (the point under the cursor stays
+    -- where it is at the same zoom), and is not heard: nothing drawn, an
+    -- ease on its way not begun again, the wait to draw sharp not put off.
     function plate:Wheel(delta, qx, qy)
         if not look then return end
         if not qx then qx, qy = plate.CursorLocal() end
         local g = look.goal
         local mx, my = g.cx + qx / (g.f * look.LW), g.cy + qy / (g.f * look.LH)
         local f = Clamp(g.f * FULLZOOM.step ^ (delta or 0), look.fit, FULLZOOM.native)
+        if f == g.f then return end
         local cx, cy = mx - qx / (f * look.LW), my - qy / (f * look.LH)
         f, cx, cy = Hold(f, cx, cy)
         local shown = { f = look.f, cx = look.cx, cy = look.cy }
         look.goal = { f = f, cx = cx, cy = cy }
         -- Drawn now for where it is going, the whole zone round it, and
-        -- eased in from where it was.
+        -- eased in from where it was; or, where the last drawing was past
+        -- the budget, left as drawn and eased toward it (Show scales and
+        -- shifts it), to be drawn once the wheel is still (Tick).
         local d = look.drawn
-        if d.f ~= f or d.cx ~= cx or d.cy ~= cy then Redraw() end
+        local quick = (self.buildMs or 0) <= FULLZOOM.budget
+        if quick and (d.f ~= f or d.cx ~= cx or d.cy ~= cy) then Redraw() end
         look.f, look.cx, look.cy = shown.f, shown.cx, shown.cy
         look.move = { t = 0, f = shown.f, cx = shown.cx, cy = shown.cy }
         Show()

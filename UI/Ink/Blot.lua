@@ -126,14 +126,17 @@ function Blot.Field(points, sigma, xs, ys, warp)
         F[j] = row
     end
     local reach, k = REACH * sigma, -1 / (2 * sigma * sigma)
+    local exp = math.exp
     local WX, WY
     if warp then
+        local Push, amount, wave = Blot.Push, warp[1], warp[2]
         WX, WY = {}, {}
         for j = 1, #ys do
-            local rx, ry = {}, {}
+            local rx, ry, y = {}, {}, ys[j]
             for i = 1, #xs do
-                local dx, dy = Blot.Push(xs[i], ys[j], warp[1], warp[2])
-                rx[i], ry[i] = xs[i] + dx, ys[j] + dy
+                local x = xs[i]
+                local dx, dy = Push(x, y, amount, wave)
+                rx[i], ry[i] = x + dx, y + dy
             end
             WX[j], WY[j] = rx, ry
         end
@@ -142,26 +145,27 @@ function Blot.Field(points, sigma, xs, ys, warp)
     for _, p in ipairs(points) do
         local w = p.w
         if w and w > 0 then
-            local i0, i1 = From(xs, p.x - reach), From(xs, p.x + reach) - 1
-            local j0, j1 = From(ys, p.y - reach), From(ys, p.y + reach) - 1
+            local px, py = p.x, p.y
+            local i0, i1 = From(xs, px - reach), From(xs, px + reach) - 1
+            local j0, j1 = From(ys, py - reach), From(ys, py + reach) - 1
             if i0 <= i1 and j0 <= j1 then
                 if WX then
                     for j = j0, j1 do
                         local row, rx, ry = F[j], WX[j], WY[j]
                         for i = i0, i1 do
-                            local dx, dy = rx[i] - p.x, ry[i] - p.y
-                            row[i] = row[i] + w * math.exp((dx * dx + dy * dy) * k)
+                            local dx, dy = rx[i] - px, ry[i] - py
+                            row[i] = row[i] + w * exp((dx * dx + dy * dy) * k)
                         end
                     end
                 else
                     local across = {}
                     for i = i0, i1 do
-                        local dx = xs[i] - p.x
-                        across[i] = math.exp(dx * dx * k)
+                        local dx = xs[i] - px
+                        across[i] = exp(dx * dx * k)
                     end
                     for j = j0, j1 do
-                        local dy = ys[j] - p.y
-                        local down, row = w * math.exp(dy * dy * k), F[j]
+                        local dy = ys[j] - py
+                        local down, row = w * exp(dy * dy * k), F[j]
                         for i = i0, i1 do row[i] = row[i] + down * across[i] end
                     end
                 end
@@ -230,51 +234,80 @@ local function Crossings(F, xs, ys, edge)
         return xs[i], ys[j] + (ys[j + 1] - ys[j]) * Part(F[j][i], F[j + 1][i]), (j * NX + i) * 2 + 1
     end
 
-    -- The polygon(s) of cell i, j inside the outline, each a list of
-    -- vertices { x, y, key }, in the screen's turn.
-    local function Polygons(i, j, inside)
-        local function CornerAt(k)
-            return { xs[i + CORNER[k][1]], ys[j + CORNER[k][2]] }
-        end
-        local function EdgeAt(k)
-            local x, y, key
-            if k == 1 then x, y, key = Across(j, i)
-            elseif k == 2 then x, y, key = Down(j, i + 1)
-            elseif k == 3 then x, y, key = Across(j + 1, i)
-            else x, y, key = Down(j, i) end
-            return { x, y, key }
-        end
-        local saddle = (inside[1] and inside[3] and not inside[2] and not inside[4])
-            or (inside[2] and inside[4] and not inside[1] and not inside[3])
+    -- The polygon of cell i, j inside the outline, in the screen's turn
+    -- (and a second: a saddle's two triangles); a, b, c, d say which of its
+    -- corners are inside (in CORNER's order). Each is a list of vertices { x, y, key } for the outline (Blot.Outline
+    -- joins them by their keys), or, `flat`, the plain { x, y, x, y, ... }
+    -- the fill fans into quads: the same corners and crossings either way,
+    -- without a table a vertex where nobody reads the keys.
+    -- (The helpers and `inside` are made once a level, not once a cell: a
+    -- zone's stains ask this for thousands of cells a drawing.)
+    local inside = {}
+    local function Corner(list, i, j, k)
+        local c = CORNER[k]
+        list[#list + 1] = { xs[i + c[1]], ys[j + c[2]] }
+    end
+    local function Edge(list, i, j, k)
+        local x, y, key
+        if k == 1 then x, y, key = Across(j, i)
+        elseif k == 2 then x, y, key = Down(j, i + 1)
+        elseif k == 3 then x, y, key = Across(j + 1, i)
+        else x, y, key = Down(j, i) end
+        list[#list + 1] = { x, y, key }
+    end
+    local function FlatCorner(list, i, j, k)
+        local c, n = CORNER[k], #list
+        list[n + 1], list[n + 2] = xs[i + c[1]], ys[j + c[2]]
+    end
+    local function FlatEdge(list, i, j, k)
+        local x, y
+        if k == 1 then x, y = Across(j, i)
+        elseif k == 2 then x, y = Down(j, i + 1)
+        elseif k == 3 then x, y = Across(j + 1, i)
+        else x, y = Down(j, i) end
+        local n = #list
+        list[n + 1], list[n + 2] = x, y
+    end
+    local function Polygons(i, j, a, b, c, d, flat)
+        inside[1], inside[2], inside[3], inside[4] = a, b, c, d
+        local CornerAt, EdgeAt = Corner, Edge
+        if flat then CornerAt, EdgeAt = FlatCorner, FlatEdge end
+        local saddle = (a and c and not b and not d) or (b and d and not a and not c)
         if saddle then
             local mid = (F[j][i] + F[j][i + 1] + F[j + 1][i] + F[j + 1][i + 1]) / 4
             if mid < edge then
                 -- Two corners apart: one triangle each, edge k - 1 in, edge
                 -- k out.
-                local list = {}
+                local first, second
                 for k = 1, 4 do
                     if inside[k] then
-                        list[#list + 1] = { EdgeAt((k + 2) % 4 + 1), CornerAt(k), EdgeAt(k) }
+                        local triangle = {}
+                        EdgeAt(triangle, i, j, (k + 2) % 4 + 1)
+                        CornerAt(triangle, i, j, k)
+                        EdgeAt(triangle, i, j, k)
+                        if first then second = triangle else first = triangle end
                     end
                 end
-                return list
+                return first, second
             end
         end
         local polygon = {}
         for k = 1, 4 do
             local nextK = k % 4 + 1
-            if inside[k] then polygon[#polygon + 1] = CornerAt(k) end
-            if inside[k] ~= inside[nextK] then polygon[#polygon + 1] = EdgeAt(k) end
+            if inside[k] then CornerAt(polygon, i, j, k) end
+            if inside[k] ~= inside[nextK] then EdgeAt(polygon, i, j, k) end
         end
-        return { polygon }
+        return polygon
     end
 
     return Across, Down, Polygons
 end
 
-local function Inside(F, i, j, edge)
-    return { F[j][i] >= edge, F[j][i + 1] >= edge, F[j + 1][i + 1] >= edge, F[j + 1][i] >= edge }
-end
+-- Which of a cell's corners are inside (a, b, c, d: in CORNER's order) is
+-- read into locals by Fill and Outline, a row's two lines at a time, and
+-- handed to Polygons only for the cells the outline passes through: most
+-- cells are wholly in or wholly out, and a table for each was a quarter
+-- of a full zone page's drawing.
 
 -- The ground inside `edge` as quads: a row at a time, runs of whole cells
 -- as one quad slanted at its ends, the cells the outline turns in on their
@@ -285,15 +318,18 @@ function Blot.Fill(F, xs, ys, edge, isCut, out)
     local NX = #xs
     for j = 1, #ys - 1 do
         local y0, y1 = ys[j], ys[j + 1]
+        local upper, lower = F[j], F[j + 1]
         local top, bottom -- where the open run starts, on the row's two lines
+        -- (a cell's right corners are the next one's left)
+        local b, c = upper[1] >= edge, lower[1] >= edge
         for i = 1, NX - 1 do
             local x0 = xs[i]
             if top and isCut and isCut[i] then
                 Emit(out, top, y0, x0, y0, x0, y1, bottom, y1)
                 top, bottom = x0, x0
             end
-            local inside = Inside(F, i, j, edge)
-            local a, b, c, d = inside[1], inside[2], inside[3], inside[4]
+            local a, d = b, c
+            b, c = upper[i + 1] >= edge, lower[i + 1] >= edge
             if a and b and c and d then
                 if not top then top, bottom = x0, x0 end
             elseif b and c and not a and not d then
@@ -310,11 +346,9 @@ function Blot.Fill(F, xs, ys, edge, isCut, out)
                     top, bottom = nil, nil
                 end
                 if a or b or c or d then
-                    for _, polygon in ipairs(Polygons(i, j, inside)) do
-                        local v = {}
-                        for _, p in ipairs(polygon) do v[#v + 1], v[#v + 2] = p[1], p[2] end
-                        EmitPolygon(out, v)
-                    end
+                    local v, second = Polygons(i, j, a, b, c, d, true)
+                    EmitPolygon(out, v)
+                    if second then EmitPolygon(out, second) end
                 end
             end
         end
@@ -330,13 +364,16 @@ end
 function Blot.Outline(F, xs, ys, edge)
     local _, _, Polygons = Crossings(F, xs, ys, edge)
     local starts, ends, all = {}, {}, {}
+    local NX = #xs
     for j = 1, #ys - 1 do
-        for i = 1, #xs - 1 do
-            local inside = Inside(F, i, j, edge)
-            local any, every = false, true
-            for k = 1, 4 do any = any or inside[k]; every = every and inside[k] end
-            if any and not every then
-                for _, polygon in ipairs(Polygons(i, j, inside)) do
+        local upper, lower = F[j], F[j + 1]
+        local b, c = upper[1] >= edge, lower[1] >= edge
+        for i = 1, NX - 1 do
+            local a, d = b, c
+            b, c = upper[i + 1] >= edge, lower[i + 1] >= edge
+            if (a or b or c or d) and not (a and b and c and d) then
+                local polygon, second = Polygons(i, j, a, b, c, d)
+                while polygon do
                     local n = #polygon
                     for k = 1, n do
                         local p, q = polygon[k], polygon[k % n + 1]
@@ -347,6 +384,7 @@ function Blot.Outline(F, xs, ys, edge)
                             all[#all + 1] = segment
                         end
                     end
+                    polygon, second = second, nil
                 end
             end
         end
