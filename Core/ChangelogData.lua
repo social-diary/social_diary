@@ -7,6 +7,22 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.0.1",
+        summary = "This update brings support for simplified Chinese as well with some more bug fixes.",
+        groups = {
+            { heading = "Shiny New Things", entries = {
+                { text = "Added Simplified Chinese support", thanks = "jasonzxy0825" },
+            } },
+            { heading = "Changes", entries = {
+                { text = "It's now more likely to _get lucky_ on a quest item hunt, now requiring just half of expected kills instead of an eighth" },
+            } },
+            { heading = "Fixes", entries = {
+                { text = "In Korean and Chinese Clients, Box / Tofu Characters no longer appear in place of no-break spaces" },
+                { text = "Language Fixes for ruRU" },
+            } },
+        },
+    },
+    {
         version = "4.0.0",
         summary = "This big update brings battleground Views, starting with Warsong Gulch, and the diary in German, Spanish, French and Russian. Both are still early, so please send feedback and translation suggestions on GitHub!",
         groups = {
@@ -56,18 +72,6 @@ ns.Changelog = {
             } },
             { heading = "Changes", entries = {
                 { text = "_Feedback_ and _Credits_ now sit under _About_ in _Settings_" },
-            } },
-        },
-    },
-    {
-        version = "2.4.0",
-        summary = "Just small fixes connected to _Hunts_, Nearby _Toasts_ and the _Dungeon View_.",
-        groups = {
-            { heading = "Fixes", entries = {
-                { text = "_Hunts_ in _Your Diary_ are no longer confused by crafting" },
-                { text = "Nearby _Toasts_ and last-seen places ignore group members who are far away" },
-                { text = "Items in the _Dungeon View_ can be shift-clicked and ctrl-clicked" },
-                { text = "A rare killed again in one session is named once on the timeline" },
             } },
         },
     },

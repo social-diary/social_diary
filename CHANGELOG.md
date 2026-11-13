@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
+## [4.0.1]
+
+This update brings support for simplified Chinese as well with some more bug fixes.
+
 ### Shiny New Things
 
-- Added Simplified Chinese support
+- Added Simplified Chinese support (thanks jasonzxy0825)
 
 ### Changes
 
