@@ -92,6 +92,13 @@ Background, if you need more than this file:
      generator** the mouse's `MenuUtil.CreateContextMenu` gets, exposed from
      its file (`J.SortMenu`, `J.FilterMenu()`, `Style.ChoiceGenerator`):
      the choices can never drift. Never `Pad.MenuAside()` and hope.
+   - **Nothing is added to a Blizzard menu while the Gamepad UI is on.**
+     `Capture/Menus.lua` (`Menu.ModifyMenu` on the unit menus) returns
+     before touching the menu when `Pad.Input.GamepadUI()` is true: the
+     Gamepad UI drives that menu itself (Y on a target), and an entry of
+     ours in it froze the menu and the pad with "Interface action failed
+     because of an AddOn" (players' reports, 13 Nov 2026). The Remember
+     key and `/sd remember` are the pad's way in.
 
 7. **Saved data:** pad support saves nothing. If it ever must, follow
    AGENTS.md's migration rule.

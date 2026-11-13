@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- With the Gamepad UI on, opening a player's menu (Y on a target) no longer freezes the menu and the controller. The diary's entry is left out of that menu there; use the Remember key or `/sd remember` instead
+
 ## [4.0.1]
 
 This update brings support for simplified Chinese as well with some more bug fixes.
