@@ -123,6 +123,18 @@ local function Stats(j)
                 (c.fallback or 0) > 0 and (", %d as rectangles"):format(c.fallback) or "")
         end
     end
+    -- The dungeon run last laid out on the table (UI/Dungeon/Sheet.lua's
+    -- STAGE, UI/Dungeon/Spread.lua's Open): how long its click's frame was
+    -- held, the lay a slice a frame, and the sheet put down.
+    local spread = ns.UI.DungeonPage and ns.UI.DungeonPage.Spread()
+    if spread and spread.clickMs then
+        local took = spread.map.took
+        Line("dungeon map: the click's frame %.1f ms; %s; put down in %.1f ms", spread.clickMs,
+            took and ("laid in %.1f ms over %d frame(s), the longest %.1f ms (slices of %d); %d step(s), "
+                .. "the longest stretch between two %.1f ms (ending at step %d)"):format(took.ms, took.frames,
+                took.worst, ns.UI.DungeonPage.STAGE.budget, took.steps, took.part, took.partAt or 0)
+                or "lying as it was laid, or laid at once", spread.downMs or 0)
+    end
     if page and page.layout then
         Line("right page: %s", page.layout == "full" and "a zone's full page"
             or ("%d plate(s) (%s), %d margin note(s)"):format(plates, page.pattern or "?", page.notesWritten or 0))

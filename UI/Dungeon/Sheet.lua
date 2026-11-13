@@ -121,15 +121,25 @@ function DungeonPage.Age(seconds)
 end
 
 -- The lay going on now, a slice a frame (STAGE): { co (the coroutine),
--- view, done, started (ms, when its slice began) }, or nil.
+-- view, done, started (ms, when its slice began), last (ms, its last step
+-- or its slice's start), took (how long it is taking, below) }, or nil.
 local laying
 
 -- Where laying a sheet may stop for the next frame: it does, inside a lay
 -- going on a slice a frame, once the slice is spent; else nothing.
+--
+-- How long the lay took is kept as it goes (view.took once laid, for
+-- /sd journey, Dev/JourneyDebug.lua): { ms (in all), frames, worst (its
+-- longest frame, ms), steps, part (the longest stretch between two steps,
+-- ms: what no slice can cut) and partAt (the step it ended at) }.
 function DungeonPage.Step()
     local job = laying
     if not (job and debugprofilestop and coroutine.running() == job.co) then return end
-    if debugprofilestop() - job.started >= STAGE.budget then coroutine.yield() end
+    local now, took = debugprofilestop(), job.took
+    took.steps = took.steps + 1
+    if now - job.last > took.part then took.part, took.partAt = now - job.last, took.steps end
+    job.last = now
+    if now - job.started >= STAGE.budget then coroutine.yield() end
 end
 
 -- The paper and the grime for that wear: the stock yellowed, the grime
@@ -661,13 +671,18 @@ function DungeonPage.Sheet(parent)
     -- fault inside goes to the client's error handler, the lay given up.
     function view:OpenStaged(visit, guid, done)
         self:StopLaying()
-        local job = { view = self, done = done }
+        local job = { view = self, done = done, took = { ms = 0, frames = 0, worst = 0, steps = 0, part = 0 } }
         job.co = coroutine.create(function() LayFor(self, visit, guid) end)
         laying = job
+        self.took = nil
         local function Slice()
             if laying ~= job then return end
             job.started = debugprofilestop and debugprofilestop() or 0
+            job.last = job.started
             local ok, err = coroutine.resume(job.co)
+            local took = job.took
+            local ms = (debugprofilestop and debugprofilestop() or 0) - job.started
+            took.ms, took.frames, took.worst = took.ms + ms, took.frames + 1, math.max(took.worst, ms)
             if laying ~= job then return end
             if not ok or coroutine.status(job.co) == "dead" then
                 laying = nil
@@ -679,6 +694,7 @@ function DungeonPage.Sheet(parent)
                     if handle then return handle(err) end
                     error(err, 0)
                 end
+                self.took = job.took
                 if done then done() end
             end
         end

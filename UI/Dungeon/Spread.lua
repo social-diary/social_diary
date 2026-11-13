@@ -575,6 +575,10 @@ end
 -- Diary, `from` "journey", read as the user's own run): the book put
 -- aside, the sheet laid where it lay.
 local function Open(visit, guid, from)
+    -- (how long the click's own frame is held, the lay's first slice in
+    -- it, and how long putting the sheet down takes: spread.clickMs,
+    -- spread.downMs, for /sd journey, Dev/JourneyDebug.lua)
+    local began = debugprofilestop and debugprofilestop()
     spread = spread or Build()
     if not spread:IsShown() then StandIn(SPREAD.name) end
     -- The bookmark's words, for its room beside the map.
@@ -602,19 +606,25 @@ local function Open(visit, guid, from)
     -- The sheet put down on the table, and the first run's note with it.
     local function Down()
         if not (spread:IsShown() and J.visit and J.visit.id == visit.id) then return end
+        local from = debugprofilestop and debugprofilestop()
         spread.map:Show()
         DungeonPage.Tutorial(spread)
         -- (the pad onto what is on it now: its marks and notes, or the note)
         ns.UI.Pad.Refresh()
+        if from then spread.downMs = debugprofilestop() - from end
     end
     -- Laid again only where something it is laid from moved (Laid); then
     -- a slice a frame (UI/Dungeon/Sheet.lua's STAGE), so the client is
     -- never held, and put down once it is all laid: nothing of it shows
     -- half laid. Another run's sheet still out is taken up first.
-    if spread.laid and spread.laid == Laid(visit, guid, from) and not spread.map:Laying() then return Down() end
-    spread.laid = nil
-    if spread.map:IsShown() then spread.map:Hide(true) end
-    spread.map:OpenStaged(visit, guid, Down)
+    if spread.laid and spread.laid == Laid(visit, guid, from) and not spread.map:Laying() then
+        Down()
+    else
+        spread.laid = nil
+        if spread.map:IsShown() then spread.map:Hide(true) end
+        spread.map:OpenStaged(visit, guid, Down)
+    end
+    if began then spread.clickMs = debugprofilestop() - began end
 end
 
 -- Opens visit `visitId` from `guid`'s page (the selected person's by

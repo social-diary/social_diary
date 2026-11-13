@@ -588,6 +588,15 @@ Check(not map:Laying() and map:IsShown(), "the sheet not down once laid")
 Check(not map.driver:IsShown() and map.driver.scripts.OnUpdate == nil, "the driver still running once laid")
 Eq(lays, 1, "the ink not laid once")
 Eq(Laidout(), whole, "laid a slice a frame, it came out otherwise")
+-- How long it took is kept, for /sd journey: every frame of it, its longest,
+-- the longest stretch no slice could cut, and the click's own frame.
+local took = map.took
+Check(took, "how long the lay took was not kept")
+Eq(took.frames, frames + 1, "the lay's frames were not all counted")
+Check(took.ms >= took.worst and took.worst >= Page.STAGE.budget, "the lay's frames were not timed")
+Check(took.steps > 0 and took.part > 0 and took.part <= took.worst and took.partAt <= took.steps,
+    "the longest stretch between two steps was not kept")
+Check(host.clickMs and host.clickMs > 0 and host.downMs, "the click's frame and the putting down were not timed")
 -- And now it is laid: opened again, down at once.
 Page.Close()
 lays = 0
