@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Shiny New Things
+
+- Added Polish to the diary’s language settings (thanks KO.Media)
+
 ## [4.0.2]
 
 A hotfix for the Gamepad UI, where opening a player's menu locked the controller. For now, add players with the Remember key or the macros when playing with a controller.
