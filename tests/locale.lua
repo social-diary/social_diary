@@ -34,6 +34,7 @@ local RULES = {
     enUS = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     deDE = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     esES = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
+    itIT = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     esMX = { forms = 2, [0] = 2, [1] = 1, [2] = 2, [5] = 2, [11] = 2, [21] = 2, [101] = 2 },
     -- French takes the singular for 0 as for 1, so CLDR's "one" is two
     -- numbers and could never leave the count out ("une fois"). The diary

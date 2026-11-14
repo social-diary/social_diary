@@ -28,6 +28,16 @@ Locales/esES/Journey.lua
 Locales/esES/JournalDungeon.lua
 Locales/esES/Settings.lua
 Locales/esES/Windows.lua
+Locales/itIT/Grammar.lua
+Locales/itIT/Core.lua
+Locales/itIT/FeaturesA.lua
+Locales/itIT/FeaturesB.lua
+Locales/itIT/Words.lua
+Locales/itIT/JourneyMatch.lua
+Locales/itIT/Journey.lua
+Locales/itIT/JournalDungeon.lua
+Locales/itIT/Settings.lua
+Locales/itIT/Windows.lua
 Locales/frFR/Grammar.lua
 Locales/frFR/Core.lua
 Locales/frFR/FeaturesA.lua
