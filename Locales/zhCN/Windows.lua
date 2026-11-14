@@ -37,7 +37,7 @@ ns.Locale.Add("zhCN", {
     ["To the new owner"] = "致新主人",
     ["Oh — hello. I'm your new diary."] = "哦——你好呀，我就是你的新日记。",
     ["Your diary, still here whenever you're ready."] = "你的日记一直都在，随时等你回来。",
-    ["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."] = "我会替你记下遇见的每一个人，让数月之后的你，依然记得对方是谁。但这不过是铅笔浅浅留下的痕迹，直到你亲手用墨水，将某个人的名字写定。",
+    ["I write down the people you meet, all by myself, so that months from now you still know who they were. It's only pencil, until you ink someone in."] = "我会替你记下遇见的每一个人，\n让数月之后的你，依然记得对方是谁。\n但这不过是铅笔浅浅留下的痕迹，\n直到你亲手用墨水，\n将某个人的名字写定。",
     ["I've pencilled in one already.|I've pencilled in %d already.##plural"] = "我已经用铅笔写下了%d位。",
     -- UI/Windows/Intro/Torn.lua
     ["Open me"] = "打开",
