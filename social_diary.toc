@@ -70,6 +70,16 @@ Locales/zhCN/Journey.lua
 Locales/zhCN/JournalDungeon.lua
 Locales/zhCN/Settings.lua
 Locales/zhCN/Windows.lua
+Locales/plPL/Grammar.lua
+Locales/plPL/Core.lua
+Locales/plPL/Features.lua
+Locales/plPL/Journal.lua
+Locales/plPL/Dungeon.lua
+Locales/plPL/Journey.lua
+Locales/plPL/Battlegrounds.lua
+Locales/plPL/Settings.lua
+Locales/plPL/Windows.lua
+Locales/plPL/Words.lua
 Core/DB.lua
 Core/Bridges/Questie.lua
 Core/Identity.lua
