@@ -33,6 +33,20 @@ grammar.Ordinal = function(n) return n .. "." end
 grammar.DECIMAL = ","
 grammar.ListEnd = function(head, last) return head .. " i " .. last end
 
+-- The count formatter shares its words across nouns. A localized template
+-- marks the cases where the same number needs a different form.
+local agreedCounts = {
+    f = { jeden = "jedna", dwa = "dwie" },
+    m = { dwa = "dwóch", trzy = "trzech", cztery = "czterech" },
+}
+grammar.Agree = function(text)
+    return (text:gsub("([%w\128-\255]+)<([fm])>", function(word, form)
+        local agreed = agreedCounts[form][word:lower()]
+        if not agreed then return word end
+        return word:match("^%u") and grammar.Capital(agreed) or agreed
+    end))
+end
+
 grammar.PLACE = {
     ["in"] = "w %s", to = "do %s", from = "z %s", into = "do %s",
     through = "przez %s", near = "w pobliżu %s", at = "w %s",
@@ -51,6 +65,15 @@ grammar.YOU_FOR = {
     ["ty"] = "%s", ["cię"] = "%s", ["ci"] = "%s",
     ["ciebie"] = "%s", ["tobie"] = "%s", ["tobą"] = "%s",
     ["twój"] = "%s", ["twoja"] = "%s", ["twoje"] = "%s",
+    ["twoja grupa"] = "Grupa postaci %s",
+    ["twoja bitwa"] = "Bitwa postaci %s",
+    ["twojej śmierci"] = "śmierci postaci %s",
+    ["twoją śmierć"] = "śmierć postaci %s",
+    ["zabiłeś"] = "%s zabił", ["zabiłaś"] = "%s zabiła",
+    ["pokonałeś"] = "%s pokonał", ["pokonałaś"] = "%s pokonała",
+    ["pokonujesz"] = "%s pokonuje",
+    ["uciekłeś"] = "%s uciekł", ["uciekłaś"] = "%s uciekła",
+    ["uciekasz"] = "%s ucieka",
 }
 
 local firsts = {
