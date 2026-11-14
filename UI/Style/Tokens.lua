@@ -150,6 +150,12 @@ local NOT_ROMAN = { koKR = "korean", zhCN = "simplifiedchinese", zhTW = "traditi
 local ALPHABET = GetLocale and NOT_ROMAN[GetLocale()]
     or (ns.Locale and NOT_ROMAN[ns.Locale.id])
 
+-- Neuton Italic lacks Polish Latin Extended glyphs. The existing display
+-- face covers them on Roman clients, including in manually sized captions.
+if not ALPHABET and ns.Locale and ns.Locale.id == "plPL" then
+    NEUTON_ITALIC = GOODMOUNTAIN
+end
+
 do
     local alphabet = ALPHABET
     for _, other in ipairs(OTHER_ALPHABETS) do

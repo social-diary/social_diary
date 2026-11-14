@@ -202,7 +202,7 @@ ns.Locale.Add("plPL", {
     ["%d linked"] = "%d połączony",
     -- UI/Paper/NoteSheet.lua
     ["Unlink %s"] = "Odłącz %s",
-    ["ABOUT"] = "Około",
+    ["ABOUT"] = "DOTYCZY",
     ["What happened? Write it down while you remember it."] = "Co się stało? Zapisz to, gdy to pamiętasz.",
     ["Delete this note"] = "Usuń tę notatkę",
     ["Save"] = "Zapisz",

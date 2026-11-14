@@ -26,7 +26,7 @@ ns.Locale.Add("plPL", {
     ["Nobody yet. Search your diary above to choose who."] = "Jeszcze nikt. Przeszukaj swój dziennik powyżej, aby wybrać kogo.",
     ["Search your diary"] = "Przeszukaj swój dziennik",
     -- UI/Settings/Sections/About.lua
-    ["About"] = "Około",
+    ["About"] = "Informacje",
     -- UI/Settings/Sections/Battlegrounds.lua
     ["%1$d of %2$d kept whole so far. In %3$d match, the oldest begin to lose their strangers.|%1$d of %2$d kept whole so far. In %3$d matches, the oldest begin to lose their strangers.##plural"] = "Zachowano pełne wyniki %1$d z %2$d meczów. Po %3$d meczu znikną osoby spoza dziennika.|Zachowano pełne wyniki %1$d z %2$d meczów. Po %3$d meczach znikną osoby spoza dziennika.|Zachowano pełne wyniki %1$d z %2$d meczów. Po %3$d meczach znikną osoby spoza dziennika.",
     ["The newest %d are kept whole. Older ones keep only the people from your diary.|The newest %d are kept whole. Older ones keep only the people from your diary.##plural"] = "Pełne wyniki: ostatni %d mecz. Starsze tablice zachowują tylko osoby z dziennika.|Pełne wyniki: ostatnie %d mecze. Starsze tablice zachowują tylko osoby z dziennika.|Pełne wyniki: ostatnich %d meczów. Starsze tablice zachowują tylko osoby z dziennika.",
@@ -161,11 +161,11 @@ ns.Locale.Add("plPL", {
     ["Chat"] = "Czat",
     ["Keep whisper, /say and party text"] = "Zapisuj szepty, /say i wiadomości grupy",
     ["some text in dungeons cannot be accessed, fyi."] = "Niektóre wiadomości w lochach mogą być niedostępne.",
-    ["Maximum chat lines kept per person"] = "Maksymalna liczba linii czatu utrzymywanych na osobę",
-    ["lines"] = "linie",
-    ["Unlimited"] = "Nieograniczony",
-    ["Lines can still be lost if they exceed file size limits."] = "Wiersze nadal mogą zostać utracone, jeśli przekroczą limity rozmiaru pliku.",
-    ["Sightings"] = "Obsewacje",
+    ["Maximum chat lines kept per person"] = "Limit wiadomości na osobę",
+    ["lines"] = "wiad.",
+    ["Unlimited"] = "Bez limitu",
+    ["Lines can still be lost if they exceed file size limits."] = "Po przekroczeniu limitu rozmiaru pliku część wiadomości może zniknąć.",
+    ["Sightings"] = "Obserwacje",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Wymaga włączonych tabliczek z nazwami. Nie działa w lochach, rajdach ani na polach bitew.",
     ["Enable sightings in cities - performance warning:"] = "Zapisuj obserwacje w miastach (może obniżyć wydajność)",
     -- UI/Settings/Sections/Shortcuts.lua
