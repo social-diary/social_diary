@@ -99,7 +99,20 @@ end
 -- every right-click of the target frame in a dungeon). So a secret or
 -- unidentified unit, NPCs included, gets the menu exactly as Blizzard
 -- built it.
+--
+-- With Forever's Gamepad UI on, no unit menu is touched at all. The Gamepad
+-- UI takes the menu's focus itself (Y on a target), and with an entry of
+-- ours in it that runs tainted: "Interface action failed because of an
+-- AddOn", the menu frozen and the pad dead until a /reload (reported by
+-- players, 13 Nov 2026). The Remember key and /sd remember are the pad's
+-- way in.
+local function GamepadUI()
+    local pad = ns.UI and ns.UI.Pad
+    return pad and pad.Input.GamepadUI() or false
+end
+
 local function OnMenu(tag, _, rootDescription, contextData)
+    if GamepadUI() then return end
     if not contextData then return end
     -- Never offer to remember yourself.
     if ns.Plain(contextData.isSelf) then return end

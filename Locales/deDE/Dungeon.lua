@@ -1,6 +1,6 @@
 -- German (deDE): Dungeon. Keys are the English text (Locales/enUS.lua).
 --
--- A run is a "Durchlauf"; a wipe is "gewipt", as German players say it.
+-- A run is a "Durchlauf"; a wipe is "gewiped", as German players say it.
 -- The "{you}" a sentence takes is declined by what it follows: "{dich}"
 -- after "für", "{dir}" after "von" (UI/Dungeon/Words.lua's For and From).
 
@@ -102,7 +102,7 @@ ns.Locale.Add("deDE", {
     ["seventh##try"] = "siebten",
     ["sixth##try"] = "sechsten",
     ["tenth##try"] = "zehnten",
-    ["Wiped %s"] = "%s gewipt",
+    ["Wiped %s"] = "%s gewiped",
     ["Tried %s"] = "%s versucht",
     ["killed on the %s try"] = "beim %s Versuch besiegt",
     ["left standing"] = "blieb stehen",
@@ -127,10 +127,10 @@ ns.Locale.Add("deDE", {
     ["On the way to %s"] = "Auf dem Weg zu %s",
     ["After %s"] = "Nach %s",
     ["On the way in"] = "Auf dem Weg hinein",
-    ["Wiped on the way"] = "Unterwegs gewipt",
+    ["Wiped on the way"] = "Unterwegs gewiped",
     ["to %s and others"] = "durch %s und andere",
     ["to %s##killers"] = "durch %s",
-    ["Nearly wiped"] = "Fast gewipt",
+    ["Nearly wiped"] = "Fast gewiped",
     ["%s went down|%s went down##plural"] = "einer ging zu Boden|%s gingen zu Boden",
     ["Reached by %s"] = "Erreicht von %s",
     ["%s snagged it"] = "%s hat es",

@@ -56,6 +56,13 @@ Eq(ns.Diary.IsDiary(GUID), true, "Done after the menu entry did not add anybody"
 buttons = mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "target" })
 Check(buttons[1].text:find("open entry"), "wrong menu entry for an existing entry")
 
+-- With Forever's Gamepad UI on the menu is left as Blizzard built it: an
+-- entry of ours there freezes the menu and the pad (taint).
+mock.pad.ui = true
+Eq(#mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "target" }), 0, "the Gamepad UI's menu was touched")
+mock.pad.ui = false
+Eq(#mock.OpenMenu("MENU_UNIT_PLAYER", { unit = "target" }), 1, "the entry did not come back with the Gamepad UI off")
+
 -- The target changed while the menu was open: the token is not passed on,
 -- or the page would be filled in from someone else.
 do

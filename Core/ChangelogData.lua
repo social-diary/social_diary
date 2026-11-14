@@ -7,6 +7,16 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.0.2",
+        summary = "A hotfix for the Gamepad UI, where opening a player's menu locked the controller. For now, add players with the Remember key or the macros when playing with a controller.",
+        groups = {
+            { heading = "Fixes", entries = {
+                { text = "A player's menu no longer locks the controller with the Gamepad UI", sub = { { text = "The diary's entry is left out of that menu for now" } } },
+                { text = "German zone names now take their article and case", thanks = "CarnVanBeck" },
+            } },
+        },
+    },
+    {
         version = "4.0.1",
         summary = "This update brings support for simplified Chinese as well with some more bug fixes.",
         groups = {
@@ -59,19 +69,6 @@ ns.Changelog = {
         groups = {
             { heading = "Fixes", entries = {
                 { text = "Battleground Activities are currently skipped, because they result in bad Diary data." },
-            } },
-        },
-    },
-    {
-        version = "3.0.0",
-        summary = "A big Update: the diary now works with a controller through WoW's Gamepad UI, and a new _Changelog_ under _About_ in _Settings_ shows what's new after each update.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "The Addon now supports Gamepad UI!", sub = { { text = "You can use almost all diary features just with a controller." }, { text = "Some actions still require Keyboard and Mouse, such as:" }, { text = "Editing A Dungeon Route" }, { text = "Precise Placing of Custom Events" }, { text = "As this is a new feature and Blizzard's Gamepad UI will likely change frequently, bug reports are especially welcome." } } },
-                { text = "An in-game _Changelog_ in _Settings_, under _About_", sub = { { text = "A hint points you to the _Changelog_ after a big update" } } },
-            } },
-            { heading = "Changes", entries = {
-                { text = "_Feedback_ and _Credits_ now sit under _About_ in _Settings_" },
             } },
         },
     },

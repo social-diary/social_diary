@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [4.0.2]
+
+A hotfix for the Gamepad UI, where opening a player's menu locked the controller. For now, add players with the Remember key or the macros when playing with a controller.
+
+### Fixes
+
+- A player's menu no longer locks the controller with the Gamepad UI
+  - The diary's entry is left out of that menu for now
+- German zone names now take their article and case (thanks CarnVanBeck)
+
 ## [4.0.1]
 
 This update brings support for simplified Chinese as well with some more bug fixes.
