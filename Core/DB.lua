@@ -78,6 +78,11 @@ local DIARY = {
         -- [guid] = when they last got a reunion toast, for the cooldown. Saved
         -- so a /reload does not reset it.
         greeted = {},
+
+        -- [guid] = true: taken out of the diary, so auto-add never puts them
+        -- back (Core/AutoAdd.lua). A new table, filled empty on an older
+        -- diary by the defaults; nothing to convert.
+        declined = {},
     },
 }
 
@@ -186,6 +191,7 @@ local CHARACTER_SETTINGS = {
     -- torn, the diary's note beside the book (UI/Windows/Intro/Parcel.lua).
     parcelOpened = false,
     detectSightings = true,  -- SIG-1: passive detection in the open world
+    autoAdd = false,    -- "Auto-Add Players": the one exception to DIA-1, off until the user asks (Core/AutoAdd.lua)
     keepRoute = true,   -- JRN-17: Your Diary keeps the character's own route
     peopleSort = "lastMet",  -- the People list's sort, a preference (People.SORTS)
 

@@ -30,6 +30,10 @@
 -- The picker (`picker`): its people, top down; A is the row's click (their
 -- page, or the page to remember them on, which then has the pad). B puts it
 -- away. Nobody to remember: nothing walked, B puts it away.
+--
+-- Auto-add's question (`autoadd`, UI/Windows/AutoAdd.lua), opened by the
+-- player switching auto-add on: its two links; the pad lands on "Add them",
+-- B is "Not now". See the foot of this file.
 
 local addonName, ns = ...
 
@@ -48,6 +52,7 @@ local PROMPT = {
     open = { "PAD1", L["Open their page"], main = true },
     remember = { "PAD1", L["Remember them"], main = true },
     list = { "PAD2", L["Put the list away"] },
+    later = { "PAD2", L["Not now"] },
 }
 
 --------------------------------------------------------------------------
@@ -191,3 +196,57 @@ function picker.legend()
 end
 
 Pad.RegisterScope("picker", picker)
+
+--------------------------------------------------------------------------
+-- Auto-add's question
+--------------------------------------------------------------------------
+
+-- The sheet switching auto-add on offers (UI/Windows/AutoAdd.lua), opened by
+-- the player's switch. Its two links found as they lie (Pad.Controls); the
+-- pad lands on "Add them", the answer the switch asked for, with "Not now"
+-- a press to the left. B is "Not now", as Escape is.
+
+local function AutoAddSheet()
+    local sheet = ns.UI.AutoAdd
+    local host = sheet and sheet.Host()
+    return host and Pad.Owns(host) and host or nil
+end
+
+local autoadd = {
+    layer = LAYER,
+    host = function() return ns.UI.AutoAdd and ns.UI.AutoAdd.Host() end,
+    active = function() return AutoAddSheet() ~= nil end,
+}
+
+function autoadd.build(f)
+    f:Group("sheet", { mode = "list" })
+    local host = AutoAddSheet()
+    if not host then return end
+    local view = ns.UI.AutoAdd.View()
+    local set = Controls.Add(f, "sheet", Controls.Find(view.sheet),
+        { level = view.sheet:GetFrameLevel() + OVER })
+    local opening = Pad.Opening(host)
+    if opening ~= autoadd.opening then
+        autoadd.opening = opening
+        f:Within("sheet")
+        for _, it in ipairs(set.items) do
+            if it.control == view.add then f:Remember("sheet", it.key) end
+        end
+    end
+end
+
+function autoadd.back()
+    if not AutoAddSheet() then return false end
+    ns.UI.AutoAdd.Close()
+    return true
+end
+
+function autoadd.legend()
+    local at = autoadd.focus and autoadd.focus:Current()
+    local out = {}
+    if at then out[1] = Controls.Prompt(at) end
+    out[#out + 1] = PROMPT.later
+    return out
+end
+
+Pad.RegisterScope("autoadd", autoadd)

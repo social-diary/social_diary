@@ -3,7 +3,9 @@
 -- DIA-1 is the rule the whole module exists to enforce: a character enters the
 -- diary because the user said so, never because the addon inferred it. Every
 -- function here is reached from a user action, and nothing in Capture/ calls
--- Add.
+-- Add. The one exception is the opt-in "Auto-Add Players" setting
+-- (Core/AutoAdd.lua), off by default: the user says so once, by switching it
+-- on.
 --
 -- DIA-5 says an entry arrives with the character's buffered interactions
 -- already attached. It does that by *not* copying them: interactions already
@@ -378,6 +380,8 @@ function Diary.Remove(guid, mode)
 
     local name = ns.Characters.FullName(guid) or guid
     ns.db.diary[guid] = nil
+    -- Taken out by hand: auto-add must not put them back.
+    ns.AutoAdd.Decline(guid)
     ns.Touch()
     -- Their heat so far is counted: added again, only what came after
     -- folds in (Heat.Backfill).

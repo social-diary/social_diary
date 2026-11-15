@@ -290,6 +290,21 @@ Eq(P.storeChat:GetChecked(), false, "the box did not untick")
 P.storeChat:Click()
 Eq(P.storeChat:GetChecked(), true, "the box did not tick again")
 
+-- Auto-add (Core/AutoAdd.lua): off until switched on, and not tied to
+-- sightings, since its group rule works without them.
+Check(P.autoAdd, "no auto-add switch")
+Eq(P.autoAdd:GetChecked(), false, "auto-add is on by default")
+P.autoAdd:Click()
+Eq(ns.db.settings.autoAdd, true, "the auto-add switch did not write through")
+Eq(P.autoAdd:GetChecked(), true, "the auto-add box did not tick")
+ns.db.settings.detectSightings = false
+P:Refresh()
+Check(not P.autoAdd.unavailable, "auto-add faded with sightings off")
+ns.db.settings.detectSightings = true
+P:Refresh()
+P.autoAdd:Click()
+Eq(ns.db.settings.autoAdd, false, "the auto-add switch did not switch back off")
+
 -- A setting that only means something while another is on fades, and
 -- does nothing, while that one is off.
 -- A number row has no `unavailable`: it fades (and its box stops taking

@@ -148,6 +148,7 @@ Core/MatchStory.lua
 Core/MatchStoryPage.lua
 Core/Roster.lua
 Core/Reunions.lua
+Core/AutoAdd.lua
 Core/Timeline.lua
 Core/People.lua
 Core/Candidates.lua
@@ -335,6 +336,10 @@ UI/Windows/Suggest/Lookup.lua
 UI/Windows/Suggest/Pick.lua
 UI/Windows/Suggest/Sheet.lua
 UI/Windows/Suggest/Strip.lua
+# Auto-add's one question when it is switched on (Core/AutoAdd.lua): the
+# people already seen often enough, offered on a loose sheet; its pad scope
+# is UI/Windows/Pad.lua's, looked up when called.
+UI/Windows/AutoAdd.lua
 UI/Blizzard/SocialTab.lua
 UI/Blizzard/Bindings.lua
 UI/Blizzard/Minimap.lua

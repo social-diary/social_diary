@@ -8,6 +8,11 @@ ns.Locale.Add("enUS", {
     -- Capture/Menus.lua
     ["Social Diary: open entry"] = "Social Diary: open entry",
     ["Social Diary: remember this"] = "Social Diary: remember this",
+    -- Core/AutoAdd.lua
+    ["after 5 minutes grouped with you"] = "after 5 minutes grouped with you",
+    ["after they were seen near you 3 times"] = "after they were seen near you 3 times",
+    ["added |cffffffff%1$s|r to the diary automatically %2$s."] = "added |cffffffff%1$s|r to the diary automatically %2$s.",
+    ["added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.##plural"] = "added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.",
     -- Core/Candidates.lua
     ["your target"] = "your target",
     ["under your cursor"] = "under your cursor",
@@ -1496,6 +1501,9 @@ ns.Locale.Add("enUS", {
     ["Sightings"] = "Sightings",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds.",
     ["Enable sightings in cities - performance warning:"] = "Enable sightings in cities - performance warning:",
+    ["Auto-Add Players"] = "Auto-Add Players",
+    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] = "Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out.",
+    ["Sightings count only while “Notice who passes you in the open world” is on."] = "Sightings count only while “Notice who passes you in the open world” is on.",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Open the journal",
     ["Opens the journal"] = "Opens the journal",
@@ -1526,6 +1534,11 @@ ns.Locale.Add("enUS", {
     ["Nearby Toast Blacklist"] = "Nearby Toast Blacklist",
     ["Toasts can get annoying for people you play with all the time."] = "Toasts can get annoying for people you play with all the time.",
     ["Toasts"] = "Toasts",
+    -- UI/Windows/AutoAdd.lua
+    ["Familiar faces"] = "Familiar faces",
+    ["Add them"] = "Add them",
+    ["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"] = "You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.",
+    ["Add them to the diary now? If not, they’re added the next time you see them."] = "Add them to the diary now? If not, they’re added the next time you see them.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "no interactions yet",
     ["%d interaction on record|%d interactions on record##plural"] = "%d interaction on record|%d interactions on record",
@@ -1591,6 +1604,7 @@ ns.Locale.Add("enUS", {
     ["Put the page away"] = "Put the page away",
     ["Remember them"] = "Remember them",
     ["Put the list away"] = "Put the list away",
+    ["Not now"] = "Not now",
     -- UI/Windows/Picker.lua
     ["Remember this"] = "Remember this",
     ["Click somebody to add them. Already in the diary opens their entry."] = "Click somebody to add them. Already in the diary opens their entry.",

@@ -176,6 +176,7 @@ local function Process(item, where)
     ns.Sessions.Around(item.guid, item.time, where.zone)
     if result == "new" then
         stats.new = stats.new + 1
+        ns.AutoAdd.Sighted(item.guid)
     elseif result == "updated" then
         stats.updated = stats.updated + 1
     end

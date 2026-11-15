@@ -1,6 +1,6 @@
 -- Settings: Recording, the first section (UI/Settings/Page.lua lists them;
--- its controls are UI/Settings/Kit.lua's): your own route, chat and
--- sightings.
+-- its controls are UI/Settings/Kit.lua's): your own route, chat,
+-- sightings and auto-add.
 
 local addonName, ns = ...
 
@@ -73,6 +73,14 @@ local function BuildRecording(pane, c)
         page.controls[#page.controls + 1] = box
         page.cities[city.key] = box
     end
+
+    -- The one exception to DIA-1 (Core/AutoAdd.lua). Not tied to sightings:
+    -- the group rule works without them, so the hint says which part needs it.
+    -- Switched on, the people already waiting are offered once (UI/Windows/AutoAdd.lua).
+    c:Heading(L["People"])
+    page.autoAdd = Switch(c, L["Auto-Add Players"], "autoAdd", nil, function(on) ns.UI.AutoAdd.Offer(on) end,
+        L["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."])
+    c:Hint(L["Sightings count only while “Notice who passes you in the open world” is on."])
 end
 
 SettingsUI.RegisterSection("recording", { order = 10, label = L["Recording"],

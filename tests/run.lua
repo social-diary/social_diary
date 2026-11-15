@@ -22,6 +22,8 @@ local FILES = {
     "notes",
     "menus",
     "group_sessions",
+    "autoadd",
+    "autoadd_sheet",
     "deaths",
     "pvp",
     "battlegrounds",

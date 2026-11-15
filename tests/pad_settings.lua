@@ -120,6 +120,31 @@ Press("PADDLEFT")
 Eq(At().group, "nav", "left did not come back to the sections")
 
 --------------------------------------------------------------------------
+Section("auto-add is reached in Recording, and A switches it")
+
+-- Faded with sightings off would be wrong: the group rule works without them.
+ns.SetSetting("detectSightings", false)
+page:Refresh()
+Press("PADDRIGHT")
+local reached = false
+for _ = 1, 40 do
+    if At().frame == page.autoAdd then reached = true break end
+    Press("PADDDOWN")
+end
+Check(reached, "the auto-add switch never landed on")
+Eq(At().kind, "switch", "auto-add's kind")
+local auto = ns.Setting("autoAdd")
+Eq(Prompt(), auto and "Untick" or "Tick", "auto-add's prompt")
+Press("PAD1")
+Eq(ns.Setting("autoAdd"), not auto, "A did not switch auto-add")
+Press("PAD1")
+Eq(ns.Setting("autoAdd"), auto, "A again did not switch auto-add back")
+ns.SetSetting("detectSightings", true)
+page:Refresh()
+Press("PAD2")
+Eq(At().group, "nav", "B did not come back to the sections")
+
+--------------------------------------------------------------------------
 Section("a scale steps with left and right")
 
 page:ShowSection("interface")

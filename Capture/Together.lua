@@ -62,6 +62,8 @@ local function Tick()
     local nearby = NearbyTest()
     ns.Sessions.Roster(ns.Roster.Members(), nearby)
     ns.Sessions.Tick(Grouped, nearby)
+    -- After the sessions: someone added here joins the open one next tick.
+    ns.AutoAdd.CheckGroup()
     ns.Roster.Touch()
 end
 
