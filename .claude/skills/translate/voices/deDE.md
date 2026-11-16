@@ -129,11 +129,15 @@ the nominative with their article ("Das Brachland"), and `G.PLACE` in
   before a bare name and "in" + accusative before an article ("nach
   Stormwind", "in das Brachland": spelled out, not "ins"), `into` "in"
   either way ("Zum ersten Mal in Stormwind", "in das Brachland").
-- "Die" is plural unless the noun's ending is feminine (`FEMININE`); a bare
-  name takes an article only for a landscape noun (`BARE`: "-gebirge",
-  "-tal", "-steppe"); cities stay bare.
+- What a place is, is said in two tables of one format: `NAMES` (the
+  whole name as the client gives it) and `ENDINGS` (the end of the noun's
+  last word, "gebirge"). The value is the gender, `"n"`, `"m"`, `"f"`,
+  `"p"`, or `"-"` for no article, and `" an"` after it for a place one is
+  at ("m an": "am/zum/vom Wasserbrunnen").
+- The client's own article decides the gender; after "Die" an `"f"` makes
+  it feminine, else plural. A bare name with no entry stays bare (cities).
 - Every name of a list takes its own preposition (`EACH_PLACE`).
-- A name the rules miss goes into `GENDER` or `ZONES`/`SUBZONES`/`DUNGEONS`.
+- A phrase no entry can make goes whole into `ZONES`/`SUBZONES`/`DUNGEONS`.
 
 ## Length
 German runs about a third longer than English. Tight surfaces: toast
