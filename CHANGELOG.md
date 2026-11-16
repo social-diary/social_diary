@@ -4,6 +4,7 @@
 
 ### Shiny New Things
 
+- _Your Diary_ now detects when you equip upgrades of your existing equipment and displays them on your Diary's plates
 - Added Polish to the diary’s language settings (thanks KO.Media)
 
 ## [4.0.2]

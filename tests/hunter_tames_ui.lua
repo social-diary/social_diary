@@ -241,7 +241,9 @@ do
     Eq(card.picture, nil, "testdata keeps no display")
     local kinds = {}
     for _, it in ipairs(p.margin or {}) do kinds[#kinds + 1] = it.kind end
-    Eq(table.concat(kinds, ","), "tame,find,witness", "level 10's margin: the tame before the find and the witness")
+    -- (The gloves put on at Razor Hill have their card here too, Features/Upgrades/Dev.lua.)
+    Eq(table.concat(kinds, ","), "tame,find,upgrade,witness",
+        "level 10's margin: the tame before the find and the witness")
 
     p = Level(14)
     Check(p ~= nil, "level 14: no plate with the tame")

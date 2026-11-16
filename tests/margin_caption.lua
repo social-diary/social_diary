@@ -27,7 +27,7 @@ local function Orders()
     for _, spec in ipairs(Margin.ORDER) do list[#list + 1] = spec.kind .. " " .. spec.order end
     return table.concat(list, ", ")
 end
-Eq(Orders(), "met 2, tameCustom 2.5, witnessCustom 3, killerCustom 4, foeCustom 5, findCustom 6, huntCustom 7, luckyCustom 8, duelCustom 8.5, campfireCustom 9, tame 15, find 20, witness 30, killer 40, foe 50, lucky 60, hunt 70, duel 85, campfire 90",
+Eq(Orders(), "met 2, tameCustom 2.5, witnessCustom 3, killerCustom 4, foeCustom 5, findCustom 6, huntCustom 7, luckyCustom 8, duelCustom 8.5, campfireCustom 9, tame 15, find 20, upgrade 22, witness 30, killer 40, foe 50, lucky 60, hunt 70, duel 85, piece 87, campfire 90",
     "the margin's kinds")
 Eq(Margin.PEOPLE.close, 10, "the people who did something with you")
 Eq(Margin.PEOPLE.seen, 80, "the people only seen")
@@ -39,7 +39,7 @@ local function Paragraphs()
     for _, p in ipairs(Text.Paragraphs()) do list[#list + 1] = p.key .. " " .. p.at end
     return table.concat(list, ", ")
 end
-Eq(Paragraphs(), "opening 10, time 20, people 30, find 40, finale 50, skill 60, close 70, hunts 75", "the prose's paragraphs")
+Eq(Paragraphs(), "opening 10, time 20, people 30, find 40, upgrade 45, finale 50, skill 60, close 70, hunts 75", "the prose's paragraphs")
 
 --------------------------------------------------------------------------
 Section("a paragraph registered by a later file")
@@ -67,7 +67,7 @@ do
         "the scrap's paragraph is out of place: " .. table.concat(lines, " / "))
     Text.RemoveLines("scrap")
     Eq(table.concat(Text.Lines(e, now, {}), " / "), table.concat(before, " / "), "the scrap's paragraph stayed")
-    Eq(Paragraphs(), "opening 10, time 20, people 30, find 40, finale 50, skill 60, close 70, hunts 75",
+    Eq(Paragraphs(), "opening 10, time 20, people 30, find 40, upgrade 45, finale 50, skill 60, close 70, hunts 75",
         "the paragraphs after the scrap left")
 
     -- Kinds sharing a `run` write one paragraph: the close calls (70) and
@@ -190,7 +190,7 @@ Margin.Register("scrap", {
 Check(page.scrapPool ~= nil, "a kind registered after the page was built has no pool")
 local order = {}
 for _, spec in ipairs(Margin.ORDER) do order[#order + 1] = spec.kind end
-Eq(table.concat(order, ","), "met,tameCustom,witnessCustom,killerCustom,foeCustom,findCustom,huntCustom,luckyCustom,duelCustom,campfireCustom,tame,find,witness,killer,scrap,foe,lucky,hunt,duel,campfire", "the kind in its order")
+Eq(table.concat(order, ","), "met,tameCustom,witnessCustom,killerCustom,foeCustom,findCustom,huntCustom,luckyCustom,duelCustom,campfireCustom,tame,find,upgrade,witness,killer,scrap,foe,lucky,hunt,duel,piece,campfire", "the kind in its order")
 
 -- On every page, wherever a scrap shows: after the people who did
 -- something with you and the cards ordered before it, before the rest;
@@ -268,7 +268,7 @@ Section("at equal numbers, the diary's own first")
 -- at their numbers (the registries' core entries, Core/Registry.lua): a
 -- kind at the same number goes after them, never before.
 Text.RegisterLines("tie", { at = 30, lines = function() return nil end })
-Eq(Paragraphs(), "opening 10, time 20, people 30, tie 30, find 40, finale 50, skill 60, close 70, hunts 75",
+Eq(Paragraphs(), "opening 10, time 20, people 30, tie 30, find 40, upgrade 45, finale 50, skill 60, close 70, hunts 75",
     "a paragraph at the people's number went before them")
 Text.RemoveLines("tie")
 

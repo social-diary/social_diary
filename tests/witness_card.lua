@@ -391,12 +391,15 @@ Eq(table.concat(seen, ", "), "10:Wenna:tried to save you:M, 11:Numa:saved you:L,
     .. "14:Ilsabet & two others:saw you die:M, week:Brakk:tried to save you:M, week:Grisha:mercilessly watched you die:XL",
     "the made-up witnesses' cards")
 -- In the margin where the killer's card would be: after the people and
--- the finds, ahead of the close call's card and the luck.
-Check(Any(margins, "^11:person,find,witness,lucky$"), "level 11's margin: " .. table.concat(margins, "; "))
+-- the finds, ahead of the close call's card and the luck. (The small note
+-- of level 11's filler belt, Features/Upgrades/, comes after them all: 16 Nov.)
+Check(Any(margins, "^11:person,find,witness,lucky,piece$"), "level 11's margin: " .. table.concat(margins, "; "))
 -- (Level 14's Savannah Prowler, a hunter's tame, ranks with the people:
 -- Features/Classes/Hunter/Card.lua, 4 Nov.)
 Check(Any(margins, "^14:tame,witness,foe,lucky$"), "level 14's margin: " .. table.concat(margins, "; "))
-Check(Any(margins, "^13:find,witness$"), "level 13's margin: " .. table.concat(margins, "; "))
+-- (Level 13's ring, put on an empty finger: its card ranks straight after a
+-- first found, Features/Upgrades/Card.lua, 16 Nov.)
+Check(Any(margins, "^13:find,upgrade,witness$"), "level 13's margin: " .. table.concat(margins, "; "))
 -- (The oasis week's campfire, sat by with Tester, comes last of all: its
 -- slip, Features/Campfire/Slip.lua, 14 Oct; the duels with Tester just
 -- before it, Features/Duels/Slip.lua, 15 Oct. Since the pages go by

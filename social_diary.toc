@@ -198,6 +198,8 @@ UI/Kit/Pool.lua
 UI/Paper/Surface.lua
 UI/Paper/Light.lua
 UI/Paper/Strip.lua
+# An item boxed on a strip (the first found card's box, shared): after the strip, before every card.
+UI/Paper/ItemBox.lua
 UI/Windows/Entry.lua
 UI/Windows/Picker.lua
 UI/Paper/Sheet.lua
@@ -360,6 +362,10 @@ UI/Blizzard/Minimap.lua
 # Firsts before
 # Profession caps: both take their first reading on SD_WORLD_SETTLED, the
 # bags' first, as when they were one of Capture/Journey.lua's timers.
+# Upgrades after Firsts, though no order binds it: it hears the bags, the
+# windows and the loot line as Firsts does, each keeping its own state, and
+# writes only its own list (j.upgrades, j.fitting) and row; the worn slots'
+# and the bank's events are its alone.
 # Duels anywhere in the block: the client events it hears are its own, and
 # the two messages it fires are heard by core first (ns.Duelling).
 Features/LevelUps/Kind.lua
@@ -382,6 +388,11 @@ Features/Firsts/Text.lua
 Features/Firsts/Mark.lua
 Features/Firsts/Card.lua
 Features/Firsts/Capture.lua
+Features/Upgrades/Kind.lua
+Features/Upgrades/Text.lua
+Features/Upgrades/Mark.lua
+Features/Upgrades/Card.lua
+Features/Upgrades/Capture.lua
 Features/ProfessionCaps/Kind.lua
 Features/ProfessionCaps/Text.lua
 Features/ProfessionCaps/Mark.lua
@@ -472,6 +483,7 @@ Features/Trade/Dev.lua
 Features/Chat/Dev.lua
 Features/Campfire/Dev.lua
 Features/Firsts/Dev.lua
+Features/Upgrades/Dev.lua
 Features/ProfessionCaps/Dev.lua
 Features/QuestFinales/Dev.lua
 Features/WorldPvP/Dev.lua

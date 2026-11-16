@@ -43,7 +43,10 @@ for _, at in ipairs(T.DiaryPages(page)) do
     if plate and plate:IsShown() then
         YourDiary.OpenFull(plate.mapID)
         local score = #page.plates[1]:Marks()
-        if not bestScore or score > bestScore then best, bestScore = at, score end
+        -- (Of equals the later: level 15's map, whose marks lie further apart than a
+        -- close view holds, which the walk below needs. Level 11's has as many since
+        -- its two tunics, Features/Upgrades/, 16 Nov, all of them in one close view.)
+        if not bestScore or score >= bestScore then best, bestScore = at, score end
     end
 end
 local function Open() T.OpenDiaryPage(page, best.i, best.k) end
@@ -232,7 +235,9 @@ for _ = 1, 40 do Press("PAD1") end
 Settle()
 local panned = false
 for _ = 1, 30 do
-    for _, dir in ipairs({ "PADDRIGHT", "PADDDOWN", "PADDLEFT", "PADDUP" }) do
+    -- (Down twice running: with level 15's tunic, Features/Upgrades/, 16 Nov, there are
+    -- four marks in the close view, and right, down, left, up went round them for good.)
+    for _, dir in ipairs({ "PADDRIGHT", "PADDDOWN", "PADDDOWN", "PADDLEFT", "PADDUP" }) do
         local out = {}
         for _, item in ipairs(Items("full")) do
             if not Full():InView(item.mx, item.my, 14) then out[item.key] = true end

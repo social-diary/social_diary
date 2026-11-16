@@ -35,6 +35,8 @@ local FILES = {
     "journey",
     "sittings",
     "firsts",
+    "upgrades",
+    "upgrades_ui",
     "skills",
     "skills_ui",
     "combat",
