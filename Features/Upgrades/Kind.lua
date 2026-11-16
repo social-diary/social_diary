@@ -283,7 +283,7 @@ function Upgrades.Confirm(j, key, read)
     local rec = Journey.Append(j, "upgrades", { t = on.t, level = on.level, link = read.link or cand.link,
         key = cand.key, quality = cand.quality, slot = on.slot, ilvl = on.ilvl or read.ilvl, from = cand.from,
         guid = cand.guid, found = cand.t,
-        was = on.was and { link = on.was, ilvl = on.wasIlvl or read.wasIlvl } or nil }, where)
+        was = { link = on.was, ilvl = on.wasIlvl or read.wasIlvl } }, where)
     Upgrades.Saw(j, on.slot, on.kind, rec.link)
     -- Append adds at the end; the list is kept by the first put-on, and a
     -- piece put on earlier may be confirmed later (it was taken off for a

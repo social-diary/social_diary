@@ -1,8 +1,7 @@
 -- Upgrades on Your Diary's plates (.claude/ui-proposal/upgrades.md, signed
 -- 15 Nov 2026): the tunic on the map for the leading upgrade and for every
 -- other piece; the card (the old item on its tag in a wide column, in the
--- one box in a narrow one, a dashed square over an empty slot, the old item
--- never in its quality's colour); the small note of the other pieces; "a
+-- one box in a narrow one, the old item never in its quality's colour); the small note of the other pieces; "a
 -- first found wins"; the caption's and the entry's words; the giver's row
 -- and margin note; and the pad, which finds all of it with no code of the
 -- feature's but the tag's corners.
@@ -159,20 +158,24 @@ do
     Check(card.overfull, "a card in 60 px")
 
     ----------------------------------------------------------------------
-    Section("the card: an empty slot, nothing said of how it came, a gift")
+    Section("the card: nothing said of how it came, no old item, a gift")
 
-    rec = Rec({ was = false, from = false })
-    rec.was, rec.from = nil, nil
+    rec = Rec({ from = false })
+    rec.from = nil
     card:SetUpgrade({ m = Moment(rec), rec = rec, mark = { 0, 0 } }, "seed", now)
     card:Layout(250, 90, 176)
-    Eq(card.form, "one", "an empty slot has no tag, at any width")
-    Check(not tag:IsShown(), "a tag over an empty slot")
-    Eq(box.wasShown, "empty", "no dashed square for an empty slot")
-    Check(not box.was.icon:IsShown() and not box.was.edge:IsShown(), "an old icon over an empty slot")
     Eq(card.name:GetText(), "Newly worn", "the heading where nothing said how it came")
-    box.wasButton.scripts.OnEnter(box.wasButton)
-    Eq(GameTooltip.text or GameTooltip.title, Upgrades.EMPTY, "the empty square's tooltip")
-    box.wasButton.scripts.OnLeave(box.wasButton)
+
+    -- A record with no old item is no upgrade since 16 Nov (only the
+    -- feature's first dev data has one): drawn as the one box alone, with
+    -- nothing before its icon, and no error.
+    rec = Rec({ was = false })
+    rec.was = nil
+    card:SetUpgrade({ m = Moment(rec), rec = rec, mark = { 0, 0 } }, "seed", now)
+    card:Layout(250, 90, 176)
+    Eq(card.form, "one", "a record with no old item has a tag")
+    Check(not tag:IsShown(), "a tag with no old item")
+    Eq(box.wasShown, nil, "something drawn before the icon with no old item")
 
     local giver = { guid = GIVER, name = "Brannoc" }
     if giver then
@@ -315,7 +318,7 @@ for _, at in ipairs(T.DiaryPages(page)) do
         ring, ringAt = first, at
         Eq(ring.rec.slot, 11, "setup: level 13's ring")
         Eq(ring.name:GetText(), "Newly worn", "the ring's heading")
-        Eq(ring.itemBox.wasShown, "empty", "the ring went on an empty finger")
+        Check(ring.form == "two" or ring.itemBox.wasShown == "item", "the ring's card does not show the band it replaced")
         Eq(page.upgradesWritten, 1, "the page's count of upgrade cards")
         Check(not table.concat(captions, " "):find("Blood Ring", 1, true), "the caption names the item its card shows")
     end
@@ -326,7 +329,7 @@ end
 local all = table.concat(seen, "; ")
 Check(all:find("11: 2 tunic(s), cards [], notes [a new belt]", 1, true), "level 11: the first green's tunic, the belt's note: " .. all)
 Check(all:find("10: 1 tunic(s), cards [Bought/", 1, true), "level 10: the gloves' card, over the white ones: " .. all)
-Check(all:find("13: 1 tunic(s), cards [Newly worn/one], notes []", 1, true), "level 13: the ring's card: " .. all)
+Check(all:find("13: 1 tunic(s), cards [Newly worn/", 1, true), "level 13: the ring's card: " .. all)
 Check(all:find("15: 1 tunic(s), cards [], notes []", 1, true), "level 15: the first epic's tunic alone: " .. all)
 Check(giftAt ~= nil, "the gift's tunic on no page: " .. all)
 
@@ -339,7 +342,7 @@ do
     Check(by[11]:find("Your Worn Leather Bracers made way for it. One more piece of gear went on besides.", 1, true),
         "level 11's sentence: " .. by[11])
     Check(not by[11]:find("made way for Wolfskin Bracers", 1, true), "level 11 names its first green twice")
-    Check(by[13]:find("You put on Blood Ring.", 1, true), "level 13's sentence: " .. by[13])
+    Check(by[13]:find("Your Tarnished Copper Band made way for Blood Ring.", 1, true), "level 13's sentence: " .. by[13])
     Check(by[15]:find("Your Hatchet made way for it.", 1, true), "level 15's sentence: " .. by[15])
     for level, text in pairs(by) do Check(not text:find("item level"), "an item level in level " .. level .. "'s entry") end
 end

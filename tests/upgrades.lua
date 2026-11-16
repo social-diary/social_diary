@@ -61,7 +61,7 @@ local SHIRT = Link(6073, "Fine Green Shirt", GREEN)
 local POLE = Link(6074, "Lucky Fishing Pole", GREEN)
 local WHITE = Link(6075, "Plain Vest")
 local BELT = Link(6076, "Girdle of the Whale", GREEN, 1200)
-local BOOTS = Link(6077, "Marsh Boots", GREEN)
+upgrlocal BOOTS = Link(6077, "Marsh Boots", GREEN)
 local HELM = Link(6078, "Bog Helm", GREEN)
 -- What the character wears before the diary looks, in every slot the
 -- tests put something new into: an upgrade is measured against the last

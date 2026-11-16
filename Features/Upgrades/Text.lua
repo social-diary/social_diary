@@ -61,9 +61,6 @@ function Upgrades.Heading(rec, short)
     return short and HEADING_SHORT[rec.from] or HEADING[rec.from] or L["Newly worn"]
 end
 
--- The dashed square's tooltip, where the slot was empty.
-Upgrades.EMPTY = L["Nothing was worn there before"]
-
 --------------------------------------------------------------------------
 -- The slot's phrase
 --------------------------------------------------------------------------
@@ -244,20 +241,17 @@ end
 -- it", and "the" sits badly before a name that is someone's ("Thornspike's
 -- Hood"). So the old item is "your ...", the new one is said bare, and a
 -- gift is "a gift from ...".
+--
+-- An upgrade always took the place of something of its kind (Kind.lua,
+-- since 16 Nov); nil, so nothing is said of it, only where that item's
+-- name does not read from its link.
 function Upgrades.Sentence(rec, first)
     local name, was = Name(rec) or L["a new piece"], WasName(rec)
-    if first then
-        return was and Fmt(L["Your %s made way for it."], was) or L["You put it on."]
-    end
+    if not was then return nil end
+    if first then return Fmt(L["Your %s made way for it."], was) end
     local giver = Giver(rec)
-    if giver then
-        if was then
-            return Fmt(L["Your %1$s made way for %2$s, a gift from %3$s."], was, name, Who(giver))
-        end
-        return Fmt(L["You put on %1$s, a gift from %2$s."], name, Who(giver))
-    end
-    if was then return Fmt(L["Your %1$s made way for %2$s."], was, name) end
-    return Fmt(L["You put on %s."], name)
+    if giver then return Fmt(L["Your %1$s made way for %2$s, a gift from %3$s."], was, name, Who(giver)) end
+    return Fmt(L["Your %1$s made way for %2$s."], was, name)
 end
 
 -- The other pieces, counted and never named. `alone`: the entry has no

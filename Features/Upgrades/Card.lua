@@ -10,23 +10,26 @@
 -- boxed as the game shows it, the paper's own box (ns.UI.ItemBox,
 -- UI/Paper/ItemBox.lua, the first found card's): its quality's wash, its
 -- icon edged in its quality's colour, its name in its quality's ink. What
--- it took the place of is shown one of two ways, by the column's width:
---   two  (a column of CARD.wide px and more, and something was replaced)
+-- it took the place of (always something: an upgrade is only measured
+-- against the last item of its own kind worn in that slot, 16 Nov) is
+-- shown one of two ways, by the column's width:
+--   two  (a column of CARD.wide px and more)
 --        the old item on a tag of its own, taped over the card's lower
 --        right corner and reaching past it: its icon and its name printed
 --        small in faded ink, struck by the hand. The card is CARD.over px
 --        narrower than its column so the tag reaches past its edge.
---   one  (narrower, or the slot was empty) inside the one box, before the
---        new icon: the old icon struck with a stroke of the pen and a
---        pen's arrow (the box's `lead`); an empty slot is a dashed square
---        in graphite there, at any width, and has no tag.
+--   one  (narrower) inside the one box, before the new icon: the old
+--        icon struck with a stroke of the pen and a pen's arrow (the
+--        box's `lead`).
+-- A record with no old item can only be left from the feature's first
+-- dev data; it gets the one box alone, with nothing before its icon, so
+-- it never errors, and no look of its own.
 -- The old item never has its quality's colour: no wash, no coloured edge,
 -- no coloured name ("no rarity color for the old one", the user). No item
 -- level is shown anywhere.
 --
 -- The family's rule: printed type is what the game says (the items'
--- names), the hand what happened (how it came, the strike, the arrow),
--- graphite what the diary worked out (the empty square).
+-- names), the hand what happened (how it came, the strike, the arrow).
 --
 -- The small note (S): the piece's icon and one line in the hand naming
 -- its slot ("new gloves", Upgrades.Slot); two pieces or more on a plate
@@ -49,8 +52,8 @@
 -- straight stroke.
 --
 -- Under the mouse: the new item's own tooltip with how and when it came
--- under it (Upgrades.TipLine), the old item's with Upgrades.WasLine, the
--- empty square's line (Upgrades.EMPTY); the slip itself tells the mark's
+-- under it (Upgrades.TipLine), the old item's with Upgrades.WasLine; the
+-- slip itself tells the mark's
 -- (Upgrades.Tip, Upgrades.Tips). Items are never clicked.
 --
 -- The controller finds both as it finds every strip (strip:Focus). The
@@ -158,16 +161,11 @@ function UpgradeCard.ShowItem(owner, link, name, line)
     GameTooltip:Show()
 end
 
--- What the item took the place of, on `owner`: the old item's tooltip, or
--- the empty slot's line.
+-- What the item took the place of, on `owner`: the old item's tooltip.
+-- Only shown where there is an old item (the tag, or the box's lead).
 local function ShowWas(owner, rec, now)
-    if rec.was then
-        UpgradeCard.ShowItem(owner, rec.was.link, Upgrades.WasName(rec), Upgrades.WasLine(rec, now))
-        return
-    end
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    GameTooltip:SetText(Upgrades.EMPTY, 1, 1, 1, 1, true)
-    GameTooltip:Show()
+    if not rec.was then return end
+    UpgradeCard.ShowItem(owner, rec.was.link, Upgrades.WasName(rec), Upgrades.WasLine(rec, now))
 end
 
 --------------------------------------------------------------------------
@@ -311,7 +309,7 @@ function UpgradeCard.New(parent)
         end
         plan.fits = Heading(room, note)
         plan.chip = box:Measure(card.itemName, room, { icon = card.iconFile ~= nil, column = Wb,
-            seed = card.seedKey, lean = CARD.lean, lead = not two })
+            seed = card.seedKey, lean = CARD.lean, lead = not two and card.rec.was ~= nil })
         if not (plan.fits and plan.chip and plan.chip.bw <= room) then return nil, plan end
         return plan
     end
@@ -439,7 +437,7 @@ function UpgradeCard.New(parent)
         local top = room.ly - room.h / 2
         local mx, my = room.lx - room.w / 2 + chip.bw / 2, top + chip.bh / 2
         local was
-        if not plan.tag then was = self.rec.was and { icon = self.wasIcon } or { empty = true } end
+        if not plan.tag and self.rec.was then was = { icon = self.wasIcon } end
         box:Draw(chip, mx, my, { quality = self.quality, icon = self.iconFile, was = was })
         if plan.tag then return Tag(plan, W, H) end
     end

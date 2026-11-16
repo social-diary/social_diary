@@ -63,9 +63,8 @@
 -- icon (`lead` true in Measure, `was` in Draw; for a card that tells of
 -- one item worn in place of another, signed 15 Nov 2026): the old item's
 -- icon, smaller, plain (ruled in ink whatever its quality, dimmed) and
--- struck with one stroke of the pen, then a pen's arrow to the new one;
--- or, where nothing was there before, a dashed square in graphite (what
--- the diary worked out, not what happened). Its own button
+-- struck with one stroke of the pen, then a pen's arrow to the new one.
+-- Its own button
 -- (box.wasButton, box.wasEnter / box.wasLeave). Its pieces are made the
 -- first time one is drawn, so a box that never has one makes none.
 
@@ -101,10 +100,9 @@ local NAME = { lines = 3, fonts = { { "strong", 15 }, { "small", 13 } } }
 -- px to the new icon. The strike through the old icon, corner to corner
 -- less `inset`, `strike` px wide; the arrow's shaft and its head (two
 -- strokes back `head[1]` px, out `head[2]`), `pen` px wide, both in strong
--- ink. An empty slot's square: dashes `dash.on` px long, `dash.off`
--- apart, `dash.width` wide, in graphite at `dash.alpha`.
+-- ink.
 local LEAD = { icon = 18, gap = 3, arrow = 12, after = 4, alpha = 0.55, inset = 1, strike = 1.6, pen = 1.3,
-    head = { 3.5, 3 }, dash = { on = 2.5, off = 2, width = 1, alpha = 0.8 } }
+    head = { 3.5, 3 } }
 ItemBox.BOX, ItemBox.ICON, ItemBox.NAME, ItemBox.LEAD = BOX, ICON, NAME, LEAD
 
 --------------------------------------------------------------------------
@@ -394,9 +392,8 @@ function ItemBox.New(card, parent)
     -- The box drawn: `chip` (Measure's) with its middle at mx, my on the
     -- strip. `look`: `quality` (its colours: 1 the white item's box
     -- whatever the item is), `icon` (its picture) and, for a chip measured
-    -- with `lead`, `was`: { icon = the old item's picture } or { empty =
-    -- true } where nothing was there before (box.wasShown says which was
-    -- drawn: "item", "empty" or nil).
+    -- with `lead`, `was`: { icon = the old item's picture } (box.wasShown
+    -- is "item" where it was drawn, else nil).
     function box:Draw(chip, mx, my, look)
         self.quality = look.quality
         for _, part in ipairs({ self.weight, self.rule, self.ground, self.iconShadow, self.iconEdge, self.icon }) do
@@ -503,41 +500,25 @@ function ItemBox.New(card, parent)
             local half = D.icon / 2 + ICON.edge
             local ou, ov = left + half, top + (chip.stacked and size / 2 or chip.iconAt[2])
             local STRONG = Style.INK_STRONG
-            if look.was.empty then
-                -- A dashed square, each side its dashes from its start.
-                local G, A = Style.GRAPHITE, D.dash
-                local side, k = D.icon, D.icon / 2
-                for _, e in ipairs({ { -k, -k, 1, 0 }, { k, -k, 0, 1 }, { k, k, -1, 0 }, { -k, k, 0, -1 } }) do
-                    local at = 0
-                    while at < side - 0.01 do
-                        local to = math.min(side, at + A.on)
-                        Stroke(ou + e[1] + e[3] * at, ov + e[2] + e[4] * at, ou + e[1] + e[3] * to, ov + e[2] + e[4] * to,
-                            A.width, G, A.alpha)
-                        at = at + A.on + A.off
-                    end
-                end
-                self.wasShown = "empty"
-            else
-                was.edge:SetColorTexture(INK[1], INK[2], INK[3], D.alpha)
-                Lay(was.edge, ou, ov, D.icon + 2 * ICON.edge, D.icon + 2 * ICON.edge)
-                was.edge:Show()
-                was.icon:SetTexture(look.was.icon)
-                local k = ICON.crop
-                was.icon:SetTexCoord(k, 1 - k, k, 1 - k)
-                was.icon:SetAlpha(D.alpha)
-                Lay(was.icon, ou, ov, D.icon, D.icon)
-                was.icon:SetShown(look.was.icon ~= nil)
-                local r = D.icon / 2 - D.inset
-                Stroke(ou - r, ov + r, ou + r, ov - r, D.strike, STRONG, 1)
-                self.wasShown = "item"
-            end
+            was.edge:SetColorTexture(INK[1], INK[2], INK[3], D.alpha)
+            Lay(was.edge, ou, ov, D.icon + 2 * ICON.edge, D.icon + 2 * ICON.edge)
+            was.edge:Show()
+            was.icon:SetTexture(look.was.icon)
+            local k = ICON.crop
+            was.icon:SetTexCoord(k, 1 - k, k, 1 - k)
+            was.icon:SetAlpha(D.alpha)
+            Lay(was.icon, ou, ov, D.icon, D.icon)
+            was.icon:SetShown(look.was.icon ~= nil)
+            local r = D.icon / 2 - D.inset
+            Stroke(ou - r, ov + r, ou + r, ov - r, D.strike, STRONG, 1)
+            self.wasShown = "item"
             -- The arrow to the new one.
             local a0, a1 = ou + half + D.gap, ou + half + D.gap + D.arrow
             Stroke(a0, ov, a1, ov, D.pen, STRONG, 1)
             Stroke(a1 - D.head[1], ov - D.head[2], a1, ov, D.pen, STRONG, 1)
             Stroke(a1 - D.head[1], ov + D.head[2], a1, ov, D.pen, STRONG, 1)
             for i = used + 1, #was.strokes do was.strokes[i]:Hide() end
-            -- The mouse over the old icon (or the empty square) as drawn.
+            -- The mouse over the old icon as drawn.
             local bx0, by0, bx1, by1 = math.huge, math.huge, -math.huge, -math.huge
             for _, corner in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
                 local px, py = card:Out(At(ou + corner[1] * half, ov + corner[2] * half))
