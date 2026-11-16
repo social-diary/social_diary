@@ -2050,7 +2050,7 @@ do
     local light = {}
     for kind in pairs(R.LIGHT) do light[#light + 1] = kind end
     table.sort(light)
-    Eq(table.concat(light, ","), "arrive,campfire,duel,dungeon,finale,fortune,level,road,skill,stay", "the light kinds")
+    Eq(table.concat(light, ","), "arrive,campfire,duel,dungeon,finale,fished,fortune,gathered,level,road,skill,stay", "the light kinds")
     for _, kind in ipairs({ "session", "fight", "note", "first", "gift", "find", "death", "close", "luck" }) do
         Check(R.LIGHT[kind] == nil, kind .. " counts as light")
     end
