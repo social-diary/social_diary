@@ -227,7 +227,7 @@ end)
 -- the stop the queue was taken at (a match's deaths on the Orgrimmar plate,
 -- 8 Nov).
 ns.On("PLAYER_DEAD", function()
-    if ns.InBattleground() then return end
+    if ns.InBattleground() or ns.Feigning("player") then return end
     Journey.Act(Journey.Kept(), "deaths", 1)
 end)
 

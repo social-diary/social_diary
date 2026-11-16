@@ -758,6 +758,20 @@ _G.UnitOnTaxi = function() return M.onTaxi end
 _G.UnitIsAFK = function() return M.afk end
 _G.UnitIsDeadOrGhost = function() return M.dead or M.ghost end
 _G.UnitIsGhost = function() return M.ghost end
+-- Issue #33: a hunter's Feign Death, the user's (M.feigning) or a unit's
+-- (its def's `feigning`).
+M.feigning = false
+_G.UnitIsFeignDeath = function(unit)
+    if unit == "player" then return M.feigning end
+    local def = M.units[unit]
+    return def and def.feigning or false
+end
+_G.UnitTokenFromGUID = function(guid)
+    for token, def in pairs(M.units) do
+        if def.guid == guid then return token end
+    end
+    return nil
+end
 _G.IsResting = function() return M.resting end
 _G.GetMaxPlayerLevel = function() return M.maxLevel end
 

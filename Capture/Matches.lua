@@ -579,7 +579,7 @@ end
 
 ns.On("PLAYER_DEAD", function()
     local match = Matches.Current()
-    if not match then return end
+    if not match or ns.Feigning("player") then return end
     local now = ns.Now()
     ns.After(1, function()
         local killer = Killer()

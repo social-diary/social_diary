@@ -539,3 +539,25 @@ mock.SetUnit("target", nil)
 kept = DieWith()
 Eq(kept and kept.name, "Longhoof", "a foe targeted during the fight")
 mock.fire("PLAYER_REGEN_ENABLED")
+
+--------------------------------------------------------------------------
+Section("Feign Death is no death (issue #33)")
+
+for _ = 1, 12 do mock.RunTimers() end
+mock.inCombat = false
+local before = Pending()
+mock.feigning = true
+mock.fire("PLAYER_DEAD")
+Eq(Pending(), before, "the user's Feign Death was taken for a death")
+mock.feigning = false
+
+local HUNTER = { guid = "Player-4615-0BEEF001", name = { "Tessaly" }, isPlayer = true }
+mock.SetUnit("party2", HUNTER)
+HUNTER.feigning = true
+mock.fire("UNIT_DIED", HUNTER.guid)
+Eq(Pending(), before, "a group member's Feign Death was taken for a death")
+HUNTER.feigning = false
+mock.SetUnit("party2", nil)
+
+mock.fire("PLAYER_DEAD")
+Eq(Pending(), before + 1, "a real death after a feign was not counted")
