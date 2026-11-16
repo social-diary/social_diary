@@ -70,7 +70,7 @@ local function OnUnitTooltip(tooltip, data)
     if not s then return end
     local entry = s.entry
 
-    local head = entry.tags[1] and table.concat(entry.tags, ", ") or L["in your diary"]
+    local head = entry.tags[1] and ns.Diary.TagList(entry.tags) or L["in your diary"]
     -- What they are to you, after their tags with a comma (never a middle
     -- dot: the copywriter skill), "friend, questing buddy".
     if entry.relationship then head = Fmt(L["%1$s, %2$s"], head, entry.relationship) end

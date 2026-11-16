@@ -213,7 +213,7 @@ function Header.New(p, list)
             local colour = Style.TAG_COLORS[tag] or Style.TAG_DEFAULT
             self.fill:SetColorTexture(colour[1], colour[2], colour[3], 1)
             self.edge:SetColorTexture(0, 0, 0, TAGS.edge)
-            self.label:SetText(tag)
+            self.label:SetText(ns.Diary.TagLabel(tag))
             self.w = math.ceil(Width(self.label) + 2 * TAGS.pad)
         end
         chip:Hide()

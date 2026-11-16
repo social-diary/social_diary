@@ -223,3 +223,26 @@ Eq(HeatTotal(record), heat, "filling `seen` counted on the map")
 local filled = record.seen
 ns.Diary.FillSeen()
 Eq(record.seen, filled, "a second login changed `seen`")
+
+--------------------------------------------------------------------------
+Section("preset tags in the reader's language, saved in English")
+
+Eq(ns.Diary.TagLabel("foe"), "foe", "an English preset does not read as itself")
+Eq(ns.Diary.TagLabel("questing buddy"), "questing buddy", "a custom tag does not read as written")
+
+mock.Reset()
+local clientLocale = _G.GetLocale
+_G.GetLocale = function() return "deDE" end
+ns = T.Boot()
+Eq(ns.Locale.id, "deDE", "the diary does not read German")
+mock.SetUnit("target", F.STRANGER)
+local german = ns.Diary.Add(GUID, { unit = "target" })
+Eq(ns.Diary.TagLabel("foe"), "Feind", "a preset not in the reader's language")
+Eq(ns.Diary.TagLabel("gilde"), "gilde", "a custom tag was translated")
+Check(ns.Diary.AddTag(GUID, "Feind"), "a preset typed in German was not added")
+Eq(german.tags[1], "foe", "a preset typed in German was not saved as the preset")
+Check(not ns.Diary.AddTag(GUID, "foe"), "the preset was added twice, once per language")
+Eq(ns.Diary.TagList({ "foe", "helper", "gilde" }), "Feind, Helfer, gilde", "a tag list not as read")
+Eq(#ns.People.Query({ search = "feind" }), 1, "search does not find a preset by its German word")
+Eq(#ns.People.Query({ search = "foe" }), 1, "search no longer finds a preset by its English word")
+_G.GetLocale = clientLocale

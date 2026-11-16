@@ -118,7 +118,10 @@ local function Haystack(record, entry)
             parts[#parts + 1] = ns.JoinName(record.names[i].first, record.names[i].surname)
         end
     end
-    for i = 1, #entry.tags do parts[#parts + 1] = entry.tags[i] end
+    for i = 1, #entry.tags do
+        parts[#parts + 1] = entry.tags[i]
+        parts[#parts + 1] = ns.Diary.TagLabel(entry.tags[i])
+    end
     parts[#parts + 1] = entry.relationship
     parts[#parts + 1] = entry.note
     return table.concat(parts, "\n"):lower()

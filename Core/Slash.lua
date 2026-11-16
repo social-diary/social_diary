@@ -162,7 +162,7 @@ local function CommandList()
 
     for i = 1, #entries do
         local entry = entries[i]
-        local tags = #entry.tags > 0 and ("  |cffffd100" .. table.concat(entry.tags, ", ") .. "|r") or ""
+        local tags = #entry.tags > 0 and ("  |cffffd100" .. ns.Diary.TagList(entry.tags) .. "|r") or ""
         DEFAULT_CHAT_FRAME:AddMessage(("   %-22s %s%s"):format(
             ns.Characters.FullName(entry.guid) or entry.guid,
             ChatDay(entry.addedAt, true), tags))

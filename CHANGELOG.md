@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changes
+
+- The preset tags now show in your language (thanks YaN9Yu96)
+
 ## [4.1.0]
 
 This Update brings an exciting new Addition to _Your Diary_: Gear Upgrades! Whenever you equip a better Item, it gets written down. Just trying it on will not trigger it. There may be some funkiness going on with 2H->2x1H weapons and so on – Please report issues on this! The Diary also now, optionally, adds Players you encounter often enough automatically.

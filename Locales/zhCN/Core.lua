@@ -26,6 +26,10 @@ ns.Locale.Add("zhCN", {
     ["recent level_up"] = "最近升级",
     ["recent %s"] = "最近%s",
     -- Core/Diary.lua
+    ["friend##tag"] = "朋友",
+    ["helper##tag"] = "乐于助人",
+    ["foe##tag"] = "仇人",
+    ["avoid##tag"] = "想要避开",
     ["added |cffffffff%s|r to the diary."] = "已将|cffffffff%s|r添加到日记。",
     ["deleted everything about |cffffffff%s|r."] = "已删除关于|cffffffff%s|r的全部记录。",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "已将|cffffffff%s|r从日记中移除；历史记录现在将按照缓冲区的保留规则保存。",

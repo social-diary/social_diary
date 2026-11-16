@@ -47,6 +47,7 @@ local function QuietQuery(search)
             for i = 1, #entry.tags do
                 if match then break end
                 match = entry.tags[i]:find(search, 1, true) ~= nil
+                    or Lower(ns.Diary.TagLabel(entry.tags[i])):find(search, 1, true) ~= nil
             end
         end
         if match then
@@ -54,7 +55,7 @@ local function QuietQuery(search)
                 guid = guid,
                 name = name,
                 record = ns.Characters.Get(guid),
-                tags = table.concat(entry.tags, ", "),
+                tags = ns.Diary.TagList(entry.tags),
             }
         end
     end

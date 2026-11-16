@@ -299,7 +299,9 @@ function Style.TagButton(parent)
     button.cross:SetScript("OnEnter", function() cross:SetAlpha(1) end)
     button.cross:SetScript("OnLeave", function() cross:SetAlpha(0.75) end)
 
-    function button:SetTag(tag, on, removable)
+    -- `label` is what it reads, where that is not the tag (a preset in the
+    -- reader's language); the colour goes by the tag.
+    function button:SetTag(tag, on, removable, label)
         self.tag, self.on = tag, on
         local color = Style.TAG_COLORS[tag] or Style.TAG_DEFAULT
         local INK, P = Style.INK, Style.PAPER
@@ -312,7 +314,7 @@ function Style.TagButton(parent)
             self.fill:SetColorTexture(P[1], P[2], P[3], 1)
             self.label:SetTextColor(unpack(Style.INK_FADED))
         end
-        self.label:SetText(tag)
+        self.label:SetText(label or tag)
         self.cross:SetShown(removable == true)
         self:SetWidth(self.label:GetStringWidth() + 14 + (removable and 12 or 0))
     end
@@ -838,10 +840,10 @@ function Style.TagChip(parent)
     chip.label = Style.Text(chip, Style.FONT.tag)
     chip.label:SetPoint("LEFT", 7, 0)
 
-    function chip:SetTag(tag)
+    function chip:SetTag(tag, label)
         local color = Style.TAG_COLORS[tag] or Style.TAG_DEFAULT
         self.fill:SetColorTexture(color[1], color[2], color[3], 1)
-        self.label:SetText(tag)
+        self.label:SetText(label or tag)
         self:SetWidth(self.label:GetStringWidth() + 14)
     end
 

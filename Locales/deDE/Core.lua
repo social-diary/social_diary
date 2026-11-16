@@ -30,6 +30,10 @@ ns.Locale.Add("deDE", {
     ["recent %s"] = "kürzlich: %s",
 
     -- Core/Diary.lua
+    ["friend##tag"] = "Freund",
+    ["helper##tag"] = "Helfer",
+    ["foe##tag"] = "Feind",
+    ["avoid##tag"] = "meiden",
     ["added |cffffffff%s|r to the diary."] = "hat |cffffffff%s|r ins Tagebuch eingetragen.",
     ["deleted everything about |cffffffff%s|r."] = "hat alles über |cffffffff%s|r gelöscht.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] =
