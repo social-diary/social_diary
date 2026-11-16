@@ -2,10 +2,15 @@
 
 ## [Unreleased]
 
-### Shiny New Things
+## [4.1.0]
+
+This Update brings an exciting new Addition to _Your Diary_: Gear Upgrades! Whenever you equip a better Item, it gets written down. Just trying it on will not trigger it. There may be some funkiness going on with 2H->2x1H weapons and so on – Please report issues on this! The Diary also now, optionally, adds Players you encounter often enough automatically.
+
+### Shiny new Things
 
 - _Your Diary_ now detects when you equip upgrades of your existing equipment and displays them on your Diary's plates
 - Added Polish to the diary’s language settings (thanks KO.Media)
+- You can now make the Diary auto-add players you encounter often or do dungeons and raids with (thanks ubrider, replayablecontent46369)
 
 ## [4.0.2]
 
