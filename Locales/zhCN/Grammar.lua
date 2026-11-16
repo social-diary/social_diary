@@ -53,11 +53,11 @@ G.PeopleSortLabel = function(label) return label end
 
 -- A first found card's heading.
 local FIRSTS = {
-    bag = { "第一个背包", "第一个背包" },
-    shoulder = { "第一件护肩", "第一件护肩" },
-    uncommon = { "第一件绿色优秀物品", "第一件绿色" },
-    rare = { "第一件蓝色稀有品质物品", "第一件蓝色" },
-    epic = { "第一件紫色史诗物品", "第一件紫色" },
+    bag = { "第一个背包", "首个背包" },
+    shoulder = { "第一件肩部装备", "首件护肩" },
+    uncommon = { "第一件绿色优秀物品", "首件绿色物品" },
+    rare = { "第一件蓝色精良物品", "首件蓝色物品" },
+    epic = { "第一件紫色史诗物品", "首件紫色物品" },
 }
 G.FirstsHeading = function(list, short)
     local words = {}
@@ -65,5 +65,9 @@ G.FirstsHeading = function(list, short)
         local f = FIRSTS[kind]
         words[#words + 1] = f and (short and f[2] or f[1]) or "首次发现"
     end
-    return table.concat(words, "、") .. "！"
+    local text = words[1]
+    if #words > 1 then
+        text = table.concat(words, "、", 1, #words - 1) .. "和" .. words[#words]
+    end
+    return text .. "！"
 end
