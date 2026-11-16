@@ -104,6 +104,26 @@ function Upgrades.Counts(item)
     return true
 end
 
+-- What kind of thing an item is in its slot: an upgrade is measured only
+-- against the last thing of its own kind worn there (the user, 16 Nov: a
+-- warrior's tanking shield never "replaces" the off-hand sword, and a
+-- first two-hander replaces nothing: "we wait for comparable item types").
+-- The hands and the ranged slot hold things of different kinds; every
+-- other slot holds one kind (a robe is a chest piece).
+local WAND = 19
+local HANDS = { INVTYPE_WEAPON = "one-hand", INVTYPE_WEAPONMAINHAND = "one-hand", INVTYPE_WEAPONOFFHAND = "one-hand",
+    INVTYPE_2HWEAPON = "two-hand", INVTYPE_SHIELD = "shield", INVTYPE_HOLDABLE = "held" }
+local RANGED = { INVTYPE_RANGED = "ranged", INVTYPE_RANGEDRIGHT = "ranged", INVTYPE_THROWN = "thrown",
+    INVTYPE_RELIC = "relic" }
+function Upgrades.Kind(item, slot)
+    if slot == 16 or slot == 17 then return HANDS[item.equipLoc] or "other" end
+    if slot == 18 then
+        if item.classID == WEAPON and item.subclassID == WAND then return "wand" end
+        return RANGED[item.equipLoc] or "other"
+    end
+    return "piece"
+end
+
 --------------------------------------------------------------------------
 -- Upgrades: what was put on and kept on
 --------------------------------------------------------------------------
@@ -115,20 +135,32 @@ end
 -- could be told ("loot", "quest", "vendor", "craft", "mail", "trade", and
 -- then `guid`, who gave it); `found` when it arrived in the bags; `ilvl`
 -- its item level where the client gave one; `was` what it took the place
--- of, { link, ilvl }, nil over an empty slot. The newest T.cap are kept.
+-- of, { link, ilvl }: the last thing of its kind worn in that slot
+-- (Upgrades.Kind; never nil since 16 Nov, an item with nothing of its kind
+-- before it is no upgrade). The newest T.cap are kept.
 --
 -- j.fitting holds the candidates, in the order they arrived: what the
 -- diary saw arrive and has not yet seen worn for T.worn seconds. Each
 -- { key, link, quality, t, level, from, guid, banked, worn, on }: `t` and
 -- `level` when it arrived, `banked` true while it lies in the bank, `worn`
 -- the seconds of play it has been on so far, and `on` the first time it
--- was put on, { t, level, slot, mapID, x, y, zone, was }, `was` the link
--- of what it took the place of. There is no cap: a candidate goes when the
--- item does (Capture.lua), and a cap would lose the green found at level
--- 10 and worn at 15.
+-- was put on, { t, level, slot, kind, mapID, x, y, zone, was, ilvl,
+-- wasIlvl }, `was` the link of what it took the place of, the item levels
+-- read then (both items have just been in the slot, so the client has
+-- them). There is no cap: a candidate goes when the item does
+-- (Capture.lua), and a cap would lose the green found at level 10 and
+-- worn at 15.
 --
--- Both are new fields on the route; nothing older is moved or reread, so
--- there is no migration (AGENTS.md).
+-- j.lastWorn holds what an upgrade is measured against: by slot, then by
+-- kind (Upgrades.Kind), the link of the last thing of that kind seen worn
+-- there that was no candidate (what was had, and every upgrade once it is
+-- one). A candidate tried on and taken off again is never the measure, so
+-- the next piece is measured against what was worn before the both of
+-- them. Kept across sessions: a warrior's sword is still their sword after
+-- a week with a two-hander.
+--
+-- All three are new fields on the route; nothing older is moved or
+-- reread, so there is no migration (AGENTS.md).
 
 -- A gift's giver goes as a first's does (Features/Firsts/Kind.lua). At
 -- login (Journey.Prune): a giver kept with an upgrade, or with a
@@ -198,17 +230,32 @@ function Upgrades.Gone(j, key)
     if i then table.remove(j.fitting, i) end
 end
 
+-- The measure in `slot` for something of `kind`: the link of the last
+-- thing of that kind worn there (j.lastWorn), or nil.
+function Upgrades.Before(j, slot, kind)
+    local bySlot = j and j.lastWorn and j.lastWorn[slot]
+    return bySlot and bySlot[kind] or nil
+end
+
+-- `link`, of `kind`, worn in `slot`, is the measure there from now.
+function Upgrades.Saw(j, slot, kind, link)
+    if not (j and slot and kind and link) then return end
+    j.lastWorn = j.lastWorn or {}
+    j.lastWorn[slot] = j.lastWorn[slot] or {}
+    j.lastWorn[slot][kind] = link
+end
+
 -- The candidate of `key` put on. Only the first time is kept: the moment
 -- is when and where it was first put on, whatever is swapped after. `on`
--- is { t, level, slot, was }, `where` in ns.Where's shape (here and now
--- without it is the caller's to give: the candidate is confirmed minutes
--- later, somewhere else).
+-- is { t, level, slot, kind, was, ilvl, wasIlvl }, `where` in ns.Where's
+-- shape (here and now without it is the caller's to give: the candidate
+-- is confirmed minutes later, somewhere else).
 function Upgrades.PutOn(j, key, on, where)
     local cand = Upgrades.Candidate(j, key)
     if not cand or cand.on then return cand end
     where = where or {}
-    cand.on = { t = on.t or ns.Now(), level = on.level, slot = on.slot, was = on.was,
-        mapID = where.mapID, x = where.x, y = where.y, zone = where.zone }
+    cand.on = { t = on.t or ns.Now(), level = on.level, slot = on.slot, kind = on.kind, was = on.was,
+        ilvl = on.ilvl, wasIlvl = on.wasIlvl, mapID = where.mapID, x = where.x, y = where.y, zone = where.zone }
     return cand
 end
 
@@ -222,10 +269,10 @@ function Upgrades.Wore(j, key, seconds)
 end
 
 -- The candidate of `key` is an upgrade: kept on the route as of its first
--- put-on, and a row on its giver where it was a gift. `read` is what is
--- read only now, { link, ilvl, wasIlvl }: the item as it is worn, its
--- item level and that of what it replaced (the client's cache has them by
--- now; it may not have had them as the item arrived). Returns the record.
+-- put-on, the measure of its kind in its slot from now, and a row on its
+-- giver where it was a gift. `read` is what is read only now, { link,
+-- ilvl, wasIlvl }: the item as it is worn, and the item levels where they
+-- did not read at the put-on. Returns the record.
 function Upgrades.Confirm(j, key, read)
     local cand, i = Upgrades.Candidate(j, key)
     if not (cand and cand.on) then return nil end
@@ -234,9 +281,10 @@ function Upgrades.Confirm(j, key, read)
     local on = cand.on
     local where = { mapID = on.mapID, x = on.x, y = on.y, zone = on.zone }
     local rec = Journey.Append(j, "upgrades", { t = on.t, level = on.level, link = read.link or cand.link,
-        key = cand.key, quality = cand.quality, slot = on.slot, ilvl = read.ilvl, from = cand.from,
+        key = cand.key, quality = cand.quality, slot = on.slot, ilvl = on.ilvl or read.ilvl, from = cand.from,
         guid = cand.guid, found = cand.t,
-        was = on.was and { link = on.was, ilvl = read.wasIlvl } or nil }, where)
+        was = on.was and { link = on.was, ilvl = on.wasIlvl or read.wasIlvl } or nil }, where)
+    Upgrades.Saw(j, on.slot, on.kind, rec.link)
     -- Append adds at the end; the list is kept by the first put-on, and a
     -- piece put on earlier may be confirmed later (it was taken off for a
     -- while).
@@ -253,12 +301,14 @@ end
 --------------------------------------------------------------------------
 
 -- How much better than what it replaced, by the one number the client
--- has: its item level over the old one's, the whole of it over an empty
--- slot, nothing where none was read. Never shown (the user, 15 Nov: "no
--- ilvl"); it only picks the best.
+-- has: its item level over the old one's; nil where either did not read
+-- (never "the whole of it": an old item's level the client had lost would
+-- make the smallest change the largest). Never shown (the user, 15 Nov:
+-- "no ilvl"); it only picks the best.
 function Upgrades.Gain(rec)
-    if type(rec.ilvl) ~= "number" then return 0 end
-    return rec.ilvl - (rec.was and rec.was.ilvl or 0)
+    local was = rec.was and rec.was.ilvl
+    if type(rec.ilvl) ~= "number" or type(was) ~= "number" then return nil end
+    return rec.ilvl - was
 end
 
 -- Whether an upgrade may open a plate of its own: a blue or better
@@ -270,14 +320,15 @@ function Upgrades.Opens(rec)
 end
 
 -- The best of `list`: the largest gain, then the better quality, then the
--- earlier ("prefer the best one (highest diff ilvl)").
+-- earlier ("prefer the best one (highest diff ilvl)"). A gain that did not
+-- read comes after every one that did.
 function Upgrades.Best(list)
     local best
     for _, rec in ipairs(list) do
         if not best then
             best = rec
         else
-            local a, b = Upgrades.Gain(rec), Upgrades.Gain(best)
+            local a, b = Upgrades.Gain(rec) or -math.huge, Upgrades.Gain(best) or -math.huge
             if a > b or (a == b and ((rec.quality or 0) > (best.quality or 0)
                 or ((rec.quality or 0) == (best.quality or 0) and rec.t < best.t))) then
                 best = rec

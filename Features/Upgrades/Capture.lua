@@ -32,9 +32,19 @@
 -- Put on. The worn slots (Upgrades.SLOTS) are read with the bags and on
 -- PLAYER_EQUIPMENT_CHANGED; the event's own payload is not relied on. A
 -- candidate found in a slot is put on: the first time is kept, with where
--- it was and what was in the slot before (the last thing read there this
--- session: a slot that reads empty for a moment is never "nothing was
--- worn", and neither is a piece taken off first).
+-- it was, what it took the place of and both item levels. What it took
+-- the place of is the last thing **of its own kind** worn in that slot
+-- (Upgrades.Kind, j.lastWorn), not whatever the slot held a moment before
+-- (the user, 16 Nov): a warrior who tanks puts a shield over their
+-- off-hand sword and back, and a sword found while tanking goes on over
+-- the shield; neither is the one replacing the other. Kept across
+-- sessions, and only ever written with what is worn (a slot that reads
+-- empty for a moment, or a piece taken off first, changes nothing). With
+-- nothing of its kind worn there before (an empty slot, a first shield, a
+-- first two-hander) there is nothing to measure it against, and it is
+-- given up: it is the measure from then on ("we wait for comparable item
+-- types"). So is one whose measure is still worn elsewhere (a ring moved
+-- to the other hand): it took nobody's place.
 --
 -- Worn. While a candidate is on, a clock runs; taken off, the seconds go
 -- onto the candidate (saved, so a logout or a weapon swapped for every
@@ -64,9 +74,9 @@
 -- dungeons'; SD_WORLD_SETTLED also the firsts', the profession caps' and
 -- the hunter's; SD_TRADE_COMPLETED also the firsts'; PLAYER_LOGOUT also
 -- Capture/Together.lua's. None of them keeps anything this reads, and
--- this writes only j.fitting, j.upgrades and a `gift_worn` row, which none
--- of them reads: every order is free. PLAYER_EQUIPMENT_CHANGED and the
--- bank's events have no other listener.
+-- this writes only j.fitting, j.upgrades, j.lastWorn and a `gift_worn`
+-- row, which none of them reads: every order is free.
+-- PLAYER_EQUIPMENT_CHANGED and the bank's events have no other listener.
 --
 -- Watching is the route's, as the firsts' is (ns.Journey.Kept).
 
@@ -87,10 +97,8 @@ end
 
 local watching = false
 -- The last reading: copies held by key, in the bags and worn together
--- (`held`), in the bags alone (`bagged`); and the last item read in each
--- worn slot this session, kept while the slot reads empty (`last`), with
--- the keys worn at that reading (`wearing`).
-local held, bagged, last, wearing = {}, {}, {}, {}
+-- (`held`), in the bags alone (`bagged`), and the keys worn (`wearing`).
+local held, bagged, wearing = {}, {}, {}
 -- The bank: whether its window is open, and its contents by key as last
 -- read while it was (nil where they do not read).
 local bankOpen, bank = false, nil
@@ -199,11 +207,19 @@ local function Bank()
     return read and counts or nil
 end
 
--- An item's level, where the client has it (it may not, for an item just
--- seen: this is asked only as an upgrade is confirmed, minutes later).
+-- An item's level, where the client has it. Asked as a candidate is put
+-- on, when the new piece and the one it replaces have both just been in
+-- the slot (the client has them then; an old piece sold before the
+-- minutes are up may be gone from its cache by the confirming), and again
+-- at the confirming for what did not read. The detailed level first, else
+-- the item's own (Pawn reads them in that order too).
 local function ItemLevel(link)
-    if type(link) ~= "string" or not (C_Item and C_Item.GetDetailedItemLevelInfo) then return nil end
-    local level = ns.Plain((C_Item.GetDetailedItemLevelInfo(link)))
+    if type(link) ~= "string" or not C_Item then return nil end
+    local level
+    if C_Item.GetDetailedItemLevelInfo then level = ns.Plain((C_Item.GetDetailedItemLevelInfo(link))) end
+    if not (type(level) == "number" and level > 0) and C_Item.GetItemInfo then
+        level = ns.Plain((select(4, C_Item.GetItemInfo(link))))
+    end
     return type(level) == "number" and level > 0 and level or nil
 end
 
@@ -292,8 +308,8 @@ local function Tick(j, on, now)
                 for _, item in pairs(on) do
                     if item.key == key then link = item.link end
                 end
-                Upgrades.Confirm(j, key, { link = link, ilvl = ItemLevel(link or cand.link),
-                    wasIlvl = ItemLevel(cand.on and cand.on.was) })
+                Upgrades.Confirm(j, key, { link = link, ilvl = not cand.on.ilvl and ItemLevel(link or cand.link) or nil,
+                    wasIlvl = not cand.on.wasIlvl and ItemLevel(cand.on.was) or nil })
             elseif not soonest or left < soonest then
                 soonest = left
             end
@@ -345,7 +361,7 @@ function Read(arm)
         -- Not watching: what was held is forgotten, as the route's own
         -- capture forgets (the clocks with it: seconds not yet written
         -- down are lost, never guessed).
-        watching, since, last, bank = false, {}, {}, nil
+        watching, since, bank = false, {}, nil
         return
     end
     local counts, items = Bags()
@@ -410,21 +426,28 @@ function Read(arm)
         if bankOpen then bank = banked end
 
         -- Put on: a candidate found in a slot. The first time is kept,
-        -- with what the slot held at the last reading of it (nothing, if
-        -- that was this very piece); every time, its clock runs.
+        -- measured against the last thing of its kind worn there; with
+        -- none, or with that one still worn, it is given up (the header).
+        -- Every time after, its clock runs.
         for _, slot in ipairs(Upgrades.SLOTS) do
             local item = on[slot]
             local cand = item and Upgrades.Candidate(j, item.key)
-            if cand then
-                if not cand.on then
-                    local before = last[slot]
+            if cand and not cand.on then
+                local kind = Upgrades.Kind(item, slot)
+                local was = Upgrades.Before(j, slot, kind)
+                local wasKey = was and Upgrades.Key(was)
+                if not was or wasKey == item.key or wornNow[wasKey] then
+                    Upgrades.Gone(j, item.key)
+                    since[item.key] = nil
+                    cand = nil
+                else
                     local spot = ns.Journey.Spot()
                     spot.zone = ns.Where().zone
-                    Upgrades.PutOn(j, item.key, { t = now, level = Level(), slot = slot,
-                        was = before and before.key ~= item.key and before.link or nil }, spot)
+                    Upgrades.PutOn(j, item.key, { t = now, level = Level(), slot = slot, kind = kind, was = was,
+                        ilvl = ItemLevel(item.link), wasIlvl = ItemLevel(was) }, spot)
                 end
-                since[item.key] = since[item.key] or now
             end
+            if cand then since[item.key] = since[item.key] or now end
         end
 
         -- Taken off: its seconds go onto the candidate.
@@ -433,14 +456,19 @@ function Read(arm)
                 since[key] = nil
                 if Upgrades.Wore(j, key, now - from) then
                     local cand = Upgrades.Candidate(j, key)
-                    Upgrades.Confirm(j, key, { ilvl = ItemLevel(cand.link), wasIlvl = ItemLevel(cand.on.was) })
+                    Upgrades.Confirm(j, key, { ilvl = not cand.on.ilvl and ItemLevel(cand.link) or nil,
+                        wasIlvl = not cand.on.wasIlvl and ItemLevel(cand.on.was) or nil })
                 end
             end
         end
     end
 
+    -- What is worn and no candidate is the measure of its kind in its slot
+    -- (a candidate becomes one when it is confirmed, Upgrades.Confirm).
+    for slot, item in pairs(on) do
+        if not Upgrades.Candidate(j, item.key) then Upgrades.Saw(j, slot, Upgrades.Kind(item, slot), item.link) end
+    end
     held, bagged, wearing = total, counts, wornNow
-    for slot, item in pairs(on) do last[slot] = item end
     Tick(j, on, now)
 end
 
@@ -535,7 +563,7 @@ end)
 -- is then read afresh), and the clocks.
 ns._test.Upgrades = {
     Forget = function()
-        watching, held, bagged, last, wearing, since, waiting = false, {}, {}, {}, {}, {}, false
+        watching, held, bagged, wearing, since, waiting = false, {}, {}, {}, {}, false
         bankOpen, bank, windows, lastTrade, said, made = false, nil, {}, nil, {}, {}
     end,
     Since = function() return since end,

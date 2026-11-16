@@ -63,6 +63,18 @@ local WHITE = Link(6075, "Plain Vest")
 local BELT = Link(6076, "Girdle of the Whale", GREEN, 1200)
 local BOOTS = Link(6077, "Marsh Boots", GREEN)
 local HELM = Link(6078, "Bog Helm", GREEN)
+-- What the character wears before the diary looks, in every slot the
+-- tests put something new into: an upgrade is measured against the last
+-- thing of its kind worn there, and over nothing there is none.
+local OLD_BELT = Link(6090, "Frayed Belt")
+local OLD_BOOTS = Link(6091, "Frayed Shoes")
+local OLD_HELM = Link(6092, "Frayed Cap")
+local OLD_RING = Link(6093, "Copper Band")
+local OLD_CLOAK = Link(6094, "Frayed Cloak")
+for id, loc in pairs({ [6090] = "INVTYPE_WAIST", [6091] = "INVTYPE_FEET", [6092] = "INVTYPE_HEAD",
+    [6093] = "INVTYPE_FINGER", [6094] = "INVTYPE_CLOAK" }) do
+    mock.itemInfo[id] = { classID = 4, subclassID = 1, equipLoc = loc }
+end
 for id, loc in pairs({ [1423] = "INVTYPE_WRIST", [6070] = "INVTYPE_WRIST", [6071] = "INVTYPE_WRIST",
     [6072] = "INVTYPE_FINGER", [6449] = "INVTYPE_CLOAK", [6073] = "INVTYPE_BODY", [6075] = "INVTYPE_CHEST",
     [6076] = "INVTYPE_WAIST", [6077] = "INVTYPE_FEET", [6078] = "INVTYPE_HEAD" }) do
@@ -71,7 +83,7 @@ end
 mock.itemInfo[6074] = { classID = 2, subclassID = 20, equipLoc = "INVTYPE_2HWEAPON" }
 
 -- Item levels, as the client has them once an item is cached.
-local ILVL = { [1423] = 5, [6070] = 17, [6449] = 23, [6076] = 16 }
+local ILVL = { [1423] = 5, [6070] = 17, [6449] = 23, [6076] = 16, [6090] = 10 }
 _G.C_Item.GetDetailedItemLevelInfo = function(link)
     return ILVL[tonumber(tostring(link):match("item:(%d+)"))]
 end
@@ -134,6 +146,9 @@ Section("what was had before the diary looked never counts")
 
 -- Two sets, both old: one worn, one in the bags.
 mock.equipped[9] = { link = OLD_BRACERS, quality = 1 }
+for slot, link in pairs({ [6] = OLD_BELT, [8] = OLD_BOOTS, [1] = OLD_HELM, [11] = OLD_RING, [15] = OLD_CLOAK }) do
+    mock.equipped[slot] = { link = link, quality = 1 }
+end
 Put(1, OLD_SET, 2)
 mock.fire("PLAYER_ENTERING_WORLD")
 local j = ns.db.journey[SELF.guid]
@@ -242,8 +257,8 @@ Pass(15)
 up = Upgrades.List(j)[2]
 Check(up, "two minutes in two goes are no upgrade")
 Eq(up.t, first, "dated at the first put-on, not the second")
-Eq(up.was, nil, "an empty slot was replaced")
-Eq(Upgrades.Gain(up), 16, "over an empty slot the gain is the whole level")
+Eq(up.was and up.was.link, OLD_BELT, "what it took the place of")
+Eq(Upgrades.Gain(up), 6, "its gain")
 
 --------------------------------------------------------------------------
 Section("the seconds are kept across a logout, and time away is not play")
@@ -266,7 +281,7 @@ Eq(#Upgrades.List(j), 2, "an upgrade ten seconds early, after a login")
 Pass(15)
 Eq(#Upgrades.List(j), 3, "worn on over a logout, it is no upgrade")
 Eq(Upgrades.List(j)[3].ilvl, nil, "an item level the client did not give")
-Eq(Upgrades.Gain(Upgrades.List(j)[3]), 0, "with no level read the gain is nothing")
+Eq(Upgrades.Gain(Upgrades.List(j)[3]), nil, "with no level read there is a gain")
 
 --------------------------------------------------------------------------
 Section("put on or gone out of sight")
@@ -470,6 +485,165 @@ Eq(up.from, "trade", "a forgotten giver's gift is no gift")
 Eq(Upgrades.Candidate(j, "6080:0").guid, nil, "a forgotten giver is still on the candidate")
 
 --------------------------------------------------------------------------
+Section("measured against the last thing of its own kind")
+
+-- A warrior's hands (the user, 16 Nov): two old swords, and an old
+-- shield put on to tank. Each item to the bags' slot `bag` and from there
+-- into `slot`, what was there going to the bags, as the client does it.
+local SWORD_A, SWORD_B = Link(7001, "Notched Sword"), Link(7002, "Rusty Sword")
+local OLD_SHIELD, SHIELD = Link(7003, "Battered Buckler"), Link(7004, "Ironbound Shield", GREEN)
+local SWORD_C, GREATSWORD, SWORD_E = Link(7005, "Keen Blade", GREEN), Link(7006, "Greatsword", GREEN),
+    Link(7007, "Fine Blade", GREEN)
+local RING_2, WRIST_X, WRIST_Y = Link(7008, "Silver Band", GREEN), Link(7009, "Spiked Bracers", GREEN),
+    Link(7010, "Studded Bracers", GREEN)
+for id, v in pairs({ [7001] = { 2, 7, "INVTYPE_WEAPON" }, [7002] = { 2, 7, "INVTYPE_WEAPON" },
+    [7003] = { 4, 6, "INVTYPE_SHIELD" }, [7004] = { 4, 6, "INVTYPE_SHIELD" }, [7005] = { 2, 7, "INVTYPE_WEAPON" },
+    [7006] = { 2, 8, "INVTYPE_2HWEAPON" }, [7007] = { 2, 7, "INVTYPE_WEAPON" }, [7008] = { 4, 0, "INVTYPE_FINGER" },
+    [7009] = { 4, 2, "INVTYPE_WRIST" }, [7010] = { 4, 2, "INVTYPE_WRIST" } }) do
+    mock.itemInfo[id] = { classID = v[1], subclassID = v[2], equipLoc = v[3] }
+end
+ILVL[7001], ILVL[7002], ILVL[7003], ILVL[7004], ILVL[7005], ILVL[7007], ILVL[7010] = 20, 20, 18, 26, 24, 25, 20
+local function Swap(slot, link, bag)
+    local old = mock.equipped[slot]
+    Put(bag, old and old.link or nil, old and old.quality)
+    Wear(slot, link, 2)
+    Bags()
+end
+local function Looted(bag, link)
+    mock.fire("LOOT_OPENED")
+    Put(bag, link, 2)
+    Bags()
+    mock.fire("LOOT_CLOSED")
+end
+local function Measure(slot, kind) return Upgrades.Before(j, slot, kind) end
+local count = #Upgrades.List(j)
+
+-- What the character had: put on before the diary looked.
+mock.fire("PLAYER_LOGOUT")
+Forget()
+mock.equipped[16] = { link = SWORD_A, quality = 1 }
+mock.equipped[17] = { link = SWORD_B, quality = 1 }
+Put(10, OLD_SHIELD)
+mock.fire("PLAYER_ENTERING_WORLD")
+mock.RunTimers()
+Eq(Measure(16, "one-hand"), SWORD_A, "the main hand's sword, worn at the first look, is no measure")
+local fitting = #j.fitting
+
+-- 1. Old gear swapped for a dungeon and back: nothing.
+Swap(17, OLD_SHIELD, 10)
+Pass(1800)
+Swap(17, SWORD_B, 10)
+Eq(#j.fitting, fitting, "old gear swapped made a candidate")
+Eq(#Upgrades.List(j), count, "old gear swapped made an upgrade")
+Eq(Measure(17, "shield"), OLD_SHIELD, "the old shield is no measure for shields")
+Eq(Measure(17, "one-hand"), SWORD_B, "the shield took the sword's place as the measure for swords")
+
+-- 2. A sword found while tanking, put on after the dungeon over the shield.
+Swap(17, OLD_SHIELD, 10)
+Looted(11, SWORD_C)
+Pass(1800)
+Put(11, nil)
+Swap(17, SWORD_C, 10)
+Pass(WORN + 5)
+local rec = Upgrades.List(j)[#Upgrades.List(j)]
+Eq(rec and rec.key, "7005:0", "the sword worn after the dungeon is no upgrade")
+Eq(rec and rec.was and rec.was.link, SWORD_B, "a sword put on over the shield took the shield's place")
+Eq(Upgrades.Gain(rec), 4, "the sword's gain over the sword")
+Eq(Measure(17, "one-hand"), SWORD_C, "the upgrade is not the measure from now")
+count = #Upgrades.List(j)
+
+-- 3. A new shield, worn only to tank: it takes the old shield's place.
+Looted(12, SHIELD)
+Put(12, nil)
+Swap(17, SHIELD, 12)
+Pass(1800)
+Swap(17, SWORD_C, 12)
+rec = Upgrades.List(j)[#Upgrades.List(j)]
+Eq(rec and rec.key, "7004:0", "a shield worn for a dungeon is no upgrade")
+Eq(rec and rec.was and rec.was.link, OLD_SHIELD, "a shield put on over the sword took the sword's place")
+Eq(Upgrades.Gain(rec), 8, "the shield's gain over the shield")
+count = #Upgrades.List(j)
+
+-- 4. A first two-hander: nothing of its kind before, no upgrade; it is
+-- the measure for two-handers from now.
+Looted(13, GREATSWORD)
+Put(13, nil)
+local offHand = mock.equipped[17]
+mock.equipped[17] = nil
+Put(14, offHand.link, offHand.quality)
+Swap(16, GREATSWORD, 13)
+Eq(Upgrades.Candidate(j, "7006:0"), nil, "a first two-hander is still a candidate")
+Pass(WORN + 5)
+Eq(#Upgrades.List(j), count, "a first two-hander is an upgrade")
+Eq(Measure(16, "two-hand"), GREATSWORD, "the first two-hander is no measure for two-handers")
+
+-- 5. A week with the two-hander, then back to swords with a new one in
+-- the off hand: it took the place of the last sword worn there.
+Login(7 * 86400)
+Looted(15, SWORD_E)
+Put(15, nil)
+Swap(16, SWORD_A, 13)
+Put(14, nil)
+Swap(17, SWORD_E, 14)
+Pass(WORN + 5)
+rec = Upgrades.List(j)[#Upgrades.List(j)]
+Eq(rec and rec.key, "7007:0", "the new off-hand sword is no upgrade")
+Eq(rec and rec.was and rec.was.link, SWORD_C, "it was not measured against the sword worn before the two-hander")
+count = #Upgrades.List(j)
+
+-- An empty finger: nothing to measure against.
+Looted(13, RING_2)
+Put(13, nil)
+Wear(12, RING_2, 2)
+Bags()
+Eq(Upgrades.Candidate(j, "7008:0"), nil, "a ring on an empty finger is still a candidate")
+Eq(Measure(12, "piece"), RING_2, "the ring on the empty finger is no measure there")
+
+-- A ring moved to the other hand is still worn: the new one took no
+-- one's place.
+local onLeft = mock.equipped[11]
+mock.equipped[11] = nil
+Wear(12, onLeft.link, onLeft.quality)
+Looted(13, Link(7011, "Gold Band", GREEN))
+mock.itemInfo[7011] = { classID = 4, subclassID = 0, equipLoc = "INVTYPE_FINGER" }
+Put(13, nil)
+Put(14, RING_2, 2)
+Wear(11, Link(7011, "Gold Band", GREEN), 2)
+Bags()
+Eq(Upgrades.Candidate(j, "7011:0"), nil, "a ring measured against one still worn is a candidate")
+Put(14, nil)
+Bags()
+
+-- A piece tried on and taken off again is never the measure.
+Looted(13, WRIST_X)
+Put(13, nil)
+Put(14, OLD_BRACERS)
+Wear(9, WRIST_X, 2)
+Bags()
+Pass(30)
+Put(14, WRIST_X, 2)
+Wear(9, OLD_BRACERS)
+Bags()
+Eq(Measure(9, "piece"), OLD_BRACERS, "a piece tried on is the measure")
+Looted(15, WRIST_Y)
+Put(15, nil)
+Wear(9, WRIST_Y, 2)
+Put(14, OLD_BRACERS)
+Bags()
+-- The old bracers' level is read as they are taken off: the client may
+-- have lost it by the time the minutes are up.
+ILVL[1423] = nil
+Pass(WORN + 5)
+ILVL[1423] = 5
+rec = Upgrades.List(j)[#Upgrades.List(j)]
+Eq(rec and rec.key, "7010:0", "setup: the bracers are no upgrade")
+Eq(rec and rec.was and rec.was.link, OLD_BRACERS, "measured against a piece only tried on")
+Eq(Upgrades.Gain(rec), 15, "the old piece's level, read at the put-on, was lost")
+Put(13, nil)
+Put(14, nil)
+Bags()
+
+--------------------------------------------------------------------------
 Section("which one an entry leads with")
 
 local function Rec(t, quality, level, ilvl, was)
@@ -485,6 +659,7 @@ Eq(Upgrades.Best({ a, b, c }), b, "the largest gain does not lead")
 Eq(Upgrades.Best({ a, Rec(150, 3, 12, 30, 25) }).quality, 3, "at the same gain, the better quality does not lead")
 Eq(Upgrades.Best({ Rec(150, 2, 12, 30, 25), a }), a, "at the same gain and quality, the earlier does not lead")
 Eq(Upgrades.Best({}), nil, "the best of none")
+Eq(Upgrades.Best({ Rec(100, 4, 12, 30), a }), a, "a gain that did not read led over one that did")
 
 local k = { upgrades = { a, b, c, Rec(5000, 2, 30, 40, 30), Rec(5100, 2, 30, 42, 41) } }
 local lead, pieces = Upgrades.Split(k, 0, 1000)
