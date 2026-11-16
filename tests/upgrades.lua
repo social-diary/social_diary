@@ -61,7 +61,7 @@ local SHIRT = Link(6073, "Fine Green Shirt", GREEN)
 local POLE = Link(6074, "Lucky Fishing Pole", GREEN)
 local WHITE = Link(6075, "Plain Vest")
 local BELT = Link(6076, "Girdle of the Whale", GREEN, 1200)
-upgrlocal BOOTS = Link(6077, "Marsh Boots", GREEN)
+local BOOTS = Link(6077, "Marsh Boots", GREEN)
 local HELM = Link(6078, "Bog Helm", GREEN)
 -- What the character wears before the diary looks, in every slot the
 -- tests put something new into: an upgrade is measured against the last
@@ -581,10 +581,9 @@ Eq(Measure(16, "two-hand"), GREATSWORD, "the first two-hander is no measure for 
 -- the off hand: it took the place of the last sword worn there.
 Login(7 * 86400)
 Looted(15, SWORD_E)
-Put(15, nil)
 Swap(16, SWORD_A, 13)
 Put(14, nil)
-Swap(17, SWORD_E, 14)
+Swap(17, SWORD_E, 15)
 Pass(WORN + 5)
 rec = Upgrades.List(j)[#Upgrades.List(j)]
 Eq(rec and rec.key, "7007:0", "the new off-hand sword is no upgrade")
@@ -642,6 +641,41 @@ Eq(Upgrades.Gain(rec), 15, "the old piece's level, read at the put-on, was lost"
 Put(13, nil)
 Put(14, nil)
 Bags()
+
+--------------------------------------------------------------------------
+Section("a swap read half done")
+
+-- Equipping from the bags, the client changes the bag slot and the worn
+-- slot one at a time; PLAYER_EQUIPMENT_CHANGED may read between the two,
+-- with the new piece nowhere (seen in the client, 16 Nov). Only the
+-- bags' own update, which follows, tells what came and went.
+local LEGS_OLD = Link(7020, "Hunting Trousers", GREEN)
+local LEGS_NEW = Link(7021, "Scouting Trousers", GREEN)
+mock.itemInfo[7020] = { classID = 4, subclassID = 2, equipLoc = "INVTYPE_LEGS" }
+mock.itemInfo[7021] = { classID = 4, subclassID = 2, equipLoc = "INVTYPE_LEGS" }
+Swap(7, LEGS_OLD, 16)
+Put(16, nil)
+Bags()
+count = #Upgrades.List(j)
+Looted(16, LEGS_NEW)
+Check(Upgrades.Candidate(j, "7021:0"), "setup: the new trousers are no candidate")
+-- Half done: the old pair is in the bag slot, the new one not yet worn.
+Put(16, LEGS_OLD, 2)
+mock.fire("PLAYER_EQUIPMENT_CHANGED", 7, true)
+Check(Upgrades.Candidate(j, "7021:0"), "a piece read nowhere mid-swap was given up")
+-- Done.
+Wear(7, LEGS_NEW, 2)
+Bags()
+Pass(WORN + 5)
+rec = Upgrades.List(j)[#Upgrades.List(j)]
+Eq(#Upgrades.List(j), count + 1, "the trousers swapped in are no upgrade")
+Eq(rec and rec.was and rec.was.link, LEGS_OLD, "they were not measured against the pair taken off")
+-- And an old piece read nowhere mid-swap does not come back as arriving.
+Put(16, LEGS_NEW, 2)
+mock.fire("PLAYER_EQUIPMENT_CHANGED", 7, true)
+Wear(7, LEGS_OLD, 2)
+Bags()
+Eq(Upgrades.Candidate(j, "7020:0"), nil, "an old piece read nowhere mid-swap became a candidate")
 
 --------------------------------------------------------------------------
 Section("which one an entry leads with")

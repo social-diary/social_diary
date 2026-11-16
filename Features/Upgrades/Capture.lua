@@ -258,6 +258,30 @@ end
 -- Old gear returning, which is no arrival.
 local RETURNING = { buyback = true, returned = true }
 
+-- Debug lines (/sd debug): what capture made of each arrival and each
+-- piece put on, at once, not only when the two minutes are up. For the
+-- in-client rounds; a player never sees them.
+local function Note(msg, ...)
+    if not ns.DebugOn() then return end
+    local args = { ... }
+    for i = 1, select("#", ...) do
+        if type(args[i]) ~= "number" then args[i] = tostring(args[i]) end
+    end
+    ns.Debug("upgrades: " .. msg, unpack(args, 1, select("#", ...)))
+end
+
+-- "12 > 16 (+4)", "? > 16": the item levels as they read.
+local function Levels(was, now)
+    local gain = type(was) == "number" and type(now) == "number" and (" (%+d)"):format(now - was) or ""
+    return ("%s > %s%s"):format(was or "?", now or "?", gain)
+end
+
+-- Seconds worn so far of the two minutes, the running clock counted.
+local function SoFar(cand, now)
+    local s = (cand.worn or 0) + (since[cand.key] and now - since[cand.key] or 0)
+    return ("%d/%ds"):format(s, T.worn)
+end
+
 -- Something said about an item as it came. A line after the letter or the
 -- buy-back it came by does not unsay them; a candidate made just before
 -- the word takes it, and is given up where the word says it was old gear.
@@ -276,6 +300,7 @@ local function Said(key, from)
             local cand = Upgrades.Candidate(j, key)
             local how = from == "push" and Handed(now) or from
             if cand and RETURNING[how] then
+                Note("%s was old gear coming back (%s): given up", cand.link, how)
                 Upgrades.Gone(j, key)
                 since[key] = nil
             elseif cand and how and cand.from ~= "trade" and cand.from ~= "mail" then
@@ -308,8 +333,10 @@ local function Tick(j, on, now)
                 for _, item in pairs(on) do
                     if item.key == key then link = item.link end
                 end
-                Upgrades.Confirm(j, key, { link = link, ilvl = not cand.on.ilvl and ItemLevel(link or cand.link) or nil,
+                local rec = Upgrades.Confirm(j, key, { link = link, ilvl = not cand.on.ilvl and ItemLevel(link or cand.link) or nil,
                     wasIlvl = not cand.on.wasIlvl and ItemLevel(cand.on.was) or nil })
+                if rec then Note("UPGRADE confirmed (worn %ds): %s over %s, ilvl %s", T.worn, rec.link, rec.was.link,
+                    Levels(rec.was.ilvl, rec.ilvl)) end
             elseif not soonest or left < soonest then
                 soonest = left
             end
@@ -379,6 +406,9 @@ function Read(arm)
         if not arm then return end
         since = {}
         Arm(j, counts, on, now)
+        local n = 0
+        for _ in pairs(counts) do n = n + 1 end
+        Note("watching from now: %d kinds of item already held count as old, %d candidates kept", n, #(j.fitting or {}))
     else
         local banked = bankOpen and Bank() or nil
         -- With the bank open, whether an item of `key` moved between it
@@ -390,40 +420,63 @@ function Read(arm)
             return ((banked[key] or 0) - (bank[key] or 0)) * way > 0
         end
 
-        -- Arrived: one more held than at the last reading.
-        for key, n in pairs(total) do
-            if n > (held[key] or 0) then
-                local cand = Upgrades.Candidate(j, key)
-                if Moved(key, -1) then
-                    if cand then cand.banked = nil end
-                elseif not cand and Upgrades.Counts(items[key]) then
-                    local from, guid = Came(key, now)
-                    if not RETURNING[from] and Upgrades.Arrived(j, items[key],
-                        { t = now, level = Level(), from = from, guid = guid }) then
-                        made[#made + 1] = { key = key, t = now }
+        -- Arrivals and departures are only told on a settled reading of
+        -- the bags (`arm`: their own update, or the world settled). On a
+        -- swap the client changes the slot and the bag one at a time, and
+        -- PLAYER_EQUIPMENT_CHANGED can read between the two: the item
+        -- read nowhere would be given up (or, back again, counted as
+        -- arriving). The bags' own update always follows.
+        if arm then
+            -- Arrived: one more held than at the last reading.
+            for key, n in pairs(total) do
+                if n > (held[key] or 0) then
+                    local cand = Upgrades.Candidate(j, key)
+                    if Moved(key, -1) then
+                        if cand then cand.banked = nil end
+                        Note("%s came out of the bank: no arrival", items[key] and items[key].link or key)
+                    elseif not cand and not Upgrades.Counts(items[key]) then
+                        local it = items[key]
+                        if it and type(it.quality) == "number" and it.quality >= 2 then
+                            Note("arrived %s: not gear that counts (%s)", it.link, it.equipLoc or "no slot")
+                        elseif it and type(it.quality) ~= "number" then
+                            Note("arrived %s: its quality did not read, not counted", it.link)
+                        end
+                    elseif not cand then
+                        local from, guid = Came(key, now)
+                        local link = items[key].link
+                        if RETURNING[from] then
+                            Note("%s came back (%s): no arrival", link, from)
+                        elseif Upgrades.Arrived(j, items[key], { t = now, level = Level(), from = from, guid = guid }) then
+                            made[#made + 1] = { key = key, t = now }
+                            Note("arrived %s (%s): waiting to be put on", link, from or "nothing said")
+                        else
+                            Note("arrived %s: already counted once, no candidate", link)
+                        end
                     end
                 end
             end
-        end
 
-        -- Gone: a candidate no longer held at all. Into the bank, it
-        -- stays one. One that was worn and now reads nowhere is left
-        -- alone (a slot may read empty for a moment); one that left the
-        -- bags is gone for good.
-        for key, n in pairs(held) do
-            if n > 0 and (total[key] or 0) == 0 then
-                local cand = Upgrades.Candidate(j, key)
-                if cand then
-                    if Moved(key, 1) then
-                        cand.banked = true
-                    elseif (bagged[key] or 0) > 0 or not wearing[key] then
-                        Upgrades.Gone(j, key)
-                        since[key] = nil
+            -- Gone: a candidate no longer held at all. Into the bank, it
+            -- stays one. One that was worn and now reads nowhere is left
+            -- alone (a slot may read empty for a moment); one that left the
+            -- bags is gone for good.
+            for key, n in pairs(held) do
+                if n > 0 and (total[key] or 0) == 0 then
+                    local cand = Upgrades.Candidate(j, key)
+                    if cand then
+                        if Moved(key, 1) then
+                            cand.banked = true
+                            Note("%s went into the bank: still a candidate", cand.link)
+                        elseif (bagged[key] or 0) > 0 or not wearing[key] then
+                            Note("%s left the bags (sold, traded, destroyed): given up", cand.link)
+                            Upgrades.Gone(j, key)
+                            since[key] = nil
+                        end
                     end
                 end
             end
+            if bankOpen then bank = banked end
         end
-        if bankOpen then bank = banked end
 
         -- Put on: a candidate found in a slot. The first time is kept,
         -- measured against the last thing of its kind worn there; with
@@ -432,20 +485,35 @@ function Read(arm)
         for _, slot in ipairs(Upgrades.SLOTS) do
             local item = on[slot]
             local cand = item and Upgrades.Candidate(j, item.key)
+            local newly = item and not wearing[item.key]
             if cand and not cand.on then
                 local kind = Upgrades.Kind(item, slot)
                 local was = Upgrades.Before(j, slot, kind)
                 local wasKey = was and Upgrades.Key(was)
                 if not was or wasKey == item.key or wornNow[wasKey] then
+                    Note("put on %s (slot %d, %s): NO upgrade, %s", item.link, slot, kind,
+                        not was and ("nothing of its kind worn there before; it is the measure from now")
+                        or wasKey == item.key and "the same item as the last one there"
+                        or ("the last of its kind there, %s, is still worn"):format(was))
                     Upgrades.Gone(j, item.key)
                     since[item.key] = nil
                     cand = nil
                 else
                     local spot = ns.Journey.Spot()
                     spot.zone = ns.Where().zone
+                    local ilvl, wasIlvl = ItemLevel(item.link), ItemLevel(was)
                     Upgrades.PutOn(j, item.key, { t = now, level = Level(), slot = slot, kind = kind, was = was,
-                        ilvl = ItemLevel(item.link), wasIlvl = ItemLevel(was) }, spot)
+                        ilvl = ilvl, wasIlvl = wasIlvl }, spot)
+                    Note("put on %s (slot %d, %s): UPGRADE over %s, ilvl %s; counts once worn %ds", item.link, slot,
+                        kind, was, Levels(wasIlvl, ilvl), T.worn)
                 end
+            elseif cand and newly then
+                Note("put on %s again: candidate, %s worn", item.link, SoFar(cand, now))
+            elseif newly then
+                Note("put on %s (slot %d): no candidate, %s", item.link, slot,
+                    Upgrades.Known(j, item.key) and "already counted once"
+                    or not Upgrades.Counts(item) and "below green or not gear"
+                    or "not seen arriving (held before, or a candidate given up)")
             end
             if cand then since[item.key] = since[item.key] or now end
         end
@@ -454,10 +522,14 @@ function Read(arm)
         for key, from in pairs(since) do
             if not wornNow[key] then
                 since[key] = nil
+                local cand = Upgrades.Candidate(j, key)
                 if Upgrades.Wore(j, key, now - from) then
-                    local cand = Upgrades.Candidate(j, key)
-                    Upgrades.Confirm(j, key, { ilvl = not cand.on.ilvl and ItemLevel(cand.link) or nil,
+                    local rec = Upgrades.Confirm(j, key, { ilvl = not cand.on.ilvl and ItemLevel(cand.link) or nil,
                         wasIlvl = not cand.on.wasIlvl and ItemLevel(cand.on.was) or nil })
+                    if rec then Note("UPGRADE confirmed (worn %ds): %s over %s, ilvl %s", T.worn, rec.link,
+                        rec.was.link, Levels(rec.was.ilvl, rec.ilvl)) end
+                elseif cand then
+                    Note("took off %s: %s worn, still a candidate", cand.link, SoFar(cand, now))
                 end
             end
         end
@@ -468,7 +540,8 @@ function Read(arm)
     for slot, item in pairs(on) do
         if not Upgrades.Candidate(j, item.key) then Upgrades.Saw(j, slot, Upgrades.Kind(item, slot), item.link) end
     end
-    held, bagged, wearing = total, counts, wornNow
+    if arm then held, bagged = total, counts end
+    wearing = wornNow
     Tick(j, on, now)
 end
 
