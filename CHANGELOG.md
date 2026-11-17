@@ -2,13 +2,17 @@
 
 ## [Unreleased]
 
+## [4.1.1]
+
+A small Update: the preset tags now speak your language, and Feign Death or healing yourself no longer leaves false deaths and _Close Calls_ in your diary.
+
 ### Changes
 
 - The preset tags now show in your language (thanks YaN9Yu96)
 
 ### Fixes
 
-- `Feign Death` does not result in false positive events anymore, e.g. `got killed by` (thanks JasonLudeli)
+- Feign Death no longer counts as a death (thanks JasonLudeli)
 - Healing yourself no longer records false _Close Calls_
 
 ## [4.1.0]
