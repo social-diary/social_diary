@@ -470,6 +470,7 @@ Features/Witnesses/Capture.lua
 Dev/Art.lua
 Dev/Diagnostics.lua
 Dev/LootProbe.lua
+Dev/CloseCallProbe.lua
 Dev/HandTest.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua

@@ -9,6 +9,7 @@
 ### Fixes
 
 - `Feign Death` does not result in false positive events anymore, e.g. `got killed by` (thanks JasonLudeli)
+- Healing yourself no longer records false _Close Calls_
 
 ## [4.1.0]
 
