@@ -152,6 +152,9 @@ ns.Locale.Add("esES", {
     ["Sightings"] = "Avistamientos",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Solo funciona con las placas de nombre activadas. No funciona en mazmorras, bandas ni campos de batalla.",
     ["Enable sightings in cities - performance warning:"] = "Activar avistamientos en ciudades (afecta al rendimiento):",
+    ["Auto-Add Players"] = "Añadir automáticamente",
+    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] = "Desactivado hasta que lo actives. Añade a alguien tras 5 minutos seguidos en grupo contigo (no en campos de batalla), o cuando haya pasado cerca de ti en 3 ocasiones distintas. Quien quites del diario se queda fuera.",
+    ["Sightings count only while “Notice who passes you in the open world” is on."] = "Los avistamientos solo cuentan si «Fijarse en quien pasa a tu lado en el mundo abierto» está activado.",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Abrir el diario",
     ["Opens the journal"] = "Abre el diario",
