@@ -436,6 +436,12 @@ for _, id in ipairs(LOCALES) do
     Section(id)
     local G = GrammarOf(id)
     if RULES[id] then RuleHolds(G, RULES[id], id) end
+    -- A line starts with a capital, wherever the script has them (a
+    -- pattern that never matched once left French all lower case, #36).
+    if id ~= "zhCN" then
+        Eq(G.Capital("a new belt"), "A new belt", id .. ": Capital lifts the first letter")
+        Eq(G.Capital("été"), G.Upper("é") .. "té", id .. ": and one outside ASCII")
+    end
     local oneAlone = OneAlone(G)
     local words = Extract.Locale(".", id)
     local unknown, wrong, missing, plural, lost = {}, {}, {}, {}, {}

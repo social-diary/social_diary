@@ -154,6 +154,9 @@ ns.Locale.Add("frFR", {
     ["Sightings"] = "Aperçus",
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Ne fonctionne que si les barres d’identité sont activées. Ne fonctionne pas en donjon, en raid ni en champ de bataille.",
     ["Enable sightings in cities - performance warning:"] = "Activer les aperçus en ville, attention aux performances :",
+    ["Auto-Add Players"] = "Ajout automatique",
+    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] = "Désactivé tant que tu ne l’actives pas. Ajoute quelqu’un après 5 minutes en groupe avec toi sans interruption (hors champs de bataille), ou dès que cette personne a été aperçue près de toi à 3 reprises. Toute personne que tu retires du journal reste à l’écart.",
+    ["Sightings count only while “Notice who passes you in the open world” is on."] = "Les aperçus ne comptent que si « Remarquer qui te croise dans le monde ouvert » est activé.",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Ouvrir le journal",
     ["Opens the journal"] = "Ouvre le journal",
