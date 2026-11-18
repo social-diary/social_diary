@@ -488,7 +488,10 @@ function OpenFull(mapID, i)
     local page = YourDiary.page
     if not (page and page.recap and mapID) then return end
     GameTooltip:Hide()
-    YourDiary.Unchoose(true)
+    -- (from the ticklist, on its own level: the ticklist stays on the left
+    -- page, and the way back, Full.lua's Back, is to its plates; the user's,
+    -- in the client, 18 Nov. Another level's map gives the left page back.)
+    if not (page.choosing and (i or page.open) == page.open) then YourDiary.Unchoose(true) end
     i = i or page.open
     page.open, page.mode, page.fullMap, page.runVisit = i, "full", mapID, nil
     Rebuild(true, i)
