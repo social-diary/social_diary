@@ -130,6 +130,14 @@ function CloseCalls.Tip(call, now)
     return CloseCalls.Tips({ call }, now)
 end
 
+-- A row of the ticklist ("Choose what's on this page", the mark's `label`):
+-- the creature and how low it left you, "Dun Garok Soldier, 1%". The health
+-- is what tells two fights with one creature apart, and the one thing worth
+-- keeping when the row is narrow; "health" itself the tooltip says.
+function CloseCalls.Label(call)
+    return Fmt(L["%1$s, %2$d%%##creature and health"], call.name or L["A close call"], call.pct or 0)
+end
+
 -- The card of the creature that nearly got you (Card.lua's SetFoe):
 -- under its chart, how many it was against, "fought against three"; ""
 -- against one ("fought" alone says nothing). And its tooltip.

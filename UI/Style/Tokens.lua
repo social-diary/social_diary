@@ -235,6 +235,10 @@ Style.FONT = {
     note = Font("SocialDiaryFontNote", FRIZ, 14, Style.INK_STRONG),
     -- A note on the page, as written: on the timeline and the profile.
     noteWritten = Font("SocialDiaryFontNoteWritten", NEUTON_ITALIC, 16, Style.INK_STRONG),
+    -- The same hand a size up, for a page's title written in it that must
+    -- lead the hand's own headings under it (Your Diary's ticklist,
+    -- UI/Journey/Choose.lua, over its zones in noteWritten).
+    noteWrittenLarge = Font("SocialDiaryFontNoteWrittenLarge", NEUTON_ITALIC, 20, Style.INK_STRONG),
     -- A note quoted under a name on a margin strip (UI/Paper/Strip.lua): the
     -- same hand a size down, so the name still leads.
     noteQuoted = Font("SocialDiaryFontNoteQuoted", NEUTON_ITALIC, 14, Style.INK),

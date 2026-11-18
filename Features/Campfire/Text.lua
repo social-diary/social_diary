@@ -87,6 +87,15 @@ function Campfire.Describe(fire)
     return Fmt(L["%1$s, %2$s"], place, ns.UI.Format.At(fire.t or 0, ns.Now()))
 end
 
+-- A row of the ticklist ("Choose what's on this page", the mark's `label`):
+-- the place alone, "Lushwater Oasis", or "A campfire" with none to name. The
+-- list's time column tells two sittings at one fire apart, so the menu's
+-- day and time (Describe) would only say it twice and cut the place short.
+function Campfire.Label(fire)
+    local sub = fire and fire.subZone
+    return type(sub) == "string" and sub ~= "" and sub or L["A campfire"]
+end
+
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
 -- campfire") found no room in the margin, so the words say it, last of
 -- everything and as short as the rest of the list (", and a campfire"),
