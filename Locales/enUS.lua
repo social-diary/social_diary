@@ -171,6 +171,7 @@ ns.Locale.Add("enUS", {
     ["%s%% health left"] = "%s%% health left",
     ["Down to %s%% health at worst"] = "Down to %s%% health at worst",
     ["%s close call|%s close calls##plural"] = "%s close call|%s close calls",
+    ["%1$s, %2$d%%##creature and health"] = "%1$s, %2$d%%",
     ["fought against %s"] = "fought against %s",
     ["Left you with %s%% health"] = "Left you with %s%% health",
     ["One more was in the fight|%s more were in the fight##plural"] = "One more was in the fight|%s more were in the fight",
@@ -851,7 +852,7 @@ ns.Locale.Add("enUS", {
     ["Leave this place out"] = "Leave this place out",
     ["Leave %1$s off this page"] = "Leave %1$s off this page",
     -- UI/Journey/Choose.lua
-    ["Three maps fit."] = "Three maps fit.",
+    ["Three maps fit a page."] = "Three maps fit a page.",
     ["All three maps hold what you chose. Leave something out first."] = "All three maps hold what you chose. Leave something out first.",
     ["%s came off to make room."] = "%s came off to make room.",
     ["Next in line"] = "Next in line",

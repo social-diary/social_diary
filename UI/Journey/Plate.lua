@@ -326,6 +326,14 @@ local function Clamp(v, lo, hi) return v < lo and lo or (v > hi and hi or v) end
 --            Where set it is used for every spot, a lone moment's too
 --            (a list of one); where nil, each moment's `tip` is told in
 --            turn.
+--   label   optional function(rec, m) → the moment's words as a row of a
+--            list beside its time ("Choose what's on this page", UI/Journey/
+--            Choose.lua): short, one line, never its day or time (the list
+--            has a column for that), the one thing that tells it apart kept
+--            (a close call's health). `rec` is the moment's record as the
+--            player may have edited it (Custom.Values), nil for none. Where
+--            nil, the list takes the kind's card's `describe`, else `tip`'s
+--            title.
 --   keep    optional: the plate field its marks are kept in, a list of
 --            { x, y (on the card), list (the moments on it), at = { px, py }
 --            (on the page, for a margin card's leader), arg (draw's) }:

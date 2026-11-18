@@ -10,7 +10,7 @@
 -- plates (Recap.Choices, Core/Chosen.lua), every zone is always open, and no
 -- row changes its height. A tick changes a row's box and ink, nothing else. Why a row is not on the page is its tooltip; what a
 -- tick did beyond its row (a map moved off to make room, a keep blocked) is
--- said once, on the fixed line under the cap line.
+-- said once, on the fixed line in the footer, beside "Done".
 --
 -- The cap line's three small frames are the three maps, top to bottom as they
 -- stand on the right page: red filled where a map holds the player's choice,
@@ -20,7 +20,9 @@
 -- clutter); a row on the page is in ink, and hovering links a row and its mark
 -- both ways: a row under the mouse rings its mark on its map (the card
 -- sheet's pencil ring); a mark under the mouse lights its rows
--- (Plate.Hovered).
+-- (Plate.Hovered). The meter is in that link too: a frame under the mouse
+-- lights the rows on its map, and a row under the mouse lights its map's
+-- frame (a zone's row, the frames of every map holding something of it).
 --
 -- A box has the four looks of Recap.Choices: the diary's pick a faded tick,
 -- the diary's leaving off an empty box, the player's keep a red tick in a red
@@ -38,8 +40,8 @@
 -- (Chosen.Tick); a zone's box does the same for the whole zone (showing
 -- anything: all of it left out; nothing: its best moment kept). The recap is
 -- built again, the right page redrawn, then the ticklist filled from the new
--- piece. A keep that cannot fit is blocked: the line under the cap line says
--- why in red, the box shakes, nothing is written.
+-- piece. A keep that cannot fit is blocked: the footer's line says why in
+-- red, the box and the cap line's frames shake, nothing is written.
 --
 -- Reached by the link under the open level's sittings (Left.lua's EntryItems,
 -- `choose`; YourDiary.Choose), left by "Done", the ribbon (the page turned to
@@ -69,18 +71,27 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 
 -- The ticklist's look, down from the left page's top as the entries are
 -- (HEAD): the level's rubric where the character's name stands (`rubric`, its
--- paraph and fading rule as an entry's, ENTRY), the title in the hand under it
--- (`title`), the cap line (`cap`: its three small frames, the maps, `frame` px
--- wide and `frameH` tall, `frameGap` apart, the words `capGap` past the last), the line under it (`note`, two lines high, always
--- there so the list never moves: what a tick did, or why it was blocked), and
--- the list from `list` down to `bottom` px above the page's foot, where "Done"
--- stands (`done`, its top that far above the foot, clear of the ribbons as the
--- entries are).
+-- paraph and fading rule as an entry's, ENTRY), the title in the hand a size
+-- up under it (`title`, FONT.noteWrittenLarge: it leads the zones' names in
+-- the hand), the cap line (`cap`: its three small frames, the maps, `frame` px
+-- wide and `frameH` tall, `frameGap` apart, the words `capGap` past the last),
+-- and the list from `list` (HEAD.list: where the entries begin, so the page
+-- doesn't jump as it turns into the ticklist) down to `bottom` px above the
+-- page's foot. Under the list the footer, as the link sheet's
+-- (UI/Paper/LinkSheet.lua): a rule fading at both ends (`foot.rule` px above
+-- the foot), the line saying what a tick did or why it was blocked at its left
+-- (`foot.note` px above the foot, two lines high, always there: `noteH`), and
+-- "Done" at its right in strong ink (its top `done` px above the foot, as
+-- before, clear of the ribbons as the entries are), `foot.gap` from the line.
+-- (The user's, 18 Nov, after the client round: the top was out of balance,
+-- an empty two-line slot under the cap line leaving a hole over the list, and
+-- Done too dim.)
 -- A zone's row: its box `box` px at `boxX`, its name in the hand `nameX` in,
 -- `place` px tall. A moment's row: `indent` px further in, its box `cardBox`,
--- its words in small type, `card` px tall; at its right the time. `gap` under a zone's last
--- row, so the next zone stands apart. No row has a second line: a row's
--- height never changes with its look.
+-- its words in small type, `card` px tall; at its right the time. `gap` under a
+-- zone's last row, so the next zone stands apart. No row has a second line: a
+-- row's height never changes with its look. A list too short to scroll lends
+-- its rows the scrollbar's width.
 -- The boxes are drawn by hand (Box): an outline a little off square, a tick
 -- that runs past the box's top as a quick hand's does, a cross, a dash (a
 -- zone partly on the page). The diary's in graphite (`faded`: its outline and
@@ -95,19 +106,34 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 -- px thick, a little longer than the words (`strikeOver`).
 -- `frames`: the cap line's frames' outline alpha and fill, the player's
 -- (`mine`, red, filled with red at `fill`), the diary's (`diary`, graphite,
--- a faint fill `diaryFill`), a map not there (`free`, an outline alone).
+-- a faint fill `diaryFill`), a map not there (`free`, a graphite outline
+-- alone, as faint as a row's box off the page, `faded.off`); `hot`, the
+-- outline's alpha of a frame lit (under the mouse, or a row of its map under
+-- the mouse).
+-- The meter as one quiet unit under the title (the user's, 18 Nov, after the
+-- title went up to 20 pt): `cap` leaves the title's descenders room; a
+-- frame 13 x 9 has a snapshot's shape (SNAPSHOT 176 x 124), so it reads as a
+-- map; `frameGap` 4 keeps three maps apart rather than one bar; the words
+-- `capGap` 8 past the last, their middle `capY` px above the frames' (Friz's
+-- line box holds its descenders under the words, so its middle sits low).
+-- The empty frame was ink at 0.5, darker than the diary's graphite: it
+-- read stronger than a map on the page. Now the three inks step down from
+-- the player's red through the diary's graphite to an outline barely there,
+-- in the same inks and alphas as the rows' boxes beside them; the red fill
+-- a wash (0.70) under its full outline, as a kept row's red box round its
+-- tick, not a solid block.
 -- `ring`: the pencil ring round a row's mark on its map (plate:SetRing, as
 -- UI/Journey/CardSheet.lua's: radius, dashes, ...), in the leaders' pencil.
--- `shake`: the box on a blocked tick, `amp` px either way, `times` there and
--- back over `secs`, dying away.
+-- `shake`: the box (and the cap line's frames) on a blocked tick, `amp` px
+-- either way, `times` there and back over `secs`, dying away.
 local CHOOSE = {
-    rubric = 20, title = 38, cap = 64, frame = 13, frameH = 10, frameGap = 3, capGap = 7, note = 84, noteH = 28,
-    list = 114, bottom = 42, done = 30,
-    box = 13, boxX = 1, nameX = 21, place = 23, indent = 18, cardBox = 10, card = 18, gap = 5,
+    rubric = 20, title = 40, cap = 70, frame = 13, frameH = 9, frameGap = 4, capGap = 8, capY = 1, noteH = 28,
+    list = HEAD.list, bottom = 70, done = 30, foot = { rule = 64, note = 58, gap = 10 },
+    box = 13, boxX = 1, nameX = 21, place = 23, indent = 18, cardBox = 10, card = 18, gap = 10,
     faded = { outline = 0.55, tick = 0.80, tickW = 1, off = 0.38 }, thin = 1, red = 0.95, bold = 1.8, edge = 1.25,
     off = { name = 0.72 },
     strikeW = 1.2, strikeOver = 3,
-    frames = { mine = 0.95, fill = 0.85, diary = 0.55, diaryFill = 0.30, free = 0.5 },
+    frames = { mine = 0.95, fill = 0.70, diary = 0.55, diaryFill = 0.25, free = 0.38, hot = 1 },
     ring = { r = 9, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 },
     shake = { amp = 2.5, times = 3, secs = 0.45 },
 }
@@ -118,7 +144,7 @@ YourDiary.CHOOSE = CHOOSE
 -- the cap line and the line under it are furniture.
 local WORDS = {
     title = L["Choose what's on this page"],
-    cap = L["Three maps fit."],
+    cap = L["Three maps fit a page."],
     blocked = L["All three maps hold what you chose. Leave something out first."],
     bumped = L["%s came off to make room."],
     done = L["Done"],
@@ -162,10 +188,13 @@ local function ZoneName(mapID)
     return Text.MapName(mapID) or L["A stop"]
 end
 
--- What a moment's row says: a person's name; a feature's card as its editor
--- describes it (Core/Custom.lua), else its mark's tooltip's title
--- (Plate.RegisterMark's `tip`); the route's own kinds in their words (a stop
--- and an arrival by their sub-zone, which is never a heading).
+-- What a moment's row says: a person's name; a feature's mark's short
+-- label for a list (Plate.RegisterMark's `label`: no day or time, the time
+-- column has them; the user's, 18 Nov, after "Tarren Mill, yesterday at…"
+-- and "Dun Garok Soldier, 1% h…" were cut short), else its card as its
+-- editor describes it (Core/Custom.lua), else its mark's tooltip's title
+-- (`tip`); the route's own kinds in their words (a stop and an arrival by
+-- their sub-zone, which is never a heading).
 local PEOPLE = { session = true, fight = true, note = true, first = true }
 
 local function CardLabel(m, now)
@@ -186,10 +215,13 @@ local function CardLabel(m, now)
     local spec = ns.Custom.Spec(m.kind)
     local field = ns.JourneyRecap.MOMENTS[m.kind] and ns.JourneyRecap.MOMENTS[m.kind].field
     local rec = field and m[field]
-    if spec and type(rec) == "table" then
-        return spec.describe and spec.describe(ns.Custom.Values(rec.customOf or rec)) or Capital(spec.label)
-    end
+    local values = type(rec) == "table" and ns.Custom.Values(rec.customOf or rec) or nil
     local mark = Plate.MARKS[m.kind]
+    local short = mark and mark.label and mark.label(values, m)
+    if type(short) == "string" and short ~= "" then return short end
+    if spec and values then
+        return spec.describe and spec.describe(values) or Capital(spec.label)
+    end
     local title = mark and mark.tip and mark.tip(m, now)
     if type(title) == "string" and title ~= "" then return title end
     return spec and Capital(spec.label) or Capital(m.kind)
@@ -355,22 +387,34 @@ end
 -- The rows
 --------------------------------------------------------------------------
 
-local Tick, RowInk
+local Tick, RowInk, LightFrames
+
+-- The maps (their places top to bottom, as Recap.Choices' `row.plate`) an
+-- item is on: a moment's its own, a zone's every one holding a row of it.
+local function MapsOf(item)
+    local maps = {}
+    local rows = item and (item.card and { item.card } or (item.zone and item.zone.rows)) or {}
+    for _, r in ipairs(rows) do
+        if r.on and r.plate then maps[r.plate] = true end
+    end
+    return maps
+end
 
 local function Hover(row, over)
     row.hot = over or nil
     RowInk(row)
     if over then RingOn(row.item) else RingOff() end
+    LightFrames(over and MapsOf(row.item) or nil)
 end
 
 local function BuildRow(list)
     local row = CreateFrame("Button", nil, list)
+    row.list = list
     row.placeBox = Box(row, CHOOSE.box)
     row.cardBox = Box(row, CHOOSE.cardBox)
     row.name = Style.Text(row, FONT.noteWritten)
     row.name:SetWordWrap(false)
     row.time = Style.Text(row, FONT.small)
-    row.time:SetPoint("TOPRIGHT", -2, -4)
     row.time:SetJustifyH("RIGHT")
     row.strike = row:CreateTexture(nil, "OVERLAY")
     row.strike:SetHeight(CHOOSE.strikeW)
@@ -430,7 +474,14 @@ local function UpdateRow(row, item)
     row.name:SetWidth(0)
     row.name:SetText(item.label)
     row.time:SetText(item.time or "")
-    local rowW = LEFT_W - SCROLLBAR_WIDTH - 2
+    -- A list too short to scroll has no scrollbar: its rows reach over the
+    -- bar's room (the words and the time, and the mouse with them).
+    local bar = row.list and row.list.bar
+    local lend = (bar and not bar:IsShown()) and SCROLLBAR_WIDTH or 0
+    row.time:ClearAllPoints()
+    row.time:SetPoint("TOPRIGHT", lend - 2, -4)
+    row:SetHitRectInsets(0, -lend, 0, 0)
+    local rowW = LEFT_W - SCROLLBAR_WIDTH - 2 + lend
     local right = card and ((row.time:GetUnboundedStringWidth() or 0) + 6) or 0
     local most = rowW - nameX - right - 4
     local nameW = row.name:GetUnboundedStringWidth() or 0
@@ -458,6 +509,20 @@ local function Light(keys)
     for _, row in ipairs(ch.list.rows or {}) do
         if row:IsShown() and row.item then RowInk(row) end
     end
+end
+
+-- A frame of the cap line's: what its map holds, as Light's keys (nil: none).
+local function KeysOn(k)
+    local page = YourDiary.page
+    local keys, any = {}, false
+    for _, zone in ipairs(page and page.choices and page.choices.zones or {}) do
+        for _, r in ipairs(zone.rows) do
+            if r.on and r.plate == k then
+                for _, key in ipairs(r.keys) do keys[key], any = true, true end
+            end
+        end
+    end
+    return any and keys or nil
 end
 
 -- A mark under the mouse (Plate.Hovered): the rows of what it stands for lit.
@@ -507,19 +572,35 @@ local function Frame(parent)
     return f
 end
 
--- `kind`: "mine" (red), "diary" (faded), or nil (no such map on the page).
-local function FrameLook(f, kind)
+-- `kind`: "mine" (red), "diary" (faded), or nil (no such map on the page);
+-- `hot`: lit (its outline at `frames.hot`).
+local function FrameLook(f, kind, hot)
     local FR = CHOOSE.frames
-    local c, edge, fill = Style.INK, FR.free, nil
+    local c, edge, fill = Style.GRAPHITE, FR.free, nil
     if kind == "mine" then
         c, edge, fill = Style.RUBRIC, FR.mine, FR.fill
     elseif kind == "diary" then
         c, edge, fill = Style.GRAPHITE, FR.diary, FR.diaryFill
     end
+    if hot and kind then edge = FR.hot end
     for _, t in ipairs(f.edges) do t:SetColorTexture(c[1], c[2], c[3], edge) end
     f.fill:SetColorTexture(c[1], c[2], c[3], fill or 0)
     f.fill:SetShown(fill ~= nil)
-    f.kind = kind
+    f.kind, f.hot = kind, (hot and kind) and true or nil
+end
+
+-- The frames of `maps` (a set of map places; nil: none) lit, the rest not.
+function LightFrames(maps)
+    local page = YourDiary.page
+    local ch = page and page.chooser
+    if not ch then return end
+    for k, f in ipairs(ch.frames) do FrameLook(f, f.kind, maps and maps[k]) end
+end
+
+-- A frame under the mouse: it lit, and the rows on its map with it.
+local function FrameHover(f, over)
+    LightFrames(over and { [f.index] = true } or nil)
+    Light(over and KeysOn(f.index) or nil)
 end
 
 local function Build(page)
@@ -547,36 +628,60 @@ local function Build(page)
     ch.rule:SetPoint("RIGHT", ch, "RIGHT", -2, 0)
     Style.Shade(ch.rule, "HORIZONTAL", R[1], R[2], R[3], ENTRY.ruleAlpha, 0)
 
-    ch.title = Style.Text(ch, FONT.noteWritten)
+    ch.title = Style.Text(ch, FONT.noteWrittenLarge)
     ch.title:SetPoint("TOPLEFT", 0, -CHOOSE.title)
     ch.title:SetText(WORDS.title)
 
+    -- The frames shake on a blocked tick (Shake: x, y from the page's
+    -- corner), so the words are placed from the page, not from a frame.
     ch.frames = {}
     for k = 1, 3 do
         local f = Frame(ch)
-        f:SetPoint("TOPLEFT", (k - 1) * (CHOOSE.frame + CHOOSE.frameGap), -CHOOSE.cap)
+        f.index = k
+        PlaceBox(f, (k - 1) * (CHOOSE.frame + CHOOSE.frameGap), -CHOOSE.cap)
+        f:EnableMouse(true)
+        f:SetScript("OnEnter", function(self) FrameHover(self, true) end)
+        f:SetScript("OnLeave", function(self) FrameHover(self, false) end)
         ch.frames[k] = f
     end
     local capX = 3 * (CHOOSE.frame + CHOOSE.frameGap) - CHOOSE.frameGap + CHOOSE.capGap
     ch.cap = Style.Text(ch, FONT.small)
-    ch.cap:SetPoint("LEFT", ch.frames[3], "RIGHT", CHOOSE.capGap, 0)
+    ch.cap:SetPoint("LEFT", ch, "TOPLEFT", capX, -(CHOOSE.cap + CHOOSE.frameH / 2) + CHOOSE.capY)
     ch.cap:SetWidth(LEFT_W - capX)
     ch.cap:SetJustifyH("LEFT")
-    ch.note = Style.Text(ch, FONT.small)
-    ch.note:SetPoint("TOPLEFT", 0, -CHOOSE.note)
-    ch.note:SetSize(LEFT_W - 4, CHOOSE.noteH)
-    ch.note:SetJustifyH("LEFT")
-    ch.note:SetJustifyV("TOP")
-    ch.note:SetWordWrap(true)
 
     local listH = BOOK_H - CHOOSE.list - CHOOSE.bottom
     ch.list = ns.UI.Journal.List(ch, ENTRY.unit, math.ceil(listH / ENTRY.unit), BuildRow, UpdateRow, LEFT_W,
         "TOPLEFT", 0, -CHOOSE.list)
     ch.list:SetNumRows(math.floor(listH / ENTRY.unit))
 
-    ch.done = Style.Link(ch, FONT.body, function() YourDiary.Unchoose() end)
-    ch.done:SetPoint("TOPLEFT", 0, -(BOOK_H - CHOOSE.done - 18))
+    -- The footer, as the link sheet's: the rule fading at both ends, the
+    -- line at its left (its foot on Done's, one line or two), Done at its
+    -- right in strong ink. (Check in the client: Done at the left page's
+    -- right foot must stay clear of the ribbons hanging there.)
+    local FOOT, INK = CHOOSE.foot, Style.INK
+    local half = (LEFT_W - 2) / 2
+    ch.footRule = {}
+    for i, alpha in ipairs({ { 0, Style.HAIRLINE }, { Style.HAIRLINE, 0 } }) do
+        local t = ch:CreateTexture(nil, "ARTWORK")
+        t:SetSize(half, 1)
+        t:SetPoint("TOPLEFT", (i - 1) * half, -(BOOK_H - FOOT.rule))
+        Style.Shade(t, "HORIZONTAL", INK[1], INK[2], INK[3], alpha[1], alpha[2])
+        ch.footRule[i] = t
+    end
+    ch.done = Style.Link(ch, FONT.strong, function() YourDiary.Unchoose() end)
+    ch.done:SetPoint("TOPRIGHT", -2, -(BOOK_H - CHOOSE.done - 18))
     ch.done:SetText(WORDS.done)
+    -- (its own ink, so the mouse leaving gives back strong ink, not the
+    -- link's usual)
+    local S = Style.INK_STRONG
+    ch.done:SetColor(S[1], S[2], S[3])
+    ch.note = Style.Text(ch, FONT.small)
+    ch.note:SetPoint("TOPLEFT", 0, -(BOOK_H - FOOT.note))
+    ch.note:SetSize(LEFT_W - 2 - ch.done:GetWidth() - FOOT.gap, CHOOSE.noteH)
+    ch.note:SetJustifyH("LEFT")
+    ch.note:SetJustifyV("BOTTOM")
+    ch.note:SetWordWrap(true)
     page.chooser = ch
     return ch
 end
@@ -652,8 +757,8 @@ local function Unchoose(quiet)
     end
 end
 
--- A row clicked: Chosen.Tick on it. Blocked, the line under the cap line
--- says why and the box shakes; else the recap is built again and the page
+-- A row clicked: Chosen.Tick on it. Blocked, the footer's line says why and
+-- the box and the frames shake; else the recap is built again and the page
 -- drawn again, staying on this piece (page.holdAt, as a card changed does),
 -- and the ticklist with it (RefreshJourneyPage calls Fill); a map moved off
 -- to make room is named on that line. The right page eases from the old
@@ -670,6 +775,7 @@ function Tick(row)
         page.chooseBlocked = true
         Fill()
         Shake(item.card and row.cardBox or row.placeBox)
+        for _, f in ipairs(page.chooser.frames) do Shake(f) end
         return
     end
     page.chooseBlocked = nil
