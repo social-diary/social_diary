@@ -159,6 +159,39 @@ end
 -- The run
 --------------------------------------------------------------------------
 
+-- The guard: a file that runs away (an endless loop, a table that never
+-- stops growing) ends the run with its name, instead of filling the
+-- machine's memory and swap. Checked every GUARD_STEP VM instructions;
+-- LuaJIT only calls a count hook in the interpreter, so the run keeps the
+-- JIT off (this suite is faster without it anyway: its code mostly aborts
+-- traces). `--max-mb` and `--max-sec` move the limits.
+local GUARD_STEP = 1000000
+local maxMB, maxSec = 1024, 120
+local guarded, startedAt
+
+local function Over()
+    local mb = collectgarbage("count") / 1024
+    if mb > maxMB then
+        collectgarbage(); collectgarbage()   -- garbage is not the file's fault
+        mb = collectgarbage("count") / 1024
+        if mb > maxMB then return ("used %.0f MB of Lua heap (limit %d MB, --max-mb)"):format(mb, maxMB) end
+    end
+    local secs = os.clock() - startedAt
+    if secs > maxSec then return ("ran %.0f s (limit %d s, --max-sec)"):format(secs, maxSec) end
+end
+
+-- Stops the whole run: an error could be swallowed by a pcall in the code
+-- under test, and a runaway file leaves nothing worth testing after it.
+local function Guard()
+    local why = Over()
+    if not why then return end
+    debug.sethook()
+    print(("  FAIL  %-16s %s"):format(guarded, why))
+    print(debug.traceback("        where it was:", 2))
+    print("\nRUN STOPPED BY THE GUARD")
+    os.exit(1)
+end
+
 local function Wanted(name, only)
     if #only == 0 then return true end
     for i = 1, #only do
@@ -176,27 +209,41 @@ function H.Run(dir, files, args)
     for i = 1, #(args or {}) do
         if args[i] == "-v" then verbose = true
         elseif args[i] == "--locale" then locale = args[i + 1]
-        elseif args[i - 1] ~= "--locale" then only[#only + 1] = args[i] end
+        elseif args[i] == "--max-mb" then maxMB = assert(tonumber(args[i + 1]), "--max-mb takes a number")
+        elseif args[i] == "--max-sec" then maxSec = assert(tonumber(args[i + 1]), "--max-sec takes a number")
+        elseif not (args[i - 1] == "--locale" or args[i - 1] == "--max-mb" or args[i - 1] == "--max-sec") then
+            only[#only + 1] = args[i]
+        end
     end
+
+    if jit then jit.off(); jit.flush() end
 
     mock = dofile(here .. "/wowmock.lua")
     CaptureChat()
-    -- The mock's GetLocale, put back before every file: a file that sets
-    -- another and fails before it restores it leaves the rest English.
-    local mockLocale = _G.GetLocale
+    -- Reset puts every global back as the mock made it, the mock's English
+    -- GetLocale among them; under --locale the client's language is part
+    -- of the fresh client, so it goes back on after every Reset, the ones
+    -- a file makes itself included.
+    local reset = mock.Reset
+    function mock.Reset()
+        reset()
+        if locale then _G.GetLocale = function() return locale end end
+    end
 
     local failed, ran = {}, 0
     for _, name in ipairs(files) do
         if Wanted(name, only) then
             ran = ran + 1
             mock.Reset()
-            if locale then _G.GetLocale = function() return locale end else _G.GetLocale = mockLocale end
             said, section = {}, nil
             local before = checks
 
             if verbose then print("=== " .. name .. ".lua ===") end
             local chunk = assert(loadfile(here .. "/" .. name .. ".lua"))
+            guarded, startedAt = name, os.clock()
+            debug.sethook(Guard, "", GUARD_STEP)
             local ok, err = xpcall(function() chunk(Context()) end, debug.traceback)
+            debug.sethook()
             local count = checks - before
 
             -- Under another locale an error from the test's own code is the
@@ -217,6 +264,10 @@ function H.Run(dir, files, args)
                 end
                 print(err)
             end
+            -- The file's copy of the addon is garbage once the next Reset
+            -- runs; collect now, so the next file starts from a small heap.
+            mock.Reset()
+            collectgarbage(); collectgarbage()
         end
     end
 
