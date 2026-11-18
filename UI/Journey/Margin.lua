@@ -420,11 +420,13 @@ local function MarginNote(plate, e, it, named)
             what = what, quote = quote,
             quoteLines = quoteMost, guid = guid, plain = stranger, rival = Rival(guid), onClick = ToPerson, tip = tip,
             seed = seed, fight = outcome and { outcome = outcome, g = g, plate = plate, key = seed .. ":fight" } or nil })
-        -- Their menu, the mouse's alone (CardSheet.Person: "Leave <name> off
-        -- this page", .claude/features/choose-page.md); a close-up's only, a
-        -- strip with a name to say (a stranger with none has no menu).
+        -- Their menu (CardSheet.Person: "Leave <name> off this page",
+        -- .claude/features/choose-page.md); a close-up's only, a strip with a
+        -- name to say (a stranger with none has no menu). A menu, not a form
+        -- (SetRight's `menu`): the pad's Y calls it with `pad` true, and it
+        -- opens on the pad's slip (Pad.Menu), never MenuUtil.
         if plate.plan and it.g.guid and Text.Short(it.g.guid) then
-            strip:SetRight(function() YourDiary.CardSheet.Person(strip, g) end, true)
+            strip:SetRight(function(pad) YourDiary.CardSheet.Person(strip, g, pad) end, true)
         end
         return strip
     end

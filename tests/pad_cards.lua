@@ -1,7 +1,9 @@
 -- Custom cards with the pad (UI/Journey/CardPad.lua, Y in UI/Journey/Pad.lua,
 -- CardSheet.PadRight; .claude/controller-plan.md, step 4c): Y on a card or its
--- mark opens its form, Y on a plate or another mark adds a card where the
--- player stands (or, off this map, at the mark; on the plate itself, nothing);
+-- mark opens its form; Y on a plate or another mark opens its menu on the
+-- pad's slip (the page's own lines, and "Add custom event..." first where the
+-- player stands, or, off this map, at the mark; on the plate itself no add),
+-- its add line the picker; Y on a person's strip their menu;
 -- the slip's controls are found and stepped, its lines written on with A, a
 -- person's names picked from; B backs out to the very place Y was pressed; the
 -- delete popup takes the pad from us; the mouse takes over.
@@ -94,6 +96,24 @@ local function Stand(group, test)
             return item
         end
     end
+end
+-- A close-up plate's Y opens its menu on the pad's slip (Pad.Menu: "Leave
+-- this place out" and "Choose what's on this page...", with "Add custom
+-- event..." first where a card can be added; choose-page.md, "Later: the
+-- gamepad"). Its lines, and a line picked with the D-pad and A.
+local ADD = ns.L["Add custom event..."]
+local function MenuLines()
+    local out = {}
+    for _, item in ipairs(Items("menu")) do out[#out + 1] = item.element.text end
+    return table.concat(out, " | ")
+end
+local function PickLine(text)
+    for _ = 1, 10 do
+        if At().element and At().element.text == text then break end
+        Press("PADDDOWN")
+    end
+    Eq(At().element and At().element.text, text, "setup: the menu's line")
+    Press("PAD1")
 end
 -- Not on the plate's map unless a test says so.
 mock.mapID, mock.position = nil, nil
@@ -205,16 +225,24 @@ Check(not Sheet(), "B did not put it away")
 Eq(At().key, onMark.key, "not back on the mark")
 
 --------------------------------------------------------------------------
-Section("off this map: not offered on the plate; at the mark's spot on a mark")
+Section("off this map: no add on the plate's menu; at the mark's spot on a mark")
 
 Press("PAD2")
 Eq(At().plate, 1, "setup: on the plate")
-Eq(Legend().PAD4, nil, "Y offered on a plate with the player elsewhere")
-Check(Press("PAD4"), "Y with nothing to do was taken from the game")
-Check(not Sheet(), "Y opened something with the player elsewhere")
+-- (the plate's menu still holds the page's own lines: Y opens it, no add)
+Eq(Legend().PAD4, "Open the menu", "Y's prompt on a close-up plate with the player elsewhere")
+Check(not Press("PAD4"), "Y on the plate went on to the game")
+Check(not Sheet(), "Y opened the picker with the player elsewhere")
+Check(ns.UI.Pad.Menu.IsOpen(), "Y on the plate did not open its menu")
+Check(not MenuLines():find(ADD, 1, true), "an add line with the player elsewhere: " .. MenuLines())
+Press("PAD2")
+Check(not ns.UI.Pad.Menu.IsOpen(), "B did not put the menu away")
+Eq(At().plate, 1, "not back on the plate from the menu")
 -- In an instance on the zone's map: no position given, the same.
 mock.mapID, mock.position, mock.inInstance = MAP, { x = 0.5, y = 0.5 }, true
-Eq(Legend().PAD4, nil, "Y offered in an instance")
+Press("PAD4")
+Check(not MenuLines():find(ADD, 1, true), "an add line in an instance")
+Press("PAD2")
 mock.mapID, mock.position, mock.inInstance = nil, nil, nil
 
 -- A mark that is not a card's (the close call's, its spot taken off) lends
@@ -223,8 +251,10 @@ Press("PAD1")
 local mark = Stand("marks", function(item) return item.key == onMark.key end)
 local spot = mark.frame.spot
 mark.frame.spot = nil
-Eq(Legend().PAD4, "Add a card here", "Y on a mark not offered with the player elsewhere")
+Eq(Legend().PAD4, "Open the menu", "Y on a mark not offered with the player elsewhere")
 Press("PAD4")
+Eq(MenuLines():match("^[^|]+"), ADD .. " ", "the add line not first on a mark's menu")
+PickLine(ADD)
 mark.frame.spot = spot
 Check(Sheet(), "Y on the mark did not open the picker")
 local where = CardSheet.View().where
@@ -241,8 +271,9 @@ Section("on this map: Y on the plate adds a card where the player stands")
 
 mock.mapID, mock.position = MAP, { x = 0.47, y = 0.53 }
 Eq(At().plate, 1, "setup: on the plate")
-Eq(Legend().PAD4, "Add a card here", "Y's prompt on a plate")
+Eq(Legend().PAD4, "Open the menu", "Y's prompt on a plate")
 Press("PAD4")
+PickLine(ADD)
 Check(Sheet(), "the picker not open")
 Check(CardSheet.View().list:IsShown(), "not the picker")
 Eq(At().group, "picker", "the pad not on the picker")
@@ -387,10 +418,11 @@ Plate().clip.scripts.OnMouseUp(Plate().clip, "RightButton")
 Check(not Sheet(), "a right click on the map opened the picker with no menu")
 
 --------------------------------------------------------------------------
-Section("Y on a person's strip: nothing (their menu is the mouse's)")
+Section("Y on a person's strip: their menu on the pad's slip")
 
--- (.claude/features/choose-page.md, Phase 4: "Leave <name> off this page"
--- has no way back on the pad, which has no ticklist yet)
+-- (.claude/features/choose-page.md, "Later: the gamepad": "Leave <name> off
+-- this page" on the pad too, now the ticklist is the pad's way back; the
+-- same generator as the mouse's, CardSheet.PersonGenerator, never MenuUtil)
 do
     local WHO = "Player-2222-0000CCCC"
     ns.Characters.Observe(WHO, { first = "Thessaly", surname = "Brookmere" })
@@ -405,17 +437,37 @@ do
         end
     end
     local strip = Strip()
-    Check(strip ~= nil and strip.onRight ~= nil and strip.rightMouse == true, "setup: their strip with the mouse's menu")
+    Check(strip ~= nil and strip.onRight ~= nil and strip.rightMenu == true, "setup: their strip with its menu")
     mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
     Check(Pad.Input.Active(), "setup: the pad in hand")
+    Press("PADDDOWN")  -- (the title lets go after the page fell open)
     Scope().focus:EnterGroup("page")
-    Check(Stand("page", function(item) return item.note == strip end) ~= nil, "setup: the pad on their strip")
-    Eq(Legend().PAD4, nil, "Y offered on a person's strip")
+    local onStrip = Stand("page", function(item) return item.note == strip end)
+    Check(onStrip ~= nil, "setup: the pad on their strip")
+    Eq(Legend().PAD4, "Open the menu", "Y's prompt on a person's strip")
     mock.contextMenu = nil
+    Check(not Press("PAD4"), "Y on a person's strip went on to the game")
+    Eq(mock.contextMenu, nil, "Y on a person's strip opened Blizzard's menu")
+    Check(Pad.Menu.IsOpen(), "Y on a person's strip did not open the pad's menu")
+    local leave = ns.Fmt(ns.L["Leave %1$s off this page"], "Thessaly")
+    Eq(MenuLines(), leave, "their menu's line")
+    Press("PAD2")
+    Check(not Pad.Menu.IsOpen(), "B did not put their menu away")
+    Eq(At().key, onStrip.key, "not back on their strip from the menu")
+    Eq(j.chosen, nil, "putting the menu away left them off")
     Press("PAD4")
-    Eq(mock.contextMenu, nil, "Y on a person's strip opened a menu")
-    Eq(j.chosen, nil, "Y on a person's strip left them off")
-    Check(Strip() ~= nil, "their strip gone after Y")
+    PickLine(leave)
+    Check(not Pad.Menu.IsOpen(), "the menu left up after the pick")
+    Check(Strip() == nil, "their strip still on the page after the pick")
+    local theirs = 0
+    for key, v in pairs(j.chosen or {}) do
+        if key:find(WHO, 1, true) then
+            Eq(v, "out", "left off: not out")
+            theirs = theirs + 1
+        end
+    end
+    Check(theirs > 0, "the pick wrote nothing")
+    j.chosen = nil
     j.marks = {}
     J.Touch()
 end

@@ -54,7 +54,10 @@
 --     form (CardSheet.Edit, as the mouse's); on a plate or any other mark
 --     a new card, from the picker, at where the player stands
 --     (CardSheet.PadRight, which says what it does where the player is not
---     on this map). The slip has its own scope over this one
+--     on this map); where its mouse menu holds the page's own lines (a
+--     close-up's "Leave this place out"), that menu on the pad's slip
+--     instead, its add line the picker's way in (below, "Choose what's on
+--     this page"). The slip has its own scope over this one
 --     (UI/Journey/CardPad.lua); put away, the pad is back where it was.
 -- No item to chat.
 --
@@ -113,6 +116,32 @@
 --   B: on a match opened from its evening, back to the overview onto its
 --     ticket; otherwise back to the left page's line.
 --
+-- "Choose what's on this page" (UI/Journey/Choose.lua; choose-page.md,
+-- "Later: the gamepad", 18 Nov): its link is a row of the left page like a
+-- sitting's (key "choose"); A opens the ticklist and the pad goes onto its
+-- first row. While it is open the left page is the ticklist (group `choose`,
+-- in place of `left`, one scope with the right page rather than a scope of
+-- its own, so the plates, their marks, X and Y stay exactly as they are):
+-- every zone and every moment's row in the order they stand, keyed by their
+-- moments ("zone:<mapID>", "row:<Chosen.Key>"), so a tick, which fills the
+-- list again and redraws the right page, keeps the pad on its row; then
+-- "Done". On a row the pad does what the mouse's hover does (its own
+-- OnEnter: the tooltip saying why it is off, its mark ringed on its map, its
+-- map's frame lit) and A what its click does (Tick: a blocked tick is taken
+-- too, and shakes); the prompt says which way it goes, from the row's state
+-- as the click decides (Chosen.Tick: on the page or kept leaves it out,
+-- otherwise keeps it). Right goes over to the plates, left from them comes
+-- back; on a plate its map's frame and its rows are lit (Choose.lua's
+-- LightMap). B, and A on Done, leave the ticklist, the pad on its link; B
+-- again closes the book. The ribbons turn the page, which closes it, as with
+-- the mouse.
+--   Y on a plate, where its mouse menu has the page's own lines (leave this
+--     place out, choose), opens that menu on the pad's slip (Pad.Menu, the
+--     same generator: CardSheet.PlaceGenerator); where it would only add a
+--     card, straight to the picker as before. Y on a person's strip opens
+--     theirs (CardSheet.Person, "Leave <name> off this page"): the ticklist
+--     is the pad's way back for both.
+--
 -- The list is virtual, so a row's frame is found as the pad lands on its
 -- item (Find, the group's `reveal`): scrolled into view, then its words.
 
@@ -167,6 +196,17 @@ local PROMPT = {
     line = { "PAD1", L["Look along the line"], main = true },
     backLine = { "PAD2", L["Back to the line"] },
     backStory = { "PAD2", L["Back to the match"] },
+    -- The ticklist (Choose.lua). A's words say which way a tick goes: in
+    -- or out, as its empty state says ("Tick a place to bring its map in").
+    -- Worded by /copywriter (18 Nov); Y's pairs with the slip's "Put the
+    -- menu away".
+    keepRow = { "PAD1", L["Bring it in"], main = true },
+    leaveRow = { "PAD1", L["Leave it out"], main = true },
+    keepPlace = { "PAD1", L["Bring this place in"], main = true },
+    leavePlace = { "PAD1", L["Leave this place out"], main = true },
+    done = { "PAD1", L["Done"], main = true },
+    backList = { "PAD2", L["Back to the list"] },
+    menu = { "PAD4", L["Open the menu"] },
 }
 
 -- The whole map with the pad: `speed` card px a second the right stick
@@ -179,6 +219,7 @@ local FULLPAD = { speed = 520, margin = 14 }
 -- "rubric" whichever level, so turning a level keeps the pad on it.
 local function KeyOf(data, zone)
     if data.title then return "rubric" end
+    if data.choose then return "choose" end
     if data.sitting then return "sitting:" .. data.sitting end
     if data.run then return "run:" .. tostring(data.run.id) end
     if data.bg then
@@ -190,7 +231,7 @@ end
 
 local function WordsOf(row, data)
     if data.title then return row.header end
-    if data.sitting or data.run or data.bg or data.zone then return row.zone end
+    if data.sitting or data.run or data.bg or data.zone or data.choose then return row.zone end
     return row.text
 end
 
@@ -219,6 +260,77 @@ local scope = {
     -- (the empty page has nothing to walk: the book's scope has the pad there)
     active = function() return ns.UI.JournalShowing("journey") and Road() and true or false end,
 }
+
+-- The left page's group: the ticklist's while it is open, else the level's.
+local function LeftGroup(page)
+    return page and page.choosing and page.chooser and "choose" or "left"
+end
+
+-- A ticklist item's key, made from its moments, never from where the
+-- plates put it: a tick groups the plates again, and the row stays.
+local function ChoiceKey(item)
+    if item.zone then return "zone:" .. tostring(item.zone.mapID) end
+    local row = item.card
+    local key = row.keys and row.keys[1] or ns.Chosen.Key(row.moment)
+    return "row:" .. tostring(key)
+end
+
+-- The pad lands on a ticklist row: scrolled into view, its words, its
+-- zone's name over it as the subheading (a zone's own row has none). The
+-- box holds back from the tick box left of the words (`room`, as a
+-- settings checkbox's).
+local CHOICE_ROOM = 6
+local function FindChoice(item)
+    local page = Page()
+    local ch = page and page.chooser
+    if not (ch and item.index) then return end
+    local list = ch.list
+    list:Reveal(item.index)
+    local row = list:RowOf(item.index)
+    item.frame = row
+    item.words = row and row.name or nil
+    local head = item.zoneIndex and list:RowOf(item.zoneIndex)
+    item.subhead = head and head.name or nil
+end
+
+-- The ticklist as the pad walks it (UI/Journey/Choose.lua; see the header):
+-- every zone and row, then Done.
+local function BuildChoose(f, page)
+    local ch = page.chooser
+    f:Group("choose", { mode = "list", reveal = FindChoice,
+        right = function() return page.mode == "full" and "full" or "page" end })
+    local zoneAt
+    for index, item in ipairs(ch.list.data or {}) do
+        if item.zone then zoneAt = index end
+        local entry = {
+            key = ChoiceKey(item), index = index, zoneIndex = item.card and zoneAt or nil, room = CHOICE_ROOM,
+            available = function() return ch:IsShown() end,
+        }
+        -- A: the row's own click (Choose.lua's Tick), on the row showing it.
+        entry.press = function()
+            ch.list:Reveal(index)
+            local row = ch.list:RowOf(index)
+            if row then row:Click("LeftButton") end
+        end
+        f:Add("choose", entry)
+    end
+    f:Add("choose", {
+        key = "done", frame = ch.done, done = true,
+        available = function() return ch:IsShown() end,
+        press = function() scope.Unchoose() end,
+    })
+end
+
+-- Out of the ticklist (B, or A on Done): as Done, the pad on its link.
+function scope.Unchoose()
+    local f = scope.focus
+    if f then
+        f:Remember("left", "choose")
+        f:Within("left")
+    end
+    YourDiary.Unchoose()
+    Pad.Refresh()
+end
 
 -- The plates shown on the right page now, in their order (none on a full
 -- page or a run's).
@@ -277,8 +389,14 @@ local function BuildRight(f, page)
                 outline = function()
                     return { anchor = page.right, corners = plate:Corners(), level = plate:GetFrameLevel() }
                 end,
-                -- (no hover look of its own: the outline is the whole of it)
-                enter = function() end, leave = function() end,
+                -- (no hover look of its own: the outline is the whole of it;
+                -- with the ticklist open its map's frame and rows are lit)
+                enter = function()
+                    if page.choosing and YourDiary.ChooseLightMap then YourDiary.ChooseLightMap(i) end
+                end,
+                leave = function()
+                    if page.choosing and YourDiary.ChooseLightMap then YourDiary.ChooseLightMap(nil) end
+                end,
                 press = function() if plate:HasMarks() then scope.EnterMarks(i) end end,
                 whole = function() return plate end,
             })
@@ -599,7 +717,9 @@ end
 function scope.build(f)
     scope.stick = nil
     f:Group("left", { mode = "list", reveal = Find })
-    f:Group("page", { mode = "spatial" })
+    -- (with the ticklist open, left off the right page comes back to it)
+    local open = Road()
+    f:Group("page", { mode = "spatial", left = open and open.choosing and "choose" or nil })
     f:Group("marks", { mode = "spatial" })
     f:Group("full", { mode = "spatial", reveal = RevealOnMap })
     f:Group("run", { mode = "spatial" })
@@ -625,6 +745,22 @@ function scope.build(f)
     local page = Road()
     if not page then return end
     BuildRight(f, page)
+    if LeftGroup(page) == "choose" then
+        BuildChoose(f, page)
+        if page.chooseLand and page.choices then
+            -- (just opened, and filled: onto its first row; a refresh
+            -- before Fill, as the right page is drawn, finds its rows not
+            -- there yet)
+            page.chooseLand = nil
+            f:Remember("choose", nil)
+            f:Within("choose")
+        elseif f.group == nil or f.group == "left" or f.group == "title" then
+            f:Within("choose")
+        end
+        return
+    end
+    page.chooseLand = nil
+    if f.group == "choose" then f:Within("left") end
     local rubric = page.rubrics[page.open]
     local zones = 0
     for index, data in ipairs(page.items) do
@@ -642,6 +778,11 @@ function scope.build(f)
                 press = function()
                     if data.later then
                         YourDiary.ToPerson(data.later.guid)
+                    elseif data.choose then
+                        -- (the ticklist: the pad lands on its list, Choose's
+                        -- chooseLand)
+                        YourDiary.OpenItem(data)
+                        Pad.Refresh()
                     else
                         scope.Cross(data)
                     end
@@ -735,10 +876,15 @@ function scope.back()
     local page = Road()
     local f = scope.focus
     if not (page and f) then return false end
+    local left = LeftGroup(page)
     if page.mode == "full" then
         local from = scope.from
         scope.from = nil
         YourDiary.FullBack()
+        -- (from the ticklist the plates are drawn again without the left
+        -- page's Rebuild, which refreshes: the groups found again here)
+        left = LeftGroup(page)
+        if left == "choose" then Pad.Refresh() end
         -- (its plates drawn again: among the marks of the one X was
         -- pressed on, where it was among them)
         if from and from.group == "marks" then
@@ -748,12 +894,17 @@ function scope.back()
         end
         scope.inPlate = nil
         -- (opened from the left page's zone row: back there)
-        if not from then return f:EnterGroup("left") or true end
+        if not from then return f:EnterGroup(left) or true end
         f:Remember("page", from.group == "page" and from.key or nil)
-        if not f:EnterGroup("page") then f:EnterGroup("left") end
+        if not f:EnterGroup("page") then f:EnterGroup(left) end
         return true
     end
     local at = f:Current()
+    if at and at.group == "choose" then
+        -- (the ticklist left, as Done: the pad on its link)
+        scope.Unchoose()
+        return true
+    end
     if at and at.group == "marks" then
         scope.inPlate = nil
         f:EnterGroup("page")
@@ -789,7 +940,7 @@ function scope.back()
         return true
     end
     if at and (at.group == "page" or at.group == "run" or at.group == "match") then
-        f:EnterGroup("left")
+        f:EnterGroup(left)
         return true
     end
     return false
@@ -839,9 +990,11 @@ local function Direction(key)
     end
 end
 
--- Y on what the pad stands on (`at`): what a right click there does, "edit"
--- or "add", or nil where it does nothing (a person's strip, a card no one may
--- change, a plate where the player is not); `dry` only says which.
+-- Y on what the pad stands on (`at`): what a right click there does, "edit",
+-- "add" or "menu" (the mouse's menu on the pad's slip: a plate's with the
+-- page's own lines, a person's strip's), or nil where it does nothing (a card
+-- no one may change, a plate with nothing to add or leave out); `dry` only
+-- says which.
 local function CardAt(at, dry)
     local page = Road()
     if not (page and at) then return nil end
@@ -856,11 +1009,15 @@ local function CardAt(at, dry)
         local plate = page.plates[at.plate]
         return plate and CardSheet.PadRight(plate, nil, dry)
     elseif at.group == "page" and at.note then
-        -- (a card says what its right click does: strip:SetRight, Margin.lua)
-        -- (not one that is the mouse's alone: a person's strip's menu, which
-        -- leaves them off with no way back on the pad)
-        local fn = not at.note.rightMouse and at.note.onRight
+        -- (a card says what its right click does: strip:SetRight, Margin.lua;
+        -- a menu, a person's strip's, is told it is the pad's: Pad.Menu)
+        local note = at.note
+        local fn = note.onRight
         if not fn then return nil end
+        if note.rightMenu then
+            if not dry then fn(true) end
+            return "menu"
+        end
         if not dry then fn() end
         return "edit"
     elseif at.group == "marks" then
@@ -880,8 +1037,9 @@ end
 local function Zoom(delta, other)
     return function()
         local plate = FullPlate(Road())
-        if not plate then return other and other() or false end
         local at = scope.focus and scope.focus:Current()
+        -- (the pad on the ticklist beside the whole map: its own A, the tick)
+        if not plate or (at and at.group == "choose") then return other and other() or false end
         local on = at and at.group == "full" and at.mx and at
         plate:ZoomAt(delta, on and on.mx, on and on.my)
         return true
@@ -896,7 +1054,7 @@ scope.keys = {
 
 local function CardPrompt(out, at)
     local did = CardAt(at, true)
-    if did then out[#out + 1] = did == "edit" and PROMPT.edit or PROMPT.add end
+    if did then out[#out + 1] = (did == "edit" and PROMPT.edit) or (did == "menu" and PROMPT.menu) or PROMPT.add end
 end
 
 function scope.legend()
@@ -916,6 +1074,17 @@ function scope.legend()
         out[#out + 1] = scope.from and PROMPT.backPlates or PROMPT.backLeft
         return out
     end
+    if at.group == "choose" then
+        if at.done then return { PROMPT.done, PROMPT.backLeft } end
+        -- (which way A goes, as the click decides: Chosen.Tick)
+        local item = page and page.chooser and page.chooser.list.data[at.index]
+        local row = item and item.row
+        local leaves = row and (row.on or row.look == "keep")
+        local a
+        if item and item.zone then a = leaves and PROMPT.leavePlace or PROMPT.keepPlace
+        else a = leaves and PROMPT.leaveRow or PROMPT.keepRow end
+        return { a, PROMPT.backLeft }
+    end
     if at.group == "page" then
         local out = {}
         if at.plate then
@@ -927,7 +1096,7 @@ function scope.legend()
             out[#out + 1] = PROMPT.person
         end
         CardPrompt(out, at)
-        out[#out + 1] = PROMPT.backLeft
+        out[#out + 1] = (page and page.choosing) and PROMPT.backList or PROMPT.backLeft
         return out
     end
     if at.group == "run" then

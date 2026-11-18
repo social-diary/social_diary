@@ -201,10 +201,10 @@ local function EntryItems(recap, now, fights)
             local _, at = OpenPieceOf(e)
             -- Under them (under the rubric, where the entry is drawn whole),
             -- the way to choose what is on the right page (UI/Journey/
-            -- Choose.lua): offered with the mouse only, where there is
-            -- something to choose (the gamepad is a later phase, the user's,
-            -- so nothing a pad reaches is mouse-only).
-            local choose = not solo and YourDiary.CanChoose(OpenPieceOf(e) or e)
+            -- Choose.lua), where there is something to choose; with the pad
+            -- too, where A opens it and the pad goes onto its list
+            -- (UI/Journey/Pad.lua, choose-page.md "Later: the gamepad").
+            local choose = YourDiary.CanChoose(OpenPieceOf(e) or e)
             local function Choose()
                 if choose then
                     Add({ choose = true, label = L["Choose what's on this page"], entry = i,

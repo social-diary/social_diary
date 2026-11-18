@@ -6,8 +6,8 @@
 -- the rows' plates following the grouping, "came off to make room"), a row left out, the block
 -- (the red line, the box and the frames shaking, nothing written), the page's
 -- layout (header, list, footer), the hover between a row
--- and its mark, Done, leaving by another level or the ribbon, and no link
--- with the pad in hand. Construction and logic only: how it looks is for the
+-- and its mark, Done, leaving by another level or the ribbon, and the
+-- ticklist kept as the hand changes (its pad: tests/pad_choose.lua). Construction and logic only: how it looks is for the
 -- client. Invented names only.
 
 local T = ...
@@ -673,7 +673,7 @@ page.chooser.done:Click()
 -- Someone's strip: their menu, the mouse's alone.
 local strip = PersonStrip()
 Check(strip ~= nil, "setup: the fight's person has a strip")
-Check(strip.onRight ~= nil and strip.rightMouse == true, "a person's strip has no menu, or the pad's Y takes it")
+Check(strip.onRight ~= nil and strip.rightMenu == true, "a person's strip has no menu")
 lines = Menu(function() strip.onRight() end)
 local leaveHer = ns.Fmt(ns.L["Leave %1$s off this page"], "Wrenna")
 Eq(leaveHer, "Leave Wrenna off this page", "the person's line in words")
@@ -702,19 +702,19 @@ for i = 1, page.layout do
     Eq(lines[MW.hidden], nil, "a place left out listed under \"Left out of this page\"")
 end
 
--- With the pad's Y, none of these: no menu, nothing written.
+-- The pad's Y: never Blizzard's menu; the plate's own lines on the pad's
+-- slip (Pad.Menu, tests/pad_choose.lua), nothing written by opening it.
 local was = Copy(j.chosen)
 mock.contextMenu = nil
-Eq(CARD.PadRight(page.plates[1], nil, true), nil, "the pad's Y offered on a plate (nothing to add here)")
-CARD.PadRight(page.plates[1], nil, false)
-Eq(mock.contextMenu, nil, "the pad's Y opened the mouse's menu")
+Eq(CARD.PadRight(page.plates[1], nil, true), "menu", "the pad's Y not the plate's menu (no add here)")
+Eq(mock.contextMenu, nil, "the pad's dry Y opened the mouse's menu")
 Check(Same(was, j.chosen or {}), "the pad's Y wrote a choice")
 j.chosen = nil
 J.Touch()
 ns.UI.RefreshJourneyPage(false)
 
 --------------------------------------------------------------------------
-Section("with the pad in hand: no link, and the ticklist given back")
+Section("with the pad in hand: the link offered, the ticklist kept open")
 
 YD.Choose()
 Check(page.choosing, "setup: the ticklist open")
@@ -722,13 +722,16 @@ local Pad = ns.UI.Pad
 mock.pad.ui, mock.pad.enabled, mock.pad.devices = true, true, { 1 }
 mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
 Check(Pad.Input.Active(), "setup: the pad in hand")
-Check(not page.choosing and not ch:IsShown(), "the ticklist stayed open with the pad picked up")
-Check(page.entries:IsShown(), "the left page not given back for the pad")
-Eq(LinkItem(), nil, "the link offered with the pad in hand")
+Check(page.choosing and ch:IsShown(), "the ticklist closed as the pad was picked up")
+Check(not page.entries:IsShown(), "the left page shown over the ticklist for the pad")
+ch.done:Click()
+Check(LinkItem() ~= nil, "the link not offered with the pad in hand")
 YD.Choose()
-Check(not page.choosing, "the ticklist opened with the pad in hand")
+Check(page.choosing, "the ticklist not opened with the pad in hand")
 mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
 Check(not Pad.Input.Active(), "setup: the mouse took over")
+Check(page.choosing, "the ticklist closed as the mouse took over")
+ch.done:Click()
 Check(LinkItem() ~= nil, "the link not back with the mouse")
 mock.pad.ui, mock.pad.enabled, mock.pad.devices = false, false, {}
 
