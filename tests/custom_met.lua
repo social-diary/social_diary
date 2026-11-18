@@ -264,7 +264,7 @@ do
     Check(person ~= nil, "an automatic strip beside them")
     -- (a person's strip has its own menu, the mouse's alone: "Leave <name>
     -- off this page", choose-page.md; never a card's editor)
-    Check(person.onRight == nil or person.rightMouse == true, "takes no right click of a card that had its strip")
+    Check(person.onRight == nil or person.rightMenu == true, "takes no right click of a card that had its strip")
     Check(Strip("with Old Tom").onRight ~= nil, "theirs still does")
     Check(Strip("with Brannoc").onRight ~= nil, "each of them")
     local count = page.notesWritten
@@ -277,7 +277,7 @@ do
     Eq(page.metWritten, 0, "none written")
     for i = 1, page.notePool.used do
         local strip = page.notePool[i]
-        Check(strip.onRight == nil or strip.rightMouse == true, "no strip of the pool keeps it")
+        Check(strip.onRight == nil or strip.rightMenu == true, "no strip of the pool keeps it")
     end
     j.custom = saved
     j.marks = {}

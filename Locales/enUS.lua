@@ -813,7 +813,6 @@ ns.Locale.Add("enUS", {
     ["See their story"] = "See their story",
     ["See where you saw them"] = "See where you saw them",
     ["Go to the tabs"] = "Go to the tabs",
-    ["Back to the list"] = "Back to the list",
     ["Change the note"] = "Change the note",
     ["Write about them"] = "Write about them",
     ["Back to the left page"] = "Back to the left page",
@@ -943,6 +942,10 @@ ns.Locale.Add("enUS", {
     ["Turn the roll over"] = "Turn the roll over",
     ["Look along the line"] = "Look along the line",
     ["Back to the line"] = "Back to the line",
+    ["Bring it in"] = "Bring it in",
+    ["Bring this place in"] = "Bring this place in",
+    ["Back to the list"] = "Back to the list",
+    ["Open the menu"] = "Open the menu",
     -- UI/Journey/Page.lua
     ["Your road is not being kept just now."] = "Your road is not being kept just now.",
     ["Keep it again"] = "Keep it again",
