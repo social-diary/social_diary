@@ -5,7 +5,8 @@
 -- they are laid: written (MarginNote), shared out along a row (Columns,
 -- Shared, ROW), laid down the boxes with their leaders (LayNotes), rolled
 -- back (Mark, Undo), and quoted notes kept shorter before anything is left
--- off (WriteMargin, QUOTES). `quoteMost` is this file's alone.
+-- off (WriteMargin, QUOTES), and what was left off kept (LeftOff).
+-- `quoteMost` is this file's alone.
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -132,6 +133,11 @@ end
 --   custom   optional function(it) → kind, record: the moment's kind and the
 --            record this card shows, when the player may change it
 --            (Core/Custom.lua): a right click on the card opens the editor.
+--   moments  optional function(it, plan) → the moments of the plate's plan
+--            (Recap.Plates') the item stands for, where neither its
+--            `custom` record nor a record it carries is one of theirs (a
+--            killer's card stands for the deaths at its cross). Only read
+--            for an item left off (`plate.leftOff`, WriteMargin)
 --   wants    optional function(it) → the width it would like in a row of
 --            fewer notes than boxes (Shared): a hunt's card its wide
 --            arrangement.
@@ -226,8 +232,35 @@ local function ItemsOf(spec, plate)
     return item and { item } or {}
 end
 
+local Covered
+
+-- When `it` became the player's, or nil where it is the diary's: a card
+-- they wrote or changed (its `custom` record, Core/Custom.lua), or one
+-- standing for a moment they kept on the page (Core/Chosen.lua's `keep`,
+-- Recap.Moments' m.chosen), its newest such. `kept` says whether the plan
+-- holds any kept moment at all, so a page with none asks no further.
+local function MineAt(plate, it, kept)
+    local spec = MARGIN[it.kind]
+    if spec and spec.custom then
+        local _, rec = spec.custom(it)
+        if type(rec) == "table" and (rec.customOf or rec.inserted) then return rec.t or 0 end
+    end
+    if not kept then return nil end
+    local at
+    for _, m in ipairs(Covered(plate, it)) do
+        if m.chosen == "keep" and (not at or (m.t or 0) > at) then at = m.t or 0 end
+    end
+    return at
+end
+
 -- The margin's items for `plate` in their order. Each { kind = "person"
 -- or a registered kind's, top, x, rank, ... }; a person's { g, index }.
+-- The player's go first, the newest first (custom-cards.md's "laid first,
+-- the newest first", and a card kept on the ticklist,
+-- .claude/features/choose-page.md): by kind alone a card kept that the
+-- margin had no room for stayed off it, however often it was ticked. The
+-- rest keep the kinds' order. With nothing of the player's on the plate the
+-- order is the kinds' as before.
 local function MarginOrder(plate, groups)
     local order = {}
     local function Add(item)
@@ -262,6 +295,19 @@ local function MarginOrder(plate, groups)
                 Add(item)
             end
         end
+    end
+    local kept = false
+    for _, m in ipairs(plate.plan and plate.plan.moments or NONE) do kept = kept or m.chosen == "keep" end
+    local mine = {}
+    for _, it in ipairs(order) do mine[it] = MineAt(plate, it, kept) end
+    if next(mine) then
+        table.sort(order, function(a, b)
+            local ma, mb = mine[a], mine[b]
+            if ma and mb and ma ~= mb then return ma > mb end
+            if (ma ~= nil) ~= (mb ~= nil) then return ma ~= nil end
+            return a.rank < b.rank
+        end)
+        for i, it in ipairs(order) do it.rank = i end
     end
     return order
 end
@@ -374,6 +420,12 @@ local function MarginNote(plate, e, it, named)
             what = what, quote = quote,
             quoteLines = quoteMost, guid = guid, plain = stranger, rival = Rival(guid), onClick = ToPerson, tip = tip,
             seed = seed, fight = outcome and { outcome = outcome, g = g, plate = plate, key = seed .. ":fight" } or nil })
+        -- Their menu, the mouse's alone (CardSheet.Person: "Leave <name> off
+        -- this page", .claude/features/choose-page.md); a close-up's only, a
+        -- strip with a name to say (a stranger with none has no menu).
+        if plate.plan and it.g.guid and Text.Short(it.g.guid) then
+            strip:SetRight(function() YourDiary.CardSheet.Person(strip, g) end, true)
+        end
         return strip
     end
     local spec = MARGIN[it.kind]
@@ -570,6 +622,65 @@ local function Undo(at)
     for i = #page.links, at.links + 1, -1 do page.links[i] = nil end
 end
 
+-- The moments of the plate's plan an item of the margin stands for: a
+-- person's, theirs on the plate; another kind's, as it says (`moments`),
+-- else those whose record is the one its card shows (`custom`) or one the
+-- item carries (it.call, it.hunt.rec, ...), an edited card's saved record
+-- being the same one.
+local function Same(a, b)
+    return type(a) == "table" and type(b) == "table" and (a == b or (a.customOf or a) == (b.customOf or b))
+end
+
+function Covered(plate, it)
+    if it.kind == "person" then return it.g and it.g.moments or {} end
+    local plan, spec = plate.plan, MARGIN[it.kind]
+    if not plan then return {} end
+    if spec and spec.moments then return spec.moments(it, plan) or {} end
+    local carried = {}
+    if spec and spec.custom then
+        local _, rec = spec.custom(it)
+        if type(rec) == "table" then carried[#carried + 1] = rec end
+    end
+    for key, v in pairs(it) do
+        if type(v) == "table" and key ~= "note" and key ~= "moments" then
+            carried[#carried + 1] = v
+            for _, w in pairs(v) do
+                if type(w) == "table" then carried[#carried + 1] = w end
+            end
+        end
+    end
+    local list, MOMENT = {}, ns.JourneyRecap.MOMENTS
+    for _, m in ipairs(plan.moments or {}) do
+        local kind = MOMENT[m.kind]
+        local rec = kind and kind.field and m[kind.field]
+        if rec then
+            for _, v in ipairs(carried) do
+                if Same(v, rec) then
+                    list[#list + 1] = m
+                    break
+                end
+            end
+        end
+    end
+    return list
+end
+
+-- What the margin had no room for, kept on the plate for the ticklist's "no
+-- room in the margin" (.claude/features/choose-page.md, Recap.Choices): the
+-- items of `order` past the first `n`, each with the moments it stands for
+-- (it.moments, Covered), on the plate (`leftOff`) and on its plan, which
+-- Recap.Choices reads. Laid again, the plate's last margin says.
+local function LeftOff(plate, order, n)
+    local off = {}
+    for i = n + 1, #order do
+        local it = order[i]
+        it.moments = Covered(plate, it)
+        off[#off + 1] = it
+    end
+    plate.leftOff = off
+    if plate.plan then plate.plan.leftOff = off end
+end
+
 -- A plate's margin (MarginOrder) laid down `boxes`: as much of it as there
 -- is room for, in its order of importance, the rest left off. What is
 -- shown is then laid again in the order of its marks' heights (across the
@@ -602,6 +713,7 @@ local function WriteMargin(plate, e, groups, boxes)
     end
     local shown = {}
     for i = 1, n do shown[i] = order[i] end
+    LeftOff(plate, order, n)
     if n > 1 then
         local sorted = {}
         for i, it in ipairs(shown) do sorted[i] = it end

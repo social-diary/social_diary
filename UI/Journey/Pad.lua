@@ -857,7 +857,9 @@ local function CardAt(at, dry)
         return plate and CardSheet.PadRight(plate, nil, dry)
     elseif at.group == "page" and at.note then
         -- (a card says what its right click does: strip:SetRight, Margin.lua)
-        local fn = at.note.onRight
+        -- (not one that is the mouse's alone: a person's strip's menu, which
+        -- leaves them off with no way back on the pad)
+        local fn = not at.note.rightMouse and at.note.onRight
         if not fn then return nil end
         if not dry then fn() end
         return "edit"

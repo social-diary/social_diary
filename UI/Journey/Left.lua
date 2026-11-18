@@ -199,6 +199,18 @@ local function EntryItems(recap, now, fights)
         if i == page.open then
             -- The sittings, oldest first, each one's runs under it.
             local _, at = OpenPieceOf(e)
+            -- Under them (under the rubric, where the entry is drawn whole),
+            -- the way to choose what is on the right page (UI/Journey/
+            -- Choose.lua): offered with the mouse only, where there is
+            -- something to choose (the gamepad is a later phase, the user's,
+            -- so nothing a pad reaches is mouse-only).
+            local choose = not solo and YourDiary.CanChoose(OpenPieceOf(e) or e)
+            local function Choose()
+                if choose then
+                    Add({ choose = true, label = L["Choose what's on this page"], entry = i,
+                        height = SITTINGS.row })
+                end
+            end
             if at then
                 for k, p in ipairs(e.pieces) do
                     Add({ sitting = k, label = Text.SittingLabel(p, now), aside = Text.Current(p), entry = i,
@@ -237,6 +249,10 @@ local function EntryItems(recap, now, fights)
                         end
                     end
                 end
+                Choose()
+                Add({ height = SITTINGS.after })
+            elseif choose then
+                Choose()
                 Add({ height = SITTINGS.after })
             end
             local opening, names = HasOpening(e), NamesOf(e)
@@ -442,6 +458,9 @@ local function OpenItem(item)
     elseif item.sitting then
         Style.PlaySound("pageTurn")
         YourDiary.OpenPiece(item.entry, item.sitting)
+    elseif item.choose then
+        Style.PlaySound("pageTurn")
+        YourDiary.Choose()
     elseif item.run then
         Style.PlaySound("pageTurn")
         YourDiary.OpenRun(item.run.id, item.entry)
@@ -472,7 +491,7 @@ end
 -- without doing it.
 local function Opens(item)
     if not item then return false end
-    if item.title or item.sitting or item.run or item.bg then return true end
+    if item.title or item.sitting or item.run or item.bg or item.choose then return true end
     return item.zone ~= nil and (item.mapID ~= nil or LiveRun(item) ~= nil)
 end
 
@@ -595,7 +614,7 @@ local function BuildEntryRow(list)
     -- marked (LEDGER.mark).
     local function Hot(self, on)
         local item = self.item
-        if item and (item.sitting or item.run or item.bg) then
+        if item and (item.sitting or item.run or item.bg or item.choose) then
             self.hot = on
             Marked(self, item)
             return
@@ -634,8 +653,10 @@ end
 local function UpdateEntryRow(row, item)
     local isTitle, isZone = item.title ~= nil, item.zone ~= nil
     local isSitting, isRun, isBg = item.sitting ~= nil, item.run ~= nil, item.bg ~= nil
-    -- (a battleground's line is set as a run's, its pennant for the door)
-    local isSub = isSitting or isRun or isBg
+    -- (a battleground's line is set as a run's, its pennant for the door;
+    -- the way to the ticklist as a sitting's, in small type)
+    local isChoose = item.choose ~= nil
+    local isSub = isSitting or isRun or isBg or isChoose
     for _, piece in ipairs(row.pennant) do piece:SetShown(isBg) end
     if isBg then isRun = true end
     row.header:SetShown(isTitle)
@@ -676,7 +697,7 @@ local function UpdateEntryRow(row, item)
     if isSub then
         -- A sitting's date in body type, a run's name in small; "so far"
         -- beside the one being played; cut short at the row's end.
-        row.zone:SetFontObject(isSitting and FONT.body or FONT.small)
+        row.zone:SetFontObject((isSitting and FONT.body) or (isChoose and FONT.faded) or FONT.small)
         row.zone:SetWidth(0)
         row.zone:SetText(item.label)
         row.so:SetText(item.aside or "")

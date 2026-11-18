@@ -494,8 +494,12 @@ do
     local w = plate.window
     local mx, my = w[1] * 0.3 + w[3] * 0.7, w[2] * 0.3 + w[4] * 0.7
     RightMap(plate, mx, my)
-    Eq(#mock.contextMenu.children, 1, "the menu has the one entry")
+    -- (under it the page's own choice, .claude/features/choose-page.md:
+    -- leave this place out, choose what's on this page)
+    Eq(#mock.contextMenu.children, 3, "the menu has the one entry and the page's choice")
     Eq(mock.contextMenu.children[1].text, "Add custom event...", "in the user's words")
+    Eq(mock.contextMenu.children[2].text, "Leave this place out", "the place's line under it")
+    Eq(mock.contextMenu.children[3].text, "Choose what's on this page...", "the ticklist's line last")
     Eq(plate.ringPoint, nil, "no ring before it is asked for")
     Check(mock.MenuClick("Add custom event..."), "offered")
     view = CardSheet.View()
@@ -848,14 +852,16 @@ do
     local zone = ns.ZoneOf
     ns.ZoneOf = function(id) return id + 1 end
     RightMap(plate, 0.42, 0.58)
-    Eq(mock.contextMenu, nil, "a spot on a map that is not a zone's is offered")
+    -- (the menu still holds the page's choice, .claude/features/choose-page.md:
+    -- the place left out, the ticklist; never a card to add)
+    Eq(mock.MenuClick("Add custom event..."), false, "a spot on a map that is not a zone's is offered")
     ns.ZoneOf = zone
-    -- Off the picture, with nothing hidden: no menu.
+    -- Off the picture, with nothing hidden: no card to add.
     plate.sheet.GetCenter = function() return 500, 400 end
     mock.pointer = { 500, 400 + plate.slot.h / 2 - 1 }
     mock.contextMenu = nil
     RightOn(plate.clip)
-    Eq(mock.contextMenu, nil, "the card's margin offers a card")
+    Check(mock.contextMenu == nil or not mock.MenuClick("Add custom event..."), "the card's margin offers a card")
     -- A plate with no close calls: the map's menu, and no error.
     local saved = j.closeCalls
     j.closeCalls = {}

@@ -648,9 +648,11 @@ function ns.UI.PaperStrip(parent, card)
 
     -- What a right click on it does, nil for nothing. Apart from SetNote: it
     -- is the page's to say (the margin's `custom`), not the card's, and a strip
-    -- of a shared pool is told again each time it is written.
-    function strip:SetRight(fn)
-        self.onRight = fn
+    -- of a shared pool is told again each time it is written. `mouse`: the
+    -- mouse's alone, the pad's Y not offered it (UI/Journey/Pad.lua's CardAt:
+    -- a person's strip left off the page, which the pad could not bring back).
+    function strip:SetRight(fn, mouse)
+        self.onRight, self.rightMouse = fn, fn ~= nil and mouse == true or nil
         self.link:EnableMouse(self.guid ~= nil or self.tip ~= nil or fn ~= nil)
     end
 
