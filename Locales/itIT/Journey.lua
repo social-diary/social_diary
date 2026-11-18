@@ -25,6 +25,20 @@ ns.Locale.Add("itIT", {
     ["Leave it out"] = "Escludilo",
     ["Undo my changes"] = "Annulla le mie modifiche",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] = "Eliminare questa scheda che hai scritto?\n\nSparisce dalla mappa e dalla pagina. L’operazione non si può annullare.",
+    ["Leave this place out"] = "Escludi questo luogo",
+    ["Choose what's on this page..."] = "Scegli cosa c’è in questa pagina…",
+    ["Leave %1$s off this page"] = "Togli %1$s da questa pagina",
+    -- UI/Journey/Choose.lua
+    ["Three places fit."] = "Ci stanno tre luoghi.",
+    ["Three places fit, and you've chosen three. Leave one out first."] = "Ci stanno tre luoghi e ne hai scelti tre. Togline prima uno.",
+    ["next in line"] = "in attesa",
+    ["no room"] = "non c’è posto",
+    ["too small for a plate of its own"] = "troppo poco per una tavola",
+    ["no room in the margin"] = "non c’è posto a margine",
+    ["left out by you"] = "per tua scelta",
+    ["made room for %s"] = "ha fatto posto per %s",
+    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
+    ["Arrived %s##zone"] = "Arrivo %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "I luoghi di ogni Level sono incollati qui:",
     ["Where you stayed a while, darker the longer."] = "Dove hai sostato un po’, più scuro quanto più a lungo.",
@@ -50,6 +64,8 @@ ns.Locale.Add("itIT", {
     ["The diary is not keeping this character's road just now, so there is nothing to tell here yet."] = "Al momento il diario non conserva la strada di questo personaggio, quindi non c’è ancora nulla da raccontare.",
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "Ancora niente della tua strada su questa mappa.",
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "Scegli cosa c’è in questa pagina",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "Clic sinistro per tornare indietro",
     ["%s to go back"] = "%s per tornare indietro",

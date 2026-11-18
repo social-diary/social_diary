@@ -22,6 +22,20 @@ ns.Locale.Add("zhCN", {
     ["Leave it out"] = "将其排除",
     ["Undo my changes"] = "撤销我的更改",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] = "删除你写的这张卡片吗？\n\n它将从地图和页面中移除，且无法撤销。",
+    ["Leave this place out"] = "排除此地",
+    ["Choose what's on this page..."] = "选择本页内容…",
+    ["Leave %1$s off this page"] = "从本页排除%1$s",
+    -- UI/Journey/Choose.lua
+    ["Three places fit."] = "最多可放3个地点。",
+    ["Three places fit, and you've chosen three. Leave one out first."] = "最多可放3个地点，你已选了3个。先排除一个。",
+    ["next in line"] = "候补",
+    ["no room"] = "没有空位",
+    ["too small for a plate of its own"] = "太小，不单独成图版",
+    ["no room in the margin"] = "页边没有空位",
+    ["left out by you"] = "你已排除",
+    ["made room for %s"] = "让位给%s",
+    ["%1$s, %2$s##zone and sub-zone"] = "%1$s，%2$s",
+    ["Arrived %s##zone"] = "已在%s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "每个等级的地点都粘在这里：",
     ["Where you stayed a while, darker the longer."] = "你停留过的地方，停留越久颜色越深。",
@@ -49,6 +63,8 @@ ns.Locale.Add("zhCN", {
     ["The diary is not keeping this character's road just now, so there is nothing to tell here yet."] = "日记目前还没有记录这个角色的路线，因此这里还没有可讲述的故事。",
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "这张地图上还没有你的路线。",
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "选择本页内容",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "左键点击返回",
     ["%s to go back"] = "%s返回",

@@ -182,6 +182,7 @@ local function DrawRight()
     -- again; with the pad down this does nothing)
     ns.UI.Pad.Refresh()
 end
+YourDiary.DrawRight = DrawRight
 
 --------------------------------------------------------------------------
 -- Construction and refresh
@@ -354,6 +355,9 @@ function OpenPiece(i, k)
     local page = YourDiary.page
     if not (page and page.recap and page.recap.entries[i]) then return end
     GameTooltip:Hide()
+    -- (another sitting opened: the ticklist gives the left page back,
+    -- UI/Journey/Choose.lua; Rebuild below builds it)
+    YourDiary.Unchoose(true)
     local e = page.recap.entries[i]
     local pieces = PiecesOf(e)
     if not (k and pieces[k]) then k = #pieces > 0 and #pieces or nil end
@@ -403,6 +407,7 @@ function OpenRun(id, i)
     local n, k = Holder(id, i or page.open)
     if not n then return end
     GameTooltip:Hide()
+    YourDiary.Unchoose(true)
     page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
     page.mode, page.fullMap, page.runVisit = "run", nil, id
     Rebuild(true, n)
@@ -444,6 +449,7 @@ function OpenMatch(id, i)
     local n, k = SessionHolder(function(p) return MatchOf(p, id) ~= nil end, i or page.open)
     if not n then return end
     GameTooltip:Hide()
+    YourDiary.Unchoose(true)
     page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
     page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "match", nil, nil, id, nil
     -- (a Warsong told by time opens on its story, not the board view it
@@ -462,6 +468,7 @@ function OpenMatches(key, i)
     local n, k = SessionHolder(function(p) return SessionOf(p, key) ~= nil end, i or page.open)
     if not n then return end
     GameTooltip:Hide()
+    YourDiary.Unchoose(true)
     page.open, page.piece, page.pieceOf = n, k, page.recap.entries[n]
     page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "matches", nil, nil, nil, key
     Rebuild(true, n)
@@ -476,6 +483,7 @@ function OpenFull(mapID, i)
     local page = YourDiary.page
     if not (page and page.recap and mapID) then return end
     GameTooltip:Hide()
+    YourDiary.Unchoose(true)
     i = i or page.open
     page.open, page.mode, page.fullMap, page.runVisit = i, "full", mapID, nil
     Rebuild(true, i)
@@ -504,6 +512,9 @@ function ns.UI.RefreshJourneyPage(opening)
     local on = ns.JourneyCapture.On()
     page.off:SetShown(route and not on)
     page.keep:SetShown(route and not on)
+    -- (the page turned to again, by its ribbon: the ticklist, if it was
+    -- open, gives the left page back; Choose.lua)
+    if opening or not route then YourDiary.Unchoose(true) end
     if not route then
         FillEmpty(page.empty, state == "on")
         page.recap = nil
@@ -540,6 +551,9 @@ function ns.UI.RefreshJourneyPage(opening)
     if changed or opening then
         Rebuild(not opening)
         DrawRight()
+        -- (the ticklist open: built again on the page just drawn, as it
+        -- must be after a tick, Choose.lua)
+        if page.choosing then YourDiary.FillChoose() end
     end
     page.fullView = nil
     if opening and page.rubrics[page.open] then page.entries:SetOffset(page.rubrics[page.open] - 1) end

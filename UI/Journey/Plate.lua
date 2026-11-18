@@ -1662,12 +1662,15 @@ local function New(parent, slot)
         local D = 0.7071
         for _, pool in ipairs(pools) do
             local e = pool.e
-            if pool.drawn and pool.deaths > 0 then
+            -- (less the deaths the player left off the page, Core/Chosen.lua:
+            -- their cross goes with them)
+            local count = ns.Chosen.DeathsShown(ns.Journey.For(ns.ownGUID), pool.segs or { pool.seg }, pool.deaths)
+            if pool.drawn and count > 0 then
                 local d = Trail.Extent(e, -D, -D) + DEATH.gap
                 pool.cx, pool.cy = Apart(e.x - d * D, e.y - d * D, DEATH.dot / 2, -D, -D)
                 SHAPES.death(markInnerPool, nil, pool.cx, pool.cy, markHaloPool)
                 crosses[#crosses + 1] = { x = pool.cx, y = pool.cy, segs = pool.segs or { pool.seg },
-                    count = pool.deaths }
+                    count = count }
             end
         end
 
