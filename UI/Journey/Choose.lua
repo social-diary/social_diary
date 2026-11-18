@@ -46,9 +46,20 @@
 -- Reached by the link under the open level's sittings (Left.lua's EntryItems,
 -- `choose`; YourDiary.Choose), left by "Done", the ribbon (the page turned to
 -- again: RefreshJourneyPage's opening), or another level, sitting, run, match
--- or map opened (Page.lua's Open*, which call Unchoose). With the pad in hand
--- the link is not offered (the gamepad is a later phase, the user's): the
--- ticklist is mouse-only, so it closes as the pad is picked up.
+-- or map opened (Page.lua's Open*, which call Unchoose).
+--
+-- With the pad (choose-page.md, "Later: the gamepad", 18 Nov): the ticklist
+-- is the left page of Your Diary's own scope while it is open
+-- (UI/Journey/Pad.lua, group `choose`): its zones and rows one list keyed by
+-- their moments, then Done. A on a row is its click (Tick), the pad on a row
+-- its hover (its tooltip, its mark ringed, its map's frame lit), right goes
+-- over to the plates and left comes back, B is Done. Picking the pad up or
+-- putting it down leaves the ticklist as it is; every change to it (Fill,
+-- Choose, Unchoose) asks the pad's look to find its words again
+-- (Pad.Refresh: the rows are handed round as the list is filled). The
+-- meter's frames are not stood on: they say again what the rows' ink says,
+-- and a plate the pad stands on lights its frame and its rows, as a frame
+-- under the mouse does (LightMap).
 --
 -- The module and its siblings: UI/Journey/Look.lua.
 
@@ -740,10 +751,17 @@ local function FrameTip(f)
     return { { ZoneName(f.mapID) }, { f.kind == "mine" and WORDS.yours or WORDS.forYou, 1, 1, 1, true } }
 end
 
+-- Map `k` lit (its frame and the rows on it), nil for none: a frame under
+-- the mouse, or the pad on the plate of that map (UI/Journey/Pad.lua).
+local function LightMap(k)
+    LightFrames(k and { [k] = true } or nil)
+    Light(k and KeysOn(k) or nil)
+end
+YourDiary.ChooseLightMap = LightMap
+
 -- A frame under the mouse: it lit, and the rows on its map with it.
 local function FrameHover(f, over)
-    LightFrames(over and { [f.index] = true } or nil)
-    Light(over and KeysOn(f.index) or nil)
+    LightMap(over and f.index or nil)
 end
 
 local function Build(page)
@@ -885,6 +903,9 @@ local function Fill()
 
     page.chooseLit = nil
     ch.list:SetData(Items(choices, now), true)
+    -- (the rows handed round: the pad's box finds its words again; with the
+    -- pad down this does nothing)
+    ns.UI.Pad.Refresh()
 end
 
 -- The ticklist for the piece the right page shows, in place of the left
@@ -892,18 +913,21 @@ end
 -- plates drawn in its place.
 local function Choose()
     local page = YourDiary.page
-    if not page or YourDiary.Solo() then return end
+    if not page then return end
     local piece = Shown()
     if not CanChoose(piece) then return end
     local ch = page.chooser or Build(page)
     GameTooltip:Hide()
-    page.choosing, page.chooseBlocked, page.chooseNote = true, nil, nil
+    -- (`chooseLand`: the pad, if in hand, lands on the list's first row, from
+    -- the link or a plate's menu alike; UI/Journey/Pad.lua)
+    page.choosing, page.chooseBlocked, page.chooseNote, page.chooseLand = true, nil, nil, true
     LeftShown(page, false)
     ch:Show()
     page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "plates", nil, nil, nil, nil
     YourDiary.DrawRight()
     Fill()
     ch.list:SetOffset(0)
+    ns.UI.Pad.Refresh()
 end
 
 -- The left page given back ("Done", or anything that opens something
@@ -913,11 +937,13 @@ local function Unchoose(quiet)
     if not (page and page.choosing) then return end
     RingOff()
     page.choosing, page.chooseBlocked, page.chooseNote, page.choices, page.chooseLit = nil, nil, nil, nil, nil
+    page.chooseLand = nil
     page.chooser:Hide()
     LeftShown(page, true)
     if not quiet then
         YourDiary.Rebuild(true, page.open)
         if page.mode == "plates" then YourDiary.DrawRight() end
+        ns.UI.Pad.Refresh()
     end
 end
 
@@ -958,14 +984,3 @@ end
 YourDiary.CanChoose, YourDiary.Choose, YourDiary.Unchoose, YourDiary.FillChoose = CanChoose, Choose, Unchoose, Fill
 YourDiary.ShownPiece = Shown
 
--- The pad picked up with the ticklist open: it is mouse-only for now (the
--- gamepad is a later phase), so the left page is given back before the
--- page's own handler (UI/Journey/Pad.lua, loaded after this) builds it for
--- the pad (the plates drawn again, losing a ring).
-ns.UI.Pad.Input.OnChange(function()
-    local page = YourDiary.page
-    if page and page.choosing and YourDiary.Solo() then
-        Unchoose(true)
-        if page.mode == "plates" then YourDiary.DrawRight() end
-    end
-end)
