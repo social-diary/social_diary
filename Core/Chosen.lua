@@ -182,59 +182,70 @@ function Chosen.DeathsShown(j, segs, count)
 end
 
 --------------------------------------------------------------------------
--- The ticklist's model (.claude/features/choose-page.md)
+-- The ticklist's model (.claude/features/choose-page.md, "Stable list")
 --------------------------------------------------------------------------
 --
--- Recap.Choices(j, e, ctx, cover) → choices: for one piece, every place the
--- diary noticed and every moment in it, with what the ticklist draws for each.
--- No frames and no words: the looks and reasons are keys (Phase 4 words them).
+-- Recap.Choices(j, e, ctx, cover) → choices: for one piece, every moment the
+-- diary noticed, by zone, with what the ticklist draws for each. No frames and
+-- no words: the looks and reasons are keys.
+--
+-- The list is stable (the user's, 18 Nov, after the client round: "plates may
+-- regroup freely to fit the most, but the items in the selection must be
+-- stable and never jump"): it is made from the moments alone (Recap.Moments
+-- with the ones left out, and the cards hidden through Core/Custom.lua), never
+-- from how the plates are grouped, so a tick changes a row's look and the
+-- plate it is on, and never which rows there are, their order or their words.
+-- The grouping is only read for where each moment is now.
 --
 --   choices = {
---     places    every place, in time order (its first moment's)
---     max       how many places fit (Recap.PLATES.max, 3)
---     mine      how many places on the page are the player's (look `keep`)
---     diary     how many are the diary's (look `diary`)
---     full      three on the page, all the player's: a keep is blocked (Tick)
+--     zones     every zone (mapID), in order of its first moment
+--     plates    the page's plates, in their order (time, as the page stands
+--               them): { mine } each, where it holds something the player
+--               chose (a keep, or a card they wrote or changed)
+--     max       how many plates fit (Recap.PLATES.max, 3)
+--     mine      how many plates on the page are the player's
+--     diary     how many are the diary's
+--     full      three on the page, all the player's
 --   }
---   a place = { row = "place", key (its lead moment's), mapID, t, on (on the
---     page), look, reason, madeRoomFor (a place, with reason "madeRoom"),
---     cards, plate (Recap.Plates', where it is one), spare (its place among
---     the spare, best first), lead (the moment a keep is written on) }
---   a card = { row = "card", key, kind, t, moment, place, on, look, reason }
---     one for every moment of the place, in time order: a person's moment, a
---     feature's card, a map mark (arrive, stay, level, ...)
+--   a zone = { row = "zone", key ("zone:<mapID>"), mapID, t (its first
+--     moment's), rows, state ("all" | "some" | "none": how many of its rows
+--     are on the page), on (state ~= "none"), look, reason, madeRoomFor,
+--     lead (the
+--     moment a keep of the whole zone is written on: its best, then the
+--     earliest, of what it shows, or of all of it where it shows nothing) }
+--   a row = { row = "moment", key (its first moment's), keys, kind, t,
+--     moment (its first), moments (every one it stands for, in time order),
+--     zone, plate (the index of the plate it is on, top to bottom; nil off
+--     the page: the ticklist rings the row's mark on it), on,
+--     look, reason, madeRoomFor }
+--     One for every moment of the zone, in time order, but one for all the
+--     trips through one dungeon's door in the zone (the plate draws one door
+--     for them): ticked, they go together.
 --
 -- Looks: `diary` (a faded tick: on the page, the diary's pick), `diaryOff`
 -- (an empty box: the diary left it off), `keep` (a red tick: the player's; a
--- moment kept, or a card they wrote or changed, Core/Custom.lua, and the place
--- holding one), `out` (a red cross: left out by the player; a place, when
--- every moment it holds is).
+-- moment kept, or a card they wrote or changed), `out` (a red cross: left out
+-- by the player). A zone: `out` where every row is; else `keep` where it shows
+-- something and anything of it is the player's (kept or left out), `diary`
+-- where it shows something, `diaryOff` where it shows nothing.
 --
--- Reasons, for a row not on the page: `next` (the best spare place, next in
--- line), `noRoom` (the other spare places), `madeRoom` (the place a keep took
--- the place of, Tick: `madeRoomFor` the kept one; remembered until another
--- keep, not saved), `minor` (a place whose moments open no plate of their own:
--- a second stay in a zone shown, filler, a level's pin; keeping it opens one),
--- `marginRoom` (a card on a place on the page the margin had no room for:
--- UI/Journey/Margin.lua's plate.leftOff on the plan), `byYou` (left out by the
--- player). A card on a place off the page has its place's reason.
---
--- The places: the page's (e.plates, where UI/Journey/Layouts.lua's PlatesOf
--- drew this piece: its plates, grouped at e.cover, with their margins' left
--- off), else Recap.Plates' at `cover`; then `plates.spare`; then the moments
--- that are in no place there (Plates' `loose`, the ones the player left out,
--- and the cards hidden through Core/Custom.lua listed in e.hidden), each into
--- the first place it fits at `cover`'s window (Recap.Fits, as Plates groups:
--- one left out goes back to the place it was on, where it still fits), else
--- grouped into places of their own the same way, best rank first. A door that
--- is only a door (Plates drops it where its run was recorded) is not listed:
--- the run has its page, and keeping the door would not bring it back.
+-- Reasons, for a row not on the page (the ticklist's tooltip): `marginRoom`
+-- (its plate is on the page, its margin had no room: UI/Journey/Margin.lua's
+-- plate.leftOff), `madeRoom` (on the plate a keep took the place of, Tick:
+-- `madeRoomFor` the kept moment's zone's mapID; remembered until another keep
+-- moves one off, not saved), `next` (on the best of the plates that did not
+-- fit), `noRoom` (on another of them), `minor` (it opens no plate of its own: a
+-- second stay in a zone shown, filler, a level's pin; keeping it opens one),
+-- `run` (a door whose run was recorded: the run has its page, Recap.Plates
+-- drops such a plate unless it is kept), `byYou` (left out by the player). A
+-- zone that shows nothing has the first of its rows' reasons in that order,
+-- `marginRoom` aside.
 
 local Recap = ns.JourneyRecap
 
--- The last keep that took another place's room (Tick), for "made room for":
--- { from (the piece's start), kept (its place's keys), bumped (the bumped
--- place's) }. Not saved: a reload forgets it, and the line with it.
+-- The last keep that took another plate's room (Tick), for "made room for":
+-- { from (the piece's start), zone (the kept moment's mapID), bumped (the
+-- keys of the plate that went) }. Not saved: a reload forgets it.
 local last
 
 local function Mine(m)
@@ -260,225 +271,276 @@ local function Hidden(j, h)
     return m
 end
 
+-- Whether `m` is a card hidden through Core/Custom.lua (Gather leaves those
+-- out of the piece, so no grouping of it can show one).
+local function CustomHidden(m)
+    local rec = CustomRecord(m)
+    return rec ~= nil and rec.custom ~= nil and rec.custom.hidden == true
+end
+
+-- The page's plates for `e`: as the page drew them (e.plates, grouped at
+-- e.cover by UI/Journey/Layouts.lua's PlatesOf, their margins' leftOff
+-- on them), else Recap.Plates' at `cover`; and the window they were grouped
+-- at.
+local function PlatesFor(j, e, ctx, cover)
+    if e.plates and e.plates.spare then return e.plates, e.cover or cover end
+    return Recap.Plates(j, e, ctx, cover), cover
+end
+
+-- The keys of every moment on `plates`.
+local function KeysOn(plates)
+    local on = {}
+    for _, plate in ipairs(plates) do
+        for _, m in ipairs(plate.moments) do on[Chosen.Key(m)] = true end
+    end
+    return on
+end
+
+local REASONS = { "madeRoom", "next", "noRoom", "minor", "run" }
+
 function Recap.Choices(j, e, ctx, cover)
     ctx = ctx or {}
-    local plates = e.plates
-    if plates and plates.spare then
-        cover = e.cover or cover
-    else
-        plates = Recap.Plates(j, e, ctx, cover)
-    end
-    local PLATES = Recap.PLATES
-    local function Window(mapID)
-        local w, h
-        if cover then w, h = cover(mapID) end
-        return w or PLATES.window, h or PLATES.window
-    end
+    local plates
+    plates, cover = PlatesFor(j, e, ctx, cover)
 
-    local places = {}
-    local function Place(plate, on)
-        local place = { row = "place", plate = on ~= nil and plate or nil, mapID = plate.mapID, t = plate.t,
-            on = on == true, cards = {}, x0 = plate.x0, x1 = plate.x1, y0 = plate.y0, y1 = plate.y1 }
-        places[#places + 1] = place
-        return place
-    end
-    local function Card(place, m)
-        place.cards[#place.cards + 1] = { row = "card", key = Chosen.Key(m), kind = m.kind, t = m.t, moment = m,
-            place = place }
-        place.t = math.min(place.t or m.t, m.t)
-    end
-    for _, plate in ipairs(plates) do
-        local place = Place(plate, true)
-        for _, m in ipairs(plate.moments) do Card(place, m) end
+    -- Where each moment is now, by its key.
+    local onPlate, spareAt, loose, unwritten = {}, {}, {}, {}
+    for i, plate in ipairs(plates) do
+        for _, m in ipairs(plate.moments) do onPlate[Chosen.Key(m)] = i end
+        for _, it in ipairs(plate.leftOff or {}) do
+            for _, m in ipairs(it.moments or {}) do unwritten[Chosen.Key(m)] = true end
+        end
     end
     for i, plate in ipairs(plates.spare or {}) do
-        local place = Place(plate, false)
-        place.spare = i
-        for _, m in ipairs(plate.moments) do Card(place, m) end
+        for _, m in ipairs(plate.moments) do spareAt[Chosen.Key(m)] = i end
     end
-
-    -- The rest, each into a place it fits, else one of their own.
-    local rest = {}
-    for _, m in ipairs(plates.loose or {}) do rest[#rest + 1] = m end
-    if j and j.chosen then
-        for _, m in ipairs(Recap.Moments(j, e, ctx, true)) do
-            if m.chosen == OUT then rest[#rest + 1] = m end
+    for _, m in ipairs(plates.loose or {}) do loose[Chosen.Key(m)] = true end
+    local bumped = last and last.from == e.from and last.bumped or {}
+    -- (next in line: the best of the spare plates, but not the one a keep
+    -- just moved off, which says that instead)
+    local nextSpare
+    for i, plate in ipairs(plates.spare or {}) do
+        local moved = false
+        for _, m in ipairs(plate.moments) do moved = moved or bumped[Chosen.Key(m)] == true end
+        if not moved then
+            nextSpare = i
+            break
         end
     end
+
+    -- Every moment: the piece's, the ones left out, the hidden cards.
+    local all = Recap.Moments(j, e, ctx, true)
     for _, h in ipairs(e.hidden or {}) do
         local m = h.rec and Hidden(j, h)
-        if m then rest[#rest + 1] = m end
-    end
-    table.sort(rest, function(a, b)
-        local ra, rb = Recap.Rank(a), Recap.Rank(b)
-        if ra ~= rb then return ra < rb end
-        return a.t < b.t
-    end)
-    for _, m in ipairs(rest) do
-        local w, h = Window(m.mapID)
-        local into
-        for _, place in ipairs(places) do
-            if Recap.Fits(place, m, w, h) then
-                into = place
-                break
-            end
-        end
-        if not into then
-            into = Place({ mapID = m.mapID, t = m.t, x0 = m.x, x1 = m.x, y0 = m.y, y1 = m.y })
-            into.minor = true
-        elseif not into.plate then
-            into.x0, into.x1 = math.min(into.x0, m.x), math.max(into.x1, m.x)
-            into.y0, into.y1 = math.min(into.y0, m.y), math.max(into.y1, m.y)
-        end
-        Card(into, m)
+        if m then all[#all + 1] = m end
     end
 
-    -- What the margins had no room for (plate.leftOff, on the page's plans).
-    local unwritten = {}
-    for _, plate in ipairs(plates) do
-        for _, it in ipairs(plate.leftOff or {}) do
-            for _, m in ipairs(it.moments or {}) do unwritten[m] = true end
+    local zones, byMap, doors = {}, {}, {}
+    for _, m in ipairs(all) do
+        local zone = byMap[m.mapID]
+        if not zone then
+            zone = { row = "zone", key = "zone:" .. tostring(m.mapID), mapID = m.mapID, t = m.t, rows = {} }
+            byMap[m.mapID] = zone
+            zones[#zones + 1] = zone
         end
-    end
-
-    local choices = { places = places, max = PLATES.max, mine = 0, diary = 0 }
-    local bumped, keptAt = {}, nil
-    if last and last.from == e.from then
-        for _, place in ipairs(places) do
-            for _, c in ipairs(place.cards) do
-                if last.bumped[c.key] then bumped[place] = true end
-                if place.on and last.kept[c.key] then keptAt = place end
-            end
-        end
-    end
-    local nextGiven = false
-    for _, place in ipairs(places) do
-        table.sort(place.cards, function(a, b)
-            if a.t ~= b.t then return a.t < b.t end
-            return a.key < b.key
-        end)
-        local mine, out, lead = false, true, nil
-        for _, c in ipairs(place.cards) do
-            local m = c.moment
-            local of = Chosen.Of(j, m)
-            if of == OUT or m.chosen == OUT then
-                c.look, c.reason = "out", "byYou"
-            else
-                out = false
-                if Mine(m) then
-                    c.look, mine = "keep", true
-                end
-            end
-        end
-        -- (the lead of what it shows; of all it held, where it shows nothing)
-        local held = {}
-        for _, c in ipairs(place.cards) do
-            if out or c.look ~= "out" then held[#held + 1] = c.moment end
-        end
-        place.lead = Chosen.Lead({ moments = held })
-        place.key = place.lead and Chosen.Key(place.lead) or ("place:%d:%s"):format(place.t or 0, tostring(place.mapID))
-        if place.on then
-            place.look = mine and "keep" or "diary"
-            if mine then choices.mine = choices.mine + 1 else choices.diary = choices.diary + 1 end
-        elseif out then
-            place.look, place.reason = "out", "byYou"
+        zone.t = math.min(zone.t, m.t)
+        local door = m.kind == "dungeon" and m.name and (tostring(m.mapID) .. ":" .. m.name) or nil
+        local row = door and doors[door]
+        if row then
+            row.moments[#row.moments + 1] = m
         else
-            place.look = mine and "keep" or "diaryOff"
-            if bumped[place] and keptAt then
-                place.reason, place.madeRoomFor = "madeRoom", keptAt
-            elseif place.spare and not nextGiven then
-                place.reason, nextGiven = "next", true
-            elseif place.spare then
-                place.reason = "noRoom"
-            else
-                place.reason = "minor"
-            end
-        end
-        for _, c in ipairs(place.cards) do
-            if not c.look then
-                if not place.on then
-                    c.look, c.reason = "diaryOff", place.reason
-                elseif unwritten[c.moment] then
-                    c.look, c.reason = "diaryOff", "marginRoom"
-                else
-                    c.look = "diary"
-                end
-            elseif c.look == "keep" and not place.on then
-                c.reason = place.reason
-            end
-            c.on = place.on and (c.look == "diary" or c.look == "keep")
+            row = { row = "moment", kind = m.kind, moments = { m }, zone = zone }
+            zone.rows[#zone.rows + 1] = row
+            if door then doors[door] = row end
         end
     end
-    table.sort(places, function(a, b)
+
+    local function ByTime(a, b)
         if a.t ~= b.t then return a.t < b.t end
         return a.key < b.key
+    end
+    for _, zone in ipairs(zones) do
+        for _, row in ipairs(zone.rows) do
+            table.sort(row.moments, function(a, b)
+                if a.t ~= b.t then return a.t < b.t end
+                return Chosen.Key(a) < Chosen.Key(b)
+            end)
+            row.moment, row.t, row.keys = row.moments[1], row.moments[1].t, {}
+            for k, m in ipairs(row.moments) do row.keys[k] = Chosen.Key(m) end
+            row.key = row.keys[1]
+
+            -- Its look, its plate, why it is not on the page.
+            local out, mine, at, margin, reason = true, false, nil, false, nil
+            for k, m in ipairs(row.moments) do
+                local key = row.keys[k]
+                if not (Chosen.Of(j, m) == OUT or m.chosen == OUT) then
+                    out = false
+                    mine = mine or Mine(m)
+                    if onPlate[key] and unwritten[key] then
+                        margin = true
+                    elseif onPlate[key] then
+                        at = math.min(at or onPlate[key], onPlate[key])
+                    end
+                    local why = bumped[key] and "madeRoom" or spareAt[key] == nextSpare and "next"
+                        or spareAt[key] and "noRoom" or loose[key] and "minor" or not onPlate[key] and "run" or nil
+                    for _, r in ipairs(REASONS) do
+                        if r == why or r == reason then
+                            reason = r
+                            break
+                        end
+                    end
+                end
+            end
+            row.plate, row.on = at, at ~= nil
+            if out then
+                row.look, row.reason = "out", "byYou"
+            else
+                row.look = mine and "keep" or (row.on and "diary" or "diaryOff")
+                if not row.on then row.reason = margin and "marginRoom" or reason end
+                if row.reason == "madeRoom" then row.madeRoomFor = last.zone end
+            end
+        end
+        table.sort(zone.rows, ByTime)
+
+        -- The zone: how much of it shows, whose it is, why it does not show.
+        local shown, left, theirs, held = 0, 0, false, {}
+        for _, row in ipairs(zone.rows) do
+            if row.on then shown = shown + 1 end
+            if row.look == "out" then left = left + 1 end
+            theirs = theirs or row.look == "keep" or row.look == "out"
+        end
+        zone.state = shown == #zone.rows and "all" or shown > 0 and "some" or "none"
+        zone.on = shown > 0
+        if zone.on then
+            zone.look = theirs and "keep" or "diary"
+        elseif left == #zone.rows then
+            zone.look, zone.reason = "out", "byYou"
+        else
+            zone.look = "diaryOff"
+            for _, r in ipairs(REASONS) do
+                for _, row in ipairs(zone.rows) do
+                    if not zone.reason and row.reason == r then
+                        zone.reason, zone.madeRoomFor = r, row.madeRoomFor
+                    end
+                end
+            end
+        end
+        for _, row in ipairs(zone.rows) do
+            if left == #zone.rows or row.look ~= "out" then
+                for _, m in ipairs(row.moments) do held[#held + 1] = m end
+            end
+        end
+        zone.lead = Chosen.Lead({ moments = held })
+    end
+    table.sort(zones, function(a, b)
+        if a.t ~= b.t then return a.t < b.t end
+        return tostring(a.mapID) < tostring(b.mapID)
     end)
-    choices.full = #plates >= PLATES.max and choices.mine >= PLATES.max
+
+    local choices = { zones = zones, plates = {}, max = Recap.PLATES.max, mine = 0, diary = 0 }
+    for i, plate in ipairs(plates) do
+        local mine = false
+        for _, m in ipairs(plate.moments) do mine = mine or Mine(m) end
+        choices.plates[i] = { mine = mine }
+        if mine then choices.mine = choices.mine + 1 else choices.diary = choices.diary + 1 end
+    end
+    choices.full = #plates >= choices.max and choices.mine >= choices.max
     return choices
 end
 
+-- The plates `e` would have with `keep` kept and `clear` back to the diary's
+-- (a scratch copy of j.chosen: nothing is written).
+local function Simulate(j, e, ctx, cover, keep, clear)
+    local saved, scratch = j.chosen, {}
+    for key, v in pairs(saved or {}) do scratch[key] = v end
+    for _, m in ipairs(clear) do scratch[Chosen.Key(m)] = nil end
+    for _, m in ipairs(keep) do scratch[Chosen.Key(m)] = KEEP end
+    j.chosen = scratch
+    local ok, plates = pcall(Recap.Plates, j, e, ctx, cover)
+    j.chosen = saved
+    if not ok then error(plates, 0) end
+    return plates
+end
+
 -- A row of Recap.Choices' ticked (.claude/features/choose-page.md): one on
--- the page (`on`) is left out, one off it is kept. Returns { did = "out" |
--- "keep" }, or { blocked = true } where a place would be kept onto a page
--- whose three places are all the player's already: nothing written, the
--- ticklist says why. Keeping a place onto a full page moves the diary's
--- weakest off (the ranks do it: a keep outranks any of the diary's); which
--- one went is remembered for its "made room for" line (`bumped`, also
--- returned: the place row it was).
+-- the page (`on`: a row on a plate, a zone showing anything) is left out, one
+-- off it is kept. Returns { did = "out" | "keep", bumped = { mapID } (the
+-- plate a keep moved off) }, or { blocked = true }: nothing written, the
+-- ticklist says why.
 --
--- A place left out: `out` on every moment it shows. A place kept: `keep` on
--- its lead; one the player had left out whole comes back whole (the rest of
--- its moments to the diary's, a hidden card shown). A card: its own moment
--- (Keep, Leave). `j` as Keep's; ctx and cover as Recap.Choices'.
+-- A row left out: `out` on every moment it stands for (a door's trips
+-- together). A zone left out: `out` on every moment of it. A row kept: `keep`
+-- on each of its moments. A zone kept: `keep` on its lead; one the player had
+-- left out whole comes back whole (its other moments back to the diary's, a
+-- hidden card shown).
+--
+-- A keep that needs a plate of its own moves the diary's weakest off (the
+-- ranks do it: a keep outranks any of the diary's). It is blocked only where
+-- it cannot fit: grouped again with the keep written in scratch, the kept
+-- moment, or anything the player had on the page, would be off it. (Grouped
+-- at the window the page grouped at, e.cover; the page may group again at
+-- another, as it does whenever the moments change.) `j` as Keep's; ctx and
+-- cover as Recap.Choices'.
 function Chosen.Tick(j, e, ctx, cover, row)
     j = Route(j)
     if not (j and e and row) then return nil end
-    local place = row.row == "place" and row or row.place
-    local before = Recap.Choices(j, e, ctx, cover)
-    if row.on then
-        if row.row == "place" then
-            local list = {}
-            for _, c in ipairs(row.cards) do
-                if c.look ~= "out" then list[#list + 1] = c.moment end
+    ctx = ctx or {}
+    local zone = row.row == "zone" and row or row.zone
+    -- A red tick leaves out, wherever it stands: one the margin had no room
+    -- for is off the page but still the player's, and they untick it (the
+    -- user's, in the client, 18 Nov). A zone likewise, where it holds one.
+    if row.on or row.look == KEEP then
+        for _, r in ipairs(row.row == "zone" and row.rows or { row }) do
+            if r.look ~= "out" then
+                for _, m in ipairs(r.moments) do Chosen.Leave(j, m) end
             end
-            Chosen.LeavePlace(j, { moments = list })
-        else
-            Chosen.Leave(j, row.moment)
         end
         return { did = OUT }
     end
-    if not place.on and before.full then return { blocked = true } end
-    if row.row == "place" then
-        local lead = row.lead
-        if not lead then return nil end
+
+    local keep, clear = {}, {}
+    if row.row == "zone" then
+        if not row.lead then return nil end
+        keep[1] = row.lead
         if row.look == "out" then
-            for _, c in ipairs(row.cards) do
-                if c.moment ~= lead then Clear(j, c.moment) end
+            for _, r in ipairs(row.rows) do
+                for _, m in ipairs(r.moments) do
+                    if m ~= row.lead then clear[#clear + 1] = m end
+                end
             end
         end
-        Chosen.Keep(j, lead)
     else
-        Chosen.Keep(j, row.moment)
+        for _, m in ipairs(row.moments) do keep[#keep + 1] = m end
     end
-    local result = { did = KEEP }
-    if not place.on then
-        -- Which of the page's places went: the one none of whose moments is
-        -- on the page now (the diary's weakest, as the ranks put it).
-        local after, now = Recap.Plates(j, e, ctx or {}, e.cover or cover), {}
-        for _, plate in ipairs(after) do
-            for _, m in ipairs(plate.moments) do now[Chosen.Key(m)] = true end
+
+    local before
+    before, cover = PlatesFor(j, e, ctx, cover)
+    local need = {}
+    for _, plate in ipairs(before) do
+        for _, m in ipairs(plate.moments) do
+            if Mine(m) then need[Chosen.Key(m)] = true end
         end
-        for _, other in ipairs(before.places) do
-            local stays = false
-            for _, c in ipairs(other.on and other.cards or {}) do stays = stays or now[c.key] == true end
-            if other.on and not stays then
-                local kept, gone = {}, {}
-                for _, c in ipairs(place.cards) do kept[c.key] = true end
-                for _, c in ipairs(other.cards) do gone[c.key] = true end
-                last = { from = e.from, kept = kept, bumped = gone }
-                result.bumped = other
-                break
-            end
+    end
+    for _, m in ipairs(keep) do
+        if not CustomHidden(m) then need[Chosen.Key(m)] = true end
+    end
+    local now = KeysOn(Simulate(j, e, ctx, cover, keep, clear))
+    for key in pairs(need) do
+        if not now[key] then return { blocked = true } end
+    end
+
+    for _, m in ipairs(clear) do Clear(j, m) end
+    for _, m in ipairs(keep) do Chosen.Keep(j, m) end
+    local result = { did = KEEP }
+    -- Which of the page's plates went: the one none of whose moments is on
+    -- the page now.
+    for _, plate in ipairs(before) do
+        local stays = false
+        for _, m in ipairs(plate.moments) do stays = stays or now[Chosen.Key(m)] == true end
+        if not stays then
+            last = { from = e.from, zone = zone and zone.mapID, bumped = KeysOn({ plate }) }
+            result.bumped = { mapID = plate.mapID }
+            break
         end
     end
     return result

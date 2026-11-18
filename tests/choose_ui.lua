@@ -1,10 +1,12 @@
--- "Choose what's on this page" (.claude/features/choose-page.md, Phase 3;
--- UI/Journey/Choose.lua): the link under the open level, the ticklist in
--- place of the left page, its rows and looks, a tick leaving a place out and
--- keeping one (the right page drawn again, the bumped place's "made room
--- for"), a card left out, the block (red cap line, the box shaking, nothing
--- written), Done, leaving by another level or the ribbon, and no link with
--- the pad in hand. Construction and logic only: how it looks is for the
+-- "Choose what's on this page" (.claude/features/choose-page.md, Phase 3 and
+-- "Stable list"; UI/Journey/Choose.lua): the link under the open level, the
+-- ticklist in place of the left page, its zones and rows and looks, the cap
+-- line's frames, no map numbers anywhere (the user's, 18 Nov), a tick leaving
+-- a zone out and keeping one (the right page drawn again, the list unmoved,
+-- the rows' plates following the grouping, "came off to make room"), a row left out, the block
+-- (the red line, the box shaking, nothing written), the hover between a row
+-- and its mark, Done, leaving by another level or the ribbon, and no link
+-- with the pad in hand. Construction and logic only: how it looks is for the
 -- client. Invented names only.
 
 local T = ...
@@ -15,6 +17,7 @@ local SELF = F.SELF
 local YD = ns.UI.YourDiary
 local J, Chosen = ns.Journey, ns.Chosen
 local WORDS = YD.CHOOSE_WORDS
+local C = YD.CHOOSE
 
 mock.now = 1791000000
 local now = mock.now
@@ -59,13 +62,24 @@ local function Row(test)
         if row:IsShown() and row.item and test(row.item) then return row end
     end
 end
-local function PlaceRow(mapID)
-    return Row(function(item) return item.place ~= nil and item.place.mapID == mapID end)
+local function ZoneRow(mapID)
+    return Row(function(item) return item.zone ~= nil and item.zone.mapID == mapID end)
 end
-local function Place(mapID)
-    for _, place in ipairs(page.choices.places) do
-        if place.mapID == mapID then return place end
+local function MomentRow(mapID, kind)
+    return Row(function(item) return item.card ~= nil and item.card.zone.mapID == mapID and item.card.kind == kind end)
+end
+local function Zone(mapID)
+    for _, zone in ipairs(page.choices.zones) do
+        if zone.mapID == mapID then return zone end
     end
+end
+-- The list as it reads: every row's words and time, in order.
+local function Reading()
+    local out = {}
+    for _, item in ipairs(page.chooser.list.data) do
+        out[#out + 1] = (item.zone and "" or "  ") .. item.label .. (item.time and (" " .. item.time) or "")
+    end
+    return table.concat(out, "\n")
 end
 local function Shown()
     local list = {}
@@ -79,6 +93,18 @@ local function Red(fs)
     local r, g, b = fs:GetTextColor()
     local R = ns.Style.RUBRIC
     return math.abs(r - R[1]) < 0.01 and math.abs(g - R[2]) < 0.01 and math.abs(b - R[3]) < 0.01
+end
+-- A stroke's or a string's ink: whether it is the rubric's, and its alpha.
+local function IsRed(c)
+    local R = ns.Style.RUBRIC
+    return math.abs(c[1] - R[1]) < 0.01 and math.abs(c[2] - R[2]) < 0.01 and math.abs(c[3] - R[3]) < 0.01
+end
+local function StrokeInk(stroke)
+    local c = stroke.recorded.calls.SetColorTexture
+    return IsRed(c), c[4] or 1
+end
+local function TextAlpha(fs)
+    return select(4, fs:GetTextColor())
 end
 local function Frames()
     local out = {}
@@ -118,125 +144,207 @@ Check(not page.entries:IsShown() and not page.name:IsShown(), "the left page sti
 Eq(ch.title:GetText(), WORDS.title, "the title")
 Eq(ch.rubric:GetText(), "LEVEL 12", "the level's rubric")
 Eq(ch.cap:GetText(), WORDS.cap, "the cap line")
-Check(not Red(ch.cap), "the cap line red before anything was blocked")
+Eq(ch.note:GetText(), "", "the line under it, empty")
 Eq(Frames(), "diary diary diary", "three frames, faded: all the diary's")
+Eq(ch.frames[2].number, nil, "a frame with a number in it (the numerals were dropped)")
 local order = {}
 for _, item in ipairs(ch.list.data) do
-    if item.place then order[#order + 1] = item.place.mapID end
+    if item.zone then order[#order + 1] = item.zone.mapID end
 end
-Eq(table.concat(order, " "), "1411 1412 1413 1415 1416", "every place, in time order")
-local cards = 0
+Eq(table.concat(order, " "), "1411 1412 1413 1415 1416", "every zone, in time order")
 for i, item in ipairs(ch.list.data) do
+    Check(item.height == (item.zone and C.place or C.card) or item.height == (item.zone and C.place or C.card) + C.gap,
+        "a row of its own height: " .. item.label)
     if item.card then
-        cards = cards + 1
         local before = ch.list.data[i - 1]
-        Check(before.card or before.place.on, "a card under a place off the page")
+        Check(before.zone == item.card.zone or (before.card and before.card.zone == item.card.zone),
+            "a row not under its zone")
     end
 end
-Check(cards > 0, "no card rows under the places on the page")
-local next, noRoom = PlaceRow(1411), PlaceRow(1416)
-Eq(next.placeBox.look, "diaryOff", "a place off the page: an empty box")
-Check(not next.placeBox.tick[1]:IsShown(), "an empty box ticked")
-Eq(next.why:GetText(), WORDS.reason.next, "the best place left off: next in line")
-Eq(noRoom.why:GetText(), WORDS.reason.noRoom, "the rest: no room")
-Check(not Red(next.why), "the diary's reason in red")
-local on = PlaceRow(1413)
-Eq(on.placeBox.look, "diary", "a place on the page: the diary's tick")
-Check(on.placeBox.tick[1]:IsShown() and not on.placeBox.cross[1]:IsShown(), "the diary's pick not ticked")
-Check(not on.why:IsShown(), "a reason under a place on the page")
-Eq(on.time:GetText(), ns.UI.Format.Clock(t0 + 5000), "a place's time: its first moment's")
-local fightRow = Row(function(item) return item.card ~= nil and item.card.kind == "fight" end)
-Check(fightRow and fightRow.cardBox:IsShown() and not fightRow.placeBox:IsShown(), "a card row has no card box")
+Check(Row(function(item) return item.card ~= nil and item.card.zone.mapID == 1411 end) ~= nil,
+    "a zone off the page closed: its rows not listed")
+local next, noRoom = ZoneRow(1411), ZoneRow(1416)
+Eq(next.placeBox.look, "diaryOff", "a zone off the page: an empty box")
+Check(not next.placeBox.tick[1]:IsShown() and not next.placeBox.dash[1]:IsShown(), "an empty box ticked")
+Check(next.why == nil, "a row with a second line")
+-- Off the page recedes: faded words, a faint box; on the page in ink.
+Check(TextAlpha(next.name) < 1, "a zone off the page not faded")
+Check(not StrokeInk(next.placeBox.outline[1]) and select(2, StrokeInk(next.placeBox.outline[1])) == C.faded.off,
+    "an empty box not faint")
+local on = ZoneRow(1413)
+Eq(on.placeBox.look .. "/" .. on.placeBox.state, "diary/all", "a zone on the page: the diary's tick")
+Check(on.placeBox.tick[1]:IsShown() and not on.placeBox.dash[1]:IsShown() and not on.placeBox.cross[1]:IsShown(),
+    "the diary's pick not ticked")
+Eq(TextAlpha(on.name), 1, "a zone on the page not in full ink")
+Check(not Red(on.name), "a zone on the page in red")
+Check(not StrokeInk(on.placeBox.tick[1]) and not StrokeInk(on.placeBox.outline[1]), "the diary's tick in red")
+Eq(on.placeBox.tick[1].recorded.height, C.faded.tickW, "the diary's tick as heavy as the player's")
+local fightRow = MomentRow(1413, "fight")
+Check(fightRow and fightRow.cardBox:IsShown() and not fightRow.placeBox:IsShown(), "a moment's row has no small box")
 Eq(fightRow and fightRow.name:GetText(), ns.Characters.Name(FOE) or ns.Characters.FullName(FOE) or "Someone",
-    "a person's card: their name")
+    "a person's row: their name")
+Eq(fightRow.time:GetText(), ns.UI.Format.Clock(t0 + 6000), "a row's time: its moment's")
+-- No map numbers (the user's, 18 Nov): no marker column on the rows, no
+-- label on the plates; the plate a row is on is only for its ring.
+Eq(fightRow.mark, nil, "a row with a marker column")
+Eq(fightRow.item.mark, nil, "a row's item with a map's number")
+Eq(fightRow.item.card.plate, 2, "the fight on the second map (for its ring)")
+Eq(MomentRow(1412, "death").item.card.plate, 1, "the death on the first")
+for i = 1, page.layout do
+    Eq(page.plates[i].chosenNumber, nil, "plate " .. i .. " wears a number")
+end
+-- Why it is off the page, in its tooltip; an on row's is its words alone.
+local function TipOf(row)
+    GameTooltip:Hide()
+    row.scripts.OnEnter(row)
+    local lines = { GameTooltip.text or "" }
+    for _, l in ipairs(GameTooltip.lines or {}) do lines[#lines + 1] = l[1] end
+    local text = table.concat(lines, "\n")
+    row.scripts.OnLeave(row)
+    return text
+end
+Check(TipOf(next):find(WORDS.reason.next, 1, true) ~= nil, "the best zone left off: next in line, in its tooltip")
+Check(TipOf(noRoom):find(WORDS.reason.noRoom, 1, true) ~= nil, "the rest: no room")
+Eq(WORDS.on, nil, "the words still have a map's number")
+Eq(TipOf(fightRow), fightRow.item.label, "an on row's tooltip: more than its words")
 Eq(j.chosen, nil, "opening the ticklist wrote something")
 
 --------------------------------------------------------------------------
-Section("a tick on a place on the page: left out, and the next comes in")
+Section("a row and its mark: the ring, and the rows lit")
 
+do
+    local plate = page.plates[2]
+    fightRow.scripts.OnEnter(fightRow)
+    Check(plate.ringAt ~= nil and plate.ringAt.mapID == 1413, "a row under the mouse does not ring its mark")
+    Check(math.abs(plate.ringAt.x - 0.52) < 1e-6, "the ring not at the fight's spot")
+    fightRow.scripts.OnLeave(fightRow)
+    Eq(plate.ringAt, nil, "the ring stays after the mouse left")
+    MomentRow(1411, "arrive").scripts.OnEnter(MomentRow(1411, "arrive"))
+    for i = 1, page.layout do Eq(page.plates[i].ringAt, nil, "a row off the page rang a mark") end
+    MomentRow(1411, "arrive").scripts.OnLeave(MomentRow(1411, "arrive"))
+    -- The fight's mark under the mouse: its row lit.
+    local mark
+    for i = 1, plate.hover.used do
+        local b = plate.hover[i]
+        for _, m in ipairs(b.moments or {}) do
+            if m.kind == "fight" then mark = b end
+        end
+    end
+    Check(mark ~= nil, "setup: the fight's mark on its plate")
+    Eq(fightRow.name:GetTextColor(), ns.Style.INK[1], "setup: the row in ink")
+    mark.scripts.OnEnter(mark)
+    Check(page.chooseLit ~= nil and page.chooseLit[fightRow.item.card.key], "the mark did not light its row")
+    Eq(select(1, fightRow.name:GetTextColor()), ns.Style.INK_STRONG[1], "its row not darkened")
+    mark.scripts.OnLeave(mark)
+    Eq(page.chooseLit, nil, "the rows stay lit after the mark")
+end
+
+--------------------------------------------------------------------------
+Section("a tick on a zone on the page: left out, the list unmoved")
+
+local READING = Reading()
 on:Click()
 Check(page.choosing and ch:IsShown(), "the ticklist closed with a tick")
 Check(not page.entries:IsShown() and not page.name:IsShown(), "the left page shown again over the ticklist after a tick")
-Eq(Shown(), "1411 1412 1415", "the right page not drawn again: the place left out, the next in")
-local out = PlaceRow(1413)
-Eq(out.placeBox.look, "out", "a place left out: a red cross")
+Eq(Shown(), "1411 1412 1415", "the right page not drawn again: the zone left out, the next in")
+Eq(Reading(), READING, "the list moved")
+local out = ZoneRow(1413)
+Eq(out.placeBox.look, "out", "a zone left out: a red cross")
 Check(out.placeBox.cross[1]:IsShown() and not out.placeBox.tick[1]:IsShown(), "the cross not drawn")
 Check(out.strike:IsShown(), "its name not struck through")
-Eq(out.why:GetText(), WORDS.reason.byYou, "left out by you")
-Check(Red(out.why), "the player's reason not in red")
-Check(not Row(function(item) return item.card ~= nil and item.card.place.mapID == 1413 end),
-    "a place left out still open")
+Check(StrokeInk(out.placeBox.cross[1]), "the player's cross not in red")
+Check(not StrokeInk(out.placeBox.outline[1]), "a zone left out in a red box: the kept rows' look")
+Check(not Red(out.name) and TextAlpha(out.name) < 1, "a name left out not faded")
+Check(not StrokeInk(out.strike) and select(2, StrokeInk(out.strike)) < 1, "the strike not in the name's faded ink")
+Eq(MomentRow(1413, "fight").cardBox.look, "out", "its rows left out with it")
+-- The rows' plates follow the grouping (the ring's target): the first map is
+-- the next one in now.
+Eq(MomentRow(1411, "arrive").item.card.plate, 1, "the zone come in not on the first map")
+Eq(MomentRow(1412, "death").item.card.plate, 2, "the death's plate not moved on")
+Eq(MomentRow(1413, "fight").item.card.plate, nil, "a row left out still on a plate")
 local saved = 0
 for _, v in pairs(j.chosen or {}) do
-    Eq(v, "out", "a place left out: out on its moments")
+    Eq(v, "out", "a zone left out: out on its moments")
     saved = saved + 1
 end
-Check(saved > 0, "nothing written for a place left out")
+Check(saved > 0, "nothing written for a zone left out")
 Eq(Frames(), "diary diary diary", "the frames: still the diary's three")
 
 --------------------------------------------------------------------------
-Section("a tick on a place off the page: kept, and the diary's weakest makes room")
+Section("a tick on a zone off the page: kept, and the diary's weakest makes room")
 
-PlaceRow(1416):Click()
-local kept = Place(1416)
-Eq(kept.look, "keep", "a place kept: the player's")
-Check(kept.on, "a place kept not on the page")
-Check(Shown():find("1416") ~= nil, "the right page without the place kept")
-Eq(PlaceRow(1416).placeBox.look, "keep", "its box: a red tick")
-Check(PlaceRow(1416).placeBox.tick[1]:IsShown(), "the red tick not drawn")
-Eq(Frames(), "mine diary diary", "the frames: one the player's, two the diary's")
+ZoneRow(1416):Click()
+Eq(Reading(), READING, "the list moved")
+local kept = Zone(1416)
+Eq(kept.look, "keep", "a zone kept: the player's")
+Check(kept.on, "a zone kept not on the page")
+Check(Shown():find("1416") ~= nil, "the right page without the zone kept")
+Eq(ZoneRow(1416).placeBox.look, "keep", "its box: a red tick")
+Check(StrokeInk(ZoneRow(1416).placeBox.tick[1]) and StrokeInk(ZoneRow(1416).placeBox.outline[1]),
+    "a zone kept: its tick and box not red")
+Eq(ZoneRow(1416).placeBox.tick[1].recorded.height, C.bold, "the player's tick not bold")
+Eq(Frames(), "diary diary mine", "the frames: the last map the player's")
 local bumped
-for _, place in ipairs(page.choices.places) do
-    if place.reason == "madeRoom" then bumped = place end
+for _, zone in ipairs(page.choices.zones) do
+    if zone.reason == "madeRoom" then bumped = zone end
 end
-Check(bumped ~= nil, "no place made room")
-local bumpedRow = bumped and PlaceRow(bumped.mapID)
-Eq(bumpedRow and bumpedRow.why:GetText(), WORDS.madeRoom:format(PlaceRow(1416).name:GetText()),
-    "made room for the place kept")
+Check(bumped ~= nil, "no zone made room")
+Eq(ch.note:GetText(), WORDS.bumped:format(ns.UI.JourneyText.MapName(bumped.mapID) or "A stop"),
+    "the line under the cap line does not say what came off")
+Check(TipOf(ZoneRow(bumped.mapID)):find(WORDS.madeRoom:format(ns.UI.JourneyText.MapName(1416) or "A stop"), 1, true)
+    ~= nil, "its tooltip: made room for the zone kept")
 
 --------------------------------------------------------------------------
-Section("three places the player's, and a fourth blocked")
+Section("a row left out: the zone's dash")
 
-PlaceRow(bumped.mapID):Click()
-Eq(Frames(), "mine mine diary", "two of the player's")
-PlaceRow(1413):Click()
-Eq(Place(1413).look, "keep", "a place left out kept again")
+local stay = MomentRow(1412, "stay")
+Check(stay and stay.item.card.on, "setup: a stay on the page")
+stay:Click()
+Eq(Reading(), READING, "the list moved")
+local partly = ZoneRow(1412)
+Eq(partly.placeBox.state, "some", "the zone partly on the page")
+Check(partly.placeBox.dash[1]:IsShown() and not partly.placeBox.tick[1]:IsShown(), "not a dash")
+Check(StrokeInk(partly.placeBox.dash[1]), "the player's doing, not in red")
+local cardOut = MomentRow(1412, "stay")
+Check(StrokeInk(cardOut.cardBox.cross[1]) and not StrokeInk(cardOut.cardBox.outline[1]),
+    "a row left out: not a red cross in a faint box")
+Check(cardOut.strike:IsShown() and TextAlpha(cardOut.name) < 1, "a row left out: not struck and faded")
+cardOut.scripts.OnEnter(cardOut)
+Eq(TextAlpha(cardOut.name), 1, "a row off the page does not come up under the mouse")
+cardOut.scripts.OnLeave(cardOut)
+Check(TextAlpha(cardOut.name) < 1, "a row off the page stays up after the mouse left")
+MomentRow(1412, "stay"):Click()
+Eq(MomentRow(1412, "stay").cardBox.look, "keep", "kept again: a red tick")
+
+--------------------------------------------------------------------------
+Section("three maps the player's, and a fourth blocked")
+
+ZoneRow(1412):Click()  -- (the death's zone, showing: left out)
+ZoneRow(1412):Click()  -- (and kept)
+ZoneRow(1415):Click()
+ZoneRow(1415):Click()
 Eq(Frames(), "mine mine mine", "three of the player's")
 local off
-for _, place in ipairs(page.choices.places) do
-    if not place.on then off = place end
+for _, zone in ipairs(page.choices.zones) do
+    if not zone.on then off = zone end
 end
-Check(off ~= nil, "setup: a place off the page")
+Check(off ~= nil, "setup: a zone off the page")
 local before = Copy(j.chosen)
-local offRow = PlaceRow(off.mapID)
+local offRow = ZoneRow(off.mapID)
 offRow:Click()
 Check(Same(before, j.chosen or {}), "a blocked tick wrote something")
-Eq(ch.cap:GetText(), WORDS.blocked, "the cap line does not say why")
-Check(Red(ch.cap), "the cap line not red")
+Eq(ch.note:GetText(), WORDS.blocked, "the line under the cap line does not say why")
+Check(Red(ch.note), "it is not red")
+Eq(ch.cap:GetText(), WORDS.cap, "the cap line changed")
+Eq(Reading(), READING, "the list moved")
 Check(offRow.placeBox.scripts.OnUpdate ~= nil, "the box does not shake")
 for _ = 1, 30 do
     local f = offRow.placeBox.scripts.OnUpdate
     if f then f(offRow.placeBox, 0.05) end
 end
 Check(offRow.placeBox.scripts.OnUpdate == nil, "the box never stops shaking")
-Eq(Place(off.mapID).look, off.look, "the blocked place changed")
-
---------------------------------------------------------------------------
-Section("a card left out")
-
-PlaceRow(1413):Click()  -- (room again: a place of the player's left out)
-Check(not Red(ch.cap) and ch.cap:GetText() == WORDS.cap, "the cap line still red after a tick that went through")
-local card = Row(function(item) return item.card ~= nil and item.card.look ~= "out" and item.card.on end)
-Check(card ~= nil, "setup: a card on the page")
-local key = card.item.card.key
-card:Click()
-local stillOn = false
-for _, place in ipairs(page.choices.places) do
-    for _, c in ipairs(place.cards) do
-        if c.key == key then stillOn = c.on end
-    end
-end
-Check(not stillOn, "a card left out still on the page")
+ZoneRow(1415):Click()  -- (room again: a zone of the player's left out)
+Check(not Red(ch.note) and ch.note:GetText() ~= WORDS.blocked, "the line still red after a tick that went through")
 
 --------------------------------------------------------------------------
 Section("Done, another level, the ribbon: the left page given back")

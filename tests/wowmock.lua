@@ -222,6 +222,14 @@ local function NewWidget(frameType, name, parent, template)
         if n > 0 then rec.points[n] = anchor else rec.points[#rec.points + 1] = anchor end
     end
     function w:ClearAllPoints() rec.points = {} end
+    -- An anchor read back, as set (the client normalises a short SetPoint;
+    -- the mock gives what was passed): point, then its arguments.
+    function w:GetNumPoints() return #rec.points end
+    function w:GetPoint(i)
+        local a = rec.points[i or 1]
+        if not a then return nil end
+        return a.point, unpack(a.args, 1, a.args.n)
+    end
     function w:SetAllPoints(relative)
         rec.points = {}
         Anchor("TOPLEFT", relative or self.parent, "TOPLEFT")

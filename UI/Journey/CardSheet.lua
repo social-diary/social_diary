@@ -723,7 +723,8 @@ local function PlaceMenu(plate)
         if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
         if leaves then
             root:CreateButton(WORDS.leavePlace, function()
-                if ns.Chosen.LeavePlace(nil, plate.plan) then Redraw() end
+                -- (eased, as a tick on the ticklist: UI/Journey/Glide.lua)
+                if ns.Chosen.LeavePlace(nil, plate.plan) then YourDiary.Glide.Around(Redraw) end
             end)
             if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
         end
@@ -765,7 +766,7 @@ function CardSheet.Person(strip, g)
         root:CreateButton(ns.Fmt(WORDS.leavePerson, name), function()
             local any = false
             for _, m in ipairs(list) do any = ns.Chosen.Leave(nil, m) or any end
-            if any then Redraw() end
+            if any then YourDiary.Glide.Around(Redraw) end
         end)
     end)
 end

@@ -56,6 +56,7 @@ local FILES = {
     "chosen",
     "choices",
     "choose_ui",
+    "choose_glide",
     "custom_cards",
     "custom_killed",
     "custom_witness",

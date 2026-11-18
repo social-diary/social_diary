@@ -457,6 +457,15 @@ end
 -- For the tests: the registered passes, and their order.
 Plate.PASSES, Plate.PASS_ORDER = PASSES, PASS_ORDER
 
+-- Who listens to the marks: nil, or function(plate, button, entered), asked
+-- as the mouse comes over a mark's hover square (`entered` true) and leaves
+-- it. The square says what it is over (`what`), where (`padAt`, on the card)
+-- and, where it knows, the moments its mark stands for (`moments`: a
+-- person's spot, a door's trips, a registered mark's spot); a pool, a pin
+-- or a cross knows only where it is. One listener: the ticklist's
+-- (UI/Journey/Choose.lua), which lights the mark's rows.
+Plate.Hovered = nil
+
 --------------------------------------------------------------------------
 -- Windows (Decision 3)
 --------------------------------------------------------------------------
@@ -831,9 +840,13 @@ local function New(parent, slot)
             -- Over a mark the plate stays leaned in (ZOOM).
             button:HookScript("OnEnter", function() plate:Lean() end)
             button:HookScript("OnLeave", function() plate:Lean() end)
+            -- And whoever listens is told (Plate.Hovered: the ticklist lights
+            -- the mark's rows, UI/Journey/Choose.lua).
+            button:HookScript("OnEnter", function(b) if Plate.Hovered then Plate.Hovered(plate, b, true) end end)
+            button:HookScript("OnLeave", function(b) if Plate.Hovered then Plate.Hovered(plate, b, false) end end)
             self[self.used] = button
         end
-        button.tip, button.spot = tip, nil
+        button.tip, button.spot, button.moments = tip, nil, nil
         button.what, button.padAt = what, { x, y }
         PlaceButton(button, x - size / 2, y - size / 2, size, size)
         button:Show()
@@ -841,7 +854,7 @@ local function New(parent, slot)
     end
     function hoverPool:Finish()
         for i = self.used + 1, #self do
-            self[i].tip, self[i].spot, self[i].what, self[i].padAt = nil, nil, nil, nil
+            self[i].tip, self[i].spot, self[i].what, self[i].padAt, self[i].moments = nil, nil, nil, nil, nil
             self[i]:Hide()
         end
     end
@@ -1490,7 +1503,7 @@ local function New(parent, slot)
     plate.canDesaturate = asked and type(desaturate) == "function"
     probe:Hide()
 
-    local function DrawArt(mapID, window, box)
+    local function DrawArt(mapID, window, box, under)
         local s = plate.slot
         local ax, ay, aw, ah = s.pad, s.pad, s.w - 2 * s.pad, s.h - 2 * s.pad
         PrintFrame(ax, ay, ax + aw, ay + ah)
@@ -1506,23 +1519,37 @@ local function New(parent, slot)
         local LW, LH = LayerSize(mapID)
         if layer then LW, LH = layer.layerWidth, layer.layerHeight end
 
+        local wx0, wy0, wx1, wy1 = window[1], window[2], window[3], window[4]
+        -- For one drawing, a close-up's art may be printed for a wider
+        -- window (`under`: a tick's motion easing the picture from the
+        -- view before, UI/Journey/Glide.lua), at the window's own scale and
+        -- under the card's margin, clipped, so the picture eased from the
+        -- old view never shows bare paper. Where a point lands (At) is the
+        -- window's alone, so nothing else on the card moves for it.
+        local bx, by, bw, bh, art, open = ax, ay, aw, ah, window, box ~= nil
+        if under and not box then
+            local ux, uy = aw / (wx1 - wx0), ah / (wy1 - wy0)
+            bx, by = ax + (under[1] - wx0) * ux, ay + (under[2] - wy0) * uy
+            bw, bh = (under[3] - under[1]) * ux, (under[4] - under[2]) * uy
+            art, open = under, true
+        end
+
         local B = Style.MAP_BACKGROUND
         if mapID then
-            Split(ax, ay, ax + aw, ay + ah, function(x0, y0, x1, y1, light)
+            Split(bx, by, bx + bw, by + bh, function(x0, y0, x1, y1, light)
                 local texture = backgroundPool:Next()
                 Fill(texture, B[1] * light, B[2] * light, B[3] * light, 1)
                 Bend(texture, x0, y0, x1, y1, true)
-            end, box ~= nil)
+            end, open)
         end
 
-        local wx0, wy0, wx1, wy1 = window[1], window[2], window[3], window[4]
         local tiles, explored = 0, 0
         -- Printed, not shown: drawn part way to grey and toned, or toned
         -- harder where the client cannot desaturate (PLATE).
         local grey = plate.canDesaturate
         if layer then
-            tiles, explored = ns.UI.MapArt.Print(layer, pieces, { wx0 * LW, wy0 * LH, wx1 * LW, wy1 * LH }, ax, ay, aw,
-                grey and PLATE.tint or PLATE.plain, K, tilePool, exploredPool, box ~= nil)
+            tiles, explored = ns.UI.MapArt.Print(layer, pieces, { art[1] * LW, art[2] * LH, art[3] * LW, art[4] * LH },
+                bx, by, bw, grey and PLATE.tint or PLATE.plain, K, tilePool, exploredPool, open)
             for _, pool in ipairs({ tilePool, exploredPool }) do
                 for i = 1, pool.used do
                     local piece = pool[i]
@@ -1940,10 +1967,13 @@ local function New(parent, slot)
                         end
                     end
                     if not into and #doorsAt < CAP.dungeons then
-                        into = { x = h.x, y = h.y, name = seg.name, segs = {} }
+                        into = { x = h.x, y = h.y, name = seg.name, segs = {}, moments = {} }
                         doorsAt[#doorsAt + 1] = into
                     end
-                    if into then into.segs[#into.segs + 1] = seg end
+                    if into then
+                        into.segs[#into.segs + 1] = seg
+                        into.moments[#into.moments + 1] = h.m
+                    end
                 end
             end
             for _, d in ipairs(doorsAt) do
@@ -1953,6 +1983,7 @@ local function New(parent, slot)
                 Halo(x, y, MARK.door + 5, true)
                 SHAPES.dungeon(markPool, markInnerPool, x, y)
                 hoverPool:Next(x, y, function() return Tip(Text.Dungeon(DoorAccount(segs), now)) end, nil, "door")
+                    .moments = d.moments
             end
 
             -- The levels reached in its time (the entry's own, and in a week
@@ -2068,7 +2099,7 @@ local function New(parent, slot)
                         for _, line in ipairs(lines or {}) do tip[#tip + 1] = { line, 1, 1, 1, true } end
                     end
                     return #tip > 0 and tip or nil
-                end, nil, "person")
+                end, nil, "person").moments = list
                 local px, py = OnPage(x, y)
                 for _, m in ipairs(c.list) do
                     where[m] = { px, py, x = x, y = y }
@@ -2124,8 +2155,8 @@ local function New(parent, slot)
                 spec.draw(kit, x, y, arg)
                 local words = spec.tips and function() return Tip(spec.tips(c.list, now)) end
                     or spec.tip and Tell(c.list, spec.tip) or nil
-                hoverPool:Next(x, y, words, hover, spec.kind).spot =
-                    { kind = spec.kind, list = c.list }
+                local button = hoverPool:Next(x, y, words, hover, spec.kind)
+                button.spot, button.moments = { kind = spec.kind, list = c.list }, c.list
                 local px, py = OnPage(x, y)
                 marks[#marks + 1] = { x = x, y = y, list = c.list, at = { px, py }, arg = arg }
                 if spec.join then
@@ -2203,7 +2234,9 @@ local function New(parent, slot)
         for _, pool in ipairs(ALL) do pool:Begin() end
 
         DrawMount()
-        local At, fullW, fullH = DrawArt(mapID, window, opts.box)
+        local At, fullW, fullH = DrawArt(mapID, window, opts.box, opts.under)
+        -- (the wider window printed for a tick's motion, for the tests)
+        self.under = opts.under
 
         -- Yards serve only stops saved before shapes were kept.
         local yards = ns.Journey.MapYards(mapID)
@@ -2400,6 +2433,8 @@ local function New(parent, slot)
     -- (plate.padLean: the pad is among its marks, UI/Journey/Pad.lua, and
     -- it leans in as under the mouse)
     local function Want()
+        -- (not while a tick's motion holds the picture, plate:Glimpse)
+        if plate.held then return 0 end
         return (plate.leans and (clip:IsMouseOver() or plate.padLean)) and 1 or 0
     end
     local function Apply()
@@ -2446,19 +2481,58 @@ local function New(parent, slot)
         end
     end
 
+    -- The picture shifted `lx`, `ly` card px (x right, y down, unturned) and
+    -- scaled by `scale` about the card's middle, in the card's own turn, the
+    -- print's edges kept at the neat line: the full page's view (Show) and a
+    -- close-up's held view (plate:Glimpse).
+    local function Picture(lx, ly, scale)
+        local a = view.turn or 0
+        local c, sn = math.cos(a), math.sin(a)
+        pivot:ClearAllPoints()
+        pivot:SetPoint("CENTER", S, "CENTER", lx * c + ly * sn, lx * sn - ly * c)
+        content:SetScale(scale)
+        Unscale(scale)
+    end
+
     -- The picture placed for the view shown against the view drawn: scaled
     -- by their ratio about the card's middle and shifted, in the card's own
     -- turn, so the map point at the middle is the one wanted.
     local function Show()
         local d, f = look.drawn, look.f
         local lx, ly = (d.cx - look.cx) * f * look.LW, (d.cy - look.cy) * f * look.LH
-        local a = view.turn or 0
-        local c, sn = math.cos(a), math.sin(a)
-        pivot:ClearAllPoints()
-        pivot:SetPoint("CENTER", S, "CENTER", lx * c + ly * sn, lx * sn - ly * c)
         plate.scale = f / d.f
-        content:SetScale(plate.scale)
-        Unscale(plate.scale)
+        Picture(lx, ly, plate.scale)
+    end
+
+    -- A close-up's picture held at another view than it was drawn at, for a
+    -- tick's motion (UI/Journey/Glide.lua): the map point `cx`, `cy` (0..1)
+    -- at the card's middle, at `ratio` times the drawn window's scale, as
+    -- the full page's view is shown (Picture). plate:Glimpse() gives it back
+    -- as drawn, exactly (the pivot on the card's middle, no scale, the
+    -- edges where Vignette put them), and lets it lean in again. Nothing on
+    -- the plate reads the held view: its window, At and marks are the
+    -- drawing's. Not on a full page (its own view, look).
+    function plate:Glimpse(cx, cy, ratio)
+        if look then return end
+        if not cx then
+            if not self.held then return end
+            self.held = nil
+            pivot:ClearAllPoints()
+            pivot:SetPoint("CENTER", S, "CENTER")
+            content:SetScale(1)
+            Unscale(1)
+            self:Lean()
+            return
+        end
+        local w, s = self.window, self.slot
+        if not (w and s) then return end
+        if not self.held then
+            -- (lying back first: a lean under the mouse let go)
+            self.held = true
+            self.Settle()
+        end
+        local kx, ky = (s.w - 2 * s.pad) / (w[3] - w[1]), (s.h - 2 * s.pad) / (w[4] - w[2])
+        Picture(((w[1] + w[3]) / 2 - cx) * ratio * kx, ((w[2] + w[4]) / 2 - cy) * ratio * ky, ratio)
     end
 
     -- A view kept on the map: no further than the fit, the middle no
