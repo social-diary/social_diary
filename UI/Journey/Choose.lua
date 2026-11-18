@@ -73,8 +73,8 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 -- (HEAD): the level's rubric where the character's name stands (`rubric`, its
 -- paraph and fading rule as an entry's, ENTRY), the title in the hand a size
 -- up under it (`title`, FONT.noteWrittenLarge: it leads the zones' names in
--- the hand), the cap line (`cap`: its three small frames, the maps, `frame` px
--- wide and `frameH` tall, `frameGap` apart, the words `capGap` past the last),
+-- the hand), the cap line (`cap`: its frames, the maps, `meter` px wide in
+-- all and `frameH` tall, `frameGap` apart, the words `capGap` past them),
 -- and the list from `list` (HEAD.list: where the entries begin, so the page
 -- doesn't jump as it turns into the ticklist) down to `bottom` px above the
 -- page's foot. Under the list the footer, as the link sheet's
@@ -111,11 +111,26 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 -- outline's alpha of a frame lit (under the mouse, or a row of its map under
 -- the mouse).
 -- The meter as one quiet unit under the title (the user's, 18 Nov, after the
--- title went up to 20 pt): `cap` leaves the title's descenders room; a
--- frame 13 x 9 has a snapshot's shape (SNAPSHOT 176 x 124), so it reads as a
--- map; `frameGap` 4 keeps three maps apart rather than one bar; the words
--- `capGap` 8 past the last, their middle `capY` px above the frames' (Friz's
--- line box holds its descenders under the words, so its middle sits low).
+-- title went up to 20 pt): `cap` leaves the title's descenders room;
+-- `frameGap` 4 keeps the maps apart rather than one bar; the words `capGap` 8
+-- past the meter, their middle `capY` px above the frames' (Friz's line box
+-- holds its descenders under the words, so its middle sits low).
+-- The meter is the right page's room as its plates share it (the user's, 18
+-- Nov: "move on from 3 simple slots to what is happening on the right side";
+-- one plate may take all of it): a frame for each plate, in their order on
+-- the page, as wide as its card's share of the plates' area (the slot it was
+-- drawn in, F+L's tucked print and TOP's caption over the plate included),
+-- all of them `meter` px across with their gaps: one plate is one frame the
+-- whole width. `frameMin`: no frame narrower, so a tucked print's stays a
+-- frame and can be hovered (at 9 px tall, 9 is a square). Was three fixed
+-- 13 px frames, 4 apart: `meter` widened from their 47 so a snapshot beside
+-- a full plate is still told from it. An empty frame only where there is
+-- room the page does not use: a piece whose plates were all left out (its
+-- page says so in words), one frame the whole width; a page with one or two
+-- plates has no free room, its layout gives them the page (LAYOUT[1], [2]).
+-- A tick that changes the page eases the frames to their new widths
+-- (`ease` s, the right page's own glide, UI/Journey/Glide.lua's GLIDE.secs
+-- and its curve); anything else, and "Flat paper only", sets them at once.
 -- The empty frame was ink at 0.5, darker than the diary's graphite: it
 -- read stronger than a map on the page. Now the three inks step down from
 -- the player's red through the diary's graphite to an outline barely there,
@@ -127,7 +142,8 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 -- `shake`: the box (and the cap line's frames) on a blocked tick, `amp` px
 -- either way, `times` there and back over `secs`, dying away.
 local CHOOSE = {
-    rubric = 20, title = 40, cap = 70, frame = 13, frameH = 9, frameGap = 4, capGap = 8, capY = 1, noteH = 28,
+    rubric = 20, title = 40, cap = 70, meter = 60, frameMin = 9, frameH = 9, frameGap = 4, capGap = 8, capY = 1,
+    noteH = 28,
     list = HEAD.list, bottom = 70, done = 30, foot = { rule = 64, note = 58, gap = 10 },
     box = 13, boxX = 1, nameX = 21, place = 23, indent = 18, cardBox = 10, card = 18, gap = 10,
     faded = { outline = 0.55, tick = 0.80, tickW = 1, off = 0.38 }, thin = 1, red = 0.95, bold = 1.8, edge = 1.25,
@@ -136,6 +152,7 @@ local CHOOSE = {
     frames = { mine = 0.95, fill = 0.70, diary = 0.55, diaryFill = 0.25, free = 0.38, hot = 1 },
     ring = { r = 9, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 },
     shake = { amp = 2.5, times = 3, secs = 0.45 },
+    ease = YourDiary.GLIDE and YourDiary.GLIDE.secs or 0.28,
 }
 YourDiary.CHOOSE = CHOOSE
 
@@ -145,7 +162,12 @@ YourDiary.CHOOSE = CHOOSE
 local WORDS = {
     title = L["Choose what's on this page"],
     cap = L["Three maps fit a page."],
-    blocked = L["All three maps hold what you chose. Leave something out first."],
+    blocked = L["No room for it beside what you chose. Leave something out first."],
+    -- A frame's tooltip: its zone, and whose choice it is; an empty one.
+    yours = L["Your choice"],
+    forYou = L["Chosen for you"],
+    noMaps = L["No maps on this page"],
+    noMapsHow = L["Tick a place to bring its map in"],
     bumped = L["%s came off to make room."],
     done = L["Done"],
     reason = {
@@ -556,7 +578,7 @@ end
 -- One of the cap line's frames, a map: an outline, and its fill.
 local function Frame(parent)
     local f = CreateFrame("Frame", nil, parent)
-    f:SetSize(CHOOSE.frame, CHOOSE.frameH)
+    f:SetSize(CHOOSE.frameMin, CHOOSE.frameH)
     f.fill = f:CreateTexture(nil, "ARTWORK", nil, 0)
     f.fill:SetPoint("TOPLEFT", 1, -1)
     f.fill:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -570,6 +592,120 @@ local function Frame(parent)
         f.edges[#f.edges + 1] = t
     end
     return f
+end
+
+-- The frames' widths for plates drawn in `slots` ({ w, h } each, in their
+-- order): `meter` px less the gaps, shared by the cards' areas, none under
+-- `frameMin`, whole pixels adding up to the meter (the remainders to the
+-- largest shares). No slots: one frame the whole width (an empty page).
+local function Widths(slots)
+    local n = #slots
+    if n == 0 then return { CHOOSE.meter } end
+    local room = CHOOSE.meter - (n - 1) * CHOOSE.frameGap
+    local area, total = {}, 0
+    for i, s in ipairs(slots) do
+        area[i] = math.max((s.w or 0) * (s.h or 0), 1)
+        total = total + area[i]
+    end
+    -- The narrow ones held at the least, the rest sharing what is left.
+    local raw, held = {}, {}
+    for _ = 1, n do
+        local free, rest = room, 0
+        for i = 1, n do
+            if held[i] then free = free - CHOOSE.frameMin else rest = rest + area[i] end
+        end
+        local again = false
+        for i = 1, n do
+            if not held[i] then
+                raw[i] = free * area[i] / rest
+                if raw[i] < CHOOSE.frameMin then held[i], again = true, true end
+            else
+                raw[i] = CHOOSE.frameMin
+            end
+        end
+        if not again then break end
+    end
+    local widths, used, order = {}, 0, {}
+    for i = 1, n do
+        widths[i] = math.floor(raw[i])
+        used = used + widths[i]
+        order[i] = i
+    end
+    table.sort(order, function(a, b)
+        local ra, rb = raw[a] - widths[a], raw[b] - widths[b]
+        if ra ~= rb then return ra > rb end
+        return a < b
+    end)
+    for k = 1, room - used do
+        local i = order[(k - 1) % n + 1]
+        widths[i] = widths[i] + 1
+    end
+    return widths
+end
+YourDiary.MeterWidths = Widths
+
+-- The slots the piece's plates were drawn in (DrawPlates keeps them,
+-- piece.drawnSlots, there while a plate's whole map is open); where they
+-- are not there for these plates (the whole map open on a recap built
+-- again), the slots its page gives (PlatesOf's layout: F+L there as FL,
+-- TOP as its plate).
+local function SlotsOf(piece, count)
+    local drawn = piece.drawnSlots
+    if drawn and #drawn == count then return drawn end
+    local _, layout = YourDiary.PlatesOf(piece)
+    local slots = {}
+    for i = 1, count do
+        local s = layout and layout[i]
+        if not s then return {} end
+        slots[i] = { w = s.w, h = s.h }
+    end
+    return slots
+end
+
+-- Eased out, quartic: the right page's glide's curve (UI/Journey/Glide.lua).
+local function Eased(t) return 1 - (1 - t) ^ 4 end
+
+-- The frames set to `widths` from the left, at once, or eased from where
+-- they stood (`from`: { x, w } each; a frame coming grows from nothing at
+-- its place).
+local function Meter(ch, widths, from)
+    local x, to = 0, {}
+    for k, f in ipairs(ch.frames) do
+        local w = widths[k]
+        f:SetShown(w ~= nil)
+        if w then
+            to[k] = { x = x, w = w }
+            PlaceBox(f, x, -CHOOSE.cap)
+            f:SetWidth(w)
+            f.w = w
+            x = x + w + CHOOSE.frameGap
+        end
+    end
+    local driver = ch.meterEase
+    driver:SetScript("OnUpdate", nil)
+    if not from then return end
+    local t = 0
+    local function Step(_, elapsed)
+        t = t + (elapsed or 0)
+        local e = Eased(math.min(t / CHOOSE.ease, 1))
+        for k, f in ipairs(ch.frames) do
+            local a, b = from[k] or (to[k] and { x = to[k].x, w = 0 }), to[k]
+            if a and b then
+                local w = math.max(a.w + (b.w - a.w) * e, 1)
+                f:ClearAllPoints()
+                f:SetPoint("TOPLEFT", a.x + (b.x - a.x) * e, -CHOOSE.cap)
+                f:SetWidth(w)
+            end
+        end
+        if t >= CHOOSE.ease then
+            driver:SetScript("OnUpdate", nil)
+            for k, f in ipairs(ch.frames) do
+                if to[k] then PlaceBox(f, to[k].x, -CHOOSE.cap) f:SetWidth(to[k].w) end
+            end
+        end
+    end
+    driver:SetScript("OnUpdate", Step)
+    Step(nil, 0)
 end
 
 -- `kind`: "mine" (red), "diary" (faded), or nil (no such map on the page);
@@ -595,6 +731,13 @@ function LightFrames(maps)
     local ch = page and page.chooser
     if not ch then return end
     for k, f in ipairs(ch.frames) do FrameLook(f, f.kind, maps and maps[k]) end
+end
+
+-- A frame's tooltip: its map's zone and whose choice it is; an empty
+-- frame (no plate on the page) what is missing and how it fills.
+local function FrameTip(f)
+    if not f.kind then return { { WORDS.noMaps }, { WORDS.noMapsHow, 1, 1, 1, true } } end
+    return { { ZoneName(f.mapID) }, { f.kind == "mine" and WORDS.yours or WORDS.forYou, 1, 1, 1, true } }
 end
 
 -- A frame under the mouse: it lit, and the rows on its map with it.
@@ -634,17 +777,19 @@ local function Build(page)
 
     -- The frames shake on a blocked tick (Shake: x, y from the page's
     -- corner), so the words are placed from the page, not from a frame.
+    -- A frame for each plate a page can hold (Recap.PLATES.max), placed by
+    -- Fill (Meter).
     ch.frames = {}
-    for k = 1, 3 do
+    for k = 1, ns.JourneyRecap.PLATES.max do
         local f = Frame(ch)
         f.index = k
-        PlaceBox(f, (k - 1) * (CHOOSE.frame + CHOOSE.frameGap), -CHOOSE.cap)
+        PlaceBox(f, 0, -CHOOSE.cap)
         f:EnableMouse(true)
-        f:SetScript("OnEnter", function(self) FrameHover(self, true) end)
-        f:SetScript("OnLeave", function(self) FrameHover(self, false) end)
+        Style.Tooltip(f, FrameTip, "ANCHOR_RIGHT", FrameHover)
         ch.frames[k] = f
     end
-    local capX = 3 * (CHOOSE.frame + CHOOSE.frameGap) - CHOOSE.frameGap + CHOOSE.capGap
+    ch.meterEase = CreateFrame("Frame", nil, ch)
+    local capX = CHOOSE.meter + CHOOSE.capGap
     ch.cap = Style.Text(ch, FONT.small)
     ch.cap:SetPoint("LEFT", ch, "TOPLEFT", capX, -(CHOOSE.cap + CHOOSE.frameH / 2) + CHOOSE.capY)
     ch.cap:SetWidth(LEFT_W - capX)
@@ -709,8 +854,27 @@ local function Fill()
     ch.rubric:SetText(Text.Title(e, now))
     ch.aside:SetText(piece ~= e and Text.SittingLabel(piece, now) or (Text.Current(e) or ""))
 
+    -- The meter: the plates' share of the page; eased where a tick changed
+    -- it (Tick's page.chooseEase), the page on the screen and not laid flat.
+    local count = #choices.plates
+    local widths = Widths(SlotsOf(piece, count))
+    local from
+    if page.chooseEase and ns.Setting("flatSheets") ~= true and ch:IsVisible() then
+        from = {}
+        for k, f in ipairs(ch.frames) do
+            if f:IsShown() and f.w then from[k] = { x = f.x or 0, w = f.w } end
+        end
+        local same = true
+        for k = 1, #ch.frames do
+            local a = from[k]
+            if (a and a.w) ~= widths[k] then same = false end
+        end
+        if same then from = nil end
+    end
+    Meter(ch, widths, from)
     for k, f in ipairs(ch.frames) do
         local p = choices.plates[k]
+        f.mapID = p and p.mapID or nil
         FrameLook(f, p and (p.mine and "mine" or "diary") or nil)
     end
     ch.cap:SetText(WORDS.cap)
@@ -786,7 +950,9 @@ function Tick(row)
     RingOff()
     -- (the plates ease into their new places, the page final at once:
     -- UI/Journey/Glide.lua)
+    page.chooseEase = true
     YourDiary.Glide.Around(function() ns.UI.RefreshJourneyPage(false) end)
+    page.chooseEase = nil
 end
 
 YourDiary.CanChoose, YourDiary.Choose, YourDiary.Unchoose, YourDiary.FillChoose = CanChoose, Choose, Unchoose, Fill

@@ -19,7 +19,6 @@ ns.Locale.Add("ptBR", {
     ["Choose another"] = "Escolher outro",
     ["What happened here?"] = "O que aconteceu aqui?",
     ["Which one?"] = "Qual deles?",
-    ["Left out of this page"] = "Fora desta página",
     ["Delete this card"] = "Excluir este cartão",
     ["Leave it out"] = "Deixar de fora",
     ["Undo my changes"] = "Desfazer minhas alterações",

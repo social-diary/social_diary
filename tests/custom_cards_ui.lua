@@ -379,7 +379,7 @@ do
 end
 
 --------------------------------------------------------------------------
-Section("hide, then bring it back from the menu")
+Section("hide; the map's menu no longer lists it, the ticklist brings it back")
 
 do
     local rec = j.closeCalls[1]
@@ -391,9 +391,16 @@ do
     local stayed = page.piece
     Eq(stayed, 1, "the sitting stayed open")
     RightMap(plate, 0.40, 0.60)
-    Check(mock.contextMenu ~= nil, "no menu")
-    Check(mock.MenuClick("Left out of this page"), "the hidden cards' heading")
-    Check(mock.MenuClick("Plainstrider, 6% health"), "the hidden card's line")
+    -- (the user's, 18 Nov: no "Left out of this page" in the map's menu)
+    Check(not (mock.contextMenu and mock.MenuClick("Left out of this page")), "the hidden cards' heading is gone")
+    Check(not (mock.contextMenu and mock.MenuClick("Plainstrider, 6% health")), "no hidden card's line")
+    -- (as a tick on the ticklist does, UI/Journey/Choose.lua: kept, drawn
+    -- again on this piece)
+    Check(ns.Chosen.Keep(nil, plate.entry.hidden[1]), "ticked back on the ticklist")
+    local e = page.recap.entries[page.open]
+    local piece = e and YourDiary.OpenPieceOf(e)
+    page.holdAt = piece and piece.from
+    ns.UI.RefreshJourneyPage(false)
     Eq(rec.custom, nil, "brought back")
     Eq(page.piece, stayed, "the sitting stayed")
     Check(Card() ~= nil, "its card is back")

@@ -200,8 +200,9 @@ end
 --   choices = {
 --     zones     every zone (mapID), in order of its first moment
 --     plates    the page's plates, in their order (time, as the page stands
---               them): { mine } each, where it holds something the player
---               chose (a keep, or a card they wrote or changed)
+--               them): { mine, mapID } each, `mine` where it holds
+--               something the player chose (a keep, or a card they wrote or
+--               changed), `mapID` its zone (the cap line's tooltip)
 --     max       how many plates fit (Recap.PLATES.max, 3)
 --     mine      how many plates on the page are the player's
 --     diary     how many are the diary's
@@ -441,7 +442,7 @@ function Recap.Choices(j, e, ctx, cover)
     for i, plate in ipairs(plates) do
         local mine = false
         for _, m in ipairs(plate.moments) do mine = mine or Mine(m) end
-        choices.plates[i] = { mine = mine }
+        choices.plates[i] = { mine = mine, mapID = plate.mapID }
         if mine then choices.mine = choices.mine + 1 else choices.diary = choices.diary + 1 end
     end
     choices.full = #plates >= choices.max and choices.mine >= choices.max

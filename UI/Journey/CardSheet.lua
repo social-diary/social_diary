@@ -92,7 +92,7 @@ local PERSON = { most = 4, row = 18, level = 20, out = 4, foot = 2, hot = 0.12, 
 -- pick and another are the user's own, word for word.
 local WORDS = {
     add = L["Add custom event..."], pick = L["What happened here?"], another = L["Choose another"], which = L["Which one?"],
-    hidden = L["Left out of this page"], save = L["Save"], cancel = L["Cancel"],
+    save = L["Save"], cancel = L["Cancel"],
     hide = L["Leave it out"], reset = L["Undo my changes"], remove = L["Delete this card"],
     confirm = L["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."],
     -- The page's own choice (.claude/features/choose-page.md, Phase 4): only
@@ -703,22 +703,19 @@ local function PlaceMenu(plate)
     local where = x and e and e.from and e.to and e.to > e.from and ns.ZoneOf(mapID) == mapID
         and { mapID = mapID, x = x, y = y, from = e.from, to = e.to } or nil
     local adds = where and Kinds()[1] ~= nil
-    local hidden = {}
-    -- (only cards hidden here, by their `rec`: what the player left out on the
-    -- ticklist, Core/Chosen.lua, comes back only there, the user's, 18 Nov)
-    for _, h in ipairs(e and e.hidden or {}) do
-        if h.rec and ns.Custom.Spec(h.kind) then hidden[#hidden + 1] = h end
-    end
+    -- (no "Left out of this page" list here: whatever is left out, a card
+    -- hidden from its own menu too, comes back on the ticklist alone,
+    -- Core/Chosen.lua, the user's, 18 Nov)
     -- The page's own choice (.claude/features/choose-page.md): a close-up of
     -- the plates' page only (a full page's plate has no plan: it is the
     -- level's whole zone, not a place of this page). The menu only hides
     -- (the user's, 18 Nov): a place left out comes back on the ticklist
-    -- alone, so it is never listed under "Left out of this page".
+    -- alone.
     local leaves = plate.plan ~= nil and plate.plan.moments ~= nil and plate.plan.moments[1] ~= nil
     local page = YourDiary.page
     local piece = leaves and YourDiary.ShownPiece and YourDiary.ShownPiece()
     local chooses = piece and not page.choosing and not YourDiary.Solo() and YourDiary.CanChoose(piece)
-    if not (adds or hidden[1] or leaves) then return end
+    if not (adds or leaves) then return end
     MenuUtil.CreateContextMenu(plate.over, function(_, root)
         if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
         if leaves then
@@ -727,16 +724,6 @@ local function PlaceMenu(plate)
                 if ns.Chosen.LeavePlace(nil, plate.plan) then YourDiary.Glide.Around(Redraw) end
             end)
             if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
-        end
-        if hidden[1] then
-            if adds or leaves then root:CreateDivider() end
-            root:CreateTitle(WORDS.hidden)
-            for _, h in ipairs(hidden) do
-                root:CreateButton(Described(ns.Custom.Spec(h.kind), h.rec), function()
-                    ns.Custom.Show(h.rec)
-                    Redraw()
-                end)
-            end
         end
     end)
 end

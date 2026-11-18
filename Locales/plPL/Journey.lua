@@ -17,7 +17,6 @@ ns.Locale.Add("plPL", {
     ["Choose another"] = "Wybierz inny",
     ["What happened here?"] = "Co się tutaj stało?",
     ["Which one?"] = "Które wydarzenie?",
-    ["Left out of this page"] = "Pominięto na tej stronie",
     ["Delete this card"] = "Usuń tę kartę",
     ["Leave it out"] = "Pomiń",
     ["Undo my changes"] = "Cofnij moje zmiany",

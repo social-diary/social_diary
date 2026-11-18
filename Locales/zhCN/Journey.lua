@@ -17,7 +17,6 @@ ns.Locale.Add("zhCN", {
     ["Choose another"] = "选择另一个",
     ["What happened here?"] = "这里发生了什么？",
     ["Which one?"] = "哪一个？",
-    ["Left out of this page"] = "未写入本页",
     ["Delete this card"] = "删除此卡片",
     ["Leave it out"] = "将其排除",
     ["Undo my changes"] = "撤销我的更改",
