@@ -362,6 +362,48 @@ ns.UI.SetJournalView("journey")
 Check(not page.choosing and not ch:IsShown() and page.entries:IsShown(), "the ribbon left it open")
 
 --------------------------------------------------------------------------
+Section("a plate's whole map from the ticklist: the ticklist stays, and back")
+
+-- (the user's, in the client, 18 Nov: "when you are in the choose view, click
+-- on a plate, and exit again, you would expect to be in the choose view";
+-- and "while inside the expanded plate view, the left page still moves to
+-- the standard left page")
+YD.Choose()
+local pieceWas = YD.ShownPiece().from
+local mapID = page.plates[1] and page.plates[1].mapID
+Check(mapID ~= nil, "setup: a plate on the page")
+YD.OpenFull(mapID)
+Check(page.mode == "full", "the whole map not opened")
+Check(page.choosing and ch:IsShown(), "the ticklist gone with the whole map open")
+Check(not page.entries:IsShown() and not page.name:IsShown(), "the left page shown over the ticklist on the whole map")
+-- A tick there: the whole map stays, the ticklist with it.
+local fullRow = Row(function(item) return item.card ~= nil end)
+Check(fullRow ~= nil, "setup: a card row")
+local fullKey = fullRow.item.card.key
+fullRow:Click()
+Check(page.mode == "full" and page.choosing and ch:IsShown(), "a tick on the whole map left it or the ticklist")
+Check(not page.entries:IsShown(), "the left page shown again after a tick on the whole map")
+fullRow = Row(function(item) return item.card ~= nil and item.card.key == fullKey end)
+fullRow:Click()
+YD.FullBack()
+Check(page.mode == "plates" and page.choosing and ch:IsShown(), "back from the whole map: the ticklist not there")
+Eq(YD.ShownPiece().from, pieceWas, "back on another sitting")
+Check(not page.entries:IsShown(), "the left page shown under the ticklist come back")
+-- Anything else opened from the whole map gives the left page back.
+YD.OpenFull(mapID)
+YD.OpenLevel(page.open)
+Check(not page.choosing, "the ticklist kept on a level opened from the whole map")
+YD.Choose()
+YD.OpenFull(mapID)
+ns.UI.SetJournalView("people")
+ns.UI.SetJournalView("journey")
+Check(not page.choosing, "the ticklist kept after the ribbon")
+-- The whole map opened without the ticklist: back is the plates, as ever.
+YD.OpenFull(mapID)
+YD.FullBack()
+Check(not page.choosing, "the ticklist opened where it was not open")
+
+--------------------------------------------------------------------------
 Section("the right-click menus: a place left out, someone left off")
 
 -- (Phase 4: a plate's "Leave this place out" and "Choose what's on this
