@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
-### Shiny New Things
+## [4.2.0]
 
-- Adds Brazilian Portuguese support
+This Update brings the diary in Brazilian Portuguese.
+
+### Shiny new Things
+
+- Added Brazilian Portuguese to the diary’s language settings (thanks thiagocoutinhor)
 
 ## [4.1.1]
 
