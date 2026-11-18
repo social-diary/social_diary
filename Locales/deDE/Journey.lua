@@ -42,15 +42,6 @@ ns.Locale.Add("deDE", {
     ["Choose what's on this page..."] = "Auswählen, was auf dieser Seite steht …",
     ["Leave %1$s off this page"] = "%1$s auf dieser Seite weglassen",
     -- UI/Journey/Choose.lua
-    ["Three places fit."] = "Drei Orte haben Platz.",
-    ["Three places fit, and you've chosen three. Leave one out first."] = "Drei Orte haben Platz, und du hast drei gewählt. Lass erst einen weg.",
-    ["next in line"] = "als Nächstes dran",
-    ["no room"] = "kein Platz",
-    ["too small for a plate of its own"] = "zu klein für eine eigene Karte",
-    ["no room in the margin"] = "kein Platz am Rand",
-    ["left out by you"] = "von dir weggelassen",
-    ["made room for %s"] = "Platz gemacht für %s",
-    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
     ["Arrived %s##zone"] = "Ankunft %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Die Orte jeder Stufe werden hier eingeklebt:",

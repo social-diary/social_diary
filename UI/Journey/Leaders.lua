@@ -19,15 +19,24 @@ local LAYOUT, LEADER = YourDiary.LAYOUT, YourDiary.LEADER
 -- What follows a plate as it leans in (its leaders), below.
 local Follow
 
+-- A plate for the page, not yet in its list (PlateAt; a tick's motion,
+-- UI/Journey/Glide.lua, which may want one more while a plate leaving
+-- still fades on its own frame).
+local function NewPlate()
+    local page = YourDiary.page
+    local plate = Plate(page.right, LAYOUT[1][1])
+    plate.onZoom = function(p, scale) Follow(p, scale) end
+    -- A right click on a plate of this page, a close-up's or a full
+    -- page's alike: UI/Journey/CardSheet.lua, which loads later.
+    plate.onRight = function(p, spot) YourDiary.CardSheet.Right(p, spot) end
+    return plate
+end
+
 local function PlateAt(i)
     local page = YourDiary.page
     local plate = page.plates[i]
     if not plate then
-        plate = Plate(page.right, LAYOUT[1][1])
-        plate.onZoom = function(p, scale) Follow(p, scale) end
-        -- A right click on a plate of this page, a close-up's or a full
-        -- page's alike: UI/Journey/CardSheet.lua, which loads later.
-        plate.onRight = function(p, spot) YourDiary.CardSheet.Right(p, spot) end
+        plate = NewPlate()
         page.plates[i] = plate
     end
     return plate
@@ -248,4 +257,5 @@ local function Leader(strip, mark, plate)
     Aim(link, plate.scale or 1)
 end
 
+YourDiary.NewPlate = NewPlate
 YourDiary.PlateAt, YourDiary.Handout, YourDiary.LeaderMark, YourDiary.Leader = PlateAt, Handout, LeaderMark, Leader

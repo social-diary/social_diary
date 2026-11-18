@@ -342,7 +342,12 @@ fields on them and on the plate. Today's: in `Features/Deaths/Card.lua`
 `ns.Witnesses.Card.Choose` from `cross.deaths` and the close calls' marks,
 clearing the killer or foe it replaces); in
 `Features/Hunts/LuckyCard.lua` `print` 90 (S on a light plate's print,
-`plate.print`, the only pass with a `new` today).
+`plate.print`). (The ticklist's `chosen` 99, a numeral I/II/III on each
+plate while it was open, was dropped on 18 Nov, the user's: not meaningful
+enough for the clutter; the ticklist adds nothing to a plate now but the
+ring.) `Plate.Hovered` (one listener, the ticklist's,
+`UI/Journey/Choose.lua`) is told when a mark's hover square is entered or left; the
+square carries `moments` where it knows them.
 The ink trail is `UI/Ink/Trail.lua` (its pen, the stroke kit the leaders
 share, is `UI/Ink/Pen.lua`); map art and explored overlays are
 `UI/Map/Art.lua`. "Flat paper only" lays everything flat (no

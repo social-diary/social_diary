@@ -882,6 +882,22 @@ function ns.UI.LooseSheet(parent, W, H, opts)
         LayPaper()
     end
 
+    -- Glued: drawn `dx`, `dy` px (right, down) off where it is mounted, at
+    -- `scale` about its own middle, for a moment's motion (a plate easing
+    -- into its new slot, UI/Journey/Glide.lua); view:Shift() puts it back
+    -- exactly where K.Lay laid it. Only where it is seen: what it says it is
+    -- (K.Mount, its slot) is unchanged, and the next K.Lay lays it as ever.
+    -- The view's scale carries everything on the sheet; the sheet's offset
+    -- from the page is in its own (scaled) units, hence the division.
+    function view:Shift(dx, dy, scale)
+        if not opts.glued then return end
+        scale = scale or 1
+        self:SetScale(scale)
+        S:ClearAllPoints()
+        S:SetPoint("CENTER", parent, "TOPLEFT", (glue.x + W / 2 + (dx or 0)) / scale,
+            -(glue.y + H / 2 + (dy or 0)) / scale)
+    end
+
     ----------------------------------------------------------------------
     -- Its sound
 

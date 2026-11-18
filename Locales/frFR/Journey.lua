@@ -29,15 +29,6 @@ ns.Locale.Add("frFR", {
     ["Choose what's on this page..."] = "Choisir ce qui figure sur cette page…",
     ["Leave %1$s off this page"] = "Retirer %1$s de cette page",
     -- UI/Journey/Choose.lua
-    ["Three places fit."] = "Trois lieux tiennent sur la page.",
-    ["Three places fit, and you've chosen three. Leave one out first."] = "Trois lieux tiennent, et tu en as choisi trois. Retires-en d’abord un.",
-    ["next in line"] = "en attente",
-    ["no room"] = "pas de place",
-    ["too small for a plate of its own"] = "trop peu pour une planche",
-    ["no room in the margin"] = "pas de place dans la marge",
-    ["left out by you"] = "à ta demande",
-    ["made room for %s"] = "a cédé sa place pour %s",
-    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
     ["Arrived %s##zone"] = "Arrivée %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Les lieux de chaque niveau sont collés ici :",

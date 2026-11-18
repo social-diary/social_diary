@@ -26,15 +26,6 @@ ns.Locale.Add("zhCN", {
     ["Choose what's on this page..."] = "选择本页内容…",
     ["Leave %1$s off this page"] = "从本页排除%1$s",
     -- UI/Journey/Choose.lua
-    ["Three places fit."] = "最多可放3个地点。",
-    ["Three places fit, and you've chosen three. Leave one out first."] = "最多可放3个地点，你已选了3个。先排除一个。",
-    ["next in line"] = "候补",
-    ["no room"] = "没有空位",
-    ["too small for a plate of its own"] = "太小，不单独成图版",
-    ["no room in the margin"] = "页边没有空位",
-    ["left out by you"] = "你已排除",
-    ["made room for %s"] = "让位给%s",
-    ["%1$s, %2$s##zone and sub-zone"] = "%1$s，%2$s",
     ["Arrived %s##zone"] = "已在%s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "每个等级的地点都粘在这里：",
