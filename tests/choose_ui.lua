@@ -156,6 +156,7 @@ Section("a tick on a place on the page: left out, and the next comes in")
 
 on:Click()
 Check(page.choosing and ch:IsShown(), "the ticklist closed with a tick")
+Check(not page.entries:IsShown() and not page.name:IsShown(), "the left page shown again over the ticklist after a tick")
 Eq(Shown(), "1411 1412 1415", "the right page not drawn again: the place left out, the next in")
 local out = PlaceRow(1413)
 Eq(out.placeBox.look, "out", "a place left out: a red cross")

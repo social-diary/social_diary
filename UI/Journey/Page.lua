@@ -297,7 +297,9 @@ end
 
 local function ShowRoad(shown)
     local page = YourDiary.page
-    page.entries:SetShown(shown)
+    -- (the ticklist stands in place of the left page while it is open:
+    -- Choose.lua's LeftShown; showing the entries here put them over it)
+    page.entries:SetShown(shown and not page.choosing)
     page.right:SetShown(shown)
     page.empty:SetShown(not shown)
 end

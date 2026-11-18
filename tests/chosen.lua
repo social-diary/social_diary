@@ -219,3 +219,18 @@ do
     for key in pairs(j.chosen or {}) do Check(not key:find("Player-", 1, true), key .. " forgotten with everyone") end
     Check(j.chosen and j.chosen[("arrive:%d:"):format(t0 + 9000)] == "out", "the places stay")
 end
+
+do
+    Section("/sd chosen: list, then clear (Dev/JourneyDebug.lua)")
+    Chosen.Leave(j, { kind = "arrive", t = t0 + 9000 })
+    local said = {}
+    local was = DEFAULT_CHAT_FRAME.AddMessage
+    DEFAULT_CHAT_FRAME.AddMessage = function(self, msg) said[#said + 1] = tostring(msg) end
+    SlashCmdList.SOCIALDIARY("chosen")
+    DEFAULT_CHAT_FRAME.AddMessage = was
+    local listed = false
+    for _, line in ipairs(said) do listed = listed or line:find(("arrive:%d:"):format(t0 + 9000), 1, true) ~= nil end
+    Check(listed, "list prints the choice's key")
+    SlashCmdList.SOCIALDIARY("chosen clear")
+    Eq(j.chosen, nil, "clear takes every choice off")
+end
