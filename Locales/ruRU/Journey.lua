@@ -29,15 +29,6 @@ ns.Locale.Add("ruRU", {
     ["Choose what's on this page..."] = "Выбрать, что войдёт на страницу…",
     ["Leave %1$s off this page"] = "Убрать с этой страницы: %1$s",
     -- UI/Journey/Choose.lua
-    ["Three places fit."] = "Помещаются три места.",
-    ["Three places fit, and you've chosen three. Leave one out first."] = "Помещаются три места, и три уже выбраны. Сначала исключи одно.",
-    ["next in line"] = "в очереди",
-    ["no room"] = "нет места",
-    ["too small for a plate of its own"] = "слишком мало для своей вклейки",
-    ["no room in the margin"] = "нет места на полях",
-    ["left out by you"] = "<you:ты убрал/ты убрала>",
-    ["made room for %s"] = "место отдано: %s",
-    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
     ["Arrived %s##zone"] = "Уже %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Сюда вклеены места каждого уровня:",

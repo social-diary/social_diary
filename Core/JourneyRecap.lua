@@ -1252,17 +1252,20 @@ function Recap.Plates(j, e, ctx, cover)
     -- A plate that is only a dungeon's door (with an arrival or a level's
     -- pin at most) is left out where the run behind the door was recorded:
     -- the run has a page of its own (UI/Journey/Run.lua; the user, 28 Oct),
-    -- and a map with one door on it beside it says nothing more.
+    -- and a map with one door on it beside it says nothing more. Not where
+    -- the player kept anything on it (Core/Chosen.lua): the ticklist lists
+    -- every door, and a door kept is wanted on the page.
     for i = #plates, 1, -1 do
-        local doorOnly, recorded = true, false
+        local doorOnly, recorded, kept = true, false, false
         for _, m in ipairs(plates[i].moments) do
+            kept = kept or m.chosen == "keep"
             if m.kind == "dungeon" then
                 recorded = recorded or m.visit ~= nil
             elseif not DOOR_ONLY[m.kind] then
                 doorOnly = false
             end
         end
-        if doorOnly and recorded then table.remove(plates, i) end
+        if doorOnly and recorded and not kept then table.remove(plates, i) end
     end
     table.sort(plates, function(a, b)
         if a.rank ~= b.rank then return a.rank < b.rank end

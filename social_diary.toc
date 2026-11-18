@@ -261,6 +261,7 @@ UI/Journey/Leaders.lua
 UI/Journey/People.lua
 UI/Journey/Margin.lua
 UI/Journey/Caption.lua
+UI/Journey/Glide.lua
 UI/Journey/Full.lua
 UI/Journey/Empty.lua
 UI/Journey/Run.lua

@@ -143,6 +143,9 @@ local function DrawRight()
     local recap = page.recap
     local e = recap and recap.entries[page.open]
     local piece = Shown(e)
+    -- (a tick's motion still running is put at its end: every drawing
+    -- starts from the page as drawn, UI/Journey/Glide.lua)
+    YourDiary.Glide.Finish()
     for _, pool in ipairs(page.rightPools) do pool:Begin() end
     page.links = {}
     page.nothing:Hide()
