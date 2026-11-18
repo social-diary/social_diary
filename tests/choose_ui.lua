@@ -4,7 +4,8 @@
 -- line's frames, no map numbers anywhere (the user's, 18 Nov), a tick leaving
 -- a zone out and keeping one (the right page drawn again, the list unmoved,
 -- the rows' plates following the grouping, "came off to make room"), a row left out, the block
--- (the red line, the box shaking, nothing written), the hover between a row
+-- (the red line, the box and the frames shaking, nothing written), the page's
+-- layout (header, list, footer), the hover between a row
 -- and its mark, Done, leaving by another level or the ribbon, and no link
 -- with the pad in hand. Construction and logic only: how it looks is for the
 -- client. Invented names only.
@@ -240,6 +241,84 @@ do
 end
 
 --------------------------------------------------------------------------
+Section("the page's layout: the header, the list, the footer")
+
+-- (the user's, 18 Nov: the top out of balance, a hole under the cap line,
+-- Done too dim. The feedback line moved to the footer beside Done.)
+do
+    local BOOK_H = ns.UI.Journal.BOOK.BOOK_H
+    local FONT = ns.Style.FONT
+    local function Y(region) return select(3, region:GetPoint(1)) end
+    Eq(ch.title.recorded.calls.SetFontObject[1], FONT.noteWrittenLarge, "the title not a size up in the hand")
+    Check(FONT.noteWrittenLarge ~= FONT.noteWritten, "the title in the zones' own font")
+    Eq(Y(ch.title), -C.title, "the title's place")
+    Eq(Y(ch.frames[1]), -C.cap, "the cap line's place")
+    Check(C.rubric < C.title and C.title < C.cap and C.cap + C.frameH < C.list, "the header out of order")
+    Eq(C.list, YD.HEAD.list, "the list does not begin where the entries do")
+    -- The meter: three maps, their words after them, the inks stepping down.
+    Eq(WORDS.cap, "Three maps fit a page.", "the cap line's words")
+    Check(C.frame > C.frameH, "a frame not a map's shape")
+    Check(C.cap >= C.title + 26, "the meter under the title's descenders")
+    local capX = select(4, ch.cap:GetPoint(1))
+    Eq(capX, 3 * C.frame + 2 * C.frameGap + C.capGap, "the words not just past the last frame")
+    local FR = C.frames
+    Check(FR.mine > FR.diary and FR.diary > FR.free, "the frames' inks do not step down: the player's, the diary's, none")
+    Eq(FR.free, C.faded.off, "an empty frame not as faint as a box off the page")
+
+    Eq(Y(ch.list), -C.list, "the list's place")
+    -- The footer: the rule under the list, the line at its left, Done at its right.
+    Check(BOOK_H - C.bottom <= BOOK_H - C.foot.rule, "the list runs into the footer's rule")
+    Eq(Y(ch.footRule[1]), -(BOOK_H - C.foot.rule), "the footer's rule")
+    Eq(Y(ch.note), -(BOOK_H - C.foot.note), "the footer's line")
+    Eq(C.foot.note - C.noteH, C.done, "the line's foot not on Done's")
+    Eq((ch.done:GetPoint(1)), "TOPRIGHT", "Done not at the footer's right")
+    Eq(Y(ch.done), -(BOOK_H - C.done - 18), "Done's place")
+    Check(ch.note:GetWidth() + C.foot.gap + ch.done:GetWidth() <= ns.UI.Journal.BOOK.LEFT_W - 2,
+        "the line runs under Done")
+    Check(ch.done.label and ch.done.line, "Done not a link the pad finds (its label and line)")
+    Eq(ch.done.label.recorded.calls.SetFontObject[1], FONT.strong, "Done not in strong type")
+    ch.done.scripts.OnEnter(ch.done)
+    ch.done.scripts.OnLeave(ch.done)
+    Eq(select(1, ch.done.label:GetTextColor()), ns.Style.INK_STRONG[1], "Done fades after the mouse left")
+    -- A list too short to scroll: its rows take the scrollbar's room.
+    Check(not ch.list.bar:IsShown(), "setup: a list that does not scroll")
+    Eq(select(2, fightRow.time:GetPoint(1)), ns.UI.SCROLLBAR_WIDTH - 2, "the time not over the scrollbar's room")
+end
+
+--------------------------------------------------------------------------
+Section("the meter and the rows: a frame lights its rows, a row its frame")
+
+do
+    local function Hot()
+        local out = {}
+        for k, f in ipairs(ch.frames) do out[k] = f.hot and "hot" or "-" end
+        return table.concat(out, " ")
+    end
+    Eq(Hot(), "- - -", "setup: no frame lit")
+    fightRow.scripts.OnEnter(fightRow)
+    Eq(Hot(), "- hot -", "a row under the mouse does not light its map's frame")
+    fightRow.scripts.OnLeave(fightRow)
+    Eq(Hot(), "- - -", "the frame stays lit after the row")
+    local zoneRow = ZoneRow(1413)
+    zoneRow.scripts.OnEnter(zoneRow)
+    Eq(Hot(), "- hot -", "a zone's row does not light the frame of its map")
+    zoneRow.scripts.OnLeave(zoneRow)
+    local offRow = MomentRow(1411, "arrive")
+    offRow.scripts.OnEnter(offRow)
+    Eq(Hot(), "- - -", "a row off the page lit a frame")
+    offRow.scripts.OnLeave(offRow)
+    local f = ch.frames[2]
+    f.scripts.OnEnter(f)
+    Eq(Hot(), "- hot -", "the frame under the mouse not lit")
+    Check(page.chooseLit ~= nil and page.chooseLit[fightRow.item.card.key], "the frame did not light its map's row")
+    Eq(select(1, fightRow.name:GetTextColor()), ns.Style.INK_STRONG[1], "its row not darkened")
+    Check(not page.chooseLit[MomentRow(1412, "death").item.card.key], "the frame lit another map's row")
+    f.scripts.OnLeave(f)
+    Eq(page.chooseLit, nil, "the rows stay lit after the frame")
+    Eq(Hot(), "- - -", "the frame stays lit after the mouse left")
+end
+
+--------------------------------------------------------------------------
 Section("a tick on a zone on the page: left out, the list unmoved")
 
 local READING = Reading()
@@ -333,7 +412,7 @@ local before = Copy(j.chosen)
 local offRow = ZoneRow(off.mapID)
 offRow:Click()
 Check(Same(before, j.chosen or {}), "a blocked tick wrote something")
-Eq(ch.note:GetText(), WORDS.blocked, "the line under the cap line does not say why")
+Eq(ch.note:GetText(), WORDS.blocked, "the footer's line does not say why")
 Check(Red(ch.note), "it is not red")
 Eq(ch.cap:GetText(), WORDS.cap, "the cap line changed")
 Eq(Reading(), READING, "the list moved")
@@ -343,6 +422,16 @@ for _ = 1, 30 do
     if f then f(offRow.placeBox, 0.05) end
 end
 Check(offRow.placeBox.scripts.OnUpdate == nil, "the box never stops shaking")
+Check(ch.frames[1].scripts.OnUpdate ~= nil, "the cap line's frames do not shake")
+for _ = 1, 30 do
+    for _, f in ipairs(ch.frames) do
+        local fn = f.scripts.OnUpdate
+        if fn then fn(f, 0.05) end
+    end
+end
+Check(ch.frames[3].scripts.OnUpdate == nil, "the frames never stop shaking")
+Eq(select(3, ch.frames[3]:GetPoint(1)), -C.cap, "a frame not back in its place")
+Eq(select(2, ch.frames[3]:GetPoint(1)), 2 * (C.frame + C.frameGap), "a frame not back in its place")
 ZoneRow(1415):Click()  -- (room again: a zone of the player's left out)
 Check(not Red(ch.note) and ch.note:GetText() ~= WORDS.blocked, "the line still red after a tick that went through")
 
@@ -552,4 +641,44 @@ do
         tj.chosen = nil
         J.Touch()
     end
+end
+
+--------------------------------------------------------------------------
+Section("a row's words: short, and never its time again")
+
+-- (the user's, 18 Nov: "Tarren Mill, yesterday at…", "Dun Garok Soldier,
+-- 1% h…". A mark's `label` says the row; its day and time are the time
+-- column's, its tooltip says the rest.)
+Eq(ns.Campfire.Label({ subZone = "Tarren Mill" }), "Tarren Mill", "a campfire's row: not its place alone")
+Eq(ns.Campfire.Label({}), "A campfire", "a campfire with no place to name")
+Eq(ns.CloseCalls.Label({ name = "Dun Garok Soldier", pct = 1 }), "Dun Garok Soldier, 1%", "a close call's row lost its health")
+Eq(ns.Met.Label({ who = "Old Tom", what = "fished off the pier all evening" }), "Old Tom", "a meeting's row: more than who")
+Check(ns.UI.JourneyPlate.MARKS.campfire.label and ns.UI.JourneyPlate.MARKS.close.label
+    and ns.UI.JourneyPlate.MARKS.met.label, "a mark without its row's label")
+do
+    local kinds, rows = {}, 0
+    for _, p in ipairs(T.DiaryPages(page)) do
+        T.OpenDiaryPage(page, p.i, p.k)
+        YD.Choose()
+        if page.choosing then
+            for _, item in ipairs(page.chooser.list.data) do
+                local m = item.card and item.card.moment
+                if m then
+                    rows = rows + 1
+                    kinds[m.kind] = true
+                    Check(not item.label:find(item.time, 1, true), "a row says its time twice: " .. item.label)
+                    Check(not item.label:find("yesterday", 1, true) and not item.label:find(" on %d"),
+                        "a row says its day: " .. item.label)
+                    if m.kind == "close" then
+                        Check(item.label:find("%d+%%$") ~= nil and not item.label:find("health", 1, true),
+                            "a close call's row not short, with its health: " .. item.label)
+                    elseif m.kind == "campfire" then
+                        Eq(item.label, ns.Campfire.Label(m.campfire), "a campfire's row not its place")
+                    end
+                end
+            end
+            YD.Unchoose(true)
+        end
+    end
+    Check(rows > 0 and kinds.close and kinds.campfire, "setup: testdata's close calls and campfires in the ticklist")
 end

@@ -16,6 +16,8 @@ Plate.RegisterMark("met", {
     order = 36, cap = 20, count = "acquaintances",
     radius = MARK.together / 2 + 1, halo = MARK.together + 4,
     tip = function(m, now) return Met.Tip(m.met, now) end,
+    -- A row of the ticklist: who (Text.lua's Met.Label).
+    label = function(rec, m) return Met.Label(rec or m.met) end,
     -- Every card on the spot in one account (Text.lua's Met.Tips).
     tips = function(list, now)
         local recs = {}
