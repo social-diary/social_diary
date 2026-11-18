@@ -226,6 +226,9 @@ ns.Locale.Add("deDE", {
     ["Traded"] = "Gehandelt",
     ["Traded: %s"] = "Gehandelt: %s",
 
+    -- Features/Upgrades/Text.lua: the pieces counted, when no upgrade leads the entry
+    ["You put on a new piece of gear.|You put on %s new pieces of gear.##plural"] = "Du hast ein neues Ausrüstungsteil angelegt.|Du hast %s neue Ausrüstungsteile angelegt.",
+
     -- Features/WorldPvP/Kind.lua: the timeline's lines
     ["{You} killed %1$s %2$s##zone"] = "{Du hast} %1$s %2$s getötet",
     ["{You} killed %s"] = "{Du hast} %s getötet",

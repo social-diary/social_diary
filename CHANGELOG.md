@@ -10,6 +10,10 @@ This Update brings the diary in Brazilian Portuguese.
 
 - Added Brazilian Portuguese to the diary’s language settings (thanks thiagocoutinhor)
 
+### Fixes
+
+- German _Your Diary_ now words the pieces of gear you put on
+
 ## [4.1.1]
 
 A small Update: the preset tags now speak your language, and Feign Death or healing yourself no longer leaves false deaths and _Close Calls_ in your diary.
