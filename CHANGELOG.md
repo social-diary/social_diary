@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- You can now choose what each page of _Your Diary_ shows
+  - Right-click a _Plate_ or a person to leave it out
+
 ## [4.2.6]
 
 This Update makes your save files around 60 to 80% smaller, and a new _Memory_ setting caps how many strangers the diary keeps.
