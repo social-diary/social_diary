@@ -20,7 +20,6 @@ ns.Locale.Add("ruRU", {
     ["Choose another"] = "Выбрать другое",
     ["What happened here?"] = "Что здесь произошло?",
     ["Which one?"] = "Что именно?",
-    ["Left out of this page"] = "Не вошло на эту страницу",
     ["Delete this card"] = "Удалить эту карточку",
     ["Leave it out"] = "Не включать",
     ["Undo my changes"] = "Отменить мои правки",

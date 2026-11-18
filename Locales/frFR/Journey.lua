@@ -20,7 +20,6 @@ ns.Locale.Add("frFR", {
     ["Choose another"] = "En choisir un autre",
     ["What happened here?"] = "Que s’est-il passé ici ?",
     ["Which one?"] = "Lequel ?",
-    ["Left out of this page"] = "Exclu de cette page",
     ["Delete this card"] = "Supprimer cette fiche",
     ["Leave it out"] = "Le laisser de côté",
     ["Undo my changes"] = "Annuler mes modifications",

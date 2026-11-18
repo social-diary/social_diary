@@ -286,6 +286,16 @@ local function DrawPlates(e)
             Plated(ctx, slot, false)
         end
     end
+    -- The slots the plates were drawn in, kept on the piece for the
+    -- ticklist's cap line (UI/Journey/Choose.lua: each box as wide as its
+    -- plate's share of the page), F+L's and TOP's included, and still there
+    -- while a plate's whole map is open. View time only: nothing is saved.
+    local drawn = {}
+    for i = 1, #plates do
+        local s = PlateAt(i).slot
+        drawn[i] = s and { w = s.w, h = s.h } or nil
+    end
+    e.drawnSlots = drawn
     return #plates
 end
 

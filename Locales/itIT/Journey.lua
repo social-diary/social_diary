@@ -20,7 +20,6 @@ ns.Locale.Add("itIT", {
     ["Choose another"] = "Scegline un altro",
     ["What happened here?"] = "Che cos’è successo qui?",
     ["Which one?"] = "Quale?",
-    ["Left out of this page"] = "Escluso da questa pagina",
     ["Delete this card"] = "Elimina questa scheda",
     ["Leave it out"] = "Escludilo",
     ["Undo my changes"] = "Annulla le mie modifiche",

@@ -31,7 +31,6 @@ ns.Locale.Add("deDE", {
     ["Choose another"] = "Etwas anderes wählen",
     ["What happened here?"] = "Was ist hier passiert?",
     ["Which one?"] = "Welches?",
-    ["Left out of this page"] = "Auf dieser Seite weggelassen",
     ["Delete this card"] = "Diese Karte löschen",
     ["Leave it out"] = "Weglassen",
     ["Undo my changes"] = "Meine Änderungen zurücknehmen",

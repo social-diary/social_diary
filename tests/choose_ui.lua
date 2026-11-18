@@ -257,10 +257,10 @@ do
     Eq(C.list, YD.HEAD.list, "the list does not begin where the entries do")
     -- The meter: three maps, their words after them, the inks stepping down.
     Eq(WORDS.cap, "Three maps fit a page.", "the cap line's words")
-    Check(C.frame > C.frameH, "a frame not a map's shape")
+    Check(C.frameMin >= C.frameH, "the narrowest frame narrower than it is tall")
     Check(C.cap >= C.title + 26, "the meter under the title's descenders")
     local capX = select(4, ch.cap:GetPoint(1))
-    Eq(capX, 3 * C.frame + 2 * C.frameGap + C.capGap, "the words not just past the last frame")
+    Eq(capX, C.meter + C.capGap, "the words not just past the meter")
     local FR = C.frames
     Check(FR.mine > FR.diary and FR.diary > FR.free, "the frames' inks do not step down: the player's, the diary's, none")
     Eq(FR.free, C.faded.off, "an empty frame not as faint as a box off the page")
@@ -316,6 +316,108 @@ do
     f.scripts.OnLeave(f)
     Eq(page.chooseLit, nil, "the rows stay lit after the frame")
     Eq(Hot(), "- - -", "the frame stays lit after the mouse left")
+end
+
+--------------------------------------------------------------------------
+Section("the meter: the right page's room as its plates share it")
+
+-- (the user's, 18 Nov: "move on from 3 simple slots to what is happening on
+-- the right side"; one plate may take the whole page.)
+do
+    local LAYOUT = ns.UI.JourneyLook.LAYOUT
+    local Widths = YD.MeterWidths
+    local function Sum(w)
+        local total = 0
+        for _, v in ipairs(w) do total = total + v end
+        return total + (#w - 1) * C.frameGap
+    end
+    local function Of(slots)
+        local list = {}
+        for i, s in ipairs(slots) do list[i] = { w = s.w, h = s.h } end
+        return list
+    end
+    local cases = {
+        { "one plate", LAYOUT[1] }, { "one plate, caption over it", { LAYOUT[1][1].top } },
+        { "FF", LAYOUT.FF or LAYOUT[2] }, { "LL", LAYOUT.LL or LAYOUT[2] }, { "three", LAYOUT[3] },
+        { "FL", LAYOUT.FL }, { "LF", LAYOUT.LF }, { "F+L", LAYOUT.FL.tucked }, { "LFF", LAYOUT.LFF },
+        { "FFL", LAYOUT.FFL },
+    }
+    for _, case in ipairs(cases) do
+        local name, slots = case[1], Of(case[2])
+        local w = Widths(slots)
+        Eq(#w, #slots, name .. ": a frame for each plate")
+        Eq(Sum(w), C.meter, name .. ": the frames not the meter's width")
+        for i = 1, #w do
+            Check(w[i] >= C.frameMin and w[i] == math.floor(w[i]), name .. ": a frame too narrow, or not whole px")
+            for k = 1, #w do
+                local a, b = slots[i].w * slots[i].h, slots[k].w * slots[k].h
+                if a > b * 1.15 then Check(w[i] >= w[k], name .. ": a larger plate's frame narrower") end
+            end
+        end
+    end
+    Eq(Widths(Of(LAYOUT[1]))[1], C.meter, "one plate not one frame the whole width")
+    local tucked = Widths(Of(LAYOUT.FL.tucked))
+    Check(tucked[2] < tucked[1], "F+L's tucked print not the narrower frame")
+    local empty = Widths({})
+    Eq(#empty == 1 and empty[1], C.meter, "no plates: not one frame the whole width")
+
+    -- On the page: a frame for each plate, by the slots it was drawn in.
+    local piece = YD.ShownPiece()
+    Eq(#piece.drawnSlots, page.layout, "the piece does not keep the slots its plates were drawn in")
+    for i = 1, page.layout do
+        Eq(piece.drawnSlots[i].w, page.plates[i].slot.w, "a kept slot not the plate's")
+    end
+    local want = Widths(piece.drawnSlots)
+    local shown = 0
+    for k, f in ipairs(ch.frames) do
+        if f:IsShown() then
+            shown = shown + 1
+            Eq(f.w, want[k], "frame " .. k .. " not its plate's share")
+            Eq(f:GetWidth(), want[k], "frame " .. k .. " not drawn at its share")
+        end
+    end
+    Eq(shown, page.layout, "not a frame for each plate on the page")
+    -- Its tooltip: the zone, and whose choice.
+    local function FrameTip(f)
+        GameTooltip:Hide()
+        f.scripts.OnEnter(f)
+        local lines = { GameTooltip.text or "" }
+        for _, l in ipairs(GameTooltip.lines or {}) do lines[#lines + 1] = l[1] end
+        f.scripts.OnLeave(f)
+        return table.concat(lines, "\n")
+    end
+    Eq(FrameTip(ch.frames[2]), ns.UI.JourneyText.MapName(page.plates[2].mapID) .. "\n" .. WORDS.forYou,
+        "a frame's tooltip: not its zone and who chose it")
+
+    -- A tick that changes the page eases the frames to their new widths
+    -- (the right page's glide); the frames' own widths are final at once.
+    -- (The page's slots stood in for: one plate become the whole page.)
+    local kept = piece.drawnSlots
+    piece.drawnSlots = { { w = 300, h = 300 }, { w = 100, h = 100 }, { w = 100, h = 100 } }
+    page.chooseEase = true
+    YD.FillChoose()
+    local to = Widths(piece.drawnSlots)
+    Check(ch.meterEase.scripts.OnUpdate ~= nil, "a changed page: the frames do not ease")
+    Eq(ch.frames[1].w, to[1], "the frame's width not final at once")
+    Eq(ch.frames[1]:GetWidth(), want[1], "the frame does not ease from where it stood")
+    ch.meterEase.scripts.OnUpdate(ch.meterEase, C.ease / 2)
+    local mid = ch.frames[1]:GetWidth()
+    Check(mid > math.min(want[1], to[1]) and mid < math.max(want[1], to[1]), "the frame not on its way")
+    ch.meterEase.scripts.OnUpdate(ch.meterEase, C.ease)
+    Eq(ch.meterEase.scripts.OnUpdate, nil, "the ease never stops")
+    Eq(ch.frames[1]:GetWidth(), to[1], "the frame not at its width after the ease")
+    Eq(select(2, ch.frames[2]:GetPoint(1)), to[1] + C.frameGap, "a frame not at its place after the ease")
+    -- The same widths again: nothing eases. Laid flat: nothing eases.
+    YD.FillChoose()
+    Eq(ch.meterEase.scripts.OnUpdate, nil, "frames eased that did not change")
+    piece.drawnSlots = kept
+    ns.SetSetting("flatSheets", true)
+    YD.FillChoose()
+    ns.SetSetting("flatSheets", false)
+    Eq(ch.meterEase.scripts.OnUpdate, nil, "\"Flat paper only\": the frames eased")
+    Eq(ch.frames[1]:GetWidth(), want[1], "laid flat: the frame not at its width at once")
+    page.chooseEase = nil
+    YD.FillChoose()
 end
 
 --------------------------------------------------------------------------
@@ -403,6 +505,14 @@ ZoneRow(1412):Click()  -- (and kept)
 ZoneRow(1415):Click()
 ZoneRow(1415):Click()
 Eq(Frames(), "mine mine mine", "three of the player's")
+do
+    local f = ch.frames[1]
+    GameTooltip:Hide()
+    f.scripts.OnEnter(f)
+    local line = GameTooltip.lines and GameTooltip.lines[1] and GameTooltip.lines[1][1]
+    f.scripts.OnLeave(f)
+    Eq(line, WORDS.yours, "a frame of the player's: its tooltip does not say so")
+end
 local off
 for _, zone in ipairs(page.choices.zones) do
     if not zone.on then off = zone end
@@ -431,7 +541,7 @@ for _ = 1, 30 do
 end
 Check(ch.frames[3].scripts.OnUpdate == nil, "the frames never stop shaking")
 Eq(select(3, ch.frames[3]:GetPoint(1)), -C.cap, "a frame not back in its place")
-Eq(select(2, ch.frames[3]:GetPoint(1)), 2 * (C.frame + C.frameGap), "a frame not back in its place")
+Eq(select(2, ch.frames[3]:GetPoint(1)), ch.frames[1].w + ch.frames[2].w + 2 * C.frameGap, "a frame not back in its place")
 ZoneRow(1415):Click()  -- (room again: a zone of the player's left out)
 Check(not Red(ch.note) and ch.note:GetText() ~= WORDS.blocked, "the line still red after a tick that went through")
 
@@ -465,6 +575,15 @@ YD.OpenFull(mapID)
 Check(page.mode == "full", "the whole map not opened")
 Check(page.choosing and ch:IsShown(), "the ticklist gone with the whole map open")
 Check(not page.entries:IsShown() and not page.name:IsShown(), "the left page shown over the ticklist on the whole map")
+do
+    -- The meter still the plates' page's while a plate's whole map is open.
+    local want = YD.MeterWidths(YD.ShownPiece().drawnSlots or {})
+    local shown = 0
+    for k, f in ipairs(ch.frames) do
+        if f:IsShown() then shown = shown + 1 Eq(f.w, want[k], "the whole map open: frame " .. k .. " not its plate's") end
+    end
+    Eq(shown, #page.choices.plates, "the whole map open: not a frame for each plate of the page")
+end
 -- A tick there: the whole map stays, the ticklist with it.
 local fullRow = Row(function(item) return item.card ~= nil end)
 Check(fullRow ~= nil, "setup: a card row")
@@ -472,6 +591,15 @@ local fullKey = fullRow.item.card.key
 fullRow:Click()
 Check(page.mode == "full" and page.choosing and ch:IsShown(), "a tick on the whole map left it or the ticklist")
 Check(not page.entries:IsShown(), "the left page shown again after a tick on the whole map")
+do
+    -- (the recap built again: the slots its page gives, as many as its plates)
+    local shown, total = 0, 0
+    for _, f in ipairs(ch.frames) do
+        if f:IsShown() then shown, total = shown + 1, total + f.w end
+    end
+    Eq(shown, math.max(#page.choices.plates, 1), "a tick on the whole map: not a frame for each plate")
+    Eq(total + (shown - 1) * C.frameGap, C.meter, "a tick on the whole map: the frames not the meter's width")
+end
 fullRow = Row(function(item) return item.card ~= nil and item.card.key == fullKey end)
 fullRow:Click()
 YD.FullBack()
@@ -501,7 +629,7 @@ Section("the right-click menus: a place left out, someone left off")
 local CARD = YD.CardSheet
 local MW = {
     leavePlace = ns.L["Leave this place out"], choose = ns.L["Choose what's on this page..."],
-    hidden = ns.L["Left out of this page"],
+    hidden = "Left out of this page",   -- (gone from the menu, 18 Nov)
 }
 ns.Characters.Observe(FOE, { first = "Wrenna", surname = "Tallowbrook" })
 j.chosen = nil
@@ -681,4 +809,37 @@ do
         end
     end
     Check(rows > 0 and kinds.close and kinds.campfire, "setup: testdata's close calls and campfires in the ticklist")
+end
+
+--------------------------------------------------------------------------
+Section("the meter of a page with every place left out: one empty frame")
+
+do
+    local tj = J.For(ns.ownGUID)
+    local p = T.DiaryPages(page)[1]
+    T.OpenDiaryPage(page, p.i, p.k)
+    YD.Choose()
+    Check(page.choosing, "setup: the ticklist open")
+    for _ = 1, 40 do
+        local on
+        for _, row in ipairs(page.chooser.list.rows) do
+            if row:IsShown() and row.item and row.item.zone and row.item.row.on then on = row end
+        end
+        if not on then break end
+        on:Click()
+    end
+    Eq(#page.choices.plates, 0, "setup: no plate left on the page")
+    local shown = {}
+    for k, f in ipairs(page.chooser.frames) do if f:IsShown() then shown[#shown + 1] = k end end
+    Eq(table.concat(shown, " "), "1", "an empty page: not one frame")
+    local f = page.chooser.frames[1]
+    Eq(f.w, C.meter, "the empty frame not the whole width")
+    Eq(f.kind, nil, "the empty frame not empty")
+    GameTooltip:Hide()
+    f.scripts.OnEnter(f)
+    Eq(GameTooltip.text, WORDS.noMaps, "the empty frame's tooltip")
+    f.scripts.OnLeave(f)
+    YD.Unchoose(true)
+    tj.chosen = nil
+    J.Touch()
 end
