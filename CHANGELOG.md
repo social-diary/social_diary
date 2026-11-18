@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Shiny new Things
+
+- You can now choose what each page of _Your Diary_ shows
+  - Right-click a _Plate_ or a person to leave it out
+
 ## [4.2.2]
 
 This small update brings improvements to the PvP labels in _Your Diary_.

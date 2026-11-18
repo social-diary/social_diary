@@ -457,7 +457,9 @@ end
 
 -- The left page's own parts, hidden while the ticklist stands there.
 local function LeftShown(page, shown)
-    for _, part in ipairs({ page.name, page.who, page.rule, page.entries }) do part:SetShown(shown) end
+    for _, part in ipairs({ page.name, page.who, page.rule }) do part:SetShown(shown) end
+    -- (the entries only where the page has them: not over its empty state)
+    page.entries:SetShown(shown and (page.state == nil or page.state == "entries"))
 end
 
 -- The ticklist as the piece on the right page has it now: built on the page
