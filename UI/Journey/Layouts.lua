@@ -73,16 +73,19 @@ local function PlatesOf(e)
     local page = YourDiary.page
     if e.plates then return e.plates, e.layout, e.pattern end
     local j = ns.Journey.For(ns.ownGUID)
-    local plates, layout, key = {}, nil, nil
+    local plates, layout, key, cover = {}, nil, nil, nil
     for n = 1, #SMALLEST do
         local aw, ah = SMALLEST[n][1], SMALLEST[n][2]
-        plates = ns.JourneyRecap.Plates(j, e, page.ctx or {}, function(mapID) return Plate.Cover(mapID, aw, ah) end)
+        cover = function(mapID) return Plate.Cover(mapID, aw, ah) end
+        plates = ns.JourneyRecap.Plates(j, e, page.ctx or {}, cover)
         layout, key = LayoutFor(plates)
         if layout then break end
     end
     -- The last window always holds in the page for its count, as before.
     if not layout then layout, key = LAYOUT[#plates], string.rep("F", #plates) end
-    e.plates, e.layout, e.pattern = plates, layout, key
+    -- (and the window they were grouped at, `cover`, for the ticklist's
+    -- places, Recap.Choices, to be grouped as the page's are)
+    e.plates, e.layout, e.pattern, e.cover = plates, layout, key, cover
     return plates, layout, key
 end
 

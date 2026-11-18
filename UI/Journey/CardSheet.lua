@@ -95,6 +95,10 @@ local WORDS = {
     hidden = L["Left out of this page"], save = L["Save"], cancel = L["Cancel"],
     hide = L["Leave it out"], reset = L["Undo my changes"], remove = L["Delete this card"],
     confirm = L["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."],
+    -- The page's own choice (.claude/features/choose-page.md, Phase 4): only
+    -- ever leaving out, as "Leave it out" does; back is the ticklist's alone.
+    leavePlace = L["Leave this place out"], choose = L["Choose what's on this page..."],
+    leavePerson = L["Leave %1$s off this page"],
 }
 
 local CardSheet = {}
@@ -700,14 +704,31 @@ local function PlaceMenu(plate)
         and { mapID = mapID, x = x, y = y, from = e.from, to = e.to } or nil
     local adds = where and Kinds()[1] ~= nil
     local hidden = {}
+    -- (only cards hidden here, by their `rec`: what the player left out on the
+    -- ticklist, Core/Chosen.lua, comes back only there, the user's, 18 Nov)
     for _, h in ipairs(e and e.hidden or {}) do
-        if ns.Custom.Spec(h.kind) then hidden[#hidden + 1] = h end
+        if h.rec and ns.Custom.Spec(h.kind) then hidden[#hidden + 1] = h end
     end
-    if not (adds or hidden[1]) then return end
+    -- The page's own choice (.claude/features/choose-page.md): a close-up of
+    -- the plates' page only (a full page's plate has no plan: it is the
+    -- level's whole zone, not a place of this page). The menu only hides
+    -- (the user's, 18 Nov): a place left out comes back on the ticklist
+    -- alone, so it is never listed under "Left out of this page".
+    local leaves = plate.plan ~= nil and plate.plan.moments ~= nil and plate.plan.moments[1] ~= nil
+    local page = YourDiary.page
+    local piece = leaves and YourDiary.ShownPiece and YourDiary.ShownPiece()
+    local chooses = piece and not page.choosing and not YourDiary.Solo() and YourDiary.CanChoose(piece)
+    if not (adds or hidden[1] or leaves) then return end
     MenuUtil.CreateContextMenu(plate.over, function(_, root)
         if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
+        if leaves then
+            root:CreateButton(WORDS.leavePlace, function()
+                if ns.Chosen.LeavePlace(nil, plate.plan) then Redraw() end
+            end)
+            if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
+        end
         if hidden[1] then
-            if adds then root:CreateDivider() end
+            if adds or leaves then root:CreateDivider() end
             root:CreateTitle(WORDS.hidden)
             for _, h in ipairs(hidden) do
                 root:CreateButton(Described(ns.Custom.Spec(h.kind), h.rec), function()
@@ -716,6 +737,36 @@ local function PlaceMenu(plate)
                 end)
             end
         end
+    end)
+end
+
+-- A person's strip's right click (UI/Journey/Margin.lua; the mouse's alone:
+-- the pad has no ticklist to bring them back by, so its Y does nothing on
+-- it): "Leave <name> off this page", `out` on every moment of theirs on the
+-- page, the strip's own (a gift of theirs joined to it too) and theirs on the
+-- page's other plates. As a place left out, they come back on the ticklist
+-- alone (the user's, 18 Nov).
+function CardSheet.Person(strip, g)
+    local page = YourDiary.page
+    local name = g and g.guid and ns.UI.JourneyText.Short(g.guid)
+    if not (page and name) then return end
+    local list, seen = {}, {}
+    local function Add(m)
+        if not seen[m] then seen[m] = true list[#list + 1] = m end
+    end
+    for _, m in ipairs(g.moments) do Add(m) end
+    for i = 1, page.layout or 0 do
+        local plan = page.plates[i] and page.plates[i].plan
+        for _, m in ipairs(plan and plan.moments or {}) do
+            if m.guid == g.guid then Add(m) end
+        end
+    end
+    MenuUtil.CreateContextMenu(strip, function(_, root)
+        root:CreateButton(ns.Fmt(WORDS.leavePerson, name), function()
+            local any = false
+            for _, m in ipairs(list) do any = ns.Chosen.Leave(nil, m) or any end
+            if any then Redraw() end
+        end)
     end)
 end
 

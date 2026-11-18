@@ -100,6 +100,14 @@ Recap.DOOR_ONLY = DOOR_ONLY
 --           (UI/Journey/People.lua's Tier: 1 for something done together),
 --           `say` its phrase, first under their name
 --           (UI/Journey/Text/Margin.lua's MarginWhat)
+--   key     optional function(m) → the `who` of its moments' keys
+--           (Recap.Key), where its record's `npcID` or `guid` is not what
+--           tells two of them apart at one time. Never a name
+--   keyKind optional: the kind its keys are written under, where two kinds
+--           read one record and it may go from one to the other as the
+--           piece grows (an upgrade a better one turns into a piece, a
+--           hunt that reads as luck one day and fortune the next): both
+--           give the same, so a choice on it holds. Default its own kind
 --
 --   custom  what the player may set on a card of this kind, edited or
 --           inserted (Core/Custom.lua's header). Without it the kind cannot
@@ -127,16 +135,59 @@ end
 -- changed has to be on the page, and a plate with a better moment would
 -- otherwise push it off (PLATES.max).
 local CUSTOM_RANK = 0.5
+Recap.CUSTOM_RANK = CUSTOM_RANK
 
 -- A moment's rank: its kind's, or the one its kind says it ranks as; a card
--- custom in any way (Core/Custom.lua), above them all.
+-- custom in any way (Core/Custom.lua), or one the player kept on the page
+-- (Core/Chosen.lua: Moments marks it `chosen`), above them all.
 local function Rank(m)
+    if m.chosen == "keep" then return CUSTOM_RANK end
     local spec = MOMENT[m.kind]
     local rec = spec and spec.field and m[spec.field]
     if rec and rec.customOf then return CUSTOM_RANK end
     return RANK[spec and spec.rankAs and spec.rankAs(m) or m.kind] or 9
 end
 Recap.Rank = Rank
+
+-- A moment's key (.claude/features/choose-page.md): `<kind>:<t>:<who>`, what
+-- a player's choice on the page points at (Core/Chosen.lua). Plates are
+-- grouped anew on every draw and the current piece's end keeps moving, so it
+-- is made of what does not change: the moment's own time (a segment's
+-- `from`, never its `to`, which grows while the piece is current; a
+-- together session's start within the entry, not where it settled), and
+-- `who`: the person's GUID for people's kinds, `in` or `out` for a level's
+-- pin (the same spot ends one level and begins the next), a feature's own
+-- (its `key`), or else its record's `npcID` or `guid`, else nothing. Never a
+-- name: Mend and the killer's pass rewrite names on records already kept.
+-- Two kinds that read one record may share the first part (`keyKind`).
+local WHO = {
+    session = function(m) return m.guid end,
+    fight = function(m) return m.guid end,
+    note = function(m) return m.guid end,
+    first = function(m) return m.guid end,
+    level = function(m) return m.out and "out" or "in" end,
+}
+local WHEN = {
+    session = function(m) return m.since end,
+}
+
+-- `m` a moment, or an entry of e.hidden ({ kind, rec }: a card hidden through
+-- Core/Custom.lua, which is no moment), keyed as its moment would be.
+function Recap.Key(m)
+    local spec = MOMENT[m.kind]
+    local rec = spec and (spec.field and m[spec.field] or m.rec)
+    rec = rec and (rec.customOf or rec)
+    local who
+    if WHO[m.kind] then
+        who = WHO[m.kind](m)
+    elseif spec and spec.key then
+        who = spec.key(m)
+    elseif rec then
+        who = rec.npcID or rec.guid
+    end
+    local t = WHEN[m.kind] and WHEN[m.kind](m) or m.t or rec and rec.t or 0
+    return ("%s:%d:%s"):format(spec and spec.keyKind or m.kind, math.floor(t), tostring(who or ""))
+end
 
 --------------------------------------------------------------------------
 -- Time
@@ -984,10 +1035,13 @@ local function Own(j, mapID, x, y, t)
     if mapID and x and ns.ZoneOf and ns.ZoneOf(mapID) == mapID then return mapID, x, y end
     return Recap.WhereAt(j, t)
 end
+Recap.Own = Own
 
 -- What put an entry's places on the page (JRN-21): every moment of `e`
--- with a spot on a zone map, each { kind, mapID, x, y, t, ... }.
-function Recap.Moments(j, e, ctx)
+-- with a spot on a zone map, each { kind, mapID, x, y, t, ... }. `all`
+-- (the ticklist's, Recap.Choices): the ones the player left out too, marked
+-- `chosen = "out"`, and nothing listed in e.hidden.
+function Recap.Moments(j, e, ctx, all)
     local list = {}
     local function Add(m, map, x, y)
         if not (map and x) then return end
@@ -1018,7 +1072,7 @@ function Recap.Moments(j, e, ctx)
                 local near = ns.Sessions.NearStretches(session, p)
                 local pm, px, py, pt = map, x, y, t
                 if near then pm, px, py, pt = Recap.SettleNear(j, near, a, math.max(a, b)) end
-                Add({ kind = "session", guid = guid, t = pt or a, session = session,
+                Add({ kind = "session", guid = guid, t = pt or a, since = a, session = session,
                     seconds = (p.seconds or 0) * share }, pm, px, py)
             end
         end
@@ -1085,6 +1139,35 @@ function Recap.Moments(j, e, ctx)
         local map, x, y = Journey.PointIn(seg, mid)
         Add({ kind = "road", t = seg.from, seg = seg, seconds = e.longestRoad.seconds }, map, x, y)
     end
+    -- The player's choices (Core/Chosen.lua). One left out is off the page,
+    -- the level's zone page and what is told of it, and listed in e.hidden
+    -- with its key, once however often this is asked, so the ticklist can
+    -- bring it back (the map's menu lists only custom cards, by their `rec`).
+    -- One kept ranks above the rest (Rank).
+    local chosen = j and j.chosen
+    if chosen and next(chosen) ~= nil and all then
+        for _, m in ipairs(list) do
+            local choice = chosen[Recap.Key(m)]
+            if choice then m.chosen = choice end
+        end
+    elseif chosen and next(chosen) ~= nil then
+        e.leftOut, e.hidden = e.leftOut or {}, e.hidden or {}
+        for i = #list, 1, -1 do
+            local m = list[i]
+            local key = Recap.Key(m)
+            local choice = chosen[key]
+            if choice == "out" then
+                table.remove(list, i)
+                if not e.leftOut[key] then
+                    local h = { kind = m.kind, key = key, moment = m }
+                    e.leftOut[key] = h
+                    e.hidden[#e.hidden + 1] = h
+                end
+            elseif choice == "keep" then
+                m.chosen = "keep"
+            end
+        end
+    end
     return list
 end
 
@@ -1096,6 +1179,7 @@ local function Fits(plate, m, w, h)
     local y0, y1 = math.min(plate.y0, m.y), math.max(plate.y1, m.y)
     return x1 - x0 <= w * PLATES.inset and y1 - y0 <= h * PLATES.inset
 end
+Recap.Fits, Recap.PLATES = Fits, PLATES
 
 -- Whether `plate` (Recap.Plates's) still holds at another window w, h than
 -- the one it was grouped at: its moments span no more than PLATES.inset of
@@ -1113,7 +1197,11 @@ end
 -- the plate's window on that map in 0..1 units (w, h), from the art: the
 -- UI's to know, a constant in the tests. Each plate: { mapID, cx, cy, t,
 -- rank, moments, light }, its moments in time order, `light` when every
--- one of them is a LIGHT kind.
+-- one of them is a LIGHT kind. `plates.spare`: the places cut for want of
+-- room, alike, best first; `plates.loose`: the moments that opened no plate
+-- and fitted none (a second stay in a zone shown, filler, a level's pin),
+-- in the order placed. Neither is read by the page: the ticklist's
+-- (Recap.Choices).
 function Recap.Plates(j, e, ctx, cover)
     local moments = Recap.Moments(j, e, ctx or {})
     -- A level's pins rank last, so they are placed after everything else:
@@ -1124,7 +1212,7 @@ function Recap.Plates(j, e, ctx, cover)
         if ra ~= rb then return ra < rb end
         return a.t < b.t
     end)
-    local plates = {}
+    local plates, loose = {}, {}
     for _, m in ipairs(moments) do
         local w, h = cover(m.mapID)
         w, h = w or PLATES.window, h or PLATES.window
@@ -1150,10 +1238,14 @@ function Recap.Plates(j, e, ctx, cover)
             -- last under level 9 and first under level 10, empty both times).
             local rank, shown = Rank(m), false
             for _, plate in ipairs(plates) do shown = shown or plate.mapID == m.mapID end
-            local opens = m.kind ~= "level" and (rank < RANK.stay or (rank == RANK.stay and not shown))
+            -- (a moment the player kept opens one, a level's pin too)
+            local opens = (m.kind ~= "level" or m.chosen == "keep")
+                and (rank < RANK.stay or (rank == RANK.stay and not shown))
             if opens or #plates == 0 then
                 plates[#plates + 1] = { mapID = m.mapID, x0 = m.x, x1 = m.x, y0 = m.y, y1 = m.y,
                     t = m.t, rank = rank, moments = { m } }
+            else
+                loose[#loose + 1] = m
             end
         end
     end
@@ -1177,14 +1269,22 @@ function Recap.Plates(j, e, ctx, cover)
         if #a.moments ~= #b.moments then return #a.moments > #b.moments end
         return a.t < b.t
     end)
+    -- The places that did not fit are kept beside the page's, best first,
+    -- for the ticklist (.claude/features/choose-page.md): `spare`, which the
+    -- page never reads. (A door left out above is not one: it is never shown.)
+    local spare = {}
+    for i = PLATES.max + 1, #plates do spare[#spare + 1] = plates[i] end
     for i = #plates, PLATES.max + 1, -1 do plates[i] = nil end
-    for _, plate in ipairs(plates) do
+    local function Finish(plate)
         plate.cx, plate.cy = (plate.x0 + plate.x1) / 2, (plate.y0 + plate.y1) / 2
         table.sort(plate.moments, ByTime)
         plate.light = true
         for _, m in ipairs(plate.moments) do plate.light = plate.light and LIGHT[m.kind] == true end
     end
+    for _, plate in ipairs(plates) do Finish(plate) end
+    for _, plate in ipairs(spare) do Finish(plate) end
     table.sort(plates, ByTime)
+    plates.spare, plates.loose = spare, loose
     return plates
 end
 

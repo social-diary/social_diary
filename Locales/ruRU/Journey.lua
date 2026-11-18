@@ -25,6 +25,20 @@ ns.Locale.Add("ruRU", {
     ["Leave it out"] = "Не включать",
     ["Undo my changes"] = "Отменить мои правки",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] = "Удалить эту карточку, написанную тобой?\n\nОна исчезнет с карты и страницы. Это нельзя отменить.",
+    ["Leave this place out"] = "Не включать это место",
+    ["Choose what's on this page..."] = "Выбрать, что войдёт на страницу…",
+    ["Leave %1$s off this page"] = "Убрать с этой страницы: %1$s",
+    -- UI/Journey/Choose.lua
+    ["Three places fit."] = "Помещаются три места.",
+    ["Three places fit, and you've chosen three. Leave one out first."] = "Помещаются три места, и три уже выбраны. Сначала исключи одно.",
+    ["next in line"] = "в очереди",
+    ["no room"] = "нет места",
+    ["too small for a plate of its own"] = "слишком мало для своей вклейки",
+    ["no room in the margin"] = "нет места на полях",
+    ["left out by you"] = "<you:ты убрал/ты убрала>",
+    ["made room for %s"] = "место отдано: %s",
+    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
+    ["Arrived %s##zone"] = "Уже %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Сюда вклеены места каждого уровня:",
     ["Where you stayed a while, darker the longer."] = "Остановки: чем дольше, тем темнее.",
@@ -49,6 +63,8 @@ ns.Locale.Add("ruRU", {
     ["The diary is not keeping this character's road just now, so there is nothing to tell here yet."] = "Дневник сейчас не записывает путь этого персонажа, поэтому рассказывать пока нечего.",
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "Твоего пути на этой карте пока нет.",
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "Выбрать, что войдёт на страницу",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "Щёлкни левой кнопкой, чтобы вернуться",
     ["%s to go back"] = "%s, чтобы вернуться",

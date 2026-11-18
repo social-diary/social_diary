@@ -180,7 +180,6 @@ ns.Locale.Add("enUS", {
     ["a close call with %s"] = "a close call with %s",
     -- Features/Deaths/Kind.lua
     ["Death"] = "Death",
-    ["A death"] = "A death",
     ["Killed by"] = "Killed by",
     ["Type"] = "Type",
     ["Elite"] = "Elite",
@@ -514,7 +513,6 @@ ns.Locale.Add("enUS", {
     ["Disable (\"A Hogger\")"] = "Disable (\"A Hogger\")",
     ["%, if they saved you"] = "%, if they saved you",
     -- Features/Witnesses/Text.lua
-    ["Someone"] = "Someone",
     ["and %s##others"] = "and %s",
     ["& another|& %s others##plural"] = "& another|& %s others",
     ["mercilessly watched you die##many"] = "mercilessly watched you die",
@@ -849,6 +847,22 @@ ns.Locale.Add("enUS", {
     ["Leave it out"] = "Leave it out",
     ["Undo my changes"] = "Undo my changes",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] = "Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone.",
+    ["Choose what's on this page..."] = "Choose what's on this page...",
+    ["Leave this place out"] = "Leave this place out",
+    ["Leave %1$s off this page"] = "Leave %1$s off this page",
+    -- UI/Journey/Choose.lua
+    ["Three places fit."] = "Three places fit.",
+    ["Three places fit, and you've chosen three. Leave one out first."] = "Three places fit, and you've chosen three. Leave one out first.",
+    ["next in line"] = "next in line",
+    ["no room"] = "no room",
+    ["too small for a plate of its own"] = "too small for a plate of its own",
+    ["no room in the margin"] = "no room in the margin",
+    ["left out by you"] = "left out by you",
+    ["made room for %s"] = "made room for %s",
+    ["%1$s, %2$s##zone and sub-zone"] = "%1$s, %2$s",
+    ["Someone"] = "Someone",
+    ["A death"] = "A death",
+    ["Arrived %s##zone"] = "Arrived %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Each level's places are glued in here:",
     ["Where you stayed a while, darker the longer."] = "Where you stayed a while, darker the longer.",
@@ -876,6 +890,8 @@ ns.Locale.Add("enUS", {
     ["The diary is not keeping this character's road just now, so there is nothing to tell here yet."] = "The diary is not keeping this character's road just now, so there is nothing to tell here yet.",
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "Nothing of your road is on this map yet.",
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "Choose what's on this page",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "Left click to go back",
     ["%s to go back"] = "%s to go back",

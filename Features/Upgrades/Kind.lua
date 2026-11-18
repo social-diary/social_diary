@@ -428,8 +428,11 @@ function Upgrades.Moments()
         end,
         rankAs = function(m) return m.gift and "session" or "upgrade" end,
         moment = Moment("upgrade") })
+    -- (keyed as an upgrade, Recap.Key's `keyKind`: the lead turns into a
+    -- piece when a better one is put on later in the piece, and a choice on
+    -- it holds)
     ns.JourneyRecap.RegisterMoment("piece", { order = 75, entry = Upgrades.PIECES, field = "upgrade", rank = 6.5,
-        light = true,
+        light = true, keyKind = "upgrade",
         gather = function() end,
         moment = Moment("piece") })
 end

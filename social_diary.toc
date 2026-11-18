@@ -169,6 +169,8 @@ Core/Sittings.lua
 Core/CreatureNames.lua
 Core/Custom.lua
 Core/JourneyRecap.lua
+# A player's choices on Your Diary's pages, keyed by Recap.Key.
+Core/Chosen.lua
 Core/PersonPlate.lua
 Core/Glimpse.lua
 Core/Events.lua
@@ -264,6 +266,7 @@ UI/Journey/Empty.lua
 UI/Journey/Run.lua
 UI/Journey/Match.lua
 UI/Journey/MatchStory.lua
+UI/Journey/Choose.lua
 UI/Journey/Page.lua
 UI/Journey/CardSheet.lua
 UI/Journey/Pad.lua

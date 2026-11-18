@@ -385,3 +385,37 @@ mock.mapID, mock.position = MAP, { x = 0.47, y = 0.53 }
 mock.contextMenu = nil
 Plate().clip.scripts.OnMouseUp(Plate().clip, "RightButton")
 Check(not Sheet(), "a right click on the map opened the picker with no menu")
+
+--------------------------------------------------------------------------
+Section("Y on a person's strip: nothing (their menu is the mouse's)")
+
+-- (.claude/features/choose-page.md, Phase 4: "Leave <name> off this page"
+-- has no way back on the pad, which has no ticklist yet)
+do
+    local WHO = "Player-2222-0000CCCC"
+    ns.Characters.Observe(WHO, { first = "Thessaly", surname = "Brookmere" })
+    j.marks = { { kind = "fight", outcome = "won", guid = WHO, t = t0 + 1000, mapID = MAP, x = 0.41, y = 0.59 } }
+    J.Touch()
+    ns.UI.RefreshJourneyPage(true)
+    OpenLevel()
+    local function Strip()
+        for i = 1, page.notePool.used do
+            local s = page.notePool[i]
+            if s:IsShown() and s.guid == WHO then return s end
+        end
+    end
+    local strip = Strip()
+    Check(strip ~= nil and strip.onRight ~= nil and strip.rightMouse == true, "setup: their strip with the mouse's menu")
+    mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+    Check(Pad.Input.Active(), "setup: the pad in hand")
+    Scope().focus:EnterGroup("page")
+    Check(Stand("page", function(item) return item.note == strip end) ~= nil, "setup: the pad on their strip")
+    Eq(Legend().PAD4, nil, "Y offered on a person's strip")
+    mock.contextMenu = nil
+    Press("PAD4")
+    Eq(mock.contextMenu, nil, "Y on a person's strip opened a menu")
+    Eq(j.chosen, nil, "Y on a person's strip left them off")
+    Check(Strip() ~= nil, "their strip gone after Y")
+    j.marks = {}
+    J.Touch()
+end

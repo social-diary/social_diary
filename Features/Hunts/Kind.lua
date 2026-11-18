@@ -556,6 +556,9 @@ ns.JourneyRecap.RegisterMoment("luck", { order = 30, entry = "hunts", field = "h
             end
         end
     end })
+-- (keyed as luck, Recap.Key's `keyKind`: one hunt may read as either as the
+-- character's usual moves, and a choice on it holds)
 ns.JourneyRecap.RegisterMoment("fortune", { order = 40, entry = "fortunes", field = "hunt", rank = 3, light = true,
+    keyKind = "luck",
     custom = CustomSpec(L["Good Luck"], L["Lucky Quest Drops"], 2, { need = 1, kills = 2, expected = 20 }),
     gather = function() end })
