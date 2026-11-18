@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Shiny New Things
+
+- Adds Brazilian Portuguese support
+
 ## [4.1.1]
 
 A small Update: the preset tags now speak your language, and Feign Death or healing yourself no longer leaves false deaths and _Close Calls_ in your diary.
@@ -86,7 +90,7 @@ This Updates brings small but important UX fixes. Especially the red ink spills 
 ### Fixes
 
 - Dungeons, battlegrounds and boss fights no longer cause repeated Lua errors
-- In _Your Diary_, The red ink spills that mark your combat zones are now more clearly visible. 
+- In _Your Diary_, The red ink spills that mark your combat zones are now more clearly visible.
 
 ## [3.0.1]
 
@@ -94,7 +98,7 @@ A Hotfix for Behaviour in Battlegrounds. Currently, BG data is interpreted badly
 
 ### Fixes
 
-- Battleground Activities are currently skipped, because they result in bad Diary data. 
+- Battleground Activities are currently skipped, because they result in bad Diary data.
 
 ## [3.0.0]
 
