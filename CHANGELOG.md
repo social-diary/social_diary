@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [4.2.1]
+
+A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.
+
+### Fixes
+
+- Crossing a zone border no longer counts nearby people as seen twice (thanks OscillatorZ)
+
 ## [4.2.0]
 
 This Update brings the diary in Brazilian Portuguese.

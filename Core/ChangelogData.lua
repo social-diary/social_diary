@@ -7,6 +7,15 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.1",
+        summary = "A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.",
+        groups = {
+            { heading = "Fixes", entries = {
+                { text = "Crossing a zone border no longer counts nearby people as seen twice", thanks = "OscillatorZ" },
+            } },
+        },
+    },
+    {
         version = "4.2.0",
         summary = "This Update brings the diary in Brazilian Portuguese.",
         groups = {
@@ -46,22 +55,6 @@ ns.Changelog = {
             { heading = "Fixes", entries = {
                 { text = "A player's menu no longer locks the controller with the Gamepad UI", sub = { { text = "The diary's entry is left out of that menu for now" } } },
                 { text = "German zone names now take their article and case", thanks = "CarnVanBeck" },
-            } },
-        },
-    },
-    {
-        version = "4.0.1",
-        summary = "This update brings support for simplified Chinese as well with some more bug fixes.",
-        groups = {
-            { heading = "Shiny New Things", entries = {
-                { text = "Added Simplified Chinese support", thanks = "jasonzxy0825" },
-            } },
-            { heading = "Changes", entries = {
-                { text = "It's now more likely to _get lucky_ on a quest item hunt, now requiring just half of expected kills instead of an eighth" },
-            } },
-            { heading = "Fixes", entries = {
-                { text = "In Korean and Chinese Clients, Box / Tofu Characters no longer appear in place of no-break spaces" },
-                { text = "Language Fixes for ruRU" },
             } },
         },
     },
