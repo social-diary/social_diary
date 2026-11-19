@@ -53,7 +53,13 @@
 --            `optional`: the form offers it behind a "+ Add" (CardSheet); here
 --            it only means what every field does, that left empty it is absent.
 --            For the form: `add`, an optional field's strip's words ("+ Add
---            mob"; "+ Add <label>" where nil)
+--            mob"; "+ Add <label>" where nil), and `group`, a name the form
+--            lays the rows of one together by, a faint rule between two
+--            groups (CardSheet's BEAT; a kind with none is laid as ever)
+--   preview  optional, for the form: { new(parent) → a card, write(card, rec,
+--            now) } the card as it will look, laid beside the form and
+--            written again as the form changes (CardSheet's PREVIEW). `rec`
+--            is what the form holds, shaped as the page reads a card
 --   values   optional function(values, rec): for the form, what a detected card
 --            shows but does not keep under its field's key (an opponent's name
 --            from their GUID, an item's from its link). `rec` is the saved record.
@@ -506,6 +512,25 @@ local function Creature(j, spec, values)
     if not key or values[key] == nil then return end
     local npcID, display = ns.CreatureNames.Find(j, values[key])
     values.npcID, values.display = npcID or false, display or false
+end
+
+-- What `fields` of `kind` would be written as, cleaned as Insert and Edit
+-- clean them (a typed creature's picture looked up), over `rec` (the card's
+-- values, Custom.Values, or nil for a new one), as a new table: nothing is
+-- written. The form's card beside it (CardSheet's preview) reads it.
+function Custom.Shaped(kind, rec, fields)
+    local spec = SpecOf(kind)
+    if not spec then return nil end
+    local out = {}
+    for key, value in pairs(rec or {}) do out[key] = value end
+    out.kind = kind
+    local values = Cleaned(spec, fields or {})
+    local mob = spec.creature
+    if mob and values[mob] ~= nil and values[mob] ~= (rec or {})[mob] then Creature(Journey.Mine(), spec, values) end
+    for key, value in pairs(values) do
+        if value == false then out[key] = nil else out[key] = value end
+    end
+    return out
 end
 
 --------------------------------------------------------------------------

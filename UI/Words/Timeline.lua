@@ -828,6 +828,20 @@ local function DescribeNote(note, guid)
     return text, table.concat(full, "\n")
 end
 
+-- An aside a feature laid on the timeline (Core/Timeline.lua's
+-- Timeline.RegisterAside: a free card naming them): its words on the slip,
+-- the quiet line under it, and its tooltip (a Style.TipList list) with the
+-- click's hint where a click opens something. The words are the feature's.
+local function DescribeAside(item, guid)
+    local spec = ns.Timeline.Aside(item.aside)
+    if not spec then return "", nil, nil end
+    local text, sub
+    if spec.describe then text, sub = spec.describe(item.of, guid) end
+    local tip = spec.tip and spec.tip(item.of, guid) or { { text or "" } }
+    if spec.hint and spec.opens and spec.opens(item.of) then tip[#tip + 1] = { spec.hint, 1, 1, 1, true } end
+    return text or "", sub, tip
+end
+
 -- Returns the time, the line, an optional second line, the icon and the
 -- whole story for the tooltip (nil: the lines are all of it), coloured for a
 -- dark tooltip; the page inks them (Style.Inkify).
@@ -891,6 +905,11 @@ function ns.UI.DescribeItem(item, guid)
     elseif item.kind == "note" then
         local text, full = DescribeNote(item.note, guid)
         return when, text, nil, "note", full
+    elseif item.kind == "aside" then
+        -- (its icon is the feature's own frame where it draws one: `art` else)
+        local text, sub = DescribeAside(item, guid)
+        local spec = ns.Timeline.Aside(item.aside)
+        return when, text, sub, spec and spec.art or nil
     elseif item.kind == "first" then
         local first = item.first
         -- "First seen at Red Rocks, Mulgore, level 12": the subzone "at" its
@@ -920,7 +939,7 @@ function ns.UI.DescribeItem(item, guid)
 end
 
 -- For the page lines, which lay episodes and visits out, and a note's
--- words (UI/Journal/Timeline.lua).
+-- words, and an aside's (UI/Journal/Timeline.lua).
 -- And a row's words shared by its kinds, for a feature's file
 -- (Features/<Name>/, .claude/skills/new-feature/folder.md) to tell its own rows
 -- (Core/Rows.lua's `text`) as these do: Items(list) "2x [Linen Cloth],
@@ -933,6 +952,7 @@ end
 -- MatchName(match) a battleground match's map ("Warsong Gulch"), and
 -- Nth(n) "third", for the reunion toast in a match (UI/Windows/Reunion/).
 ns.UI.TimelineText = { IsEpisode = IsEpisode, OtherMembers = OtherMembers, DescribeNote = DescribeNote,
+    DescribeAside = DescribeAside,
     Items = Items, Quote = Quote, Place = Place, Join = Join, Foe = Foe,
     MatchName = MatchName, Nth = Nth }
 

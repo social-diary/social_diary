@@ -17,7 +17,9 @@
 --                episode is opened.
 --
 -- Notes the user wrote (TLN-10) sit outside the four: part of the run they
--- were written in, at the top of it, or a top-level line of their own.
+-- were written in, at the top of it, or a top-level line of their own. So
+-- do the asides features lay there (Timeline.RegisterAside, below: a free
+-- card naming them), after a run's notes.
 --
 -- This file decides the structure: which layer each thing is, which
 -- activities an episode's headline names and so which moments are summed up
@@ -568,8 +570,19 @@ local function RunAt(runs, time)
     return best
 end
 
--- `items` is the folded top level, newest first.
-local function PlaceNotes(items, guid)
+-- A top-level line at its own time in `items`, newest first.
+local function Insert(items, item)
+    local at = #items + 1
+    for i = 1, #items do
+        if items[i].time < item.time then at = i break end
+    end
+    table.insert(items, at, item)
+end
+
+-- `items` is the folded top level, newest first. The asides (below) are
+-- placed as notes are: in the run going on at their time, after its notes
+-- (`episode.asides`), or a top-level line of their own.
+local function PlaceNotes(items, guid, asides)
     local runs = Runs(items, {})
     for _, note in ipairs(ns.Notes.For(guid)) do
         local run = RunAt(runs, note.time)
@@ -577,13 +590,79 @@ local function PlaceNotes(items, guid)
             run.notes = run.notes or {}
             run.notes[#run.notes + 1] = note
         else
-            local at = #items + 1
-            for i = 1, #items do
-                if items[i].time < note.time then at = i break end
-            end
-            table.insert(items, at, { kind = "note", time = note.time, note = note })
+            Insert(items, { kind = "note", time = note.time, note = note })
         end
     end
+    for _, aside in ipairs(asides) do
+        local run = RunAt(runs, aside.time)
+        if run then
+            run.asides = run.asides or {}
+            run.asides[#run.asides + 1] = aside
+        else
+            Insert(items, aside)
+        end
+    end
+end
+
+--------------------------------------------------------------------------
+-- Asides
+--------------------------------------------------------------------------
+--
+-- Something the player wrote elsewhere that names this person, laid on
+-- their timeline as a note of theirs is (a free card on Your Diary naming
+-- them, Features/Note/). Read where it is kept every time, never copied: no
+-- row, session or note is written, so it counts for nothing (times met,
+-- last met, zones, "dealt", whether they matter), and a change to it, or
+-- it taken away, shows here at once. The core names no feature: a feature
+-- registers its asides.
+--
+-- Timeline.RegisterAside(key, spec):
+--   lines     function(guid) -> a list of what to lay, each a table with
+--             `time` (its own fields the feature's); required
+--   order     where among the asides of one moment (default 100)
+-- and for the page (UI/Words/Timeline.lua, UI/Journal/Timeline.lua):
+--   describe  function(of, guid) -> its words on the slip, and a quiet line
+--             under it (nil for none)
+--   tip       function(of, guid) -> the tooltip, as Style.TipList makes it
+--   icon      function(parent, size) -> a frame of its own for the icon
+--             column, with :Set(of); `art` (an art key) where nil
+--   opens     function(of) -> whether a click does anything
+--   press     function(of): the click
+--   hint      the tooltip's last line where it opens (a click hint)
+--   prompt    the pad's word for A where it opens
+-- An aside on the timeline: { kind = "aside", time, aside = key, of = <the
+-- table lines returned>, key = of.key or of (what it stands for, for the
+-- pad's place: a saved table) }. A run holds its own in `asides`, oldest first.
+local asides = ns.Registry.New({
+    what = "Timeline.RegisterAside(key, { lines = function(guid) ... end })",
+    key = "key", order = "order", default = 100,
+    check = function(_, spec) return type(spec.lines) == "function" end,
+})
+
+function Timeline.RegisterAside(key, spec)
+    asides:Add(key, spec)
+end
+
+function Timeline.Aside(key)
+    return asides:Get(key)
+end
+
+-- Every aside naming `guid`, oldest first.
+local function Asides(guid)
+    local out = {}
+    for _, spec in ipairs(asides:Ordered()) do
+        for _, of in ipairs(spec.lines(guid) or {}) do
+            if type(of) == "table" and type(of.time) == "number" then
+                out[#out + 1] = { kind = "aside", time = of.time, aside = spec.key, of = of, order = spec.order,
+                    key = of.key or of }
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.time ~= b.time then return a.time < b.time end
+        return a.order < b.order
+    end)
+    return out
 end
 
 --------------------------------------------------------------------------
@@ -692,6 +771,6 @@ function Timeline.For(guid)
 
     table.sort(top, function(a, b) return a.time > b.time end)
     local out = Fold(top)
-    PlaceNotes(out, guid)
+    PlaceNotes(out, guid, Asides(guid))
     return out
 end
