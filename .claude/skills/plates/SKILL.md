@@ -205,7 +205,8 @@ unstuck), cap = { x, y, w, limit, align }, notes = { x, y, w } }`. Variants:
   feature's folder: find's in `Features/Firsts/Card.lua`, campfire's in
   `Features/Campfire/Slip.lua`, killer's in `Features/Deaths/Card.lua`,
   foe's in `Features/CloseCalls/Card.lua`, witness's in
-  `Features/Witnesses/Card.lua`): `order`, `item(plate)` or
+  `Features/Witnesses/Card.lua`, the free card's (custom, order 2, the killer
+  card worn with the face `noteCard`) in `Features/Note/Card.lua`): `order`, `item(plate)` or
   `items(plate)` (→ `{ top, x, <own fields> }`; `kind`/`rank` set by core),
   `pool` (page key; killer and foe share `killerPool`), `new(parent)`,
   `write(note, it, c)` (`c.Seed(...)`, `c.now`, `c.named`, `c.ToPerson`),
@@ -458,6 +459,9 @@ that is only a recorded run's door is dropped in `Recap.Plates`
     icon) and prints checks (overlaps, shadows past the page, text past the
     foot or over the not-kept line, S's icon on its tag or off its print).
   - Look at the PNGs with Read. `SD_PLATES_FORCE=0` skips the forced pages.
+    `SD_PLATES_EXTRA=<file.lua>` runs that file with `(ns, T)` after the
+    testdata is written: put something testdata does not hold (custom cards,
+    `ns.Custom.Insert`) on its pages without adding it to `/sd testdata`.
 - `plate_dump.lua` (runs in a symlink farm next to the real harness, so
   nothing is written in the addon), `plate_render.py` (pure Python +
   `pngio.py`; run with `python3 -I`).

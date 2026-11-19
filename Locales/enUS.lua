@@ -147,7 +147,6 @@ ns.Locale.Add("enUS", {
     ["Close Call"] = "Close Call",
     ["A close call"] = "A close call",
     ["%1$s, %2$d%% health"] = "%1$s, %2$d%% health",
-    ["Creature"] = "Creature",
     ["-1 for a skull"] = "-1 for a skull",
     ["Level"] = "Level",
     ["How many"] = "How many",
@@ -282,7 +281,6 @@ ns.Locale.Add("enUS", {
     -- Features/Firsts/Kind.lua
     ["First Found"] = "First Found",
     ["A first found"] = "A first found",
-    ["Item"] = "Item",
     ["First"] = "First",
     ["Bag"] = "Bag",
     ["Blue"] = "Blue",
@@ -388,14 +386,39 @@ ns.Locale.Add("enUS", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s is now level %2$s",
     ["Now level %s"] = "Now level %s",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Someone You Met",
+    -- Features/Note/Card.lua
+    ["Whose page?"] = "Whose page?",
+    -- Features/Note/Icons.lua
+    ["A note"] = "A note",
+    ["A meeting"] = "A meeting",
+    ["A friend"] = "A friend",
+    ["Home##note icon"] = "Home",
+    ["At the inn"] = "At the inn",
+    ["A view"] = "A view",
+    ["A quest"] = "A quest",
+    ["A mystery"] = "A mystery",
+    ["Treasure##note icon"] = "Treasure",
+    ["Danger##note icon"] = "Danger",
+    ["A beast"] = "A beast",
+    ["Fishing##note icon"] = "Fishing",
+    ["Crafting##note icon"] = "Crafting",
+    ["Music##note icon"] = "Music",
+    -- Features/Note/Kind.lua
+    ["Note##card"] = "Note",
+    ["Icon"] = "Icon",
+    ["Words"] = "Words",
+    ["What happened here"] = "What happened here",
+    ["Who was there"] = "Who was there",
+    ["Any name will do"] = "Any name will do",
+    ["As the game names it"] = "As the game names it",
+    ["Creature"] = "Creature",
+    ["+ A creature"] = "+ A creature",
+    ["Item"] = "Item",
+    ["+ An item"] = "+ An item",
+    ["Shift-click an item"] = "Shift-click an item",
+    ["Name who was there by the map"] = "Name who was there by the map",
+    -- Features/Note/Text.lua
     ["Someone you met"] = "Someone you met",
-    ["Who"] = "Who",
-    ["Someone in your diary, or any name"] = "Someone in your diary, or any name",
-    ["Description"] = "Description",
-    ["What you did, in a line"] = "What you did, in a line",
-    -- Features/Met/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "as far as a Journeyman goes",
@@ -506,6 +529,7 @@ ns.Locale.Add("enUS", {
     ["A witness"] = "A witness",
     ["%1$s %2$s##name and deed"] = "%1$s %2$s",
     ["Anyone, in your diary or not"] = "Anyone, in your diary or not",
+    ["Who"] = "Who",
     ["Their role"] = "Their role",
     ["Saved"] = "Saved",
     ["Saw it"] = "Saw it",
@@ -830,6 +854,8 @@ ns.Locale.Add("enUS", {
     -- UI/Journey/Caption.lua
     ["Nothing of this level's road was kept."] = "Nothing of this level's road was kept.",
     -- UI/Journey/CardPad.lua
+    ["Add"] = "Add",
+    ["Take them off the card"] = "Take them off the card",
     ["Go to the names"] = "Go to the names",
     ["Put the card away"] = "Put the card away",
     ["Stop writing"] = "Stop writing",
@@ -849,6 +875,9 @@ ns.Locale.Add("enUS", {
     ["Choose what's on this page..."] = "Choose what's on this page...",
     ["Leave this place out"] = "Leave this place out",
     ["Leave %1$s off this page"] = "Leave %1$s off this page",
+    ["Click to take %s off the card."] = "Click to take %s off the card.",
+    ["+ Add %s"] = "+ Add %s",
+    ["Remove"] = "Remove",
     -- UI/Journey/Choose.lua
     ["Three maps fit a page."] = "Three maps fit a page.",
     ["No room for it beside what you chose. Leave something out first."] = "No room for it beside what you chose. Leave something out first.",

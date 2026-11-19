@@ -21,6 +21,10 @@ local dir = os.getenv("SD_PLATES_OUT") or "/tmp/sd-plates"
 local out = assert(io.open(dir .. "/out.txt", "w"))
 
 ns.TestData.Write()
+-- $SD_PLATES_EXTRA: a Lua file run here with (ns, T) after the testdata is
+-- written, for a render of something testdata does not hold (a custom card
+-- on a page, say), without adding it to /sd testdata and every test after.
+if os.getenv("SD_PLATES_EXTRA") then assert(loadfile(os.getenv("SD_PLATES_EXTRA")))(ns, T) end
 ns.UI.ShowJournal()
 ns.UI.SetJournalView("people")
 ns.UI.SetJournalView("journey")

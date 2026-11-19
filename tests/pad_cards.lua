@@ -390,6 +390,157 @@ do
 end
 
 --------------------------------------------------------------------------
+Section("the free card's form: icons, the + Add strips, people, the item, the caption")
+
+do
+    local guid = "Player-1-0AAAAAAA"
+    ns.db.characters[guid] = ns.db.characters[guid] or { guid = guid, names = { { first = "Brannoc", surname = "" } } }
+    ns.db.diary[guid] = ns.db.diary[guid] or { tags = {}, addedAt = now, relationship = "", note = "" }
+    mock.bags[0] = { size = 16, [1] = { link = "|cff1eff00|Hitem:100:0:0:0:0:0:0:0:11|h[Thistle Sash]|h|r", quality = 2 } }
+    local note = ns.Custom.Insert("noteCard", { text = "at the pier", people = { { name = "Old Tom" } } },
+        { mapID = MAP, x = 0.41, y = 0.59, from = t0, to = t0 + 1800 })
+    CardSheet.Edit("noteCard", note)
+    Eq(Scope().key, "cards", "setup: the slip has the pad")
+    Eq(At().key, "icon:quill", "the pad on the first icon, the first control")
+    Check(At().ring == true, "the icon ringed by the pen")
+    Eq(Legend().PAD1, "Choose", "A's prompt on an icon")
+    -- Along the sixteen, then their rows, then off the grid.
+    Press("PADDRIGHT")
+    Eq(At().key, "icon:meeting", "right: the next icon")
+    Press("PADDLEFT")
+    Press("PADDLEFT")
+    Eq(At().key, "icon:quill", "left stops at the first")
+    Press("PADDDOWN")
+    Eq(At().key, "icon:" .. ns.NoteIcons.KEYS[9], "down: the row under it")
+    Press("PADDUP")
+    Eq(At().key, "icon:quill", "up: back to the first row")
+    Press("PADDDOWN")
+    Press("PADDDOWN")
+    Eq(At().key, "field:text", "down off the grid: the text")
+    Press("PADDUP")
+    Eq(At().group, "form", "up from the text: back on the grid")
+    Check(At().icon ~= nil, "on an icon")
+    Press("PAD1")
+    Eq(Row("icon"):Get(), ns.NoteIcons.KEYS[At().icon], "A chose it")
+    -- Who was there: faces, and the line under them.
+    local face = Stand("form", function(item) return item.key == "face:people:1" end)
+    Check(face ~= nil and face.ring == true, "Old Tom's face reachable, ringed by the pen")
+    Eq(Legend().PAD1, "Take them off the card", "A's prompt on a face")
+    Press("PADDDOWN")
+    Eq(At().key, "field:people", "down from the faces: the line")
+    Check(not Row("people").box:HasFocus(), "which has no cursor till A")
+    Press("PAD1")
+    local line = Row("people").box
+    Check(line:HasFocus(), "A: the cursor")
+    line:SetText("bran")
+    line:GetScript("OnTextChanged")(line, true)
+    Eq(Legend().PADDDOWN, "Go to the names", "names offered on the people's line")
+    Press("PADDDOWN")
+    Eq(At().group, "found", "into the names")
+    Press("PAD1")
+    Eq(#Row("people").people, 2, "A picked them: a second face")
+    Eq(Row("people").people[2].guid, guid, "linked")
+    Eq(At().key, "field:people", "back on the line")
+    Check(Stand("form", function(item) return item.key == "face:people:2" end) ~= nil, "their face reachable")
+    -- One taken off, and back.
+    Stand("form", function(item) return item.key == "face:people:1" end)
+    Press("PAD1")
+    Eq(#Row("people").people, 1, "A on a face took them off")
+    Eq(At().key, "face:people:1", "the pad on the next face")
+    Eq(Row("people").people[1].guid, guid, "which is who was second")
+    Stand("form", function(item) return item.key == "field:people" end)
+    Press("PAD1")
+    line:SetText("Old Tom")
+    line:GetScript("OnEnterPressed")(line)
+    Eq(#Row("people").people, 2, "Enter on the line added the name typed")
+    Press("PAD2")
+    -- The strips.
+    local strip = Stand("form", function(item) return item.key == "more:mob" end)
+    Check(strip ~= nil and strip.kind == "strip", "the mob's strip reachable")
+    Eq(Legend().PAD1, "Add", "A's prompt on a strip")
+    Check(strip.outline() ~= nil, "outlined as a card")
+    Press("PAD1")
+    Check(Row("mob").on, "A added the mob")
+    Eq(At().key, "field:mob", "the pad on its line")
+    Check(not Row("mob").box:HasFocus(), "with no cursor till A")
+    Press("PAD1")
+    Row("mob").box:SetText("Plainstrider")
+    Press("PAD2")
+    local off = Stand("form", function(item) return item.key == "off:mob" end)
+    Check(off ~= nil, "its Remove reachable")
+    Press("PAD1")
+    Check(not Row("mob").on, "A took it off")
+    Eq(Row("mob"):Get(), "", "cleared")
+    Eq(At().key, "more:mob", "the pad back on its strip")
+    -- The item, from the search (the pad's way: no shift-click).
+    Stand("form", function(item) return item.key == "more:item" end)
+    Press("PAD1")
+    Eq(At().key, "field:item", "on the item's line")
+    Press("PAD1")
+    local box = Row("item").box
+    box:SetText("sash")
+    box:GetScript("OnTextChanged")(box, true)
+    Press("PADDDOWN")
+    Eq(At().group, "found", "into the items offered")
+    Press("PAD1")
+    Eq(Row("item").id, 100, "A picked it")
+    -- The caption's box.
+    Stand("form", function(item) return item.key == "tick:caption" end)
+    Eq(Legend().PAD1, "Tick", "A's prompt on the caption's box")
+    Press("PAD1")
+    Eq(Row("caption"):Get(), true, "A ticked it")
+    -- Saved with A on Save.
+    Stand("form", function(item) return item.key == "link:" .. ns.L["Save"] end)
+    Press("PAD1")
+    Check(not Sheet(), "saved and put away")
+    Eq(note.icon ~= nil and note.people and #note.people, 2, "both people")
+    Eq(note.people[1].guid, guid, "the one picked linked")
+    Eq(note.itemID, 100, "the item")
+    Eq(note.caption, true, "the caption")
+    Eq(note.mob, nil, "no mob")
+    -- Combat: the catcher off with the slip up.
+    CardSheet.Edit("noteCard", note)
+    mock.inCombat = true
+    mock.fire("PLAYER_REGEN_DISABLED")
+    Check(not catcher:IsGamePadButtonEnabled(), "in combat the pad is the game's")
+    mock.inCombat = false
+    mock.fire("PLAYER_REGEN_ENABLED")
+    Press("PAD2")
+    Check(not Sheet(), "B put it away")
+    ns.Custom.Remove(note)
+    mock.bags[0] = { size = 16 }
+end
+
+--------------------------------------------------------------------------
+Section("a free card naming two: A asks whose page, on the pad's slip")
+
+do
+    local a, b = "Player-1-0AAAAAAA", "Player-1-0BBBBBBB"
+    ns.db.characters[b] = { guid = b, names = { { first = "Wenna", surname = "" } } }
+    ns.db.diary[b] = { tags = {}, addedAt = now, relationship = "", note = "" }
+    local note = ns.Custom.Insert("noteCard", { people = { { name = "Brannoc", guid = a }, { name = "Wenna", guid = b } } },
+        { mapID = MAP, x = 0.41, y = 0.59, from = t0, to = t0 + 1800 })
+    J.Touch()
+    ns.UI.RefreshJourneyPage(true)
+    OpenLevel()
+    Press("PADDDOWN")
+    Scope().focus:EnterGroup("page")
+    local onNote = Stand("page", function(item) return item.note and item.note.freeRec ~= nil end)
+    Check(onNote ~= nil, "the free card among the page's things")
+    mock.contextMenu = nil
+    Press("PAD1")
+    Eq(mock.contextMenu, nil, "A opened Blizzard's menu")
+    Check(Pad.Menu.IsOpen(), "A did not open the pad's slip")
+    Check(MenuLines():find("Wenna") ~= nil, "the people to choose from: " .. MenuLines())
+    Press("PAD2")
+    Check(not Pad.Menu.IsOpen(), "B put it away")
+    ns.Custom.Remove(note)
+    J.Touch()
+    ns.UI.RefreshJourneyPage(true)
+    OpenLevel()
+end
+
+--------------------------------------------------------------------------
 Section("the mouse takes over the slip cleanly")
 
 Scope().focus:Set(onCard)

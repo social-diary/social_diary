@@ -436,3 +436,21 @@ function Upgrades.Moments()
         gather = function() end,
         moment = Moment("piece") })
 end
+
+-- What the character wore is their own: the free card's item search offers it
+-- (Core/Custom.lua's FindItems), beside the bags and what is worn now. The
+-- upgrades and what each replaced, the candidates, and the last worn of each
+-- kind in each slot.
+ns.Custom.RegisterItems("upgrades", function(j)
+    local list = {}
+    for _, source in ipairs({ j.upgrades or {}, j.fitting or {} }) do
+        for _, rec in ipairs(source) do
+            if rec.link then list[#list + 1] = rec.link end
+            if type(rec.was) == "table" and rec.was.link then list[#list + 1] = rec.was.link end
+        end
+    end
+    for _, bySlot in pairs(j.lastWorn or {}) do
+        for _, link in pairs(type(bySlot) == "table" and bySlot or {}) do list[#list + 1] = link end
+    end
+    return list
+end)

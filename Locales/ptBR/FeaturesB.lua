@@ -114,14 +114,9 @@ ns.Locale.Add("ptBR", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s chegou ao nível %2$s",
     ["Now level %s"] = "Chegou ao nível %s",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Alguém que você conheceu",
-    ["Someone you met"] = "Alguém que você conheceu",
+    -- Features/Note/Kind.lua
     ["Who"] = "Quem",
-    ["Someone in your diary, or any name"] = "Alguém do seu diário, ou qualquer nome",
-    ["Description"] = "Descrição",
-    ["What you did, in a line"] = "O que você fez, numa linha",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "até o máximo de um Profissional",

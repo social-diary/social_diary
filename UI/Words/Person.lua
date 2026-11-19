@@ -309,7 +309,7 @@ local function AtCapital(t, now)
 end
 
 -- The tooltip of a stranger's name that opens their glimpse (a margin
--- strip, a "met" strip, the hindsight line): their full name, that they are
+-- strip, a free card's strip, the hindsight line): their full name, that they are
 -- not in the diary, and the click hint in its grey. A list for
 -- Style.Tooltip.
 function PersonText.GlimpseTip(full)

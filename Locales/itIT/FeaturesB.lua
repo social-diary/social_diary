@@ -111,14 +111,9 @@ ns.Locale.Add("itIT", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s ora è Level %2$s",
     ["Now level %s"] = "Ora Level %s",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Qualcuno che hai incontrato",
-    ["Someone you met"] = "Qualcuno che hai incontrato",
+    -- Features/Note/Kind.lua
     ["Who"] = "Chi",
-    ["Someone in your diary, or any name"] = "Qualcuno del tuo diario, o un nome qualsiasi",
-    ["Description"] = "Descrizione",
-    ["What you did, in a line"] = "Che cosa hai fatto, in una riga",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "fin dove arriva un Journeyman",

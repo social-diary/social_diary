@@ -112,14 +112,9 @@ ns.Locale.Add("ruRU", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s теперь на %2$s-м уровне",
     ["Now level %s"] = "Теперь на %s-м уровне",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Встреченный человек",
-    ["Someone you met"] = "Кто-то из встреченных",
+    -- Features/Note/Kind.lua
     ["Who"] = "Кто",
-    ["Someone in your diary, or any name"] = "Кто-то из дневника или любое имя",
-    ["Description"] = "Описание",
-    ["What you did, in a line"] = "Что произошло, одной строкой",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "предел для подмастерья",

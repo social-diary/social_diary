@@ -668,7 +668,7 @@ do
         for _, face in ipairs(Card.FACES) do list[#list + 1] = face.key end
         return table.concat(list, ", ")
     end
-    Eq(Faces(), "foe", "the faces")
+    Eq(Faces(), "foe, noteCard", "the faces (the close call's, the free card's)")
     local calls = {}
     local function Called(what) calls[#calls + 1] = what end
     local FACE
@@ -689,7 +689,7 @@ do
         off = function(card) card.scrap = nil; Called("off") end,
         smaller = function() Called("smaller"); return false end,
     })
-    Eq(Faces(), "foe, scrap", "the scrap's face")
+    Eq(Faces(), "foe, noteCard, scrap", "the scrap's face")
     local card = Card.New(page.right)
     Check(type(card.SetScrap) == "function" and type(card.SetFoe) == "function", "a face's method is not on the card")
     card:SetScrap({ name = "Mottled Boar" })
@@ -710,7 +710,7 @@ do
     Eq(card:Smaller(), false, "a killer's card gave something up")
     card:Hide()
     Card.RemoveFace("scrap")
-    Eq(Faces(), "foe", "the scrap's face stayed")
+    Eq(Faces(), "foe, noteCard", "the scrap's face stayed")
     local after = Card.New(page.right)
     Check(rawget(after, "SetScrap") == nil and rawget(after, "SetFoe") ~= nil,
         "a face taken out still puts its method on a card")

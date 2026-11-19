@@ -4,7 +4,7 @@
 -- with nobody selected on the list.
 --
 -- A first sighting in hindsight puts a stranger on a Your Diary plate; a
--- witness card or a custom "met" strip can name one too. Their name is a
+-- witness card or a free card's strip can name one too. Their name is a
 -- way to their page, as every name in the book is, but a stranger has no
 -- inked page. So the book opens where it would be and shows what is
 -- pencilled there: their name in the hand, a pencil ring where their

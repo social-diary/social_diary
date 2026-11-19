@@ -182,7 +182,8 @@ for _, dir in ipairs({ "Core", "UI", "Capture", "Dev" }) do
     for _, file in ipairs(Ls("find " .. dir .. " -name '*.lua' 2>/dev/null | sort")) do
         local code = Read(file)
         for _, name in ipairs(features) do
-            Check(not code:find("ns%." .. name .. "[^%w_]"), file .. " names the feature ns." .. name)
+            -- (ns.<Name> itself: ns.Sessions.Note is no ns.Note.)
+            Check(not code:find("%f[%w_%.]ns%." .. name .. "[^%w_]"), file .. " names the feature ns." .. name)
         end
     end
 end
