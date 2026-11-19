@@ -394,17 +394,34 @@ Check(words:find("31" .. NB .. "Plainstriders for 7" .. NB .. "Plainstrider Meat
 Check(words:find("close call"), "the caption lost the close call: " .. words)
 
 -- Short of room the hunt card goes first, before the close call's sheds
--- anything, and its words come back to the caption (with the meat's, two
--- slow hunts).
+-- anything for it, and its words come back to the caption (with the
+-- meat's, two slow hunts). In the one plate's row each card has a box of
+-- its own (ROW, 19 Nov), so the close call's card sheds there only what it
+-- sheds alone, for the page's foot: the hunt's beside it costs it nothing.
 local C = ns.UI.JourneyLook.CAPTION
 local limit, offLimit = C.limit, C.offLimit
+local alone = {}
+do
+    local Margin = ns.UI.JourneyMargin
+    local spec = Margin.KINDS.hunt
+    Margin.Remove("hunt")
+    for L = 528, 380, -2 do
+        C.limit, C.offLimit = L, L
+        ns.UI.RedrawJourneyPage()
+        local f = FoeCards()[1]
+        alone[L] = f and f:Deed() or false
+    end
+    Margin.Register("hunt", spec)
+end
 local huntOff, foeFirst = false, false
 for L = 528, 380, -2 do
     C.limit, C.offLimit = L, L
     ns.UI.RedrawJourneyPage()
     local h, f = HuntCards()[1], FoeCards()[1]
     if h and not f then foeFirst = true end
-    if f and h then Eq(f:Deed(), "fought against three", "the close call's card shed beside a hunt's at " .. L) end
+    if f and h then
+        Eq(f:Deed(), alone[L], "the close call's card shed for the hunt's beside it at " .. L)
+    end
     if not h then
         huntOff = true
         Check(Caption():find("two slow hunts"), "a left-off hunt is not in the words at " .. L .. ": " .. Caption())
@@ -496,7 +513,12 @@ Eq(shared.base, TOP.row[1].w, "the row's own width is not kept for the strips")
 -- Three notes, or none wishing wider: the row as it is.
 Check(not Look.Shared({ { kind = "person" }, { kind = "person" }, { kind = "hunt", hunt = chosenHorns } },
     RowBoxes()).shared, "three notes share the row")
-Check(not Look.Shared({ { kind = "person" }, { kind = "foe" } }, RowBoxes()).shared, "no wish, but shared")
+-- (19 Nov: any card shares the row's room, wish or not, ROW; the widest
+-- tried is the row's share; only people's strips alone keep the row)
+local foe = Look.Shared({ { kind = "person", x = 100 }, { kind = "foe", x = 300 } }, RowBoxes())
+Check(foe.shared, "a card with no wish does not share the row")
+Eq(foe[1].w, math.floor((x1 - x0 - (TOP.row[2].x - TOP.row[1].x - TOP.row[1].w)) / 2), "nor at its share")
+Check(not Look.Shared({ { kind = "person" }, { kind = "person" } }, RowBoxes()).shared, "people alone shared")
 Check(not Look.Shared({ { kind = "hunt", hunt = { hunt = BANDANAS, usual = 2 } } }, RowBoxes()).shared,
     "the rows' card shares the row")
 -- One note: never wider than the cap.

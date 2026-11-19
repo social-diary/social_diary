@@ -561,3 +561,74 @@ function ItemBox.New(card, parent)
 
     return box
 end
+
+--------------------------------------------------------------------------
+-- The item as its icon alone
+--------------------------------------------------------------------------
+
+-- The item where a card has no room for its box: its icon alone, edged
+-- 1 px in its quality's colour (ItemBox.Edge), its frame trimmed as the
+-- box's (ICON.crop), laid with the strip, and a square button over it for
+-- what the mouse shows there (`enter`, `leave`, each given the button; an
+-- item is never clicked). The upgrades' small note's icon before its words
+-- (Features/Upgrades/Card.lua, signed 15 Nov 2026), moved here on 19 Nov
+-- so the free card's narrow sizes show their item the same way (the user:
+-- "like our upgrade margin note does").
+--   local small = ItemBox.NewSmall(strip, parent)   once, as the card is made
+--   small:Draw(lx, ly, size, quality, icon)   its middle at lx, ly of the
+--          strip (from the strip's middle, y down), `size` px
+--   small:Hide()
+-- Fields a card may read: edge, icon (the textures), button.
+local function Snapless(texture)
+    if texture.SetSnapToPixelGrid then
+        texture:SetSnapToPixelGrid(false)
+        texture:SetTexelSnappingBias(0)
+    end
+    return texture
+end
+
+function ItemBox.NewSmall(strip, parent)
+    local small = {}
+    small.edge = Snapless(strip:CreateTexture(nil, "ARTWORK", nil, 5))
+    small.icon = Snapless(strip:CreateTexture(nil, "ARTWORK", nil, 6))
+    small.button = CreateFrame("Button", nil, strip)
+    small.button:SetScript("OnEnter", function(self)
+        if small.enter then small.enter(self) end
+    end)
+    small.button:SetScript("OnLeave", function(self)
+        if small.leave then small.leave(self) end
+    end)
+
+    function small:Hide()
+        self.edge:Hide()
+        self.icon:Hide()
+        self.button:Hide()
+    end
+
+    function small:Draw(lx, ly, size, quality, icon)
+        local E = ItemBox.Edge(quality)
+        self.edge:SetColorTexture(E[1], E[2], E[3], 1)
+        strip:Lay(self.edge, lx, ly, size + 2, size + 2)
+        self.icon:SetTexture(icon)
+        local k = ICON.crop
+        self.icon:SetTexCoord(k, 1 - k, k, 1 - k)
+        strip:Lay(self.icon, lx, ly, size, size)
+        self.edge:Show()
+        self.icon:Show()
+        -- The mouse over the icon as drawn, its corners turned.
+        local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+        local half = size / 2 + 1
+        for _, corner in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
+            local px, py = strip:Out(lx + corner[1] * half, ly + corner[2] * half)
+            x0, y0, x1, y1 = math.min(x0, px), math.min(y0, py), math.max(x1, px), math.max(y1, py)
+        end
+        self.button:SetFrameLevel(strip:GetFrameLevel() + 2)
+        self.button:ClearAllPoints()
+        self.button:SetPoint("TOPLEFT", parent, "TOPLEFT", x0, -y0)
+        self.button:SetSize(x1 - x0, y1 - y0)
+        self.button:Show()
+    end
+
+    small:Hide()
+    return small
+end

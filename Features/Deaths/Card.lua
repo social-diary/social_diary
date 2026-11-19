@@ -634,10 +634,13 @@ function KillerCard.New(parent)
             note.tapeAt = KILLER.tapeAt
             note.least = pic and Least(pic.w, KILLER.tapeAt) or nil
         end
+        -- (a face may keep room before the name on its line, `lead`: the
+        -- free card's item's icon, Features/Note/Card.lua)
+        local nameRoom = inside - (note.lead or 0)
         self.name:SetFontObject(Style.FONT.noteWritten)
         self.name:SetText(note.name or "")
-        if (self.name:GetUnboundedStringWidth() or 0) > inside then self.name:SetFont(HAND, KILLER.small, "") end
-        self.overfull = (self.name:GetUnboundedStringWidth() or 0) > inside
+        if (self.name:GetUnboundedStringWidth() or 0) > nameRoom then self.name:SetFont(HAND, KILLER.small, "") end
+        self.overfull = (self.name:GetUnboundedStringWidth() or 0) > nameRoom
             or (note.least or 0) > width or (note.under ~= nil and note.under.w > inside)
             or (note.picture ~= nil and note.picture.w > inside)
         return plan
