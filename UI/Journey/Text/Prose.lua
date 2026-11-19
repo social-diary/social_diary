@@ -270,6 +270,9 @@ end
 --           say starts it, in its place; each after it with something to
 --           say runs on in it, after a space, rather than starting one
 --           of its own. So kinds told as one paragraph can live apart.
+--   names   optional: function(e) → the GUIDs its paragraph names whom
+--           the page is to link (Text.LinkedGuids), where they are not
+--           among the entry's own people already
 local PARAGRAPHS = {
     { at = 10, key = "opening", lines = function(e, now) return Opening(e, now) end },
     { at = 20, key = "time", lines = function(e) return Join(Stops(e), Flights(e)) end },
@@ -318,6 +321,18 @@ function Text.Lines(e, now, index)
         if quiet then lines[#lines + 1] = quiet end
     end
     return lines
+end
+
+-- The GUIDs the kinds' paragraphs name for the page to link (each spec's
+-- `names`), in the paragraphs' order; may repeat one.
+function Text.LinkedGuids(e)
+    local guids = {}
+    for _, p in ipairs(Text.Paragraphs()) do
+        if p.names then
+            for _, guid in ipairs(p.names(e) or {}) do guids[#guids + 1] = guid end
+        end
+    end
+    return guids
 end
 
 -- "so far" under the level being played now.
