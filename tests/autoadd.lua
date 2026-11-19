@@ -15,6 +15,17 @@ mock.fire("PLAYER_ENTERING_WORLD", true, false)
 ns._test.SettleGroup()
 T.BlankDiary()
 
+-- Today's two rules, as a character who had Auto-Add on gets them
+-- (STEPS.character[3]): a new character's presets start off.
+local function Rule(preset)
+    for _, rule in ipairs(ns.AutoAdd.Rules()) do
+        if rule.preset == preset then return rule end
+    end
+end
+Eq(Rule("group").on, false, "a new character's Group mates is on")
+Eq(Rule("seen").on, false, "a new character's Familiar faces is on")
+Rule("group").on, Rule("seen").on = true, true
+
 local function Group(...)
     local units = { ... }
     mock.groupSize = #units + 1
@@ -58,6 +69,8 @@ Tick()
 local entry = ns.Diary.Get(PUG.guid)
 Check(entry, "not added after five minutes in the group")
 Eq(entry and entry.addedContext.source, "auto_group", "the entry's source")
+Eq(entry and entry.addedContext.rule, Rule("group").id, "the entry's rule")
+Eq(entry and entry.tags[1], "group", "the rule's tag")
 
 -- Leaving and rejoining starts the count again: five minutes without a break.
 T.BlankDiary()
@@ -97,6 +110,7 @@ Sight(STRANGER.guid, 1, t + 2 * HOUR)
 entry = ns.Diary.Get(STRANGER.guid)
 Check(entry, "not added after three sightings")
 Eq(entry and entry.addedContext.source, "auto_seen", "the entry's source")
+Eq(entry and entry.tags[1], "seen", "the rule's tag")
 
 -- Hostile sightings do not count.
 T.BlankDiary()
@@ -150,7 +164,8 @@ ns.AutoAdd.Decline(F.GARRICK.guid)
 
 local waiting = ns.AutoAdd.Waiting()
 Eq(#waiting, 1, "who is waiting (not the declined, the hostile, or twice seen)")
-Eq(waiting[1], STRANGER.guid, "the one waiting")
+Eq(waiting[1].guid, STRANGER.guid, "the one waiting")
+Eq(waiting[1].rule, Rule("seen"), "the rule they wait under")
 Eq(ns.Diary.Count(), 0, "asking who is waiting added someone")
 
 Eq(ns.AutoAdd.AddWaiting(waiting), 1, "how many the backfill added")

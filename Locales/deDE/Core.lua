@@ -8,13 +8,6 @@ ns.Locale.Add("deDE", {
     ["Social Diary: open entry"] = "Social Diary: Eintrag öffnen",
     ["Social Diary: remember this"] = "Social Diary: ins Tagebuch eintragen",
 
-    -- Core/AutoAdd.lua
-    ["after 5 minutes grouped with you"] = "nach 5 Minuten in deiner Gruppe",
-    ["after they were seen near you 3 times"] = "nach drei Sichtungen in deiner Nähe",
-    ["added |cffffffff%1$s|r to the diary automatically %2$s."] = "hat |cffffffff%1$s|r %2$s automatisch ins Tagebuch eingetragen.",
-    ["added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.##plural"] =
-        "hat %d Person, die du schon in deiner Nähe gesehen hast, ins Tagebuch eingetragen.|hat %d Personen, die du schon in deiner Nähe gesehen hast, ins Tagebuch eingetragen.",
-
     -- Core/Candidates.lua
     ["your target"] = "dein Ziel",
     ["under your cursor"] = "unter deinem Mauszeiger",

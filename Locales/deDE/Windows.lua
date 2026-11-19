@@ -179,10 +179,6 @@ ns.Locale.Add("deDE", {
     -- UI/Windows/AutoAdd.lua: familiar faces, offered once
     ["Familiar faces"] = "Bekannte Gesichter",
     ["Add them"] = "Eintragen",
-    ["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"] =
-        "Du hast %d Person dreimal oder öfter in deiner Nähe gesehen.|Du hast %d Personen dreimal oder öfter in deiner Nähe gesehen.",
-    ["Add them to the diary now? If not, they’re added the next time you see them."] =
-        "Jetzt ins Tagebuch eintragen? Sonst werden sie eingetragen, sobald du sie das nächste Mal siehst.",
 
     -- UI/Windows/Picker.lua
     ["Remember this"] = "Ins Tagebuch eintragen",

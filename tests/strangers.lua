@@ -250,7 +250,18 @@ local function World(packed)
     Ask("byFullName", function() return { ns.Characters.FindByName("Aldren", "Voss") } end)
     Ask("byNameAlone", function() return { ns.Characters.FindByName("CORIN") } end)
     Ask("byNoName", function() return { ns.Characters.FindByName("Zebedee") } end)
-    Ask("waiting", ns.AutoAdd.Waiting)
+    -- (Who a sightings rule would add: the "Familiar faces" preset, on for the question.)
+    Ask("waiting", function()
+        local seen
+        for _, rule in ipairs(ns.AutoAdd.Rules()) do
+            if rule.trigger == "seen" then seen = rule end
+        end
+        seen.on = true
+        local guids = {}
+        for i, item in ipairs(ns.AutoAdd.Waiting()) do guids[i] = item.guid end
+        seen.on = false
+        return guids
+    end)
     Ask("summary", function() return { ns.Sightings.Summary(P.often) or false, ns.Sightings.Summary(P.unseen) or false } end)
     Ask("seenBefore", function() return { ns.Sightings.SeenBefore(P.often, now) } end)
     Ask("latest", function() return ns.Sightings.Latest(P.often) end)

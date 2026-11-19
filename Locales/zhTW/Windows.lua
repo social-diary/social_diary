@@ -5,8 +5,6 @@ ns.Locale.Add("zhTW", {
     -- UI/Windows/AutoAdd.lua
     ["Familiar faces"] = "熟面孔",
     ["Add them"] = "把他們加進去",
-    ["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"] = "你在附近見過%d位玩家，已達3次以上。",
-    ["Add them to the diary now? If not, they’re added the next time you see them."] = "要現在就把他們加進日記嗎？如果不要，下次再見到他們時還是會加進去。",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "還沒有互動",
     ["%d interaction on record|%d interactions on record##plural"] = "%d筆互動紀錄",

@@ -393,7 +393,7 @@ do
     -- A migrated meeting with nobody named.
     j.custom = { { kind = "met", t = t0 + 100, mapID = MAP, x = 0.4, y = 0.6, level = 10 } }
     local old = { schema = 5, journey = { a = { custom = j.custom } } }
-    ns._test.Migrate(old, 6, ns._test.DiarySteps)
+    ns._test.Migrate(old, 7, ns._test.DiarySteps)
     e = Recap.Gather(j, t0, t0 + 3500, Recap.Context(ns.ownGUID, now))
     Check(table.concat(Text.Lines(e, now, {}), "\n"):find("With someone in Mulgore.", 1, true) ~= nil,
         "a folded \"Someone you met\" with nobody named reads \"with someone\"")

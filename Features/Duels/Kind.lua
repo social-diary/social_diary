@@ -336,6 +336,8 @@ function Duels.Added(guid, outcome, since, ended, where)
         row = SeriesRow(guid, since)
         if row then
             Count(row.context, outcome, ended)
+            -- (counted in place: no Interactions.Add to wake the rules)
+            ns.AutoAdd.Wake(guid, KIND)
         else
             local c = { subZone = where and where.subZone or nil }
             Count(c, outcome, ended)
@@ -359,3 +361,36 @@ function Duels.Added(guid, outcome, since, ended, where)
     end
     return row, rec
 end
+
+--------------------------------------------------------------------------
+-- The Auto-Add trigger
+--------------------------------------------------------------------------
+--
+-- "Duelled you N times": the duels won and lost over the series rows the
+-- buffer still holds (a week for a stranger). A rematch counts into the
+-- series' row in place, so Added wakes the rules itself then; a new series
+-- goes through Interactions.Add.
+
+local function Duelled(guid)
+    local n = 0
+    for _, row in ipairs(ns.Interactions.For(guid) or {}) do
+        if row.type == KIND and row.context then
+            n = n + (tonumber(row.context.won) or 0) + (tonumber(row.context.lost) or 0)
+        end
+    end
+    return n
+end
+
+ns.AutoAdd.RegisterTrigger("duelled", {
+    order = 60,
+    label = L["Duelled"],
+    amount = { min = 1, max = 20, default = 1, steps = { 1, 2, 3, 4, 5, 10, 15, 20 }, unit = L["duels##autounit"] },
+    kinds = { KIND },
+    backfill = true,
+    source = "auto_duel",
+    count = function(guid) return Duelled(guid) end,
+    describe = function(rule)
+        local n = tonumber(rule.amount) or 0
+        return ns.Plural(n, L["duelled you once|duelled you %d times##plural"])
+    end,
+})

@@ -6,10 +6,6 @@ ns.Locale.Add("zhTW", {
     ["Social Diary: open entry"] = "Social Diary：開啟條目",
     ["Social Diary: remember this"] = "Social Diary：記下這件事",
     -- Core/AutoAdd.lua
-    ["after 5 minutes grouped with you"] = "在與你組隊滿5分鐘後",
-    ["after they were seen near you 3 times"] = "在你附近見過對方3次後",
-    ["added |cffffffff%1$s|r to the diary automatically %2$s."] = "已%2$s自動將|cffffffff%1$s|r加入日記。",
-    ["added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.##plural"] = "已自動將你之前在附近見過的%d位玩家加入日記。",
     -- Core/Candidates.lua
     ["your target"] = "你的目標",
     ["under your cursor"] = "滑鼠指向的目標",

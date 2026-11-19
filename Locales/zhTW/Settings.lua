@@ -168,8 +168,6 @@ ns.Locale.Add("zhTW", {
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "僅在名條開啟時有效。在地城、團隊副本和戰場中無效。",
     ["Enable sightings in cities - performance warning:"] = "在主城中開啟偶遇紀錄——效能警告：",
     ["Auto-Add Players"] = "自動加入玩家",
-    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] = "預設為關閉。與你連續組隊滿5分鐘（戰場中不算），或在你附近被見到3次不同的場合時，就會把對方加入日記。你從日記中移除的人不會再被加入。",
-    ["Sightings count only while “Notice who passes you in the open world” is on."] = "只有在「留意在野外與你擦肩而過的人」開啟時，才會計算偶遇。",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "開啟日誌",
     ["Opens the journal"] = "開啟日誌",

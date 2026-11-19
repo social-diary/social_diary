@@ -13,7 +13,11 @@
 -- in the order they were made (which is the order they are laid out, top
 -- down and left to right). So a new section is controllable with no code
 -- here. What each does:
---   a switch (Style.Checkbox)  A ticks or unticks it
+--   a switch (Style.Checkbox)  A ticks or unticks it; one whose words
+--                              are a link too (`.follow`: the kit's Switch
+--                              with `link`, Auto-Add Players) is one stop,
+--                              its line reddened with its words, and X
+--                              follows the link
 --   a scale (the kit's Slider) left and right step it
 --   a number (the kit's Number) left and right count it up or down
 --   a link (Style.Link)        A follows it
@@ -149,8 +153,10 @@ local function Item(pane, sectionKey, i, found)
         item.frame, item.words, item.subhead = w.choice, w.choice.label, w.group
         item.press = function() Pad.Menu.Open(w.choice, w.menu()) end
     elseif kind == "switch" then
-        -- (its tooltip and hover look are the mouse's; A clicks it)
+        -- (its tooltip and hover look are the mouse's; A clicks it; X
+        -- follows its words, if they are a link)
         item.press = function() w:Click("LeftButton") end
+        item.follow = w.follow
     elseif kind == "book" then
         -- (its name beside it boxed, its tooltip shown; A picks it up)
         item.words, item.subhead = w.label, w.group
@@ -360,9 +366,19 @@ local function Direction(key)
         return false
     end
 end
+-- X on a switch whose words are a link: the link followed (the settings
+-- scope keeps its place, so the pad comes back to the switch).
+local function Follow()
+    local at = scope.focus and scope.focus:Current()
+    if not (at and at.follow) then return false end
+    at.follow()
+    return true
+end
+
 scope.keys = {
     PADDUP = Direction("PADDUP"), PADDDOWN = Direction("PADDDOWN"),
     PADDLEFT = Direction("PADDLEFT"), PADDRIGHT = Direction("PADDRIGHT"),
+    PAD3 = Follow,
 }
 
 function scope.legend()
@@ -372,6 +388,7 @@ function scope.legend()
     local out = {}
     if at.kind == "switch" then
         out[1] = { "PAD1", at.frame:GetChecked() and L["Untick"] or L["Tick"], main = true }
+        if at.follow then out[2] = { "PAD3", at.frame.followPrompt or L["Choose"] } end
     elseif at.kind == "quiet" then
         out[1] = { "PAD1", ns.Diary.IsQuietNearby(at.guid) and L["Untick"] or L["Tick"], main = true }
     elseif at.kind == "search" then
