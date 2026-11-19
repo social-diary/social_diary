@@ -65,6 +65,7 @@ local FILES = {
     "custom_duel",
     "custom_campfire",
     "custom_note",
+    "note_sheet",
     "note_icons",
     "custom_cards_ui",
     "hunt_card",

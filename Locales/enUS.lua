@@ -426,6 +426,14 @@ ns.Locale.Add("enUS", {
     ["Noted %1$s: %2$s##zone"] = "Noted %1$s: %2$s",
     ["Noted %1$s %2$s.##zone"] = "Noted %1$s %2$s.",
     ["Noted %s."] = "Noted %s.",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Noted on {your} map %1$s, level %2$s",
+    ["Noted on {your} map %s##zone"] = "Noted on {your} map %s",
+    ["Noted on {your} map, level %s"] = "Noted on {your} map, level %s",
+    ["Noted on {your} map"] = "Noted on {your} map",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, with %2$s",
+    ["Click to open it in Your Diary."] = "Click to open it in Your Diary.",
+    ["Open in Your Diary"] = "Open in Your Diary",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "as far as a Journeyman goes",
     ["as far as an Apprentice goes"] = "as far as an Apprentice goes",

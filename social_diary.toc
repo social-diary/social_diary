@@ -401,6 +401,7 @@ Features/Note/Icons.lua
 Features/Note/Kind.lua
 Features/Note/Text.lua
 Features/Note/Mark.lua
+Features/Note/Timeline.lua
 Features/Firsts/Kind.lua
 Features/Firsts/Text.lua
 Features/Firsts/Mark.lua

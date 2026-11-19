@@ -985,3 +985,249 @@ do
     Eq(Note.Who(e.noteCard[1]), "with Brannoc", "its strip's line, as before")
     j.custom = before
 end
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+-- On the page of everyone it links to: a written slip on their timeline
+-- (Features/Note/Timeline.lua, Core/Timeline.lua's asides), read from the
+-- routes every time, never copied.
+
+local TAGGED = "Player-1-0EEEEEEE"
+ns.db.characters[TAGGED] = { guid = TAGGED, names = { { first = "Ysolde", surname = "" } } }
+ns.db.diary[TAGGED] = { tags = {}, addedAt = now }
+local CORWEN = "Player-1-0FFFFFFF"
+ns.db.characters[CORWEN] = { guid = CORWEN, names = { { first = "Corwen", surname = "" } } }
+ns.db.diary[CORWEN] = { tags = {}, addedAt = now }
+
+local function Asides(guid)
+    local out = {}
+    local function Walk(items)
+        for _, item in ipairs(items) do
+            if item.kind == "aside" then out[#out + 1] = item end
+            for _, a in ipairs(item.asides or {}) do out[#out + 1] = a end
+            if item.all then Walk(item.all) end
+        end
+    end
+    Walk(ns.Timeline.For(guid))
+    return out
+end
+
+local function Snapshot(guid)
+    local s = ns.People.Stats(guid) or {}
+    local function Plain(v) return type(v) == "table" and #v or v end
+    local shot = { count = ns.Interactions.Count(guid), rows = #(ns.db.interactions[guid] or {}),
+        sessions = #ns.Sessions.For(guid), notes = #ns.Notes.For(guid),
+        matters = tostring(Recap.Matters(guid, Recap.Context(ns.ownGUID, now))) }
+    for key, value in pairs(s) do
+        if type(value) ~= "table" or key == "zones" then shot["stats." .. key] = tostring(Plain(value)) end
+    end
+    return shot
+end
+
+--------------------------------------------------------------------------
+Section("a card naming them: a slip on their timeline")
+
+local tagged
+do
+    local before, beforeCorwen = Snapshot(TAGGED), Snapshot(CORWEN)
+    Eq(#Asides(TAGGED), 0, "nothing before the card")
+    tagged = Custom.Insert(KIND, { text = "Fished off the pier till dark.",
+        people = { { name = "Ysolde", guid = TAGGED }, { name = "Corwen", guid = CORWEN }, { name = "Old Tom" } },
+        mob = "Kobold Miner" }, WHERE)
+    Check(tagged ~= nil, "setup: the card")
+    Eq(tagged.caption, nil, "setup: not written into the entry")
+    local list = Asides(TAGGED)
+    Eq(#list, 1, "a slip on their timeline, without \"Write it into the entry\"")
+    local a = list[1]
+    Eq(a.time, tagged.t, "at the card's time")
+    Eq(a.of.rec, tagged, "reading the saved card")
+    Eq(a.of.me, ns.ownGUID, "on whose road")
+    local text, sub, tip = ns.UI.TimelineText.DescribeAside(a, TAGGED)
+    Eq(text, "Fished off the pier till dark.", "the player's words on the slip")
+    Eq(sub, "Noted on your map in Mulgore, level 10, with Corwen and Old Tom",
+        "where, the level, who else (not the creature: it has words)")
+    local title = Note.Tip(tagged, ns.Now())
+    Eq(tip[1][1], title, "its tooltip is the card's")
+    Eq(tip[#tip][1], "Click to open it in Your Diary.", "and says what a click does")
+    local _, corwenSub = ns.UI.TimelineText.DescribeAside(Asides(CORWEN)[1], CORWEN)
+    Eq(corwenSub, "Noted on your map in Mulgore, level 10, with Ysolde and Old Tom", "on Corwen's: the others")
+    local when, _, _, icon = ns.UI.DescribeItem(a, TAGGED)
+    Eq(when, date("%H:%M", tagged.t), "its time beside it")
+    Eq(icon, nil, "no art: the card's own icon is drawn")
+
+    -- The player's word, not something seen: nothing counts it.
+    local after = Snapshot(TAGGED)
+    for key, value in pairs(before) do Eq(after[key], value, "untouched: " .. key) end
+    for key, value in pairs(beforeCorwen) do Eq(Snapshot(CORWEN)[key], value, "Corwen's untouched: " .. key) end
+    Eq(ns.db.interactions[TAGGED], nil, "no row written")
+
+    -- With no words: the icon's name, and the creature and the item said.
+    Custom.Edit(KIND, tagged, { text = "", item = "Linen Cloth", itemID = 2589 })
+    text, sub = ns.UI.TimelineText.DescribeAside(Asides(TAGGED)[1], TAGGED)
+    Eq(text, "A note", "no words: the icon's name")
+    Eq(sub, "Noted on your map in Mulgore, level 10, with Corwen and Old Tom",
+        "no words, but others: who else, not the creature and the item")
+    Custom.Edit(KIND, tagged, { people = { { name = "Ysolde", guid = TAGGED } } })
+    text, sub = ns.UI.TimelineText.DescribeAside(Asides(TAGGED)[1], TAGGED)
+    Eq(sub, "Noted on your map in Mulgore, level 10, with a Kobold Miner and Linen Cloth", "the creature and the item")
+end
+
+--------------------------------------------------------------------------
+Section("derived: an edit, a person taken off, the card gone")
+
+do
+    Custom.Edit(KIND, tagged, { text = "Back at the pier.", item = "", icon = "fish",
+        people = { { name = "Ysolde", guid = TAGGED }, { name = "Corwen", guid = CORWEN } } })
+    local text = ns.UI.TimelineText.DescribeAside(Asides(TAGGED)[1], TAGGED)
+    Eq(text, "Back at the pier.", "an edit shows at once")
+    Eq(#Asides(CORWEN), 1, "added back: on Corwen's too")
+    Custom.Edit(KIND, tagged, { people = { { name = "Ysolde", guid = TAGGED } } })
+    Eq(#Asides(CORWEN), 0, "taken off the card: off their page")
+    Eq(#Asides(TAGGED), 1, "and still on who is left")
+
+    -- A name only typed has no page: nothing for anyone.
+    local typed = Custom.Insert(KIND, { text = "Old Tom again.", people = { { name = "Old Tom" } } }, WHERE)
+    Eq(#Asides(TAGGED), 1, "a card naming only a typed name is on no page")
+    Custom.Remove(typed)
+
+    local gone = Custom.Insert(KIND, { text = "Gone soon.", people = { { name = "Ysolde", guid = TAGGED } } }, WHERE)
+    Eq(#Asides(TAGGED), 2, "a second card, a second slip")
+    Custom.Remove(gone)
+    Eq(#Asides(TAGGED), 1, "deleted: off their page")
+end
+
+--------------------------------------------------------------------------
+Section("another of your characters' roads: shown, opens nothing")
+
+local OTHER_ME = "Player-1-0ABCDEF0"
+do
+    ns.db.journey[OTHER_ME] = { custom = { { kind = KIND, t = tagged.t + 60, mapID = MAP, x = 0.5, y = 0.5, level = 30,
+        icon = "heart", text = "From the other road.", people = { { name = "Ysolde", guid = TAGGED } } } } }
+    local list = Asides(TAGGED)
+    Eq(#list, 2, "every route of the diary in use is read")
+    -- (newest first, as the timeline reads)
+    Eq(list[1].of.me, OTHER_ME, "noted whose road")
+    list[1], list[2] = list[2], list[1]
+    Eq(Note.OpensAside(list[2].of), false, "its page is not in Your Diary here")
+    Eq(Note.OpensAside(list[1].of), true, "the character playing's is")
+    local _, _, tip = ns.UI.TimelineText.DescribeAside(list[2], TAGGED)
+    Check(tip[#tip][1] ~= "Click to open it in Your Diary.", "no click hint where a click does nothing")
+    ns.db.journey[OTHER_ME] = nil
+end
+
+--------------------------------------------------------------------------
+Section("on their page: the note's slip, the card's icon, its click")
+
+local function TimelineRow()
+    local p = J.journal.profile
+    for index, line in ipairs(p.timeline.data or {}) do
+        if line.aside and line.slip then
+            p.timeline:Reveal(index)
+            return p.timeline:RowOf(index), line
+        end
+    end
+end
+
+do
+    J = ns.UI.Journal
+    ns.UI.SetJournalView("people")
+    ns.UI.SelectPerson(TAGGED)
+    local row, line = TimelineRow()
+    Check(row ~= nil, "a slip line on their timeline")
+    Eq(line.font, ns.Style.FONT.noteWritten, "in the hand, as a note")
+    Check(row.slip and row.slip:IsShown(), "on a written slip, as a note's")
+    Check(not row.text:IsShown(), "the slip's words, not the line's")
+    local icon = row.asideIcons and row.asideIcons[KIND]
+    Check(icon and icon:IsShown(), "the card's own icon")
+    Eq(icon and icon.key, "fish", "the chosen one")
+    Check(not row.icon:IsShown(), "no texture icon under it")
+    Eq(row.tip and row.tip[1][1], Note.Tip(tagged, ns.Now()), "its tooltip is the card's")
+    local p = J.journal.profile
+    local subLine
+    for _, l in ipairs(p.timeline.data) do
+        if l.aside and not l.slip then subLine = l end
+    end
+    Eq(subLine and subLine.text, "Noted on your map in Mulgore, level 10", "the quiet line under it")
+    Eq(subLine and subLine.font, ns.Style.FONT.small, "small, as an episode's details")
+
+    -- A click: Your Diary at the card's page.
+    row:GetScript("OnMouseUp")(row, "LeftButton")
+    Eq(J.view, "journey", "the book turned to Your Diary")
+    local e = page.recap.entries[page.open]
+    Check(e and e.from <= tagged.t and tagged.t < e.to, "open at the entry holding the card")
+    Eq(e and e.level, 10, "its level")
+end
+
+--------------------------------------------------------------------------
+Section("the pad: a stop like any line; A opens Your Diary")
+
+do
+    local Pad = ns.UI.Pad
+    ns.UI.SetJournalView("people")
+    ns.UI.SelectPerson(TAGGED)
+    mock.pad.ui, mock.pad.enabled, mock.pad.devices = true, true, { 1 }
+    mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+    local catcher = Pad.Catcher(ns.UI.JournalFrame())
+    local function Press(key)
+        mock.PadPress(catcher, key, true)
+        return mock.PadPress(catcher, key, false)
+    end
+    Pad.Refresh()
+    local scope = Pad.Scope("people")
+    local stop
+    for _, it in ipairs(scope.focus.groups.page.items) do
+        if it.line and it.line.aside then
+            Check(it.line.slip == true, "only the slip is a stop, not its line under it")
+            stop = it
+        end
+    end
+    Check(stop ~= nil, "the slip is walked")
+    Eq(stop and stop.key, "tl:" .. tostring(tagged), "keyed by the saved card")
+    Check(scope.focus:Focus(stop.key, "page"), "setup: onto it")
+    Check(stop.outline ~= nil, "outlined as paper, as a note's slip")
+    local legend = {}
+    for _, e in ipairs(scope.legend(scope)) do
+        local key = type(e[1]) == "table" and e[1][1] or e[1]
+        legend[key] = legend[key] or e[2]
+    end
+    Eq(legend.PAD1, "Open in Your Diary", "A's prompt")
+    Press("PAD1")
+    Eq(J.view, "journey", "A opened Your Diary")
+
+    -- Another road's card: no prompt, A does nothing.
+    ns.db.journey[OTHER_ME] = { custom = { { kind = KIND, t = tagged.t + 60, mapID = MAP, x = 0.5, y = 0.5,
+        level = 30, icon = "heart", text = "From the other road.", people = { { name = "Ysolde", guid = TAGGED } } } } }
+    ns.UI.SetJournalView("people")
+    ns.UI.SelectPerson(TAGGED)
+    Pad.Refresh()
+    local other = ns.db.journey[OTHER_ME].custom[1]
+    Check(scope.focus:Focus("tl:" .. tostring(other), "page"), "the other road's slip is walked")
+    legend = {}
+    for _, e in ipairs(scope.legend(scope)) do
+        local key = type(e[1]) == "table" and e[1][1] or e[1]
+        legend[key] = legend[key] or e[2]
+    end
+    Check(legend.PAD1 ~= "Open in Your Diary", "no prompt where A does nothing")
+    Press("PAD1")
+    Eq(J.view, "people", "A did nothing")
+    ns.db.journey[OTHER_ME] = nil
+    mock.pad.ui, mock.pad.enabled, mock.pad.devices = false, false, {}
+    mock.fire("GAME_PAD_ACTIVE_CHANGED", false)
+end
+
+--------------------------------------------------------------------------
+Section("forgetting them: the slip goes with the link")
+
+do
+    ns.UI.SetJournalView("journey")
+    Eq(#Note.CardsOf(TAGGED), 1, "setup: on their page")
+    ns.ForgetEverywhere(TAGGED)
+    Eq(tagged.people[1].guid, nil, "the link goes")
+    Eq(tagged.people[1].name, "Ysolde", "the name as written stays")
+    -- (were they ever added again, the card does not come back to them)
+    ns.db.characters[TAGGED] = { guid = TAGGED, names = { { first = "Ysolde", surname = "" } } }
+    ns.db.diary[TAGGED] = { tags = {}, addedAt = now }
+    Eq(#Note.CardsOf(TAGGED), 0, "off their page")
+    Eq(#Asides(TAGGED), 0, "and off their timeline")
+    Custom.Remove(tagged)
+end
