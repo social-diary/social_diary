@@ -24,9 +24,9 @@ local addonName, ns = ...
 -- the per-character file. They move apart: a file can be converted at one
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
-local SCHEMA_VERSION = 6     -- a diary
+local SCHEMA_VERSION = 7     -- a diary
 local ACCOUNT_SCHEMA = 2     -- SocialDiaryDB, apart from the shared diary
-local CHARACTER_SCHEMA = 2   -- SocialDiaryCharDB, apart from its own diary
+local CHARACTER_SCHEMA = 3   -- SocialDiaryCharDB, apart from its own diary
 
 -- One diary: everything recorded about other players, and the roads of the
 -- characters who write into it. Each record notes which of the user's
@@ -192,6 +192,10 @@ local CHARACTER_SETTINGS = {
     parcelOpened = false,
     detectSightings = true,  -- SIG-1: passive detection in the open world
     autoAdd = false,    -- "Auto-Add Players": the one exception to DIA-1, off until the user asks (Core/AutoAdd.lua)
+    -- autoAddRules (the master switch's rules) and autoAddNextId (the next
+    -- rule's id) are deliberately not here: the defaults would bring a
+    -- deleted preset back. AutoAdd.Seed fills both once, when the list is
+    -- nil; an older character gets them from STEPS.character[3].
     keepRoute = true,   -- JRN-17: Your Diary keeps the character's own route
     peopleSort = "lastMet",  -- the People list's sort, a preference (People.SORTS)
 
@@ -277,6 +281,24 @@ STEPS.diary[6] = function(t)
     end
 end
 
+-- 7 (19 Nov 2026): Auto-Add's rules give the people they add a tag
+-- (.claude/features/auto-add-rules-plan.md). The people the two fixed rules
+-- added before get theirs: "group" for auto_group, "seen" for auto_seen, in
+-- the login language, cleaned as any tag is (Diary.Edit.AddTag: never past
+-- the most tags an entry has, never twice). No rule id: they predate rules.
+STEPS.diary[7] = function(t)
+    if type(t.diary) ~= "table" then return end
+    local TAGS = { auto_group = ns.L["group##autotag"], auto_seen = ns.L["seen##autotag"] }
+    for _, entry in pairs(t.diary) do
+        local c = type(entry) == "table" and entry.addedContext
+        local tag = type(c) == "table" and TAGS[c.source]
+        if tag then
+            if type(entry.tags) ~= "table" then entry.tags = {} end
+            ns.Diary.Edit.AddTag(entry, tag)
+        end
+    end
+end
+
 -- Account 2 (2 Nov 2026): the tour replaces the front matter's introduction. A
 -- reader who has read the front matter has seen what the tour shows, so it
 -- is not offered to them again. frontRead and introDone stay as stored.
@@ -290,6 +312,16 @@ end
 -- (Core/Sessions.lua), so its saved value goes.
 STEPS.character[2] = function(t)
     if type(t.settings) == "table" then t.settings.sessionGapMinutes = nil end
+end
+
+-- 3 (19 Nov 2026): Auto-Add's two fixed rules become a list the player
+-- edits (Core/AutoAdd.lua), seeded once from the old switch: with it on,
+-- "Group mates" and "Familiar faces" go on as before (now with their tags),
+-- "Dungeon & raid companions" stays off; with it off, all three are off.
+STEPS.character[3] = function(t)
+    if type(t.settings) ~= "table" then t.settings = {} end
+    local on = t.settings.autoAdd == true
+    ns.AutoAdd.SeedInto(t.settings, on and { group = true, seen = true } or nil)
 end
 
 -- Oldest first, bumping `schema` after each step, so a table that skipped
@@ -374,6 +406,9 @@ function ns.InitDB()
     ApplyDefaults(diary, DIARY)
 
     ns.db = View()
+    -- A new character's Auto-Add rules, after the defaults (never one of
+    -- them: Core/AutoAdd.lua).
+    ns.AutoAdd.Seed()
     ns.dbRestored = restored
     ns.Touch()
     return ns.db

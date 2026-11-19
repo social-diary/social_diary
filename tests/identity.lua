@@ -17,7 +17,7 @@ mock.fire("ADDON_LOADED", "some_other_addon")
 Check(ns.db == nil, "DB initialised for the wrong addon")
 
 mock.fire("ADDON_LOADED", "social_diary")
-Check(ns.db and ns.db.schema == 6, "DB not initialised")
+Check(ns.db and ns.db.schema == 7, "DB not initialised")
 Eq(ns.dbRestored, false, "an empty first load reported as restored")
 
 -- The whole point of the flag: a load that did get its data back says so, so
@@ -35,8 +35,8 @@ Section("version numbers, for migrations")
 
 -- Each file and the diary in use carry their own number.
 Eq(_G.SocialDiaryDB.schema, 2, "the account file has no version")
-Eq(_G.SocialDiaryCharDB.schema, 2, "the per-character file has no version")
-Eq(_G.SocialDiaryCharDB.data.schema, 6, "the diary has no version")
+Eq(_G.SocialDiaryCharDB.schema, 3, "the per-character file has no version")
+Eq(_G.SocialDiaryCharDB.data.schema, 7, "the diary has no version")
 
 -- The steps: oldest first, each once, on the table as saved.
 local Migrate, ran = ns._test.Migrate, {}

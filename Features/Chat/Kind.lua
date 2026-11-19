@@ -102,3 +102,49 @@ end
 
 ns.Style.AddArt("whisper", { "Interface\\GossipFrame\\GossipGossipIcon" }, Chat.Colour("WHISPER", 1, 0.5, 1))
 ns.Style.AddArt("party", { "Interface\\GossipFrame\\GossipGossipIcon" }, Chat.Colour("PARTY", 0.667, 0.667, 1))
+
+--------------------------------------------------------------------------
+-- The Auto-Add trigger
+--------------------------------------------------------------------------
+--
+-- "Whispered N times", from them, to them, or either way: the whisper rows
+-- the buffer still holds (a week for a stranger). The rows are kept with
+-- "Keep whisper text" off too (only the words go), so it counts either way.
+
+local WHISPERS = {
+    ["in"] = { whisper_in = true },
+    out = { whisper_out = true },
+    either = { whisper_in = true, whisper_out = true },
+}
+
+local function Whispers(guid, direction)
+    local kinds = WHISPERS[direction] or WHISPERS.either
+    local n = 0
+    for _, row in ipairs(ns.Interactions.For(guid) or {}) do
+        if kinds[row.type] then n = n + 1 end
+    end
+    return n
+end
+
+ns.AutoAdd.RegisterTrigger("whispered", {
+    order = 40,
+    label = L["Whispered"],
+    amount = { min = 1, max = 50, default = 3, steps = { 1, 2, 3, 4, 5, 10, 15, 20, 30, 40, 50 },
+        unit = L["whispers##autounit"] },
+    option = { key = "direction", default = "either", label = L["Whispers##autooption"],
+        choices = { { "in", L["From them##autodirection"] }, { "out", L["To them##autodirection"] },
+            { "either", L["Either##autodirection"] } } },
+    kinds = { "whisper_in", "whisper_out" },
+    backfill = true,
+    source = "auto_whisper",
+    count = function(guid, rule) return Whispers(guid, rule.option) end,
+    describe = function(rule)
+        local n = tonumber(rule.amount) or 0
+        if rule.option == "in" then
+            return ns.Plural(n, L["whispered you once|whispered you %d times##plural"])
+        elseif rule.option == "out" then
+            return ns.Plural(n, L["you whispered them once|you whispered them %d times##plural"])
+        end
+        return ns.Plural(n, L["a whisper between you|%d whispers between you##plural"])
+    end,
+})

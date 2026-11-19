@@ -113,11 +113,13 @@ end
 -- profile can say "added from the target menu in Mulgore at level 12".
 -- `where` is where the user met them, when that is not here and now: an add
 -- from the Recently nearby page passes the sighting's place.
-local function AddedContext(source, record, where)
+-- `rule` is the Auto-Add rule's id that added them (AutoAdd.Count), else nil.
+local function AddedContext(source, record, where, rule)
     where = where or ns.Where()
 
     return {
         source = source or "unknown",
+        rule = rule,
         zone = where.zone,
         mapID = where.mapID,
         x = where.x,
@@ -148,7 +150,7 @@ local function Prepare(guid, opts)
         guid = record.guid,
         addedAt = ns.Now(),
         addedBy = ns.ownGUID,  -- DAT-1: which of the user's characters added them
-        addedContext = AddedContext(opts.source, record, opts.where),
+        addedContext = AddedContext(opts.source, record, opts.where, opts.rule),
         tags = {},
         note = nil,
         relationship = nil,
@@ -194,7 +196,7 @@ local function Insert(entry, here, quiet)
 end
 
 -- The one way in. `opts` may carry unit, source, where, note, tags,
--- relationship and quiet (no line in chat); all of them are optional, because DIA-4 wants adding to cost two actions and
+-- relationship, rule (the Auto-Add rule's id) and quiet (no line in chat); all of them are optional, because DIA-4 wants adding to cost two actions and
 -- everything else to be fillable afterwards.
 --
 -- Returns the entry and true when it was newly added, or the existing entry
@@ -267,13 +269,22 @@ function Edit.SetRelationship(entry, relationship)
     return true
 end
 
-function Edit.AddTag(entry, tag)
+-- A tag as it is stored: trimmed, capped, lowercased, and a preset typed in
+-- the player's language is the preset ("Freund"). nil for nothing.
+local function CleanTag(tag)
     tag = Clean(tag, MAX_TAG_CHARS)
-    if not tag then return false end
+    if not tag then return nil end
     tag = tag:lower()
-    -- A preset typed in the player's language is the preset ("Freund").
     local _, byLabel = PresetLabels()
-    tag = byLabel[tag] or tag
+    return byLabel[tag] or tag
+end
+
+Diary.CleanTag = CleanTag
+Diary.MAX_TAGS = MAX_TAGS
+
+function Edit.AddTag(entry, tag)
+    tag = CleanTag(tag)
+    if not tag then return false end
 
     if Edit.HasTag(entry, tag) then return false end
     if #entry.tags >= MAX_TAGS then return false end
@@ -320,6 +331,10 @@ local function OnDiary(edit)
         return result
     end
 end
+
+-- The edits on a bare entry table, for whoever holds one that is not in
+-- ns.db.diary yet (a migration step, Core/DB.lua).
+Diary.Edit = Edit
 
 Diary.SetNote = OnDiary(Edit.SetNote)
 Diary.SetRelationship = OnDiary(Edit.SetRelationship)

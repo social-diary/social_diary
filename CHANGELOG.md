@@ -6,6 +6,8 @@
 
 - You can now choose what each page of _Your Diary_ shows
   - Right-click a _Plate_ or a person to leave it out
+- Auto-Add Players now follows rules you can create yourself
+  - Each rule also can set a tag to the new entry, to find them in _People_
 
 ## [4.2.2]
 

@@ -169,8 +169,6 @@ ns.Locale.Add("ptBR", {
     ["Only works if nameplates are on. Doesn't work in dungeons, raids or battlegrounds."] = "Só funciona com placas de nome ligadas. Não funciona em masmorras, raides ou campos de batalha.",
     ["Enable sightings in cities - performance warning:"] = "Ativar avistamentos em cidades — aviso de desempenho:",
     ["Auto-Add Players"] = "Adicionar jogadores automaticamente",
-    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] = "Desligado até você ativar. Adiciona alguém depois de 5 minutos em grupo com você sem interrupção (fora de campos de batalha), ou depois de ser visto perto de você 3 vezes separadas. Quem você remover do diário fica de fora.",
-    ["Sightings count only while “Notice who passes you in the open world” is on."] = "Os avistamentos só contam enquanto “Notar quem passa por você no mundo aberto” estiver ativado.",
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Abrir o diário",
     ["Opens the journal"] = "Abre o diário",

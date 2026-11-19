@@ -17,6 +17,12 @@ local HOUR = 3600
 mock.now = 1790000000
 T.BlankDiary()
 
+-- Familiar faces on, as a character who had Auto-Add on gets it
+-- (STEPS.character[3]): a new character's presets start off.
+for _, rule in ipairs(ns.AutoAdd.Rules()) do
+    if rule.preset == "seen" then rule.on = true end
+end
+
 -- Four people seen three times each, one twice (not waiting).
 local PEOPLE = {
     { guid = "Player-1-0A000001", first = "Aldwin" },
@@ -67,7 +73,8 @@ Check(Sheet.Shown(), "switched on with four waiting: no sheet")
 Check(Sheet.View():IsShown(), "the paper is not laid")
 Eq(#Sheet.View().list, 4, "the list it opened on")
 local words = Words()
-Check(words:find("You’ve seen 4 people near you 3 times or more.", 1, true), "the count: " .. words)
+Check(words:find("4 people already match this rule.", 1, true), "the count: " .. words)
+Check(words:find("Seen 3 times: 4 people", 1, true), "the rule's line: " .. words)
 Check(words:find("Aldwin, Brenna, Corwen and 1 other", 1, true), "the names: " .. words)
 Check(not words:find("Edda", 1, true), "someone seen twice is offered")
 Check(words:find("Add them to the diary now?", 1, true), "the question: " .. words)
@@ -97,7 +104,7 @@ for i = 2, 4 do ns.AutoAdd.Decline(PEOPLE[i].guid) end
 Switch(true)
 Check(Sheet.Shown(), "one waiting: no sheet")
 words = Words()
-Check(words:find("You’ve seen 1 person near you 3 times or more.", 1, true), "the singular: " .. words)
+Check(words:find("1 person already matches this rule.", 1, true), "the singular: " .. words)
 Check(words:find("Aldwin", 1, true) and not words:find("other", 1, true), "the one name: " .. words)
 Sheet.Close()
 

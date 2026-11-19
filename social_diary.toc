@@ -322,6 +322,7 @@ UI/Blizzard/Tooltip.lua
 UI/Settings/Page.lua
 UI/Settings/Kit.lua
 UI/Settings/Quiet.lua
+UI/Settings/Rules.lua
 UI/Settings/Macro.lua
 UI/Settings/Sections/Recording.lua
 UI/Settings/Sections/Interface.lua
@@ -338,6 +339,7 @@ UI/Settings/Sections/Feedback.lua
 UI/Settings/Sections/Changelog.lua
 UI/Settings/Sections/Credits.lua
 UI/Settings/Pad.lua
+UI/Settings/RulesPad.lua
 UI/Blizzard/Signpost.lua
 # The parcel at login: its scene first (ns.UI.Parcel, and the fonts made
 # as it loads), wrapped, torn, then the host and the entry points. The
