@@ -62,6 +62,7 @@ do
     Eq(types.item.type, "item", "an item")
     Eq(types.item.optional, true, "behind a \"+ Add\" too")
     Eq(types.caption.type, "flag", "the caption, a flag")
+    Eq(types.caption.label, "Write it into the entry", "its words: what it does now")
     Eq(spec.creature, "mob", "the mob is a creature")
     Eq(Custom.Spec("met"), nil, "\"Someone you met\" left the picker")
     Eq(Recap.MOMENTS.met, nil, "and the moments")
@@ -315,6 +316,88 @@ do
     said = { named = {} }
     spec.assume(said, { noteCardMarks = { { at = { 1, 2 }, list = { { noteCard = name } } } } })
     Eq(said.noteCard[name], true, "taken as shown until it is left off, typed or not")
+end
+
+--------------------------------------------------------------------------
+Section("the entry: a card asked for is written into the level's words")
+
+do
+    local function Lines(...)
+        return Note.Lines({ noteCard = { ... } })
+    end
+    local both = { t = t0, mapID = MAP, people = { { guid = GUID, name = "Brannoc" }, { name = "Old Tom" } },
+        text = "Fished off the pier till dark.", caption = true }
+    Eq(Lines(both), "With Brannoc and Old Tom in Mulgore: \226\128\156Fished off the pier till dark.\226\128\157",
+        "who was there, where, and the player's words as written")
+    Eq(Lines({ t = t0, mapID = MAP, people = { { name = "Old Tom" } }, text = "fished off the pier", caption = true }),
+        "With Old Tom in Mulgore: \226\128\156fished off the pier\226\128\157.",
+        "words without a stop as written, the sentence's stop after the quotes")
+    Eq(Lines({ t = t0, mapID = MAP, people = { { name = "Old Tom" }, { name = "Wenna" } }, caption = true }),
+        "With Old Tom and Wenna in Mulgore.", "people only")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "mountain", text = "The falls at dusk.", caption = true }),
+        "Noted in Mulgore: \226\128\156The falls at dusk.\226\128\157", "words only")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "paw", mob = "Kobold Miner", item = "Linen Cloth", caption = true }),
+        "Noted a Kobold Miner and Linen Cloth in Mulgore.", "neither: the creature and the item")
+    Eq(Lines({ t = t0, mapID = MAP, people = { { name = "Old Tom" } }, mob = "Kobold Miner", caption = true }),
+        "With Old Tom in Mulgore.", "with people, the card's creature is left to the card")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "quill", caption = true }), nil, "a card with nothing to tell says nothing")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "quill", people = {}, text = "", caption = true }), nil, "nor an emptied one")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "meeting", caption = true }), "With someone in Mulgore.",
+        "a meeting with nobody named, as \"Someone you met\" said")
+    Eq(Lines({ t = t0, mapID = MAP, icon = "meeting", text = "fished off the pier", caption = true }),
+        "With someone in Mulgore: \226\128\156fished off the pier\226\128\157.", "and with its line")
+    Eq(Lines({ t = t0, mapID = MAP, people = { { name = "Old Tom" } }, text = "fished" }), nil,
+        "not asked for: nothing on the left page")
+    Eq(Lines({ t = t0, people = { { name = "Old Tom" } }, text = "fished", caption = true }),
+        "With Old Tom: \226\128\156fished\226\128\157.", "nowhere known, no place")
+    Eq(Lines({ t = t0, mapID = MAP, text = "a |cffff0000red|r line", caption = true }),
+        "Noted in Mulgore: \226\128\156a red line\226\128\157.", "the client's escapes never on the page")
+    Eq(Lines({ t = t0, mapID = MAP, people = { { name = "Wenna" } }, caption = true },
+            { t = t0 + 10, mapID = MAP, people = { { name = "Old Tom" } }, caption = false },
+            { t = t0 + 20, mapID = 1413, text = "Rain.", caption = true }),
+        "With Wenna in Mulgore. Noted in The Barrens: \226\128\156Rain.\226\128\157",
+        "several, each told in their order; one not asked for left out")
+
+    -- The entry as the page reads it: gathered, in its place among the lines.
+    local before = j.custom
+    j.custom = {
+        { kind = KIND, t = t0 + 100, mapID = MAP, x = 0.4, y = 0.6, level = 10, icon = "meeting",
+            people = { { name = "Brannoc", guid = GUID } }, text = "Helped me with the kobolds.", caption = true },
+        { kind = KIND, t = t0 + 200, mapID = MAP, x = 0.4, y = 0.6, level = 10, icon = "quill",
+            people = { { name = "Old Tom" } }, text = "Owes me a fish." },
+        { kind = KIND, t = t0 + 300, mapID = MAP, x = 0.4, y = 0.6, level = 10, icon = "mountain", caption = true },
+    }
+    local e = Recap.Gather(j, t0, t0 + 3500, Recap.Context(ns.ownGUID, now))
+    local all = table.concat(Text.Lines(e, now, {}), "\n")
+    Check(all:find("With Brannoc in Mulgore: \226\128\156Helped me with the kobolds.\226\128\157", 1, true) ~= nil,
+        "the entry's lines tell the card: its words and who was there")
+    Check(not all:find("Owes me a fish", 1, true) and not all:find("Old Tom", 1, true),
+        "a card not asked for is not on the left page")
+    local guids = Text.LinkedGuids(e)
+    Eq(#guids, 1, "one linked person for the page to link")
+    Eq(guids[1], GUID, "the card's")
+    local at
+    for i, p in ipairs(Text.Paragraphs()) do if p.key == KIND then at = i end end
+    Eq(Text.Paragraphs()[at].at, 35, "after the people, before the finds")
+
+    -- The plate's caption keeps its own words: never the card's quote, and
+    -- each name once.
+    local p = { mapID = MAP, moments = {} }
+    for _, rec in ipairs(e.noteCard) do p.moments[#p.moments + 1] = { kind = KIND, t = rec.t, noteCard = rec } end
+    local caption = Text.PlateCaption(p, nil, { named = {}, noteCard = {} }) or ""
+    Check(not caption:find("kobolds", 1, true), "the caption never quotes the card")
+    local _, n = caption:gsub("Brannoc", "")
+    Eq(n, 1, "and names them once")
+    Check(not caption:find("Owes", 1, true), "nor says one not asked for")
+
+    -- A migrated meeting with nobody named.
+    j.custom = { { kind = "met", t = t0 + 100, mapID = MAP, x = 0.4, y = 0.6, level = 10 } }
+    local old = { schema = 5, journey = { a = { custom = j.custom } } }
+    ns._test.Migrate(old, 6, ns._test.DiarySteps)
+    e = Recap.Gather(j, t0, t0 + 3500, Recap.Context(ns.ownGUID, now))
+    Check(table.concat(Text.Lines(e, now, {}), "\n"):find("With someone in Mulgore.", 1, true) ~= nil,
+        "a folded \"Someone you met\" with nobody named reads \"with someone\"")
+    j.custom = before
 end
 
 --------------------------------------------------------------------------

@@ -213,3 +213,109 @@ Text.RegisterCaption(Note.KIND, {
         return names[1] and Fmt(L["with %s"], List(names, MOST)) or nil
     end },
 })
+
+--------------------------------------------------------------------------
+-- In the level's prose (Text.RegisterLines)
+--------------------------------------------------------------------------
+
+-- A card the player asked to have written into the entry (`caption`, off
+-- by default: the user's, 19 Nov) is told in the level's (or the week's)
+-- prose on the left page, each card a sentence, oldest first, right after
+-- who you were with (the people, 30). It says where, who was there, and
+-- the player's own words as they wrote them, in the book's quotes:
+--   "With Old Tom and Wenna in Mulgore: “Fished off the pier till dark.”"
+--   "With Old Tom and Wenna in Mulgore."             (no words)
+--   "Noted in Mulgore: “The falls at dusk.”"         (nobody named)
+--   "Noted a Kobold Miner and Linen Cloth in Mulgore." (neither: what else
+--                                                      it holds)
+-- A meeting with nobody named is "with someone" (Note.Someone), as
+-- "Someone you met" was. A card with nothing to tell says nothing. The
+-- creature and the item are said only where the card has neither words
+-- nor people: otherwise its words say what they were, and its card shows
+-- them. Names are the prose's (a linked person's full name, linked on the
+-- page as the people's are: the spec's `names`); typed names as written.
+-- The plate's caption keeps its own words (the names the margin leaves
+-- off); it never quotes the card.
+
+-- Everyone a card names, for a sentence: each once, in its order.
+local function ProseNames(rec)
+    local names, seen = {}, {}
+    for _, p in ipairs(Note.People(rec)) do
+        local guid = Note.Guid(p)
+        local name = guid and Text.Who(guid) or (type(p) == "table" and p.name) or nil
+        if name and name ~= "" and not seen[name] then
+            seen[name] = true
+            names[#names + 1] = name
+        end
+    end
+    if not names[1] and Note.Someone(rec) then names[1] = L["someone##with"] end
+    return names
+end
+
+-- The player's words, in the book's quotes, as written (Text.Written:
+-- the client's escapes out, on one line); nil for none.
+local function Quote(rec)
+    local text = Text.Written(type(rec.text) == "string" and rec.text or "")
+    if text == "" then return nil end
+    return Fmt(L["\226\128\156%s\226\128\157"], text), text
+end
+
+-- A quote ends the sentence; one whose words end without a stop gets the
+-- sentence's, after the quotes.
+local function Ended(line, words)
+    if words:find("[%.!%?]$") or words:sub(-3) == "\226\128\166" then return line end
+    return Fmt(L["%s."], line)
+end
+
+-- The creature and the item a card holds, for "Noted ...": nil for neither.
+local function Things(rec)
+    local things = {}
+    if type(rec.mob) == "string" and rec.mob ~= "" then things[#things + 1] = Text.KillerName({ name = rec.mob }) end
+    if type(rec.item) == "string" and rec.item ~= "" then things[#things + 1] = rec.item end
+    return List(things)
+end
+
+-- One card's sentence; nil where it has nothing to say.
+function Note.Sentence(rec)
+    local zone = rec.mapID and Text.MapName(rec.mapID)
+    zone = zone and ns.ZoneIn(rec.mapID, zone)
+    local names, quote, words = ProseNames(rec), Quote(rec)
+    local who = names[1] and List(names, MOST)
+    if who and quote then
+        local line = zone and Fmt(L["With %1$s %2$s: %3$s##zone"], who, zone, quote)
+            or Fmt(L["With %1$s: %2$s"], who, quote)
+        return Ended(line, words)
+    elseif who then
+        return zone and Fmt(L["With %1$s %2$s.##zone"], who, zone) or Fmt(L["With %s."], who)
+    elseif quote then
+        return Ended(zone and Fmt(L["Noted %1$s: %2$s##zone"], zone, quote) or quote, words)
+    end
+    local things = Things(rec)
+    if not things then return nil end
+    return zone and Fmt(L["Noted %1$s %2$s.##zone"], things, zone) or Fmt(L["Noted %s."], things)
+end
+
+-- The entry's cards asked for, each told, oldest first (the entry's list
+-- is in time already: Recap's Gather); nil with none to tell.
+function Note.Lines(e)
+    local parts = {}
+    for _, rec in ipairs(Captioned(e[Note.KIND] or {})) do
+        parts[#parts + 1] = Note.Sentence(rec)
+    end
+    if not parts[1] then return nil end
+    return table.concat(parts, " ")
+end
+
+-- The people the lines name with a link, for the page to link them.
+local function LinkedGuids(e)
+    local guids = {}
+    for _, rec in ipairs(Captioned(e[Note.KIND] or {})) do
+        for _, p in ipairs(Note.People(rec)) do
+            guids[#guids + 1] = Note.Guid(p)
+        end
+    end
+    return guids
+end
+
+-- After the people (30), before the firsts found (40).
+Text.RegisterLines(Note.KIND, { at = 35, lines = function(e) return Note.Lines(e) end, names = LinkedGuids })

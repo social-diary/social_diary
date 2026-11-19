@@ -416,10 +416,16 @@ ns.Locale.Add("enUS", {
     ["Item"] = "Item",
     ["+ An item"] = "+ An item",
     ["Shift-click an item"] = "Shift-click an item",
-    ["Name who was there by the map"] = "Name who was there by the map",
+    ["Write it into the entry"] = "Write it into the entry",
     -- Features/Note/Text.lua
     ["Someone you met"] = "Someone you met",
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
+    ["With %1$s %2$s: %3$s##zone"] = "With %1$s %2$s: %3$s",
+    ["With %1$s: %2$s"] = "With %1$s: %2$s",
+    ["With %1$s %2$s.##zone"] = "With %1$s %2$s.",
+    ["Noted %1$s: %2$s##zone"] = "Noted %1$s: %2$s",
+    ["Noted %1$s %2$s.##zone"] = "Noted %1$s %2$s.",
+    ["Noted %s."] = "Noted %s.",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "as far as a Journeyman goes",
     ["as far as an Apprentice goes"] = "as far as an Apprentice goes",

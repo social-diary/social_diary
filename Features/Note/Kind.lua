@@ -9,8 +9,9 @@
 --                (ns.NoteIcons: KEYS, the first the default; Draw)
 --   Kind.lua     the moment, who the card names, and the form's fields
 --   Text.lua     its words: the strip's top line, the mark's tooltip, the
---                ticklist's row, the menu's line, and the caption's where the
---                player asked for it (`caption`, off by default)
+--                ticklist's row, the menu's line, and where the player
+--                asked for it (`caption`, off by default) a sentence in the
+--                level's prose on the left page and the caption's names
 --   Mark.lua     its mark: the chosen icon
 --   Card.lua     its card in the margin: the killer card worn with a face of
 --                its own (the icon, who, the item, the player's words), as
@@ -90,6 +91,6 @@ ns.JourneyRecap.RegisterMoment(Note.KIND, { order = 85, entry = "noteCard", fiel
                 add = L["+ A creature"] },
             { key = "item", type = "item", id = "itemID", optional = true, label = L["Item"],
                 hint = L["Shift-click an item"], add = L["+ An item"] },
-            { key = "caption", type = "flag", label = L["Name who was there by the map"] },
+            { key = "caption", type = "flag", label = L["Write it into the entry"] },
         },
     } })
