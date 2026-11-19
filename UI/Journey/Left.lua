@@ -115,6 +115,7 @@ local function NamesOf(e)
     for _, person in ipairs(e.people or {}) do
         if ns.Diary.IsDiary(person.guid) then Add(person.guid) end
     end
+    for _, guid in ipairs(Text.LinkedGuids(e)) do Add(guid) end
     table.sort(names, function(a, b) return #a.name > #b.name end)
     return names
 end
