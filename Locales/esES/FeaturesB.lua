@@ -110,14 +110,9 @@ ns.Locale.Add("esES", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s ya es de nivel %2$s",
     ["Now level %s"] = "Ya es de nivel %s",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Alguien que conociste",
-    ["Someone you met"] = "Alguien que conociste",
+    -- Features/Note/Kind.lua
     ["Who"] = "Quién",
-    ["Someone in your diary, or any name"] = "Alguien de tu diario, o cualquier nombre",
-    ["Description"] = "Descripción",
-    ["What you did, in a line"] = "Lo que hiciste, en una línea",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "hasta donde llega un oficial",

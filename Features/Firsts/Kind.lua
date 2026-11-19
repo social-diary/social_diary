@@ -257,3 +257,13 @@ ns.JourneyRecap.RegisterMoment("find", { order = 10, entry = "finds", field = "f
         return { kind = "find", what = f.kind, t = rec.t, find = rec, gift = gift,
             guid = rec.guid, person = gift and Firsts.PERSON or nil }, map, x, y
     end })
+
+-- The firsts found are the character's own items: the free card's item search
+-- offers them (Core/Custom.lua's FindItems), beside the bags and what is worn.
+ns.Custom.RegisterItems("firsts", function(j)
+    local list = {}
+    for _, rec in pairs(j.firsts or {}) do
+        if type(rec) == "table" and rec.link then list[#list + 1] = rec.link end
+    end
+    return list
+end)

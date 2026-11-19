@@ -19,8 +19,31 @@
 --   a link (Save, Cancel, Delete, ...) A follows it, as a click
 -- Each wears the pen's box (UI/Pad/Look.lua), its row's label the
 -- subheading over it, red. A person's line offers who the search finds as it
--- is written on: down goes into the names, A on one picks it (and the line
--- lets go), up off the first or B goes back to the line.
+-- is written on (an item's line, the player's own items): down goes into the
+-- names, A on one picks it (and the line lets go), up off the first or B goes
+-- back to the line.
+--
+-- The free card's controls (note-card.md, phase 3), found the same way:
+--   an icon of the grid (cell.iconKey)  A chooses it; the pen's ring round
+--                                      it. Left and right step along the
+--                                      sixteen, up and down between their
+--                                      two rows, and off the grid to the
+--                                      control over or under it
+--   a "+ Add" strip (strip.addKey)     outlined in red as a margin card is;
+--                                      A adds its field, and the pad goes to
+--                                      the field's line (the cursor stays
+--                                      A's to give)
+--   "Remove"                           a link, as Save is: A follows; taken
+--                                      off, the pad goes to the field's strip
+--   a face of who was there            the pen's ring, their name its tooltip;
+--                                      A takes them off (its cross), the pad
+--                                      on the next face or the line. Picking
+--                                      a name from the line's search adds a
+--                                      face, the pad back on the line
+--   the caption's box                  a choice's box: A ticks or unticks
+-- Shift-clicking an item into its line is the mouse's alone: the pad has the
+-- item search (rule 5 of the controller-support skill: never click an item
+-- for the pad).
 --
 -- The picker (a new card: which kind) is a grid of paper strips, two to a row:
 -- the D-pad walks it as it lies, each strip outlined in red as a margin card
@@ -47,6 +70,8 @@ end
 
 local PROMPT = {
     choose = { "PAD1", L["Choose"], main = true },
+    add = { "PAD1", L["Add"], main = true },
+    off = { "PAD1", L["Take them off the card"], main = true },
     write = { "PAD1", L["Write"], main = true },
     done = { "PAD1", L["Done writing"], main = true },
     names = { "PADDDOWN", L["Go to the names"] },
@@ -67,6 +92,8 @@ end
 -- What a control is, by what it is made of (lowercase fields: the widgets'
 -- own, safe to read on any frame).
 local function Kind(w)
+    if w.iconKey then return "icon" end
+    if rawget(w, "SetCharacter") and type(w.cross) == "table" then return "face" end
     if w.tick and w.label then return "switch" end
     if w.line and w.label then return "link" end
     if w.line and TypeOf(w) == "EditBox" then return "field" end
@@ -77,7 +104,7 @@ end
 local function Collect(frame, out, skip)
     for _, child in ipairs({ frame:GetChildren() }) do
         if not skip[child] and child:IsShown() then
-            local kind = Kind(child)
+            local kind = child.addKey and "strip" or Kind(child)
             if kind then
                 out[#out + 1] = { frame = child, kind = kind }
             else
@@ -98,16 +125,37 @@ local function Reading(list)
     return list
 end
 
+-- Every line of every kind's rows made so far (CardSheet.Lines: a row's
+-- own, or each of a people's), with the key it is known by.
+local function AllLines(view)
+    local out = {}
+    for _, rows in pairs(view.rowsOf or {}) do
+        for _, row in ipairs(rows) do
+            for _, line in ipairs(row.lines or CardSheet.Lines(row)) do
+                out[#out + 1] = { line = line, key = line.key or row.field.key }
+            end
+        end
+    end
+    return out
+end
+
 -- The open form's rows, every kind's made so far: what each control is the
--- line or box of (its key), and a person's names to skip.
+-- line or box of (its key), and the names hung under a line, to skip.
 local function Rows(view)
     local names, found = {}, {}
+    for _, at in ipairs(AllLines(view)) do
+        names[at.line.box] = "field:" .. at.key
+        if at.line.found then found[at.line.found] = at.line end
+    end
     for _, rows in pairs(view.rowsOf or {}) do
         for _, row in ipairs(rows) do
             local key = row.field.key
-            if row.box then names[row.box] = "field:" .. key end
             for value, box in pairs(row.toggles or {}) do names[box] = "tick:" .. key .. ":" .. tostring(value) end
-            if row.found then found[row.found] = row end
+            for _, cell in ipairs(row.cells or {}) do names[cell] = "icon:" .. cell.iconKey end
+            if row.flag then names[row.flag] = "tick:" .. key end
+            if row.off then names[row.off] = "off:" .. key end
+            for i, o in ipairs(row.faces or {}) do names[o] = "face:" .. key .. ":" .. i end
+            if row.add then names[row.add] = "more:" .. key end
         end
     end
     return names, found
@@ -115,21 +163,18 @@ end
 
 -- Every line lets go of the cursor (but `keep`), and its names are put away.
 local function LetGo(view, keep)
-    for _, rows in pairs(view.rowsOf or {}) do
-        for _, row in ipairs(rows) do
-            if row.box and row.box ~= keep then
-                row.box:ClearFocus()
-                if row.found then row.found:Hide() end
-            end
+    for _, at in ipairs(AllLines(view)) do
+        local line = at.line
+        if line.box ~= keep then
+            line.box:ClearFocus()
+            if line.found then line.found:Hide() end
         end
     end
 end
 
 local function Writing(view)
-    for _, rows in pairs(view.rowsOf or {}) do
-        for _, row in ipairs(rows) do
-            if row.box and row.box:HasFocus() then return row end
-        end
+    for _, at in ipairs(AllLines(view)) do
+        if at.line.box:HasFocus() then return at.line end
     end
 end
 
@@ -157,12 +202,42 @@ local function Control(view, found, name, i)
                 w:SetFocus()
             end
         end
-        -- (a person's line: who the search finds, hung under it)
-        local row
-        for _, r in ipairs(view.rows or {}) do
-            if r.box == w and r.found then row = r end
+        -- (a person's line, or an item's: what the search finds, hung
+        -- under it)
+        for _, at in ipairs(AllLines(view)) do
+            if at.line.box == w and at.line.found then item.person = at.line end
         end
-        item.person = row
+    elseif kind == "strip" then
+        -- (outlined as a margin card is, the picker's strips too)
+        item.outline = function()
+            if not w:IsShown() then return nil end
+            local at = w:Focus()
+            return { anchor = w:GetParent(), corners = at.corners, level = w:GetFrameLevel() }
+        end
+        item.enter = function() LetGo(view) end
+        item.leave = function() end
+        item.press = function() Click(w:Focus().frame) end
+    elseif kind == "face" then
+        -- (who was there: the pen's ring round their face, their name its
+        -- tooltip; A takes them off, as a click on its cross)
+        item.ring = true
+        item.enter = function()
+            LetGo(view)
+            local fn = w:GetScript("OnEnter")
+            if fn then fn(w, false) end
+        end
+        item.press = function() Click(w.cross) end
+    elseif kind == "icon" then
+        -- (a pen's ring round it, as round a mark; its name its tooltip)
+        item.ring = true
+        item.icon = w.at
+        item.enter = function()
+            LetGo(view)
+            local fn = w:GetScript("OnEnter")
+            if fn then fn(w, false) end
+        end
+        item.press = function() Click(w) end
+        item.step = function(dir) return scope.Icon(dir == "LEFT" and -1 or 1, true) end
     else
         item.enter = function()
             LetGo(view)
@@ -266,6 +341,11 @@ function scope.build(f)
     f:Within(picking and "picker" or "form")
 
     if picking then return Picker(f, view, skip) end
+    -- (a field added or taken off: the pad on its line, or on its strip)
+    if view.padFocus then
+        f:Remember("form", view.padFocus)
+        view.padFocus = nil
+    end
     for i, c in ipairs(Reading(Collect(view.sheet, {}, skip))) do
         local name = names[c.frame] or (c.kind == "link" and ("link:" .. tostring(c.frame:GetText()))) or nil
         f:Add("form", Control(view, c, name, i))
@@ -300,11 +380,57 @@ local function Grid(dir)
     end
 end
 
+-- On the icon grid: `by` along the sixteen (`along`: left and right, kept
+-- to the grid), else a row up or down, and off it to the control over or
+-- under it (the list's own next, past the grid).
+function scope.Icon(by, along)
+    local f = scope.focus
+    local at = f and f:Current()
+    if not (at and at.icon) then return false end
+    local items = f.groups.form.items
+    local first, last
+    for i, item in ipairs(items) do
+        if item.icon then
+            first = first or i
+            last = i
+        end
+    end
+    local to = at.icon + by
+    local count = last - first + 1
+    if along then
+        if to < 1 or to > count then return true end
+        f:Set(items[first + to - 1])
+        return true
+    end
+    local item
+    if to >= 1 and to <= count then
+        item = items[first + to - 1]
+    else
+        local k = by < 0 and first - 1 or last + 1
+        item = items[k]
+    end
+    if item then f:Set(item) end
+    return true
+end
+
+local function Rows8(dir)
+    return function()
+        local f = scope.focus
+        local at = f and f:Current()
+        if at and at.icon then
+            local across = CardSheet.ICONS.across
+            return scope.Icon(dir == "UP" and -across or across)
+        end
+        return Grid(dir)()
+    end
+end
+
 -- Down on a person's line with names offered: into them (built again first:
 -- they change as the line is written on).
 local function Down()
     local f = scope.focus
     local at = f and f:Current()
+    if at and at.icon then return Rows8("DOWN")() end
     if at and at.group == "picker" then return Grid("DOWN")() end
     local row = at and at.person
     if not (row and row.found:IsShown()) then return false end
@@ -313,7 +439,7 @@ local function Down()
 end
 
 scope.keys = {
-    PADDUP = Grid("UP"), PADDDOWN = Down, PADDLEFT = Grid("LEFT"), PADDRIGHT = Grid("RIGHT"),
+    PADDUP = Rows8("UP"), PADDDOWN = Down, PADDLEFT = Grid("LEFT"), PADDRIGHT = Grid("RIGHT"),
 }
 
 -- B: off the names to the line; off a line being written on; else the slip
@@ -342,6 +468,10 @@ function scope.legend()
     local out = {}
     if at.kind == "switch" then
         out[1] = { "PAD1", at.frame:GetChecked() and L["Untick"] or L["Tick"], main = true }
+    elseif at.kind == "strip" then
+        out[1] = PROMPT.add
+    elseif at.kind == "face" then
+        out[1] = PROMPT.off
     elseif at.kind == "field" then
         out[1] = at.frame:HasFocus() and PROMPT.done or PROMPT.write
         if at.person and at.person.found:IsShown() then out[#out + 1] = PROMPT.names end

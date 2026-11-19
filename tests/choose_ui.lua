@@ -783,9 +783,10 @@ Section("a row's words: short, and never its time again")
 Eq(ns.Campfire.Label({ subZone = "Tarren Mill" }), "Tarren Mill", "a campfire's row: not its place alone")
 Eq(ns.Campfire.Label({}), "A campfire", "a campfire with no place to name")
 Eq(ns.CloseCalls.Label({ name = "Dun Garok Soldier", pct = 1 }), "Dun Garok Soldier, 1%", "a close call's row lost its health")
-Eq(ns.Met.Label({ who = "Old Tom", what = "fished off the pier all evening" }), "Old Tom", "a meeting's row: more than who")
+Eq(ns.Note.Label({ people = { { name = "Old Tom" } }, text = "fished off the pier all evening" }), "Old Tom",
+    "a free card's row: more than who")
 Check(ns.UI.JourneyPlate.MARKS.campfire.label and ns.UI.JourneyPlate.MARKS.close.label
-    and ns.UI.JourneyPlate.MARKS.met.label, "a mark without its row's label")
+    and ns.UI.JourneyPlate.MARKS.noteCard.label, "a mark without its row's label")
 do
     local kinds, rows = {}, 0
     for _, p in ipairs(T.DiaryPages(page)) do

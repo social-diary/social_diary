@@ -29,14 +29,31 @@
 -- A kind opts in on its moment (Recap.RegisterMoment's `custom`):
 --
 --   fields   the list of what the player may set, which the editor is built
---            from too: { key, type = "text" (most: bytes, default TEXT_MOST)
---            | "number" (min, max) | "choice" (values, a list) | "person" }. A
---            field left empty or out of its type is cleared. A person is one
+--            from too: { key, type = "text" (most: bytes, default TEXT_MOST;
+--            lines: how many lines it may keep, default one)
+--            | "number" (min, max) | "choice" (values, a list) | "person"
+--            | "people" (count: at most, default PEOPLE_MOST) | "item" (id)
+--            | "icon" | "flag", optional }. A field left empty or out of its
+--            type is cleared. A person is one
 --            text line over the People search: `key` keeps the name as written,
 --            and `guid` (the key to keep it under, default key .. "Guid") the
 --            diary entry it was picked from, nil for a name only typed. Typing
 --            over a picked name lets the entry go. Forgetting someone takes the
---            GUID and leaves the name (Forget, below)
+--            GUID and leaves the name (Forget, below).
+--            People is a list of such: { { name, guid }, ... }, each as a
+--            person's, the nameless left out, one entry once, `count` at most;
+--            an empty list is none. Forgetting takes the GUID inside the list.
+--            An item keeps its name under `key` (what the card shows) and its
+--            item ID under `id` (default key .. "ID"); never the link, whose
+--            `|` codes a card must not wear. A link given as the value (a
+--            shift-click) is read for both (Custom.ItemOf). No name, no item.
+--            An icon is one of the note icons' keys (ns.NoteIcons.KEYS, asked
+--            when cleaned); anything else is the first of them, and an inserted
+--            card always has one. A flag is true or absent.
+--            `optional`: the form offers it behind a "+ Add" (CardSheet); here
+--            it only means what every field does, that left empty it is absent.
+--            For the form: `add`, an optional field's strip's words ("+ Add
+--            mob"; "+ Add <label>" where nil)
 --   values   optional function(values, rec): for the form, what a detected card
 --            shows but does not keep under its field's key (an opponent's name
 --            from their GUID, an item's from its link). `rec` is the saved record.
@@ -76,6 +93,9 @@ ns.Custom = Custom
 local Journey = ns.Journey
 
 local TEXT_MOST = 60
+-- People on one card at most, where its field does not say.
+local PEOPLE_MOST = 4
+Custom.TEXT_MOST, Custom.PEOPLE_MOST = TEXT_MOST, PEOPLE_MOST
 
 local function SpecOf(kind)
     local moment = ns.JourneyRecap.MOMENTS[kind]
@@ -174,15 +194,256 @@ function Custom.FindPeople(text, most)
     return found
 end
 
-local function CleanText(text, most)
+-- Where an item field keeps the item's ID.
+function Custom.ItemKey(field)
+    return field.id or (field.key .. "ID")
+end
+
+--------------------------------------------------------------------------
+-- Items
+--------------------------------------------------------------------------
+
+local function Plain(value)
+    return ns.Plain(value)
+end
+
+-- `fn`(...) where the client has it, guarded: its values, or nothing.
+local function Ask(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, a, b, c, d, e = pcall(fn, ...)
+    if not ok then return nil end
+    return Plain(a), Plain(b), Plain(c), Plain(d), Plain(e)
+end
+
+local function IdOfLink(link)
+    return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+end
+
+-- What the client knows of an item's name now: its cache, never waited for.
+-- An item it does not know yet is asked for, so a later search may find it.
+local function NameOfId(itemID)
+    local name = C_Item and Ask(C_Item.GetItemNameByID, itemID)
+    if type(name) ~= "string" and GetItemInfo then name = Ask(GetItemInfo, itemID) end
+    if type(name) == "string" and name ~= "" then return name end
+    if C_Item then Ask(C_Item.RequestLoadItemDataByID, itemID) end
+    return nil
+end
+
+-- A shift-clicked item link as a card keeps it: { itemID, name }, the name
+-- as the link says it (else the client's cache). Nil for anything not an
+-- item, or an item with no name to show yet.
+function Custom.ItemOf(link)
+    link = Plain(link)
+    local itemID = IdOfLink(link)
+    if not itemID then return nil end
+    local name = link:match("|h%[(.-)%]|h") or NameOfId(itemID)
+    if type(name) ~= "string" or name == "" then return nil end
+    return { itemID = itemID, name = name }
+end
+
+-- Where the diary keeps items of the character's own, beside the bags and
+-- what is worn: features register a source (Custom.RegisterItems), function(j)
+-- → a list of links or item IDs, from the route `j`. The core's own: what
+-- the character looted in dungeons (the visits' loot, their own lines).
+local itemSources = {}
+function Custom.RegisterItems(key, fn)
+    itemSources[key] = fn
+end
+
+local function DungeonLoot()
+    local list, me = {}, ns.ownGUID
+    for _, visit in pairs(ns.db and ns.db.instances or {}) do
+        if type(visit) == "table" and (visit.me or me) == me then
+            for _, entry in ipairs(visit.loot or {}) do
+                if entry.guid == me then list[#list + 1] = entry.item or entry.itemID end
+            end
+        end
+    end
+    return list
+end
+
+-- Every item the character has or the diary holds for them, by item ID:
+-- { itemID, name (nil where not known yet), link, quality }.
+local function OwnItems()
+    local items, order = {}, {}
+    local function Add(thing, quality)
+        thing = Plain(thing)
+        local itemID = type(thing) == "number" and thing or IdOfLink(thing)
+        if not itemID then return end
+        local it = items[itemID]
+        if not it then
+            it = { itemID = itemID }
+            items[itemID] = it
+            order[#order + 1] = it
+        end
+        if type(thing) == "string" then
+            it.link = it.link or thing
+            it.name = it.name or thing:match("|h%[(.-)%]|h")
+        end
+        quality = Plain(quality)
+        if type(quality) == "number" then it.quality = it.quality or quality end
+    end
+    local C = C_Container
+    if C and C.GetContainerNumSlots then
+        for bag = 0, NUM_BAG_SLOTS or 4 do
+            local size = Ask(C.GetContainerNumSlots, bag)
+            for slot = 1, type(size) == "number" and size or 0 do
+                local info = Ask(C.GetContainerItemInfo, bag, slot)
+                if type(info) == "table" then Add(info.hyperlink or info.itemID, info.quality) end
+            end
+        end
+    end
+    if GetInventoryItemLink then
+        for slot = INVSLOT_FIRST_EQUIPPED or 1, INVSLOT_LAST_EQUIPPED or 19 do
+            Add(Ask(GetInventoryItemLink, "player", slot), GetInventoryItemQuality and Ask(GetInventoryItemQuality, "player", slot))
+        end
+    end
+    local j = Journey.Mine()
+    if j then
+        local keys = {}
+        for key in pairs(itemSources) do keys[#keys + 1] = key end
+        table.sort(keys)
+        for _, key in ipairs(keys) do
+            local ok, list = pcall(itemSources[key], j)
+            for _, thing in ipairs(ok and type(list) == "table" and list or {}) do Add(thing) end
+        end
+    end
+    for _, thing in ipairs(DungeonLoot()) do Add(thing) end
+    return order
+end
+
+-- How well `name` answers `text` (both lower case), lowest best: the whole
+-- name, its start, a word's start, anywhere in it, its letters in order
+-- (a fuzzy "thsash" for "Thistle Sash"); nil for not at all.
+local function Match(name, text)
+    if name == text then return 0 end
+    local at = name:find(text, 1, true)
+    if at == 1 then return 1 end
+    if at then
+        -- A word's start: after anything not a letter or digit.
+        local from = 1
+        while true do
+            local found = name:find(text, from, true)
+            if not found then break end
+            if found == 1 or name:sub(found - 1, found - 1):find("[%s%p]") then return 2 end
+            from = found + 1
+        end
+        return 3
+    end
+    local pos = 1
+    for i = 1, #text do
+        local ch = text:sub(i, i)
+        if not ch:find("%s") then
+            pos = name:find(ch, pos, true)
+            if not pos then return nil end
+            pos = pos + 1
+        end
+    end
+    return 4
+end
+
+-- The items the search offers for what is typed so far (`most` of them):
+-- { itemID, name, icon, quality }, from the bags, what is worn and what the
+-- diary holds for this character, the best matches first (then the shorter
+-- name, then by name). An item whose name the client does not know yet is
+-- left out: it is asked for, and the next keystroke may find it.
+function Custom.FindItems(text, most)
+    local found = {}
+    if type(text) ~= "string" or not text:find("%S") then return found end
+    local want = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+    for _, it in ipairs(OwnItems()) do
+        local name = it.name or NameOfId(it.itemID)
+        local score = type(name) == "string" and name ~= "" and Match(name:lower(), want)
+        if score then
+            local icon = C_Item and Ask(C_Item.GetItemIconByID, it.itemID)
+            local quality = it.quality or (C_Item and Ask(C_Item.GetItemQualityByID, it.itemID))
+                or ns.Timeline.Quality(it.link)
+            found[#found + 1] = { itemID = it.itemID, name = name, icon = icon, quality = quality, score = score }
+        end
+    end
+    table.sort(found, function(a, b)
+        if a.score ~= b.score then return a.score < b.score end
+        if #a.name ~= #b.name then return #a.name < #b.name end
+        if a.name ~= b.name then return a.name < b.name end
+        return a.itemID < b.itemID
+    end)
+    for i = #found, 1, -1 do
+        if i > (most or #found) then found[i] = nil else found[i].score = nil end
+    end
+    return found
+end
+
+--------------------------------------------------------------------------
+-- Cleaning
+--------------------------------------------------------------------------
+
+-- The note icons' keys, asked when needed (Features/Note/Icons.lua loads
+-- after this file), and the one a card has where it names none.
+local function IconKeys()
+    local icons = ns.NoteIcons
+    local keys = icons and type(icons.KEYS) == "table" and icons.KEYS
+    return keys and keys[1] and keys or { "meeting" }
+end
+function Custom.DefaultIcon()
+    return IconKeys()[1]
+end
+
+-- A typed line as a card can wear it: on one line, without the client's
+-- escape sequences, short. A text with `lines` above one keeps that many
+-- lines, each trimmed, the rest run on into the last.
+local function CleanText(text, most, lines)
     if type(text) ~= "string" then return nil end
-    text = text:gsub("|", ""):gsub("[%c]+", " ")
+    text = text:gsub("|", "")
+    if type(lines) == "number" and lines > 1 then
+        text = text:gsub("\r\n?", "\n"):gsub("[%c]", function(c) return c == "\n" and "\n" or " " end)
+        local kept = {}
+        for line in (text .. "\n"):gmatch("(.-)\n") do
+            line = line:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s%s+", " ")
+            if line ~= "" then
+                if #kept < lines then kept[#kept + 1] = line else kept[#kept] = kept[#kept] .. " " .. line end
+            end
+        end
+        text = table.concat(kept, "\n")
+    else
+        text = text:gsub("[%c]+", " ")
+    end
     return ns.Diary.Clean(text, most or TEXT_MOST)
+end
+
+-- A diary entry a name may link to: only one in the diary.
+local function Linkable(guid)
+    guid = ns.SafeGUID(guid)
+    return guid and ns.Diary.IsDiary(guid) and guid or nil
+end
+
+local function CleanPeople(field, value)
+    if type(value) ~= "table" then return nil end
+    local list, seen = {}, {}
+    for _, p in ipairs(value) do
+        local name = CleanText(type(p) == "table" and p.name or p, field.most)
+        local guid = name and type(p) == "table" and Linkable(p.guid) or nil
+        local same = (guid or (name and name:lower())) or nil
+        if name and not seen[same] then
+            seen[same] = true
+            list[#list + 1] = { name = name, guid = guid }
+            if #list >= (field.count or PEOPLE_MOST) then break end
+        end
+    end
+    return list[1] and list or nil
 end
 
 local function CleanField(field, value)
     if field.type == "text" or field.type == "person" then
-        return CleanText(value, field.most)
+        return CleanText(value, field.most, field.type == "text" and field.lines or nil)
+    elseif field.type == "people" then
+        return CleanPeople(field, value)
+    elseif field.type == "icon" then
+        for _, key in ipairs(IconKeys()) do
+            if key == value then return value end
+        end
+        return Custom.DefaultIcon()
+    elseif field.type == "flag" then
+        return (value == true or value == 1 or value == "1" or value == "true") or nil
     elseif field.type == "number" then
         value = tonumber(value)
         if not value then return nil end
@@ -211,8 +472,26 @@ local function Cleaned(spec, fields)
             -- Only a diary entry can be linked to, and no name, no link.
             if field.type == "person" then
                 local key = Custom.GuidKey(field)
-                local guid = clean and ns.SafeGUID(fields[key])
-                out[key] = guid and ns.Diary.IsDiary(guid) and guid or false
+                out[key] = clean and Linkable(fields[key]) or false
+            end
+        end
+        -- An item: its name and ID, from a link where one was given (a
+        -- shift-click), else the name as written and the ID picked with it.
+        -- No name, no item; an ID with no name takes the client's.
+        if field.type == "item" then
+            local idKey = Custom.ItemKey(field)
+            if value ~= nil or fields[idKey] ~= nil then
+                local name, itemID
+                local link = type(value) == "string" and value:find("item:%d+") and Custom.ItemOf(value)
+                if link then
+                    name, itemID = CleanText(link.name, field.most), link.itemID
+                else
+                    itemID = tonumber(fields[idKey])
+                    itemID = itemID and itemID > 0 and itemID == math.floor(itemID) and itemID or nil
+                    name = CleanText(value, field.most) or (itemID and value == nil and CleanText(NameOfId(itemID), field.most))
+                end
+                out[field.key] = name or false
+                out[idKey] = name and itemID or false
             end
         end
     end
@@ -286,6 +565,12 @@ function Custom.Insert(kind, fields, where)
     Creature(j, spec, values)
     for key, value in pairs(values) do
         if value == false then rec[key] = nil else rec[key] = value end
+    end
+    -- An icon the card must have: the first, where none was given.
+    for _, field in ipairs(spec.fields) do
+        if field.type == "icon" and not field.optional and rec[field.key] == nil then
+            rec[field.key] = Custom.DefaultIcon()
+        end
     end
     j.custom = j.custom or {}
     local at = #j.custom + 1
@@ -402,6 +687,10 @@ local function ForgetOn(j, guid)
             if field.type == "person" then
                 local key = Custom.GuidKey(field)
                 if t[key] and (guid == nil or t[key] == guid) then t[key] = nil end
+            elseif field.type == "people" and type(t[field.key]) == "table" then
+                for _, p in ipairs(t[field.key]) do
+                    if type(p) == "table" and p.guid and (guid == nil or p.guid == guid) then p.guid = nil end
+                end
             end
         end
     end

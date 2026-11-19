@@ -24,7 +24,7 @@ local addonName, ns = ...
 -- the per-character file. They move apart: a file can be converted at one
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
-local SCHEMA_VERSION = 5     -- a diary
+local SCHEMA_VERSION = 6     -- a diary
 local ACCOUNT_SCHEMA = 2     -- SocialDiaryDB, apart from the shared diary
 local CHARACTER_SCHEMA = 2   -- SocialDiaryCharDB, apart from its own diary
 
@@ -237,6 +237,42 @@ STEPS.diary[5] = function(t)
     for _, j in pairs(t.journey) do
         if type(j) == "table" and j.sittings == nil then
             j.sittings = ns.Sittings.Lines(ns.Sittings.FromRoute(j))
+        end
+    end
+end
+
+-- 6 (19 Nov 2026): "Someone you met" folds into the free card
+-- (.claude/features/note-card.md): each inserted `met` card on a route
+-- becomes a `noteCard` with the meeting's icon, its line the card's text and
+-- its one person (name as written, the diary entry it was picked from) the
+-- card's people. A choice on the page made of one (j.chosen, Recap.Key's
+-- "met:<t>:") follows it under the new kind.
+STEPS.diary[6] = function(t)
+    if type(t.journey) ~= "table" then return end
+    for _, j in pairs(t.journey) do
+        if type(j) == "table" then
+            for _, rec in ipairs(type(j.custom) == "table" and j.custom or {}) do
+                if type(rec) == "table" and rec.kind == "met" then
+                    -- caption: a met card always told the caption; a new card
+                    -- starts with it off, an old one keeps what it did.
+                    rec.kind, rec.icon, rec.caption = "noteCard", "meeting", true
+                    if type(rec.what) == "string" and rec.what ~= "" then rec.text = rec.what end
+                    if type(rec.who) == "string" and rec.who ~= "" then
+                        rec.people = { { name = rec.who, guid = type(rec.whoGuid) == "string" and rec.whoGuid or nil } }
+                    end
+                    rec.who, rec.whoGuid, rec.what = nil, nil, nil
+                end
+            end
+            if type(j.chosen) == "table" then
+                local moved = {}
+                for key, value in pairs(j.chosen) do
+                    if type(key) == "string" and key:find("^met:") then moved[key] = value end
+                end
+                for key, value in pairs(moved) do
+                    j.chosen[key] = nil
+                    j.chosen["noteCard:" .. key:sub(5)] = value
+                end
+            end
         end
     end
 end

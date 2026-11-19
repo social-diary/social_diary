@@ -5,7 +5,7 @@
 --
 -- A first sighting in hindsight (JRN-23) puts a stranger on a Your Diary
 -- plate once they mattered later, and their margin strip names them; a
--- witness card and a custom "met" strip can name one too. A click on any
+-- witness card and a free card's strip can name one too. A click on any
 -- of them used to turn to an empty People page, as SelectPerson found no
 -- diary entry. The glimpse is the answer to "who was that, and why are they
 -- on my plate?": where you first saw them, what made them matter (the
@@ -91,7 +91,7 @@ end
 --   record        the character record (level, race, class, faction, seen)
 --   first         where they were first seen (First, above), or nil
 --   hinge         the first interaction row that `matters`, or nil (a thin
---                 glimpse: opened from a witness card or a "met" strip)
+--                 glimpse: opened from a witness card or a free card's strip)
 --   after         the rows that matter after the hinge, newest first, at
 --                 most LOOK.after; `more` how many past those
 --   seen          { days, since, count } from the sightings' summary, or

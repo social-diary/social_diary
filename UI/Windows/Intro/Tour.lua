@@ -469,7 +469,7 @@ local function Build(parent)
         if not spec then return end
         local arg = spec.arg and spec.arg(bramMark.list)
         if spec.halo then kit.Dot(kit.halo, x, y, spec.halo, plate.paper, MARK.halo) end
-        spec.draw(kit, x, y, arg)
+        spec.draw(kit, x, y, arg, WORDS.bram)
     end)
 
     ----------------------------------------------------------------------
