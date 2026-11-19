@@ -3,7 +3,7 @@
 -- its spec below, and the core's people), the pools made for them
 -- (EnsurePools), the margin's items in their order (MarginOrder), and how
 -- they are laid: written (MarginNote), shared out along a row (Columns,
--- Shared, ROW), laid down the boxes with their leaders (LayNotes), rolled
+-- Rows, ROW), laid down the boxes with their leaders (LayNotes), rolled
 -- back (Mark, Undo), and quoted notes kept shorter before anything is left
 -- off (WriteMargin, QUOTES), and what was left off kept (LeftOff).
 -- `quoteMost` is this file's alone.
@@ -139,7 +139,7 @@ end
 --            killer's card stands for the deaths at its cross). Only read
 --            for an item left off (`plate.leftOff`, WriteMargin)
 --   wants    optional function(it) → the width it would like in a row of
---            fewer notes than boxes (Shared): a hunt's card its wide
+--            fewer notes than boxes (Rows, ROW): a hunt's card its wide
 --            arrangement.
 --   assume   optional function(said, plate, slot, plan): tells the words,
 --            before the margin is laid, what it would show if all of it
@@ -494,61 +494,215 @@ end
 -- not make one of more give up its room (12 Oct: a hunt's card cost the
 -- close call's its deed); where they then do not fit, the order of
 -- importance stands.
--- A row under one plate (LAYOUT[1][1].top.row) with fewer notes than
--- boxes shares its width among the notes there are (Shared): a box for
--- each, as wide as the widest note would like (its kind's `wants`: a hunt
--- card's wide arrangement, Features/Hunts/HuntCard.lua's card:Preferred,
--- or a lucky card's, its tag beside the struck words,
--- Features/Hunts/LuckyCard.lua) and no wider than its
--- share of the row (217 px for two) or `most` px; never narrower than the
--- row's own boxes. (26 kills, 12 expected, want 187 px; 37 for about 15,
--- some 212.)
--- Each box lies as near its note's mark as the row lets it. A person's
--- strip keeps the row's own width (its quote would run out into a
--- banner), and any note narrower than its box lies under its mark.
+-- A row of boxes side by side (a one plate's, LAYOUT[1][1].top.row; F+L's
+-- tucked row) with fewer notes than boxes gives its width to the notes
+-- there are (Rows): a box each, as wide as is of use, as much of the row
+-- as there is (19 Nov, the user: "make space for as much margin content as
+-- possible. It would be wasteful to display a single M card within a
+-- single plate layout").
+--   - A box each, all as wide, at most the row's share for each (217 px
+--     for two of the one plate's row) and `most` px (a quote wider than
+--     that runs out into a banner); never narrower than the row's own.
+--   - The widths tried, widest first: the share, the plates' card bands
+--     (`bands`: XL from 190 px, L from 150, the plates skill's), the
+--     widest any note's kind asks for (`wants`), and the row's own width.
+--     Each is laid whole (WriteMargin) and the one that shows the most
+--     is kept (Shows, More): note by note in their order of importance,
+--     whether it is shown, then the most of its words (the heading, the
+--     quote and what happened, as written, so a quote wrapping to fewer
+--     lines in a wider box loses nothing), then the most of its pieces (a
+--     picture, a box under the name, a thing before it), then the least
+--     given up for height; equal, the wider. So a card is as big as the
+--     room lets it be, a wider band that would have to give up more for
+--     the page's foot (CAPTION's limit, offLimit with "Keep my own route"
+--     off) than a narrower one does not win, and a note of less importance
+--     never wins its place by a more important one giving up anything.
+--   - Kept, it is laid once more with each box as wide as its note turned
+--     out (RowAt's span), so a card narrower than its box moves under its
+--     mark.
+--   - A kind that says how wide it would like to be (`wants`: a hunt
+--     card's wide arrangement, Features/Hunts/HuntCard.lua's
+--     card:Preferred, a lucky card's, a witness's) is laid no wider than
+--     the widest such wish in the row (`wanted`), as before. A row of only
+--     such notes and people's strips is tried at that width alone, as
+--     before; a row of only people's strips, or of three notes or more, is
+--     the row as it is.
+--   - A person's strip keeps the row's own width (its quote would run out
+--     into a banner).
+-- Each box lies as near its note's mark as the row lets it, and any note
+-- narrower than its box lies under its mark, so the leaders stay short;
+-- the boxes stay inside the row's own ends, one after another.
 -- (12 Oct, in the client: a hunt card wrapped its count into a 142 px box
--- with the row's left box empty beside it.)
-local ROW = { most = 220 }
+-- with the row's left box empty beside it. 19 Nov: two free cards at M,
+-- 142 px, under the right half of a one plate's row, the left box empty.)
+local ROW = { most = 220, bands = { 190, 150 } }
 
--- `boxes` (a row) for `order` (MarginOrder): the row as it is, or with
--- fewer notes than boxes, a box each, shared out (ROW).
-local function Shared(order, boxes)
-    local n = #order
-    if not boxes.row or n == 0 or n >= #boxes then return boxes end
+local function PersonLike(it)
+    local spec = MARGIN[it.kind]
+    return it.kind == "person" or (spec and spec.personLike) == true
+end
+
+-- The row's boxes for `order`'s notes, a box each (`keyed`, by its note:
+-- a note goes in its own box whatever the order it is laid in), in the
+-- order of their marks across the page, as near their marks as the row
+-- lets them, so the leaders stay short. Each is `w` px wide (what its note
+-- is laid in, Layout's width) and takes `span` px of the row (`spans[it]`,
+-- the note's width as laid at `w` once that is known, WriteMargin; else
+-- all of `w`), so a note narrower than its box still lies under its mark.
+-- Each starts with its middle on its mark; where two would meet, they are
+-- laid together, `gap` apart, their run as near all its marks as can be
+-- (the mean of where each would lie alone), and the run kept inside the
+-- row's ends, until no two meet: never off the row, never over another.
+local function RowAt(order, boxes, w, wanted, spans)
     local first, last = boxes[1], boxes[#boxes]
-    local want = first.w
-    for _, it in ipairs(order) do
-        local spec = MARGIN[it.kind]
-        if spec and spec.wants then want = math.max(want, spec.wants(it)) end
-    end
-    if want <= first.w then return boxes end
     local x0, x1 = first.x, last.x + last.w
     local gap = boxes[2].x - first.x - first.w
-    local w = math.floor(math.min(want, ROW.most, (x1 - x0 - gap * (n - 1)) / n))
-    -- In the order of their marks across the page, each box under its
-    -- mark where it can be: right of the one before, room left for those
-    -- after.
-    local marks = {}
-    for i, it in ipairs(order) do marks[i] = it.x or 0 end
-    table.sort(marks)
-    local shared = { row = true, shared = true, base = first.w }
-    local at = x0
-    for i = 1, n do
-        local most = x1 - (n - i + 1) * w - (n - i) * gap
-        local x = math.max(at, math.min(most, marks[i] - w / 2))
-        shared[i] = { x = x, y = first.y, w = w, limit = first.limit }
-        at = x + w + gap
+    local list = {}
+    for i, it in ipairs(order) do list[i] = it end
+    table.sort(list, function(a, b)
+        if (a.x or 0) ~= (b.x or 0) then return (a.x or 0) < (b.x or 0) end
+        return (a.rank or 0) < (b.rank or 0)
+    end)
+    local function Span(it) return math.min(w, spans and spans[it] or w) end
+    -- Runs of boxes laid together: { from, to (in `list`), x, w, aim (the
+    -- sum of where each would put the run's left), n }.
+    local runs = {}
+    local function Keep(run) run.x = math.max(x0, math.min(x1 - run.w, run.aim / run.n)) end
+    for i, it in ipairs(list) do
+        local span = Span(it)
+        local run = { from = i, to = i, w = span, aim = (it.x or 0) - span / 2, n = 1 }
+        Keep(run)
+        while runs[1] do
+            local before = runs[#runs]
+            if before.x + before.w + gap <= run.x then break end
+            -- (laid together: each of `run`'s would put the whole run's
+            -- left its own offset further left)
+            local offset = before.w + gap
+            run = { from = before.from, to = run.to, w = offset + run.w, aim = before.aim + run.aim - run.n * offset,
+                n = before.n + run.n }
+            Keep(run)
+            runs[#runs] = nil
+        end
+        runs[#runs + 1] = run
+    end
+    local shared = { row = true, shared = true, keyed = {}, base = first.w, wanted = wanted, w = w }
+    for _, run in ipairs(runs) do
+        local x = run.x
+        for i = run.from, run.to do
+            local it = list[i]
+            local span = Span(it)
+            shared[i] = { x = x, y = first.y, w = w, span = span, limit = first.limit }
+            shared.keyed[it] = shared[i]
+            x = x + span + gap
+        end
     end
     return shared
 end
+
+-- The boxes `order` is tried in (ROW), widest first: `boxes` alone where
+-- they are not a row with room to spare.
+local function Rows(order, boxes)
+    local n = #order
+    if not boxes.row or n == 0 or n >= #boxes or not boxes[2] then return { boxes } end
+    local first, last = boxes[1], boxes[#boxes]
+    local gap = boxes[2].x - first.x - first.w
+    local share = math.floor(math.min(ROW.most, (last.x + last.w - first.x - gap * (n - 1)) / n))
+    local wanted, free = first.w, false
+    for _, it in ipairs(order) do
+        local spec = MARGIN[it.kind]
+        if spec and spec.wants then
+            wanted = math.max(wanted, spec.wants(it))
+        elseif not PersonLike(it) then
+            free = true
+        end
+    end
+    local list, seen = {}, {}
+    local function Try(w)
+        w = math.floor(math.min(w, share))
+        if w > first.w and not seen[w] then
+            seen[w] = true
+            list[#list + 1] = w
+        end
+    end
+    if free then
+        Try(share)
+        for _, band in ipairs(ROW.bands) do Try(band) end
+    end
+    Try(wanted)
+    table.sort(list, function(a, b) return a > b end)
+    local tries = {}
+    for i, w in ipairs(list) do tries[i] = RowAt(order, boxes, w, wanted) end
+    -- The narrowest: the row's own width, shared out the same way where a
+    -- card is free to take it; where nothing asks for more, the row as it
+    -- is (a row of people's strips: as ever).
+    if free then
+        tries[#tries + 1] = RowAt(order, boxes, first.w, wanted)
+    elseif not list[1] then
+        tries[#tries + 1] = boxes
+    end
+    return tries
+end
+
+-- How much a laying shows (ROW): for each of `order`'s notes, in its
+-- order of importance, { shown, words, pieces, kept }: whether it is shown;
+-- how much of its words (the heading, the quote and what happened, as
+-- written: the same words wrapped to fewer lines in a wider box count the
+-- same); its pieces (a picture, a box under the name, which holds words of
+-- its own, an item's name, so counts two, and a thing before the name: the
+-- strip's picture, under and lead); and less what it gave up for height
+-- (its `smaller` steps, LayNotes). Read through the strip's own
+-- (UI/Paper/Strip.lua's contract: name, :What, :Quote, picture, under,
+-- lead); a kind's note need not be a strip, and what it lacks counts
+-- nothing (read with rawget, as the margin asks a note's Smaller).
+local function Shows(order, shown)
+    local on = {}
+    for _, it in ipairs(shown) do on[it] = true end
+    local out = {}
+    for _, it in ipairs(order) do
+        local note = on[it] and it.note
+        if note then
+            local name, What, Quote = rawget(note, "name"), rawget(note, "What"), rawget(note, "Quote")
+            local words = #(type(name) == "table" and name:GetText() or "")
+                + #(What and What(note) or "") + #(Quote and Quote(note) or "")
+            local pieces = (rawget(note, "picture") and 1 or 0) + (rawget(note, "under") and 2 or 0)
+                + (rawget(note, "lead") and 1 or 0)
+            out[#out + 1] = { 1, words, pieces, -(it.smaller or 0) }
+        else
+            out[#out + 1] = { 0, 0, 0, 0 }
+        end
+    end
+    return out
+end
+
+-- Whether laying `a` shows more than `b` (Shows): note by note in their
+-- order of importance, the first that differs deciding, so a note of less
+-- importance never wins its place by a more important one giving up any
+-- of its own (12 Oct: the hunt card goes before the close call's card
+-- sheds anything).
+local function More(a, b)
+    for i = 1, #a do
+        for k = 1, #a[i] do
+            if a[i][k] ~= b[i][k] then return a[i][k] > b[i][k] end
+        end
+    end
+    return false
+end
+
+-- The widest boxes `order` is tried in (Rows' first): the row shared out,
+-- or the boxes as they are.
+local function Shared(order, boxes) return Rows(order, boxes)[1] end
 
 local function LayNotes(plate, e, items, boxes, named, replay)
     local foot = ns.JourneyCapture.On() and CAPTION.limit or CAPTION.offLimit
     local k, box = 1, boxes[1]
     local y = box.y
-    local columns = boxes.row and Columns(items, boxes) or nil
+    local keyed = boxes.keyed
+    local columns = boxes.row and not keyed and Columns(items, boxes) or nil
     for i, it in ipairs(items) do
-        if columns and columns[i] > k then
+        if keyed then
+            box = keyed[it]
+            y = box.y
+        elseif columns and columns[i] > k then
             k = columns[i]
             box = boxes[k]
             y = box.y
@@ -565,10 +719,17 @@ local function LayNotes(plate, e, items, boxes, named, replay)
                 smaller = smaller + 1
             end
         end
-        -- In a shared row (Shared) a person's strip keeps the row's width.
-        local function Wide() return (boxes.shared and (it.kind == "person" or (MARGIN[it.kind] and MARGIN[it.kind].personLike))) and math.min(box.w, boxes.base) or box.w end
+        -- In a shared row (ROW) a person's strip keeps the row's width, a
+        -- kind that says its width the widest such wish.
+        local function Wide()
+            if not boxes.shared then return box.w end
+            if PersonLike(it) then return math.min(box.w, boxes.base) end
+            local spec = MARGIN[it.kind]
+            if spec and spec.wants then return math.min(box.w, boxes.wanted or box.w) end
+            return box.w
+        end
         local w, h = note:Layout(box.x, y, Wide(), Room())
-        while Over(h) and boxes[k + 1] do
+        while Over(h) and not keyed and boxes[k + 1] do
             k = k + 1
             box = boxes[k]
             y = box.y
@@ -590,9 +751,9 @@ local function LayNotes(plate, e, items, boxes, named, replay)
         end
         if box.align == "RIGHT" and type(w) == "number" and w < box.w then
             note:Layout(box.x + box.w - w, y, box.w, Room())
-        elseif boxes.shared and type(w) == "number" and w < box.w then
+        elseif boxes.shared and type(w) == "number" and w < (box.span or box.w) then
             -- Under its mark, as near as the box lets it.
-            local x = math.max(box.x, math.min(box.x + box.w - w, (it.x or 0) - w / 2))
+            local x = math.max(box.x, math.min(box.x + (box.span or box.w) - w, (it.x or 0) - w / 2))
             if x ~= box.x then note:Layout(x, y, Wide(), Room()) end
         end
         Leader(note, MarginMark(plate, it, note), plate)
@@ -689,15 +850,9 @@ end
 -- page, for a row of boxes), so the leaders do not cross, where that
 -- still fits; else in its order of importance. Returns the items shown,
 -- and all there were to show (MarginOrder's).
-local function WriteMargin(plate, e, groups, boxes)
-    local order = MarginOrder(plate, groups)
-    boxes = Shared(order, boxes)
-    local close = {}
-    for _, it in ipairs(order) do
-        if it.kind == "person" and Tier(it.g) == 1 then close[#close + 1] = it.g end
-    end
-    local named = Named(close, #close)
-    local at = Mark()
+-- `order` laid down `boxes` (WriteMargin's, for one set of boxes): the
+-- items shown.
+local function Fit(plate, e, order, boxes, named, at)
     -- Quoted notes are kept to fewer lines (QUOTES) rather than cost
     -- anything after them its place; where fewer lines make no more room,
     -- they keep the most that showed as much.
@@ -730,9 +885,61 @@ local function WriteMargin(plate, e, groups, boxes)
             LayNotes(plate, e, shown, boxes, named)
         end
     end
+    return shown
+end
+
+-- A plate's margin (MarginOrder) laid down `boxes`: as much of it as there
+-- is room for, in its order of importance, the rest left off. What is
+-- shown is then laid again in the order of its marks' heights (across the
+-- page, for a row of boxes), so the leaders do not cross, where that
+-- still fits; else in its order of importance. A row with room to spare
+-- is laid at each width it is tried at (Rows) and kept at the one that
+-- shows the most (Shows). Returns the items shown, and all there were to
+-- show (MarginOrder's).
+local function WriteMargin(plate, e, groups, boxes)
+    local order = MarginOrder(plate, groups)
+    local close = {}
+    for _, it in ipairs(order) do
+        if it.kind == "person" and Tier(it.g) == 1 then close[#close + 1] = it.g end
+    end
+    local named = Named(close, #close)
+    local at = Mark()
+    local tries = Rows(order, boxes)
+    local shown, best, bestAt
+    for k, tried in ipairs(tries) do
+        if k > 1 then Undo(at) end
+        shown = Fit(plate, e, order, tried, named, at)
+        local shows = Shows(order, shown)
+        if not best or More(shows, best) then best, bestAt = shows, k end
+    end
+    -- (the one kept laid again, where a narrower one was laid after it)
+    local kept = tries[bestAt]
+    if bestAt ~= #tries then
+        Undo(at)
+        shown = Fit(plate, e, order, kept, named, at)
+    end
+    -- A row shared out: laid once more with each box as wide as its note
+    -- turned out (its span), so a note narrower than its box can still lie
+    -- under its mark; where that shows less, as it was.
+    if kept.shared then
+        local spans = {}
+        for _, it in ipairs(shown) do
+            if it.note and it.note.box then spans[it] = math.ceil(it.note.box[3]) end
+        end
+        local snug = RowAt(order, boxes, kept.w, kept.wanted, spans)
+        Undo(at)
+        local again = Fit(plate, e, order, snug, named, at)
+        if More(best, Shows(order, again)) then
+            Undo(at)
+            shown = Fit(plate, e, order, kept, named, at)
+        else
+            shown, kept = again, snug
+        end
+    end
+    plate.marginRow = kept.shared and kept.w or nil
     return shown, order
 end
 
 YourDiary.NewNote, YourDiary.EnsurePools, YourDiary.NONE = NewNote, EnsurePools, NONE
 YourDiary.MARGIN, YourDiary.MARGIN_ORDER = MARGIN, MARGIN_ORDER
-YourDiary.ROW, YourDiary.Shared, YourDiary.Mark, YourDiary.Undo, YourDiary.WriteMargin = ROW, Shared, Mark, Undo, WriteMargin
+YourDiary.ROW, YourDiary.RowAt, YourDiary.Rows, YourDiary.Shared, YourDiary.Shows, YourDiary.Mark, YourDiary.Undo, YourDiary.WriteMargin = ROW, RowAt, Rows, Shared, Shows, Mark, Undo, WriteMargin

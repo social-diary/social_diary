@@ -21,7 +21,10 @@
 --                several linked, a click asks whose (a menu, the pad's slip
 --                with the pad: one generator, so the two never drift)
 --   the item     under the name, boxed as the first found card boxes its
---                item (UI/Paper/ItemBox.lua), its own tooltip under the mouse
+--                item (UI/Paper/ItemBox.lua), its own tooltip under the mouse;
+--                at M and S (and where the box was given up) its icon alone
+--                before the heading, as the upgrades' small note shows its
+--                piece (ItemBox.NewSmall, FREE.small), the same tooltip
 --   the words    the player's own, quoted in their hand (the strip's
 --                `quote`, as a person's strip quotes the note written about
 --                them: their words, not the diary's), cut at a word with an
@@ -60,6 +63,14 @@ local L = ns.L
 --   lines    the player's words by band, lines at most
 --   item     the box's room under the name (`gap` under the name, `after`
 --            over the words) and its lean against the slip's (degrees)
+--   small    the item as its icon alone, before the heading on its line
+--            (ns.UI.ItemBox.NewSmall: the upgrades' small note's icon,
+--            `icon` px edged 1 px in its quality's colour, `gap` px to the
+--            words): at M, at S, and where the box was given up for height
+--            (19 Nov, the user: "On M and S, we should just show it as a
+--            small icon, like our upgrade margin note does"). Only for an
+--            item whose icon the client knows; a name only typed keeps the
+--            box (M) or goes (given up), as before
 --   tapeAt   the tape's middle, a share of the slip's width: right of the
 --            icon and picture, as the killer card's is right of its picture
 --   under    the creature's name lies in the band, under the tape's foot,
@@ -77,6 +88,7 @@ local FREE = {
     gap = 6, band = { gap = 3 },
     lines = { xl = 3, l = 3, m = 2 },
     item = { gap = 4, after = 3, lean = { least = 1.2, most = 2.4 } },
+    small = { icon = 16, gap = 4 },
     tapeAt = 0.84, turn = 1.2, under = 6,
 }
 
@@ -186,6 +198,10 @@ local function Bits(card)
         bits.box:Hot(false)
         GameTooltip:Hide()
     end
+    -- (the item's icon alone, FREE.small: its tooltip as the box's)
+    bits.small = ItemBox.NewSmall(card, card:GetParent())
+    function bits.small.enter(button) Card.ShowItem(button, card.freeRec) end
+    function bits.small.leave() GameTooltip:Hide() end
     card.freeBits = bits
     return bits
 end
@@ -231,8 +247,26 @@ local function Plan(card, note, width, room, Least)
     local bits = Bits(card)
     local band = Band(width)
     card.freeSize = band
-    local heading, from = Heading(card, rec, room)
+
+    -- The item's icon alone before the heading (FREE.small), where the card
+    -- has no room for its box: at M, and where the box or the band was
+    -- given up. Its room kept before the name (the strip's `lead`); where
+    -- even the shortest heading will not go beside it, the heading alone.
+    local item = ItemName(rec)
+    local link = rec.itemID and ("item:" .. rec.itemID) or nil
+    local itemIcon = link and ItemBox.Icon(link) or nil
+    local quality = link and ItemBox.Quality(link) or 1
+    local lead = 0
+    if item and itemIcon and (band == "m" or give.item or give.band) then
+        lead = FREE.small.icon + 2 + FREE.small.gap
+    end
+    local heading, from = Heading(card, rec, room - lead)
+    if lead > 0 and Width(bits.hand) > room - lead then
+        lead = 0
+        heading, from = Heading(card, rec, room)
+    end
     note.name = heading
+    note.lead = lead > 0 and lead or nil
     card.freeFrom = from
 
     -- The band: the icon, the creature's picture and name beside it.
@@ -272,19 +306,20 @@ local function Plan(card, note, width, room, Least)
     end
     note.tapeAt = FREE.tapeAt
 
-    -- The item, boxed under the name.
+    -- The item: its icon alone before the heading (above), else boxed
+    -- under the name.
     note.under = nil
-    local item = ItemName(rec)
-    if item and not give.item then
-        local icon = rec.itemID and ItemBox.Icon("item:" .. rec.itemID) or nil
-        local chip = bits.box:Measure(item, room, { icon = icon ~= nil, column = width,
+    plan.small = lead > 0 and { icon = itemIcon, quality = quality, lead = lead } or nil
+    if item and lead == 0 and not give.item then
+        local chip = bits.box:Measure(item, room, { icon = itemIcon ~= nil, column = width,
             seed = "free:" .. tostring(rec.t) .. item, lean = FREE.item.lean })
         if chip then
-            plan.chip, plan.itemIcon = chip, icon
-            plan.quality = rec.itemID and ItemBox.Quality("item:" .. rec.itemID) or 1
+            plan.chip, plan.itemIcon = chip, itemIcon
+            plan.quality = quality
             note.under = { w = chip.bw, h = chip.bh, gap = FREE.item.gap, after = FREE.item.after }
         end
     end
+    card.freeBoxed = plan.chip ~= nil
 
     -- The creature's name under it all, where the band had no room for it.
     note.what = (mob and from ~= "mob" and not give.mob and not plan.mobW) and mob or ""
@@ -336,6 +371,15 @@ end
 -- The item's box, in the room under the name (card.under as laid).
 local function Under(card, plan)
     local bits = Bits(card)
+    -- The icon alone in the room kept before the heading (the strip's
+    -- `lead` as laid), as the upgrades' small note lays its piece's.
+    local at, small = card.lead, plan.small
+    if small and at then
+        local S = FREE.small
+        bits.small:Draw(at.lx - at.w / 2 + 1 + S.icon / 2, at.ly, S.icon, small.quality, small.icon)
+    else
+        bits.small:Hide()
+    end
     local room = card.under
     if not (plan.chip and room) then
         bits.box:Hide()
@@ -405,6 +449,7 @@ FACE = ns.Deaths.Card.RegisterFace(Note.KIND, {
             bits.kit:Finish()
             bits.mob:Hide()
             bits.box:Hide()
+            bits.small:Hide()
         end
         card.freeIcon = nil
     end,
@@ -426,7 +471,8 @@ FACE = ns.Deaths.Card.RegisterFace(Note.KIND, {
             give.lines = 2
             return true
         end
-        if ItemName(rec) and not give.item then
+        -- (the box given up, the item keeps its icon before the heading)
+        if ItemName(rec) and not give.item and card.freeBoxed then
             give.item = true
             return true
         end

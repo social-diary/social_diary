@@ -497,14 +497,16 @@ function UpgradeCard.NewPiece(parent)
     local slip = ns.UI.PaperStrip(parent, hooks)
     local pad = { slip:Pad() }
     slip.name:SetFont(HAND, PIECE.size, "")
-    slip.iconEdge = Snapless(slip:CreateTexture(nil, "ARTWORK", nil, 5))
-    slip.icon = Snapless(slip:CreateTexture(nil, "ARTWORK", nil, 6))
-    slip.item = CreateFrame("Button", nil, slip)
-    slip.item:SetScript("OnEnter", function(self)
+    -- The piece's icon: the paper's small icon (ns.UI.ItemBox.NewSmall,
+    -- moved there from here on 19 Nov for the free card's narrow sizes).
+    local small = ns.UI.ItemBox.NewSmall(slip, parent)
+    slip.small = small
+    slip.iconEdge, slip.icon, slip.item = small.edge, small.icon, small.button
+    function small.enter(button)
         local rec = slip.rec
-        if rec then UpgradeCard.ShowItem(self, rec.link, Upgrades.Name(rec), Upgrades.TipLine(rec, slip.now)) end
-    end)
-    slip.item:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        if rec then UpgradeCard.ShowItem(button, rec.link, Upgrades.Name(rec), Upgrades.TipLine(rec, slip.now)) end
+    end
+    function small.leave() GameTooltip:Hide() end
 
     local function Words()
         local list = slip.pieces.list
@@ -542,33 +544,15 @@ function UpgradeCard.NewPiece(parent)
     -- The icon at the left, and the words (the strip laid them at the
     -- left) moved past it.
     function hooks.draw(self, plan, W, H)
-        local shown = plan.lead > 0
-        self.iconEdge:SetShown(shown)
-        self.icon:SetShown(shown)
-        self.item:SetShown(shown)
-        if not shown then return end
+        if plan.lead <= 0 then
+            small:Hide()
+            return
+        end
         local left, mid = -W / 2 + pad[1], -H / 2 + pad[2] + PIECE.line / 2
         local ix = left + PIECE.icon / 2 + 1
-        local E = ns.UI.ItemBox.Edge(self.rec.quality)
-        self.iconEdge:SetColorTexture(E[1], E[2], E[3], 1)
-        self:Lay(self.iconEdge, ix, mid, PIECE.icon + 2, PIECE.icon + 2)
-        self.icon:SetTexture(self.iconFile)
-        local k = ns.UI.ItemBox.ICON.crop
-        self.icon:SetTexCoord(k, 1 - k, k, 1 - k)
-        self:Lay(self.icon, ix, mid, PIECE.icon, PIECE.icon)
+        small:Draw(ix, mid, PIECE.icon, self.rec.quality, self.iconFile)
         self:Lay(self.name, left + plan.lead + plan.nameW / 2, mid, plan.nameW,
             PIECE.line + plan.nameW * math.abs(math.sin(self.turn or 0)) + 4)
-        -- The mouse over the icon as drawn.
-        local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
-        local half = PIECE.icon / 2 + 1
-        for _, corner in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
-            local px, py = self:Out(ix + corner[1] * half, mid + corner[2] * half)
-            x0, y0, x1, y1 = math.min(x0, px), math.min(y0, py), math.max(x1, px), math.max(y1, py)
-        end
-        self.item:SetFrameLevel(self:GetFrameLevel() + 2)
-        self.item:ClearAllPoints()
-        self.item:SetPoint("TOPLEFT", parent, "TOPLEFT", x0, -y0)
-        self.item:SetSize(x1 - x0, y1 - y0)
     end
 
     -- The words as written (for the tests).

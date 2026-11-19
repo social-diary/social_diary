@@ -270,7 +270,9 @@ local Seed, Width, Turned = Surface.Seed, Surface.Width, Surface.Turned
 --            the screen from its middle, y up; x, y on the parent; nil where
 --            none was asked: a card's draw may narrow `picture` to the part
 --            its picture takes, the close call's under its heading, and the
---            tests read it so); box ({ x, y, w, h } as laid); turn, flat
+--            tests read it so); lead (the room kept before the name on its
+--            line, as laid, { lx, ly, w, h } as those; nil where none was
+--            asked); box ({ x, y, w, h } as laid); turn, flat
 --            and turnsText (how it lies as laid: its turn in radians, laid
 --            flat, whether text can turn in this client); overfull; inkBoxes
 --            (where its writing lies as laid, from its middle, y down: { name,
@@ -607,7 +609,9 @@ function ns.UI.PaperStrip(parent, card)
     -- (the name in INK_STRONG without a page to open), tip (a tooltip's
     -- lines, as Style.Tooltip takes them), picture ({ w, h, gap }: room over
     -- the name), under ({ w, h, gap, after }: room under the name, `gap`
-    -- under the name and `after` over what happened), least (its least
+    -- under the name and `after` over what happened), lead (px of room
+    -- kept before the name on its line, nothing drawn there: a card lays
+    -- its own, strip.nameBox saying where the name went), least (its least
     -- width), tapeAt (the tape's middle, a share of the width; or { x, y,
     -- slant, w, h }: its middle at x, y px of the slip from its top left,
     -- `slant` degrees, its own size, put on exactly there, names or not),
@@ -728,7 +732,7 @@ function ns.UI.PaperStrip(parent, card)
         -- (the tour's, EXTRA) takes room after it.
         local blot, aside, foot = note.blot, note.aside, note.foot
         Extras(note)
-        local indent = blot and (blot.size + EXTRA.blot.gap) or 0
+        local indent = blot and (blot.size + EXTRA.blot.gap) or (type(note.lead) == "number" and note.lead or 0)
         -- The name, or where it is wider than the slip may be, the first of
         -- its shorter forms (`names`) that fits: a stranger described, "a
         -- level 60 Night Elf Warrior", is longer than any name (20 Nov 2026).
@@ -930,6 +934,12 @@ function ns.UI.PaperStrip(parent, card)
         Write(self.name, nameLeft + nameW / 2, top + nameH / 2, nameW, nameH)
         -- For the tests and a card: the name's writing, from the middle.
         self.nameBox = { nameLeft, top, nameLeft + nameW, top + nameH }
+        -- The room kept before the name (`lead`), as laid: where a card
+        -- lays what it puts there.
+        self.lead = nil
+        if not blot and indent > 0 then
+            self.lead = { lx = left + indent / 2, ly = top + nameH / 2, w = indent, h = nameH }
+        end
         local U = Style.INK_STRONG
         self.underline:SetColorTexture(U[1], U[2], U[3], Style.HAIRLINE)
         Place(self.underline, nameLeft + nameW / 2, top + nameH, nameW, 1)

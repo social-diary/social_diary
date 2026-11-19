@@ -307,3 +307,103 @@ do
     Eq(CardSheet.View().rowsOf[KIND][1].cells[1].picture:GetAlpha(), 1, "every icon given back")
     Eq(rec.icon, ns.NoteIcons.KEYS[1], "nothing written")
 end
+
+--------------------------------------------------------------------------
+Section("the card's item: boxed on XL and L, its icon alone on M and S")
+
+do
+    mock.pad.ui, mock.pad.enabled, mock.pad.devices = false, false, {}
+    mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+    mock.itemInfo[4242] = { icon = 5005, quality = 3 }
+    local FREE = ns.Note.Card.FREE
+    local ItemBox = ns.UI.ItemBox
+    local card = ns.Deaths.Card.New(UIParent)
+    local with = { t = now, icon = "chest", text = "Cool thing looted!", item = "Dark Leather Boots", itemID = 4242 }
+    local function Lay(r, width, room)
+        card:SetNoteCard(r, { 300, 200 }, "item-test", now, function() end)
+        return card:Layout(0, 0, width, room)
+    end
+    local function Bits() return card.freeBits end
+    local function Small() return Bits().small end
+    local pad = { card:Pad() }
+    -- XL and L: the box under the name, no icon before it.
+    for _, width in ipairs({ 220, 176 }) do
+        Lay(with, width)
+        Check(Bits().box.button:IsShown(), width .. ": the item boxed")
+        Check(not Small().icon:IsShown(), width .. ": no icon alone")
+        Eq(card.lead, nil, width .. ": nothing kept before the heading")
+        Check(not card.overfull, width .. ": it fits")
+    end
+    -- M and the narrowest: the icon alone before the heading, no box.
+    for _, width in ipairs({ 142, 122 }) do
+        local W = Lay(with, width)
+        Eq(card.freeSize, "m", width .. ": M")
+        Check(not Bits().box.button:IsShown(), width .. ": no box")
+        Check(Small().icon:IsShown() and Small().edge:IsShown() and Small().button:IsShown(), width .. ": its icon")
+        Eq(Small().icon.recorded.calls.SetTexture[1], 5005, width .. ": the item's own")
+        local E = ItemBox.Edge(3)
+        local painted = Small().edge.recorded.calls.SetColorTexture
+        Check(math.abs(painted[1] - E[1]) < 1e-6 and math.abs(painted[3] - E[3]) < 1e-6, width .. ": edged in its quality's colour")
+        Eq(card.lead and card.lead.w, FREE.small.icon + 2 + FREE.small.gap, width .. ": room kept before the heading")
+        Eq(card.nameBox[1], -W / 2 + pad[1] + card.lead.w, width .. ": the heading moved past it")
+        Check(not card.overfull, width .. ": it fits")
+    end
+    -- Under the mouse: the item's own tooltip; never a click.
+    Lay(with, 142)
+    GameTooltip.link, GameTooltip.shown = nil, nil
+    Small().button:GetScript("OnEnter")(Small().button)
+    Check(GameTooltip.shown and GameTooltip.link == "item:4242", "the item's own tooltip over its icon")
+    Small().button:GetScript("OnLeave")(Small().button)
+    Check(not GameTooltip.shown, "and gone off it")
+    Eq(Small().button:GetScript("OnClick"), nil, "an item is never clicked")
+    -- Short of height on XL: the box given up, its icon before the heading.
+    Lay(with, 220)
+    local n = 0
+    while Bits().box.button:IsShown() and card:Smaller() and n < 10 do
+        n = n + 1
+        card:Layout(0, 0, 220)
+    end
+    Check(not Bits().box.button:IsShown() and Small().icon:IsShown(), "the box given up: the icon kept")
+    -- At S (the band given up): still the icon.
+    while card:Smaller() and n < 20 do
+        n = n + 1
+        card:Layout(0, 0, 220)
+    end
+    Check(card.freeIcon == nil, "setup: the band given up")
+    Check(Small().icon:IsShown(), "S: the item's icon before the heading")
+    -- A name only typed (no icon the client knows): the box at M, as before.
+    local typed = { t = now, icon = "chest", text = "Cool thing looted!", item = "Dark Leather Boots" }
+    Lay(typed, 142)
+    Check(Bits().box.button:IsShown() and not Small().icon:IsShown(), "a typed item keeps its box at M")
+    Eq(card.lead, nil, "and nothing before the heading")
+    -- No item: as it was.
+    local none = { t = now, icon = "chest", text = "Cool thing looted!" }
+    for _, width in ipairs({ 220, 176, 142, 122 }) do
+        local W = Lay(none, width)
+        Check(not Bits().box.button:IsShown() and not Small().icon:IsShown(), width .. ": no item, nothing of one")
+        Eq(card.lead, nil, width .. ": nothing before the heading")
+        Eq(card.nameBox[1], -W / 2 + pad[1], width .. ": the heading at the margin")
+    end
+    -- A killer's card after: nothing of the item left on it.
+    Lay(with, 142)
+    card:SetKiller({ name = "Kobold Miner", count = 1, last = now }, "k", now)
+    card:Layout(0, 0, 142)
+    Check(not Small().icon:IsShown() and not Small().button:IsShown(), "a killer's card has no item icon")
+end
+
+--------------------------------------------------------------------------
+Section("the card beside the form: its item shown, and inert")
+
+do
+    local boots = Custom.Insert(KIND, { text = "Cool thing looted!", item = "Dark Leather Boots", itemID = 4242,
+        icon = "chest" }, WHERE)
+    local view = Edit(KIND, boots)
+    local card = view.preview.cards[KIND]
+    Check(view.preview:IsShown() and card:IsShown(), "setup: the card beside the form")
+    Check(card.freeBits.box.button:IsShown(), "its item boxed (L)")
+    Check(not card.freeBits.box.button:IsMouseClickEnabled(), "the box takes no mouse")
+    Check(not card.freeBits.small.button:IsMouseClickEnabled(), "nor the icon")
+    Check(not card.link:IsMouseClickEnabled(), "nor the name")
+    view:Hide()
+    Custom.Remove(boots)
+end

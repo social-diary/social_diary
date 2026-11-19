@@ -202,7 +202,7 @@ Section("every feature's card keeps to the strip's contract")
 -- strip's own fields are taken from a strip laid here with everything a
 -- note can ask (so a new one is caught without this list knowing it),
 -- less the fields the contract gives a card.
-local PUBLIC = { name = true, picture = true, under = true, box = true, turn = true, flat = true, turnsText = true,
+local PUBLIC = { name = true, picture = true, under = true, lead = true, box = true, turn = true, flat = true, turnsText = true,
     overfull = true }
 local probe = ns.UI.PaperStrip(UIParent)
 probe:SetNote({ name = "Tester", what = "made up for the test", quote = "a note to quote, of a few words", guid = "g",

@@ -66,6 +66,7 @@ local FILES = {
     "custom_campfire",
     "custom_note",
     "note_sheet",
+    "margin_row",
     "note_icons",
     "custom_cards_ui",
     "hunt_card",
