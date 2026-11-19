@@ -61,8 +61,9 @@ Eq(row.last, mock.now, "last-seen not updated")
 Eq(row.level, 6, "level not updated")
 Eq(row.x, 0.421, "the position moved; it is the first sighting's")
 
--- Another zone is another row; so is the same zone an hour later.
-mock.now, mock.mapID = mock.now + 61, 1413
+-- Another zone is another row, once the meeting is over (#42 below); so
+-- is the same zone an hour later.
+mock.now, mock.mapID = mock.now + 301, 1413
 mock.fire("PLAYER_TARGET_CHANGED")
 Drain()
 Eq(#ns.db.sightings[HOSTILE.guid], 2, "a new zone did not start a row")
@@ -71,6 +72,47 @@ mock.fire("PLAYER_TARGET_CHANGED")
 Drain()
 Eq(#ns.db.sightings[HOSTILE.guid], 3, "a new hour did not start a row")
 mock.mapID = 1412
+
+-- #42: a zeppelin full of people crosses a zone line, loading screen and
+-- all. Still one meeting: no second row, so no "Seen twice" after one ride.
+do
+    local RIDER = "Player-4620-00AAAA42"
+    local t = mock.now + 10 * DAY
+    local DUROTAR = { mapID = 1411, x = 0.5, y = 0.1 }
+    local STV = { mapID = 1434, x = 0.3, y = 0.7 }
+    local TIRISFAL = { mapID = 1420, x = 0.6, y = 0.6 }
+
+    local result, first = ns.Sightings.Record(RIDER, { level = 30, source = "plate" }, DUROTAR, t)
+    Eq(result, "new", "the boarding sighting")
+    ns.Sightings.Record(RIDER, { source = "sweep" }, DUROTAR, t + 90)
+    result = ns.Sightings.Record(RIDER, { level = 31, hostile = true, source = "plate" }, STV, t + 150)
+    local riderRows = ns.db.sightings[RIDER]
+    Eq(result, "updated", "#42: the far shore started a new occasion")
+    Eq(#riderRows, 1, "#42: a second row for one ride")
+    Eq(first.mapID, 1411, "#42: filed where the meeting began")
+    Eq(first.last, t + 150, "#42: last seen not carried across the line")
+    Eq(first.level, 31, "#42: level not carried across the line")
+    Eq(first.hostile, true, "#42: hostility not carried across the line")
+    Eq(ns.Sightings.Summary(RIDER).count, 1, "#42: one ride counted twice")
+
+    -- Back in a zone of its own row: still that row, not a new one.
+    ns.Sightings.Record(RIDER, { source = "plate" }, DUROTAR, t + 200)
+    Eq(#riderRows, 1, "#42: stepping back over the line")
+
+    -- Out of sight longer than a meeting's gap: the next zone is a new row.
+    result = ns.Sightings.Record(RIDER, { source = "plate" }, STV, t + 200 + 301)
+    Eq(result, "new", "#42: a later meeting folded into the last one")
+    Eq(#riderRows, 2, "#42: a later meeting folded into the last one")
+
+    -- A meeting that runs past its row's hour starts the next row, as SIG-4.
+    ns.Sightings.Record(RIDER, { source = "sweep" }, STV, t + 200 + 301 + 3500)
+    result = ns.Sightings.Record(RIDER, { source = "plate" }, TIRISFAL, t + 200 + 301 + 3700)
+    Eq(result, "new", "#42: one row kept past its hour")
+    Eq(#riderRows, 3, "#42: one row kept past its hour")
+    Eq(riderRows[3].mapID, 1420, "#42: the new hour's row is where they are")
+
+    ns.Sightings.Forget(RIDER)
+end
 
 -- Not proof of proximity: a unit the client is not drawing.
 local FAR = F.Player{ guid = "Player-4620-00AAAA03", "Far", "Away", visible = false }

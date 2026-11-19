@@ -162,7 +162,8 @@ mock.SetUnit("target", VET)
 mock.fire("PLAYER_TARGET_CHANGED")
 ns._test.DrainSightings()
 Eq(ns.db.sightings[VET.guid][1].level, 30, "the level on the first row")
-mock.now, mock.mapID, VET.level = mock.now + 61, 1413, -1
+-- Past a meeting's gap: crossing a zone line together is one row (#42).
+mock.now, mock.mapID, VET.level = mock.now + 301, 1413, -1
 mock.fire("PLAYER_TARGET_CHANGED")
 ns._test.DrainSightings()
 Eq(#ns.db.sightings[VET.guid], 2, "a new zone did not start a row")
