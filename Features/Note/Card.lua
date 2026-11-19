@@ -450,6 +450,15 @@ FACE = ns.Deaths.Card.RegisterFace(Note.KIND, {
     end,
 })
 
+-- The card as the form has it (CardSheet's preview, Kind.lua's `preview`):
+-- written by the same face as in the margin, with no mark (no leader, the
+-- picture facing right) and a name that opens nothing, seeded by the card's
+-- time so it lies as it will. Only to be looked at: it takes no mouse, so
+-- neither its name nor its item's box can be clicked.
+function Card.Preview(card, rec, now)
+    card:SetNoteCard(rec, nil, "preview:" .. tostring(rec.t or 0), now, function() end)
+end
+
 --------------------------------------------------------------------------
 -- In the plate's margin (JourneyMargin.Register)
 --------------------------------------------------------------------------

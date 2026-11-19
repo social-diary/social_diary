@@ -41,6 +41,13 @@
 --                                      a name from the line's search adds a
 --                                      face, the pad back on the line
 --   the caption's box                  a choice's box: A ticks or unticks
+--   an inserted card's foot            Delete, Cancel, Save on one line:
+--                                      left and right along it; down onto
+--                                      it lands on Save, never on Delete;
+--                                      up off it, the control over it
+--                                      (scope.Foot)
+-- The card beside the form (CardSheet's preview) is only looked at: it is
+-- on the view, not the slip, so it is never found as a control.
 -- Shift-clicking an item into its line is the mouse's alone: the pad has the
 -- item search (rule 5 of the controller-support skill: never click an item
 -- for the pad).
@@ -350,9 +357,75 @@ function scope.build(f)
         local name = names[c.frame] or (c.kind == "link" and ("link:" .. tostring(c.frame:GetText()))) or nil
         f:Add("form", Control(view, c, name, i))
     end
+    scope.Foot(f, view)
     for _, row in pairs(found) do
         if row.found:IsShown() then Names(f, view, row) end
     end
+end
+
+-- An inserted card's foot: Delete at its left, Cancel and Save at its right,
+-- on one line (CardSheet's Lay). Walked as it lies: left and right along it
+-- (Delete, Cancel, Save), down onto it from the form lands on Save, never on
+-- Delete, and up off any of it goes back to the control over it. A foot with
+-- no Delete (a new card's "Choose another", a detected card's) is walked as
+-- the list it is. scope.footed: the foot's items, left to right, or nil.
+function scope.Foot(f, view)
+    scope.footed = nil
+    local save, remove = view.save.padAt, view.remove.padAt
+    if not (view.remove:IsShown() and save and remove and math.abs(remove[2] - save[2]) <= 3) then return end
+    local foot = {}
+    for _, item in ipairs(f.groups.form.items) do
+        local at = item.frame and item.frame.padAt
+        if item.kind == "link" and at and math.abs(at[2] - save[2]) <= 3 then
+            foot[#foot + 1] = item
+            item.foot = true
+        end
+    end
+    table.sort(foot, function(a, b) return a.frame.padAt[1] < b.frame.padAt[1] end)
+    for i, item in ipairs(foot) do
+        item.step = function(dir)
+            local to = foot[i + (dir == "LEFT" and -1 or 1)]
+            if to then f:Set(to) end
+            return true
+        end
+    end
+    scope.footed = foot
+end
+
+-- Down or up across the line of an inserted card's foot (scope.Foot): true
+-- where it was taken.
+local function AcrossFoot(dir)
+    local f, foot = scope.focus, scope.footed
+    local at = f and f:Current()
+    if not (foot and at and at.group == "form") then return false end
+    local items = f.groups.form.items
+    local function Index(item)
+        for i, other in ipairs(items) do if other == item then return i end end
+    end
+    local function Open(item) return item.available == nil or item.available() end
+    if dir == "DOWN" and not at.foot then
+        for k = (Index(at) or #items) + 1, #items do
+            local item = items[k]
+            if Open(item) then
+                if not item.foot then return false end
+                f:Set(foot[#foot])
+                return true
+            end
+        end
+        return false
+    elseif dir == "UP" and at.foot then
+        for k = (Index(foot[1]) or 1) - 1, 1, -1 do
+            local item = items[k]
+            if not item.foot and Open(item) then
+                f:Set(item)
+                return true
+            end
+        end
+        return true
+    elseif dir == "DOWN" and at.foot then
+        return true
+    end
+    return false
 end
 
 -- The picker walked as it lies: up and down a row, left and right along it;
@@ -421,6 +494,7 @@ local function Rows8(dir)
             local across = CardSheet.ICONS.across
             return scope.Icon(dir == "UP" and -across or across)
         end
+        if AcrossFoot(dir) then return true end
         return Grid(dir)()
     end
 end
@@ -432,6 +506,7 @@ local function Down()
     local at = f and f:Current()
     if at and at.icon then return Rows8("DOWN")() end
     if at and at.group == "picker" then return Grid("DOWN")() end
+    if AcrossFoot("DOWN") then return true end
     local row = at and at.person
     if not (row and row.found:IsShown()) then return false end
     Pad.Refresh()

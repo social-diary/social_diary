@@ -162,6 +162,24 @@ local function TimelineLines(items, guid)
     local lines, lastDay, days = {}, nil, 0
     local now = ns.Now()
 
+    -- An aside (a free card naming them, Core/Timeline.lua's asides): a
+    -- slip in the hand as a note's, then its quiet line under it, both
+    -- with its tooltip and its click. `owner` is the run it lies in (as a
+    -- run's notes are its), or the aside itself on a line of its own, with
+    -- its time beside it.
+    local function AddAside(aside, owner, depth, Bracket)
+        local text, sub, tip = ns.UI.TimelineText.DescribeAside(aside, guid)
+        local spec = ns.Timeline.Aside(aside.aside) or {}
+        lines[#lines + 1] = { item = owner, when = owner == aside and date("%H:%M", aside.time) or nil,
+            text = text, icon = spec.art, font = FONT.noteWritten, depth = depth, aside = aside, tip = tip,
+            slip = true, seed = "aside:" .. tostring(aside.of and aside.of.key or aside.time),
+            bracket = Bracket and Bracket() }
+        if sub then
+            lines[#lines + 1] = { item = owner, text = sub, font = FONT.small, depth = depth, aside = aside,
+                tip = tip, bracket = Bracket and Bracket() }
+        end
+    end
+
     local function Add(item)
         if not item.depth then
             local day = date("%Y-%m-%d", item.time)
@@ -170,6 +188,11 @@ local function TimelineLines(items, guid)
                 lines[#lines + 1] = { header = DayLabel(item.time, now), day = days, height = DAY.height }
                 lastDay = day
             end
+        end
+
+        if item.kind == "aside" then
+            AddAside(item, item, item.depth)
+            return
         end
 
         -- TLN-4: a visit stands apart, with space above and below.
@@ -233,7 +256,7 @@ local function TimelineLines(items, guid)
             -- Its own lines start as far under the plate as the line above
             -- ends over it. A visit never folds, so they hang on no bracket.
             local under = isOpen and item.all or item.lines
-            if #under > 0 or (item.notes and #item.notes > 0) then
+            if #under > 0 or (item.notes and #item.notes > 0) or (item.asides and #item.asides > 0) then
                 lines[#lines + 1] = { item = item, height = VISIT.above, bracket = Bracket() }
             end
         else
@@ -254,6 +277,11 @@ local function TimelineLines(items, guid)
             local noteText, noteFull = ns.UI.TimelineText.DescribeNote(note, guid)
             lines[#lines + 1] = { item = item, text = noteText, icon = "note", font = FONT.noteWritten,
                 depth = depth + 1 + inset, full = noteFull, note = note, bracket = Bracket(), slip = true }
+        end
+        -- And what the player wrote elsewhere that names them during it (a
+        -- free card), after the notes, the same way.
+        for _, aside in ipairs(item.asides or {}) do
+            AddAside(aside, item, depth + 1 + inset, Bracket)
         end
 
         if isOpen or isFolded then
@@ -509,6 +537,8 @@ local function BuildTimelineRow(list)
     -- Lines wrap up to WRAP_LINES; the tooltip has the rest. A visit's
     -- card lifts under the mouse: it is there to be picked up.
     Style.Tooltip(row, function(self)
+        -- (an aside's: its feature's own, Style.TipList's)
+        if self.tip then return self.tip end
         if not self.full then return nil end
         if self.text.IsTruncated and not self.text:IsTruncated() and not self.full:find("\n") then
             return nil
@@ -528,6 +558,17 @@ local function BuildTimelineRow(list)
         if self.item and self.item.note and J.EditNote then
             GameTooltip:Hide()
             J.EditNote(self.item.note)
+            return
+        end
+        -- An aside's slip or its line: its feature's click (a free card:
+        -- Your Diary at its page), where it has one; never a fold.
+        local aside = self.item and self.item.aside
+        if aside then
+            local spec = ns.Timeline.Aside(aside.aside)
+            if spec and spec.press and spec.opens and spec.opens(aside.of) then
+                GameTooltip:Hide()
+                spec.press(aside.of)
+            end
             return
         end
         if self.item and self.item.visit then
@@ -733,8 +774,33 @@ local function NoteSlip(row, line)
     local x, width = SlipBox(line, rowW)
     local note = line.note or {}
     strip:SetNote({ text = ns.UI.JourneyText.Written(line.text), most = NOTE_SLIP.most, tape = "corner",
-        seed = "note:" .. tostring(note.id or note.time or line.text) })
+        seed = line.seed or ("note:" .. tostring(note.id or note.time or line.text)) })
     strip:Layout(x, NOTE_SLIP.top, width)
+end
+
+-- An aside's icon where its feature draws one of its own (a free card's
+-- chosen icon, Features/Note/Icons.lua), in the icon column where a
+-- texture would be: a frame per feature, made the first time one lands on
+-- the row. Any other line hides them.
+local function AsideIcon(row, line, left, first)
+    local aside = line and line.slip and line.aside
+    local spec = aside and ns.Timeline.Aside(aside.aside)
+    local key = spec and spec.icon and aside.aside
+    for k, frame in pairs(row.asideIcons or {}) do
+        if k ~= key then frame:Hide() end
+    end
+    if not key then return false end
+    row.asideIcons = row.asideIcons or {}
+    local frame = row.asideIcons[key]
+    if not frame then
+        frame = spec.icon(row, ICON)
+        row.asideIcons[key] = frame
+    end
+    frame:ClearAllPoints()
+    frame:SetPoint("LEFT", row, "TOPLEFT", left, first)
+    frame:Set(aside.of)
+    frame:Show()
+    return true
 end
 
 local function UpdateTimelineRow(row, line)
@@ -784,6 +850,8 @@ local function UpdateTimelineRow(row, line)
     row.when:ClearAllPoints()
     row.when:SetPoint("LEFT", row, "TOPLEFT", 0, -ROW_H / 2)
 
+    row.tip = nil
+    if not (line.slip and line.aside) then AsideIcon(row, nil) end
     if isBlock then
         row.icon:Hide()
         row.full = nil
@@ -802,6 +870,7 @@ local function UpdateTimelineRow(row, line)
     row.text:SetFontObject(line.font)
     row.text:SetText(Style.Inkify(line.text))
     row.full = line.full
+    row.tip = line.tip
 
     if line.visit then
         UpdateVisit(row, line)
@@ -822,6 +891,7 @@ local function UpdateTimelineRow(row, line)
     row.icon:ClearAllPoints()
     row.icon:SetPoint("LEFT", row, "TOPLEFT", left, first)
     row.icon:SetShown(line.icon ~= nil and Style.SetTexture(row.icon, line.icon))
+    if AsideIcon(row, line, left, first) then row.icon:Hide() end
     row.icon:SetVertexColor(Style.ArtTint(line.icon))
     -- Gossip icons are drawn to the edge; Interface\Icons ones have a frame.
     if line.icon and Style.IsInventoryIcon(line.icon) then

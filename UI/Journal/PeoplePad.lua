@@ -237,7 +237,17 @@ local function Stable(item)
     return tostring(item.kind) .. ":" .. tostring(item.time)
 end
 local function LineKey(line)
-    return "tl:" .. Stable(line.item) .. (line.note and (":note:" .. tostring(line.note)) or "")
+    -- (an aside in a run: the run's, and the saved thing it reads)
+    local aside = line.aside and line.aside ~= line.item and (":aside:" .. Stable(line.aside.of)) or ""
+    return "tl:" .. Stable(line.item) .. (line.note and (":note:" .. tostring(line.note)) or "") .. aside
+end
+
+-- An aside's spec (Core/Timeline.lua's asides: a free card naming them),
+-- where a press on its line does something.
+local function AsideOpens(line)
+    local aside = line.aside
+    local spec = aside and ns.Timeline.Aside(aside.aside)
+    if spec and spec.press and spec.opens and spec.opens(aside.of) then return spec end
 end
 
 -- The episode a line answers for (its own, or the one it hangs under), if a
@@ -349,6 +359,12 @@ local function BuildTimeline(f, p)
             elseif line.note then
                 -- (its click: the note's sheet, NotePad.lua's scope)
                 item.press = function() Run(item.frame, "OnMouseUp", "LeftButton") end
+            elseif line.aside then
+                -- (its click where it has one: a free card's, Your Diary at
+                -- its page; else only its tooltip, and never a fold)
+                item.press = function()
+                    if AsideOpens(line) then Run(item.frame, "OnMouseUp", "LeftButton") end
+                end
             elseif Folds(line) then
                 local head = "tl:" .. Stable(Folds(line))
                 item.press = function()
@@ -769,6 +785,9 @@ function scope.legend()
             if J.CanOpenMatch(line.match) then out[1] = PROMPT.match end
         elseif line.note then
             out[1] = PROMPT.note
+        elseif line.aside then
+            local spec = AsideOpens(line)
+            if spec and spec.prompt then out[1] = { "PAD1", spec.prompt, main = true } end
         elseif Folds(line) then
             out[1] = Open(Folds(line)) and PROMPT.fold or PROMPT.unfold
         end

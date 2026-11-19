@@ -81,16 +81,27 @@ ns.JourneyRecap.RegisterMoment(Note.KIND, { order = 85, entry = "noteCard", fiel
         -- records know it.
         creature = "mob",
         defaults = {},
+        -- The form's rows in three groups (`group`, CardSheet's BEAT: close
+        -- within one, a faint rule and more air between two): what it is
+        -- (the icon, the words), who and what with (the people, the
+        -- creature, the item), and how it goes on the page (the caption).
         fields = {
-            { key = "icon", type = "icon", label = L["Icon"] },
+            { key = "icon", type = "icon", label = L["Icon"], group = "what" },
             { key = "text", type = "text", most = 150, lines = 3, label = L["Words"],
-                hint = L["What happened here"] },
+                hint = L["What happened here"], group = "what" },
             { key = "people", type = "people", label = L["Who was there"],
-                hint = L["Any name will do"] },
+                hint = L["Any name will do"], group = "who" },
             { key = "mob", type = "text", optional = true, label = L["Creature"], hint = L["As the game names it"],
-                add = L["+ A creature"] },
+                add = L["+ A creature"], group = "who" },
             { key = "item", type = "item", id = "itemID", optional = true, label = L["Item"],
-                hint = L["Shift-click an item"], add = L["+ An item"] },
-            { key = "caption", type = "flag", label = L["Write it into the entry"] },
+                hint = L["Shift-click an item"], add = L["+ An item"], group = "who" },
+            { key = "caption", type = "flag", label = L["Write it into the entry"], group = "page" },
+        },
+        -- The card as it will look, beside the form while it is written
+        -- (CardSheet's preview): the margin's own card, written by its own
+        -- face from what the form holds (Features/Note/Card.lua's Preview).
+        preview = {
+            new = function(parent) return ns.Deaths.Card.New(parent) end,
+            write = function(card, rec, now) return Note.Card.Preview(card, rec, now) end,
         },
     } })
