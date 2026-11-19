@@ -174,14 +174,9 @@ ns.Locale.Add("deDE", {
     ["%1$s is now level %2$s"] = "%1$s ist jetzt Stufe %2$s",
     ["Now level %s"] = "Jetzt Stufe %s",
 
-    -- Features/Met/Kind.lua: the card form
-    ["Someone You Met"] = "Eine Begegnung",
-    ["Someone you met"] = "Eine Begegnung",
-    ["Someone in your diary, or any name"] = "Jemand aus deinem Tagebuch oder ein beliebiger Name",
-    ["Description"] = "Beschreibung",
-    ["What you did, in a line"] = "Was ihr getan habt, in einer Zeile",
+    -- Features/Note/Kind.lua: the card form
 
-    -- Features/Met/Text.lua: the strip, the tooltip, the caption
+    -- Features/Note/Text.lua: the strip, the tooltip, the caption
     ["with %s"] = "mit %s",
     ["With %s"] = "Mit %s",
     ["someone##with"] = "jemandem",

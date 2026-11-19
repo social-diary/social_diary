@@ -157,7 +157,7 @@ ns.Locale.Add("deDE", {
     ["one more lucky hunt|%s more lucky hunts##plural"] = "noch eine glückliche Jagd|noch %s glückliche Jagden",
     ["another lucky hunt|%s more lucky hunts##plural"] = "eine weitere glückliche Jagd|%s weitere glückliche Jagden",
 
-    -- Features/Met/Kind.lua (the witness's form too)
+    -- Features/Note/Kind.lua (the witness's form too)
     ["Who"] = "Wer",
 
     -- Features/Witnesses/Kind.lua: the timeline's rows, the picker's

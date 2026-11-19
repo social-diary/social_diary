@@ -287,14 +287,9 @@ ns.Locale.Add("plPL", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s ma teraz poziom %2$s",
     ["Now level %s"] = "Awans na poziom %s",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "Napotkana osoba",
-    ["Someone you met"] = "Napotkana osoba",
+    -- Features/Note/Kind.lua
     ["Who"] = "Kto",
-    ["Someone in your diary, or any name"] = "Wybierz osobę z dziennika lub wpisz dowolne imię",
-    ["Description"] = "Opis",
-    ["What you did, in a line"] = "Zapisz w jednym zdaniu, co robiliście",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "limit dla czeladnika",

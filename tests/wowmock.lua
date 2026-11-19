@@ -163,7 +163,7 @@ local NOOPS = {
     "SetShadowOffset", "SetShadowColor", "SetGradient", "SetDesaturated",
     "SetAtlas", "AddMaskTexture", "SetRotation", "SetHitRectInsets",
     "SetFixedFrameStrata", "SetFixedFrameLevel", "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetVertexOffset",
-    "SetPassThroughButtons", "EnableKeyboard", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
+    "SetPassThroughButtons", "EnableKeyboard", "SetTextInsets", "SetPropagateKeyboardInput", "SetHyperlinksEnabled", "SetFixedFrameStrata",
 }
 
 local ANCHORS = {}
@@ -860,6 +860,7 @@ _G.NUM_BAG_SLOTS = 4
 M.bags = { [0] = { size = 16 } }
 M.equipped = {}
 M.itemInfo = {}
+M.itemAsked = {}
 
 _G.C_Container = {
     GetContainerNumSlots = function(bag)
@@ -888,7 +889,9 @@ _G.GetInventoryItemQuality = function(_, slot)
 end
 
 -- M.itemInfo[itemID].icon is its icon (134400, the question mark, else);
--- .quality what GetItemQualityByID says (nil, not cached, else).
+-- .quality what GetItemQualityByID says (nil, not cached, else); .name what
+-- GetItemNameByID says (nil, not cached, else; M.itemAsked[itemID] counts the
+-- loads asked for).
 _G.C_Item = {
     GetItemInfoInstant = function(id)
         local info = M.itemInfo[tonumber(id)]
@@ -902,6 +905,13 @@ _G.C_Item = {
     GetItemQualityByID = function(id)
         local info = M.itemInfo[tonumber(id)]
         return info and info.quality
+    end,
+    GetItemNameByID = function(id)
+        local info = M.itemInfo[tonumber(id)]
+        return info and info.name
+    end,
+    RequestLoadItemDataByID = function(id)
+        M.itemAsked[tonumber(id)] = (M.itemAsked[tonumber(id)] or 0) + 1
     end,
 }
 

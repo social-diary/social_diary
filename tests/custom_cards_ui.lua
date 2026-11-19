@@ -1046,7 +1046,10 @@ do
         Eq(top.point, "TOPLEFT", "hung by its top")
         Eq(top.args[1], line, "from the line")
         Eq(top.args[2], "BOTTOMLEFT", "under it")
-        Eq(#rows[1].found.recorded.points, 2, "and as wide as it, and no other anchor")
+        -- (one anchor, its width its own: the line's column, never past the
+        -- sheet's margin, 19 Nov)
+        Eq(#rows[1].found.recorded.points, 1, "and no other anchor")
+        Eq(rows[1].found.width, CardSheet.View().sheet and 176 + 8, "as wide as the line's column")
     end
     line:GetScript("OnTabPressed")(line)
     Check(not rows[1].found:IsShown(), "Tab leaves the offer behind")
@@ -1089,12 +1092,59 @@ do
     mock.MenuClick("Add custom event...")
     local view = CardSheet.View()
     local before = #(j.custom or {})
-    PickKind("met")
-    local line = Row("who").box
-    line:SetText("Old Friend")
+    PickKind("noteCard")
+    -- (a text of several lines takes Enter as a new line: Enter on a line
+    -- of one saves it)
+    Eq(Row("text").box:GetScript("OnEnterPressed"), nil, "Enter on a text of several lines is the box's own")
+    Row("text").box:SetText("Old Friend")
+    -- (on the people's line, empty: Enter there saves too)
+    local line = Row("people").box
     line:GetScript("OnEnterPressed")(line)
     Eq(#j.custom, before + 1, "the card is written")
-    Eq(j.custom[#j.custom].who or j.custom[1].who, "Old Friend", "with what was typed")
+    Eq(j.custom[#j.custom].text or j.custom[1].text, "Old Friend", "with what was typed")
     Check(not view:IsShown(), "and the form closes")
     Custom.Remove(j.custom[1])
+end
+
+--------------------------------------------------------------------------
+Section("a free card written from the picker, every control")
+
+do
+    OpenFirst()
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    local view = CardSheet.View()
+    PickKind("noteCard")
+    local function Click(button) button:GetScript("OnClick")(button) end
+    Check(Row("text").box:HasFocus(), "a new card: its text has the cursor (the first line on the form)")
+    Eq(Row("icon"):Get(), ns.NoteIcons.KEYS[1], "the first icon chosen")
+    Click(Row("icon").cells[7])
+    Row("text").box:SetText("the view from the top")
+    Row("people"):Add("Brannoc", "Player-1-0AAAAAAA")
+    Click(Row("mob").add.link)
+    Row("mob").box:SetText("Plainstrider")
+    CardSheet.InsertLink("|cff1eff00|Hitem:2575:0:0:0:0:0:0:0:11|h[Red Linen Shirt]|h|r")
+    Click(Row("caption").flag)
+    local before = #(j.custom or {})
+    view.save.scripts.OnClick(view.save)
+    Eq(#j.custom, before + 1, "written")
+    local rec
+    for _, r in ipairs(j.custom) do if r.kind == "noteCard" then rec = r end end
+    Eq(rec.icon, ns.NoteIcons.KEYS[7], "its icon")
+    Eq(rec.text, "the view from the top", "its text")
+    Eq(rec.people and rec.people[1].name, "Brannoc", "who")
+    Eq(rec.people[1].guid, "Player-1-0AAAAAAA", "linked")
+    Eq(rec.mob, "Plainstrider", "the mob")
+    Eq(rec.item, "Red Linen Shirt", "the item")
+    Eq(rec.itemID, 2575, "its ID")
+    Eq(rec.caption, true, "in the caption")
+    -- A new card with nothing added has none of the optional fields.
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    PickKind("noteCard")
+    Check(not Row("mob").on and not Row("item").on, "a new card starts clean: the mob and the item behind their strips")
+    Eq(#Row("people").people, 0, "nobody on it")
+    Eq(Row("people").box:GetText(), "", "its line empty")
+    Click(view.cancel)
+    Custom.Remove(rec)
 end

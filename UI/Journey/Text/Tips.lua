@@ -66,7 +66,7 @@ end
 -- When a stretch was, from its first minute to its last: "Today from 12:47
 -- to 13:20", "On 12 Sep from 18:02 to 18:40"; over midnight or days "From
 -- yesterday at 21:40 to today at 12:00" (as the features' marks say it,
--- Features/Met/Text.lua's Foot); only the start ("Today at 12:47") within
+-- Features/Note/Text.lua's Foot); only the start ("Today at 12:47") within
 -- a minute.
 local function Span(from, to, now)
     now = now or ns.Now()

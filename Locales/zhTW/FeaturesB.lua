@@ -111,14 +111,10 @@ ns.Locale.Add("zhTW", {
     -- Features/LevelUps/Kind.lua
     ["%1$s is now level %2$s"] = "%1$s現在達到%2$s級",
     ["Now level %s"] = "現在%s級",
-    -- Features/Met/Kind.lua
-    ["Someone You Met"] = "你遇到的人",
+    -- Features/Note/Kind.lua
     ["Someone you met"] = "你遇到的人",
     ["Who"] = "是誰",
-    ["Someone in your diary, or any name"] = "你日記中的人物，或任意名字",
-    ["Description"] = "描述",
-    ["What you did, in a line"] = "用一句話寫下你做了什麼",
-    -- Features/Met/Text.lua
+    -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s；%2$s",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "已是中級能練到的極限",

@@ -493,7 +493,7 @@ local asSaved = Copy(saved)
 _G.SocialDiaryCharDB = { schema = 2, settings = {}, data = saved }
 mock.fire("ADDON_LOADED", old.addonName)
 -- STEPS.diary[6]: the strangers are packed as the diary loads, and only they.
-Eq(saved.schema, 6, "the diary was not brought to the new schema")
+Eq(saved.schema, old._test.SchemaVersion, "the diary was not brought to the new schema")
 Eq(type(saved.strangers[R1]), "string", "the old stranger did not go into a line")
 Eq(rawget(saved.characters, R1), nil, "the old stranger's record is saved twice")
 Eq(rawget(saved.sightings, R1), nil, "the old stranger's rows are saved twice")
@@ -539,7 +539,7 @@ _G.SocialDiaryCharDB = { schema = 2, settings = {}, data = unpacked }
 mock.fire("ADDON_LOADED", failing.addonName)
 Eq(reported, 1, "a failed packing was not reported")
 Check(failing.db ~= nil, "a failed packing stopped the diary from loading")
-Eq(unpacked.schema, 6, "the diary's number after a failed packing")
+Eq(unpacked.schema, failing._test.SchemaVersion, "the diary's number after a failed packing")
 Eq(next(unpacked.strangers), nil, "a failed packing left lines")
 Same(asSaved.characters[R1], failing.Characters.Get(R1), "after a failed packing, the stranger as saved")
 Same(asSaved.sightings[R1], failing.Sightings.For(R1), "after a failed packing, the stranger's rows as saved")
@@ -556,10 +556,10 @@ mock.Reset()
 local later = T.Load()
 mock.SetUnit("player", F.SELF)
 local ahead = Copy(asSaved)
-ahead.schema = 7
+ahead.schema = later._test.SchemaVersion + 1
 _G.SocialDiaryCharDB = { schema = 2, settings = {}, data = ahead }
 mock.fire("ADDON_LOADED", later.addonName)
-Eq(ahead.schema, 7, "a later diary's number was moved")
+Eq(ahead.schema, later._test.SchemaVersion + 1, "a later diary's number was moved")
 Eq(next(ahead.strangers), nil, "a later diary was converted as it loaded")
 Same(asSaved.characters[R1], later.Characters.Get(R1), "a later diary's stranger, read as saved")
 mock.fire("PLAYER_LOGIN")

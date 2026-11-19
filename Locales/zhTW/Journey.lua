@@ -17,7 +17,6 @@ ns.Locale.Add("zhTW", {
     ["Choose another"] = "選擇另一個",
     ["What happened here?"] = "這裡發生了什麼？",
     ["Which one?"] = "哪一個？",
-    ["Left out of this page"] = "未寫入本頁",
     ["Delete this card"] = "刪除這張卡片",
     ["Leave it out"] = "將其排除",
     ["Undo my changes"] = "復原我的變更",
