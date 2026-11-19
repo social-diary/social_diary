@@ -120,7 +120,7 @@ Press("PADDLEFT")
 Eq(At().group, "nav", "left did not come back to the sections")
 
 --------------------------------------------------------------------------
-Section("auto-add is reached in Recording, and A switches it")
+Section("auto-add is reached in Recording: A switches it, X opens its rules")
 
 -- Faded with sightings off would be wrong: the group rule works without them.
 ns.SetSetting("detectSightings", false)
@@ -135,12 +135,42 @@ Check(reached, "the auto-add switch never landed on")
 Eq(At().kind, "switch", "auto-add's kind")
 local auto = ns.Setting("autoAdd")
 Eq(Prompt(), auto and "Untick" or "Tick", "auto-add's prompt")
+local second = Pad.Top().legend(Pad.Top())[2]
+Eq(second and second[1], "PAD3", "auto-add's second prompt is not X")
+Eq(second and second[2], "Open the rules", "auto-add's X prompt")
+-- (one stop: its words boxed, the underline with them)
+Eq(At().frame, page.autoAdd, "auto-add is not one stop")
+-- X lays the rule sheet and leaves the switch as it was; B puts the sheet
+-- away and the pad is back on the switch.
+Press("PAD3")
+Check(ns.UI.AutoAddRules.Shown(), "X did not open the rules")
+Eq(Pad.Top().key, "autoaddrules", "X: the rule sheet has not the pad")
+Eq(ns.Setting("autoAdd"), auto, "X switched auto-add")
+Press("PAD2")
+Check(not ns.UI.AutoAddRules.Shown(), "B left the rule sheet up")
+Eq(Pad.Top().key, "settings", "B off the rule sheet: the pad not on Settings")
+Eq(At().frame, page.autoAdd, "B off the rule sheet (X): not back on the switch")
 Press("PAD1")
 Eq(ns.Setting("autoAdd"), not auto, "A did not switch auto-add")
+if not auto then
+    -- (on with no rule on: the rule sheet opens, and has the pad; B puts it
+    -- away and the pad is back on the switch)
+    Eq(Pad.Top().key, "autoaddrules", "switched on with no rule on: the rule sheet has not the pad")
+    Press("PAD2")
+    Check(not ns.UI.AutoAddRules.Shown(), "B left the rule sheet up")
+    Eq(At().frame, page.autoAdd, "B off the rule sheet: not back on the switch")
+end
 Press("PAD1")
 Eq(ns.Setting("autoAdd"), auto, "A again did not switch auto-add back")
 ns.SetSetting("detectSightings", true)
 page:Refresh()
+-- X on a plain switch does nothing, and offers nothing.
+Press("PADDUP")
+Check(At().frame ~= page.autoAdd and At().follow == nil, "setup: still on auto-add")
+local plain = Pad.Top().legend(Pad.Top())
+Check(not (plain[2] and plain[2][1] == "PAD3"), "a plain switch offers X")
+Press("PAD3")
+Check(not ns.UI.AutoAddRules.Shown(), "X on a plain switch opened the rules")
 Press("PAD2")
 Eq(At().group, "nav", "B did not come back to the sections")
 

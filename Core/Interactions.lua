@@ -261,6 +261,9 @@ function Interactions.Add(guid, kind, data)
 
     ns.Debug("interaction %s with %s", kind, ns.Characters.FullName(guid) or guid)
 
+    -- A stranger's new row may be what one of the Auto-Add rules waits for.
+    ns.AutoAdd.Wake(guid, kind)
+
     return row
 end
 

@@ -1,10 +1,16 @@
--- Auto-add's one question (Core/AutoAdd.lua): switched on in Settings >
--- Recording, the people already seen near you often enough to pass its
--- seen rule are offered once, on a loose sheet of the house paper over the
--- game, as the suggestion sheet is (UI/Windows/Suggest/Sheet.lua, which
--- follows the quick note's, UI/Paper/NoteSheet.lua): how many, a few of
--- their names, and two links, "Add them" and "Not now". Nobody waiting, or
--- the switch going off, shows nothing.
+-- Auto-add's one question (Core/AutoAdd.lua): the people who already pass
+-- the player's rules are offered once, on a loose sheet of the house paper
+-- over the game, as the suggestion sheet is (UI/Windows/Suggest/Sheet.lua,
+-- which follows the quick note's, UI/Paper/NoteSheet.lua). It is asked when
+-- the master switch goes on in Settings > Recording (every rule that is on),
+-- and when the rule sheet is put away (UI/Settings/Rules.lua: the rules
+-- added, switched on or widened there, AutoAdd.AskAbout), one sheet for all
+-- of them (.claude/features/auto-add-rules-ui.md §4.6): how many, a line per
+-- rule with how many it brings ("and N more rules" past three), a few names
+-- (each person once, by the first rule they pass), and two links, "Add
+-- them" and "Not now". Its title is the rule's name when one rule asks (a
+-- preset's, else "Your rule"). Nobody waiting, or the switch going off,
+-- shows nothing.
 --
 -- The list is the one taken as it opened (AutoAdd.AddWaiting checks each
 -- again). "Not now" adds nobody and leaves the setting on: they are then
@@ -20,8 +26,10 @@ local L = ns.L
 local Sheet = {}
 ns.UI.AutoAdd = Sheet
 
--- How many names it says before "and N others".
+-- How many names it says before "and N others", and how many rules'
+-- lines before "and N more rules".
 Sheet.NAMES = 3
+Sheet.RULES = 3
 
 -- The sheet in its own coordinates (x right, y down): `w` wide, `margin`
 -- each side; the title's middle `title` down, the words from `first`, a
@@ -61,7 +69,6 @@ local function Build()
     end)
 
     view.title = Style.Text(S, FONT.page)
-    view.title:SetText(L["Familiar faces"])
     view.texts = {}
 
     view.later = K.Link(FONT.body, function() Sheet.Close() end)
@@ -70,11 +77,40 @@ local function Build()
     view.add:SetText(L["Add them"])
 end
 
--- The words, a part at a time: { text, font, faded }.
+local function Capital(text) return ns.Locale.grammar.Capital(text) end
+
+-- The rules `list` came with, in the list's order (rules no longer in it
+-- after), and how many people each brings.
+local function Asking(list)
+    local count, order, rank = {}, {}, {}
+    for i, rule in ipairs(ns.AutoAdd.Rules()) do rank[rule] = i end
+    for _, item in ipairs(list) do
+        local rule = item.rule
+        if rule then
+            if not count[rule] then order[#order + 1] = rule end
+            count[rule] = (count[rule] or 0) + 1
+        end
+    end
+    table.sort(order, function(a, b) return (rank[a] or math.huge) < (rank[b] or math.huge) end)
+    return order, count
+end
+
+-- The title: the rule's name when one rule asks, else the lot's.
+local function Title(rules)
+    if #rules == 1 then
+        local rule = rules[1]
+        return rule.preset and ns.AutoAdd.PresetName(rule.preset) or L["Your rule"]
+    end
+    return L["People who already match your rules"]
+end
+
+-- The words, a part at a time: { text, font, tight } (`tight`: no gap
+-- under it, the next line its own).
 local function Parts(list)
     -- (the names it knows first; one it doesn't is counted, never named)
     local names, unknown = {}, 0
-    for _, guid in ipairs(list) do
+    for _, item in ipairs(list) do
+        local guid = item.guid
         local name = ns.Characters.Name(guid) or ns.Characters.FullName(guid)
         if name then names[#names + 1] = name else unknown = unknown + 1 end
     end
@@ -83,11 +119,24 @@ local function Parts(list)
     local Format = ns.UI.Format
     local named = shown > 0 and (shown == #list and Format.List(names)
         or Format.List(names, { max = shown, shown = shown, more = Format.OTHERS }))
+    local rules, count = Asking(list)
     local parts = {
-        { ns.Plural(#list, L["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"]), FONT.body },
+        { #rules > 1 and ns.Plural(#list, L["%d person already matches your rules.|%d people already match your rules.##plural"])
+            or ns.Plural(#list, L["%d person already matches this rule.|%d people already match this rule.##plural"]), FONT.body },
     }
+    -- (a line per rule, the first few; tight, as one list)
+    for i, rule in ipairs(rules) do
+        if i > Sheet.RULES then
+            parts[#parts + 1] = { ns.Plural(#rules - Sheet.RULES, L["and %d more rule|and %d more rules##plural"]), FONT.small, true }
+            break
+        end
+        local n = count[rule]
+        parts[#parts + 1] = { ns.Plural(n, L["%1$s: %2$d person|%1$s: %2$d people##plural"],
+            Capital(ns.AutoAdd.Describe(rule)), n), FONT.small, true }
+    end
+    if parts[#parts][3] then parts[#parts][3] = nil end
     if named then parts[#parts + 1] = { named, FONT.strong } end
-    parts[#parts + 1] = { L["Add them to the diary now? If not, they’re added the next time you see them."], FONT.body }
+    parts[#parts + 1] = { L["Add them to the diary now? If not, each is added the next time you cross paths."], FONT.body }
     return parts
 end
 
@@ -100,12 +149,13 @@ local function Lay()
         lines[i] = K.Wrap(part[1], width, part[2])
     end
     local h = SHEET.first
-    for _, l in ipairs(lines) do h = h + #l * SHEET.line + SHEET.gap end
+    for i, l in ipairs(lines) do h = h + #l * SHEET.line + (parts[i][3] and 0 or SHEET.gap) end
     h = h + SHEET.foot + SHEET.line
     K.Reshape(W, h)
     K.Fall("autoadd")
     K.Lay()
 
+    view.title:SetText(Title((Asking(view.list))))
     K.PlaceText(view.title, M, SHEET.title)
     local used, y = 0, SHEET.first
     for i, part in ipairs(parts) do
@@ -115,14 +165,14 @@ local function Lay()
             local fs = view.texts[used] or Style.Text(view.sheet, font)
             view.texts[used] = fs
             fs:SetFontObject(font)
-            local c = font == FONT.strong and Style.INK_STRONG or Style.INK
+            local c = font == FONT.strong and Style.INK_STRONG or font == FONT.small and Style.INK_FADED or Style.INK
             fs:SetTextColor(c[1], c[2], c[3])
             fs:SetText(line)
             K.PlaceText(fs, M, y)
             fs:Show()
             y = y + SHEET.line
         end
-        y = y + SHEET.gap
+        if not part[3] then y = y + SHEET.gap end
     end
     for i = used + 1, #view.texts do view.texts[i]:Hide() end
 
@@ -132,7 +182,7 @@ local function Lay()
     view.later:Show()
 end
 
--- Opens the sheet on `list` (GUIDs, as AutoAdd.Waiting gives them). An
+-- Opens the sheet on `list` ({ guid, rule } pairs, as AutoAdd.Waiting gives them). An
 -- empty list opens nothing. The player's own path (the switch), so it takes
 -- the pad when it is in hand.
 function Sheet.Open(list)
@@ -147,10 +197,18 @@ function Sheet.Open(list)
     return true
 end
 
--- The switch's `after`: on, and someone is waiting, the sheet asks.
+-- The switch's `after`: on, and someone is waiting, the sheet asks (about
+-- every rule that is on).
 function Sheet.Offer(on)
     if not on then return false end
     return Sheet.Open(ns.AutoAdd.Waiting())
+end
+
+-- The rule sheet put away (UI/Settings/Rules.lua): asks about `rules`
+-- (AutoAdd.AskAbout's), if anyone already passes one of them.
+function Sheet.Ask(rules)
+    if not (rules and #rules > 0) then return false end
+    return Sheet.Open(ns.AutoAdd.Waiting(rules))
 end
 
 -- Adds the list taken as it opened, then puts the sheet away.

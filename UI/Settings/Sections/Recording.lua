@@ -74,13 +74,23 @@ local function BuildRecording(pane, c)
         page.cities[city.key] = box
     end
 
-    -- The one exception to DIA-1 (Core/AutoAdd.lua). Not tied to sightings:
-    -- the group rule works without them, so the hint says which part needs it.
-    -- Switched on, the people already waiting are offered once (UI/Windows/AutoAdd.lua).
+    -- The one exception to DIA-1 (Core/AutoAdd.lua): the master switch,
+    -- its words the way to the sheet the rules are written on
+    -- (UI/Settings/Rules.lua; the rules can be set up before it goes on).
+    -- Switched on with a rule on, the people already waiting are offered
+    -- once (UI/Windows/AutoAdd.lua); with none on, the rule sheet opens
+    -- instead, as there is nothing to add by yet.
     c:Heading(L["People"])
-    page.autoAdd = Switch(c, L["Auto-Add Players"], "autoAdd", nil, function(on) ns.UI.AutoAdd.Offer(on) end,
-        L["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."])
-    c:Hint(L["Sightings count only while “Notice who passes you in the open world” is on."])
+    page.autoAdd = Switch(c, L["Auto-Add Players"], "autoAdd", nil, function(on)
+        if not on then return end
+        for _, rule in ipairs(ns.AutoAdd.Rules()) do
+            if rule.on then return ns.UI.AutoAdd.Offer(on) end
+        end
+        ns.UI.AutoAddRules.Open()
+    end, nil, {
+        open = function() ns.UI.AutoAddRules.Open() end,
+        prompt = L["Open the rules"],  -- copy TBD (copywriter)
+    })
 end
 
 SettingsUI.RegisterSection("recording", { order = 10, label = L["Recording"],

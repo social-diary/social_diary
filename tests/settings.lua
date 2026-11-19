@@ -304,6 +304,17 @@ ns.db.settings.detectSightings = true
 P:Refresh()
 P.autoAdd:Click()
 Eq(ns.db.settings.autoAdd, false, "the auto-add switch did not switch back off")
+-- Its words are a link to the rule sheet (the kit's Switch with `link`):
+-- a click on them opens it and leaves the setting as it was.
+Check(P.autoAdd.labelHit and P.autoAdd.line, "auto-add's words are not a link")
+Check(P.autoAddRules == nil, "the rules' summary is still under auto-add")
+P.autoAdd.labelHit:Click()
+Check(ns.UI.AutoAddRules.Shown(), "auto-add's words did not open the rule sheet")
+Eq(ns.db.settings.autoAdd, false, "auto-add's words switched it")
+ns.UI.AutoAddRules.Close()
+Check(not ns.UI.AutoAddRules.Shown(), "the rule sheet stayed up")
+-- A plain switch keeps its whole line, and no link.
+Check(P.storeChat.follow == nil and P.storeChat.line == nil, "a plain switch has a link")
 
 -- A setting that only means something while another is on fades, and
 -- does nothing, while that one is off.
@@ -514,7 +525,7 @@ Eq(next(ns.db.characters), nil, "characters survived 'delete everything'")
 Eq(ns.Recent.Get("whisper"), nil, "the recent list survived 'delete everything'")
 Eq(ns.db.settings.storeChat, false, "'delete everything' reset the settings")
 Eq(_G.SocialDiaryCharDB.data.diary, ns.db.diary, "the saved table was replaced, so the wipe would not be saved")
-Eq(ns.db.schema, 6, "schema missing after the wipe")
+Eq(ns.db.schema, 7, "schema missing after the wipe")
 Check(ns.OwnCharacters()[SELF.guid], "the user's own characters went with the wipe")
 Check(ns.db.meta.begun[SELF.guid], "the bookplate stamp was not taken again after the wipe")
 Check(type(ns.db.meta.roster.members) == "table", "roster defaults missing after the wipe")

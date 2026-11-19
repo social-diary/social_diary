@@ -70,3 +70,32 @@ ns.Rows.Register("trade", { proximity = true, plate = 7, opens = true, meeting =
         return Fmt(L["Traded: %s"], ns.UI.TimelineText.Join(parts, L["%1$s; %2$s"]))
     end,
     icon = "trade" })
+
+--------------------------------------------------------------------------
+-- The Auto-Add trigger
+--------------------------------------------------------------------------
+--
+-- "Traded with you N times": the trade rows the buffer still holds (a week
+-- for a stranger). Woken by each new trade row (Interactions.Add).
+
+local function Trades(guid)
+    local n = 0
+    for _, row in ipairs(ns.Interactions.For(guid) or {}) do
+        if row.type == "trade" then n = n + 1 end
+    end
+    return n
+end
+
+ns.AutoAdd.RegisterTrigger("traded", {
+    order = 30,
+    label = L["Traded with you"],
+    amount = { min = 1, max = 20, default = 1, steps = { 1, 2, 3, 4, 5, 10, 15, 20 }, unit = L["trades##autounit"] },
+    kinds = { "trade" },
+    backfill = true,
+    source = "auto_trade",
+    count = function(guid) return Trades(guid) end,
+    describe = function(rule)
+        local n = tonumber(rule.amount) or 0
+        return ns.Plural(n, L["traded with you once|traded with you %d times##plural"])
+    end,
+})

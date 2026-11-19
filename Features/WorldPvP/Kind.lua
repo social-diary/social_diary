@@ -177,6 +177,8 @@ function WorldPvP.Resolve(fight, killer, time, where)
         fight.row.context.probable = nil
         fight.row.context.spell = killer.spell
         ns.Touch()
+        -- Confirmed in place: now it counts for the Auto-Add rules.
+        ns.AutoAdd.Wake(guid, DEATH)
         return fight
     end
 
@@ -200,3 +202,54 @@ function WorldPvP.Resolve(fight, killer, time, where)
     end
     return { guid = guid, row = row, mark = mark }
 end
+
+--------------------------------------------------------------------------
+-- The Auto-Add trigger
+--------------------------------------------------------------------------
+--
+-- "In N fights": the fights the buffer still holds (a week for a
+-- stranger), they killed you, you (or your group) killed them, or either.
+-- A death counts only once the death recap confirmed it (decision 5): a
+-- guess (context.probable) never does, so a guess that is never confirmed
+-- never adds anyone. Resolve wakes the rules when it confirms a row in
+-- place; a row moved to another player goes through Interactions.Add.
+
+local FIGHTS = {
+    killedMe = { [DEATH] = true },
+    killedThem = { [KILL] = true },
+    either = { [DEATH] = true, [KILL] = true },
+}
+
+local function Fights(guid, who)
+    local kinds = FIGHTS[who] or FIGHTS.either
+    local n = 0
+    for _, row in ipairs(ns.Interactions.For(guid) or {}) do
+        if kinds[row.type] and not (row.type == DEATH and row.context and row.context.probable) then
+            n = n + 1
+        end
+    end
+    return n
+end
+
+ns.AutoAdd.RegisterTrigger("pvp", {
+    order = 50,
+    label = L["World PvP##autotrigger"],
+    amount = { min = 1, max = 20, default = 1, steps = { 1, 2, 3, 4, 5, 10, 15, 20 }, unit = L["kills##autounit"] },
+    option = { key = "killed", default = "either", label = L["Who died##autooption"],
+        choices = { { "killedMe", L["They killed me##autokilled"] }, { "killedThem", L["I killed them##autokilled"] },
+            { "either", L["Either##autokilled"] } } },
+    kinds = { KILL, DEATH },
+    sides = "other",
+    backfill = true,
+    source = "auto_pvp",
+    count = function(guid, rule) return Fights(guid, rule.option) end,
+    describe = function(rule)
+        local n = tonumber(rule.amount) or 0
+        if rule.option == "killedMe" then
+            return ns.Plural(n, L["killed you once|killed you %d times##plural"])
+        elseif rule.option == "killedThem" then
+            return ns.Plural(n, L["you killed them once|you killed them %d times##plural"])
+        end
+        return ns.Plural(n, L["fought you to the death once|fought you to the death %d times##plural"])
+    end,
+})

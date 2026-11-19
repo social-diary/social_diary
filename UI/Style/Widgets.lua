@@ -576,7 +576,12 @@ end
 -- Without `set` it is a status, written in by the addon, not a switch: the
 -- same box and tick at full ink, but deaf to the mouse, so it never darkens
 -- under it and a click goes nowhere.
-function Style.Checkbox(parent, width, text, get, set, hint)
+--
+-- With `follow`, the label is a link as well (Style.Link's line and hover):
+-- a click on its words calls `follow()`, and only the box (and the gap
+-- after it) switches. `.follow` keeps it, for the pad (UI/Settings/Pad.lua),
+-- and `.line` is the label's line, which the pad's look reddens with it.
+function Style.Checkbox(parent, width, text, get, set, hint, follow)
     local button = CreateFrame("Button", nil, parent)
     local FONT = Style.FONT
     local labelW = width - TICK_BOX - 7
@@ -622,7 +627,7 @@ function Style.Checkbox(parent, width, text, get, set, hint)
 
     local function Hover(self, over)
         over = over and not self.unavailable
-        self.label:SetFontObject(over and FONT.strong or FONT.body)
+        if not self.follow then self.label:SetFontObject(over and FONT.strong or FONT.body) end
         self.tick:SetHot(over)
     end
     button:SetScript("OnEnter", function(self) Hover(self, true) end)
@@ -633,13 +638,49 @@ function Style.Checkbox(parent, width, text, get, set, hint)
         set(self.checked)
     end)
 
+    if follow then
+        local INK, STRONG = Style.INK, Style.INK_STRONG
+        local words = button.label:GetStringWidth()
+        button.follow = follow
+
+        button.line = button:CreateTexture(nil, "ARTWORK")
+        button.line:SetHeight(1)
+        button.line:SetPoint("TOPLEFT", button.label, "BOTTOMLEFT", 0, -1)
+        button.line:SetWidth(math.max(words, 8))
+        button.line:SetColorTexture(INK[1], INK[2], INK[3], Style.HAIRLINE)
+
+        -- (the words take their own clicks; the box keeps the rest of its line)
+        local hit = CreateFrame("Button", nil, button)
+        hit:SetPoint("TOPLEFT", button.label, "TOPLEFT", 0, 1)
+        hit:SetSize(math.max(words, 8) + 2, button.label:GetStringHeight() + 4)
+        button.labelHit = hit
+        button:SetHitRectInsets(0, width - TICK_BOX - 7, 0, 0)
+
+        -- (the words light as a link's do; the box alone darkens over the rest)
+        local function Words(over)
+            over = over and not button.unavailable
+            local c = over and STRONG or INK
+            button.label:SetTextColor(c[1], c[2], c[3])
+            button.line:SetColorTexture(c[1], c[2], c[3], over and Style.HAIRLINE_HOT or Style.HAIRLINE)
+        end
+        hit:SetScript("OnEnter", function() Words(true) end)
+        hit:SetScript("OnLeave", function() Words(false) end)
+        hit:SetScript("OnClick", function()
+            if button.unavailable then return end
+            follow()
+        end)
+    end
+
     return button
 end
 
 -- A whole number written on a short line, centred, clamped to [min, max]
 -- on Enter and on losing focus. A box left empty or unreadable goes back to
--- `get()`. Refresh shows the current value.
-function Style.NumberField(parent, width, min, max, get, set)
+-- `get()`. Refresh shows the current value. `steps`, if given, is a ladder
+-- of rungs in order ({ 1, 2, 3, 4, 5, 10, 15, ... }): Nudge climbs it, rung
+-- by rung, so the pad reaches the far end in a few presses; a number typed
+-- stays free within the bounds.
+function Style.NumberField(parent, width, min, max, get, set, steps)
     local INK, STRONG = Style.INK, Style.INK_STRONG
     local box = CreateFrame("EditBox", nil, parent)
     box:SetSize(width, 18)
@@ -657,9 +698,27 @@ function Style.NumberField(parent, width, min, max, get, set)
 
     function box:Refresh() self:SetText(tostring(get())) end
 
-    -- One up or down (`delta`), clamped: the pad's left and right.
+    box.steps = steps
+
+    -- One up or down (`delta`), clamped: the pad's left and right. On a
+    -- ladder, to the next rung that way (from a number between two rungs,
+    -- the nearer one that way).
     function box:Nudge(delta)
-        local n = math.max(min, math.min(max, math.floor((tonumber(get()) or min) + delta)))
+        local now = tonumber(get()) or min
+        local n = math.floor(now + delta)
+        if steps and steps[1] and delta ~= 0 then
+            n = now
+            if delta > 0 then
+                for _, rung in ipairs(steps) do
+                    if rung > now then n = rung break end
+                end
+            else
+                for i = #steps, 1, -1 do
+                    if steps[i] < now then n = steps[i] break end
+                end
+            end
+        end
+        n = math.max(min, math.min(max, n))
         if n ~= get() then set(n) end
         self:Refresh()
     end
