@@ -497,10 +497,10 @@ do
         text = "" }, WHERE)
     Eq(linked.people[1].guid, GUID, "a picked name keeps its entry")
     Open()
-    -- (the mock's hand, ~6 px a letter, has room for the first alone in
-    -- this margin: everyone is in its tooltip)
-    local card = Card("with Brannoc")
-    Check(card ~= nil, "who was there, as many as the column holds")
+    -- (the mock's hand, ~6 px a letter: in the one plate's row shared out,
+    -- ROW, the card has room for everyone; everyone is in its tooltip too)
+    local card = Card("with Brannoc and Wenna")
+    Check(card ~= nil, "who was there, as many as the column holds: " .. tostring(Card() and Card().name:GetText()))
     Eq(card.tip()[1][1], "With Brannoc and Wenna", "everyone in its tooltip")
     Eq(card.guid, GUID, "linked, to the first")
     Eq(card:Quote(), "", "an empty text is no quote")
@@ -518,7 +518,7 @@ do
 
     ns.db.characters[GUID].names = { { first = "Brannock", surname = "" } }
     Open()
-    Check(Card("with Brannock") ~= nil, "their current name, not the one written")
+    Check(Card("with Brannock and Wenna") ~= nil, "their current name, not the one written")
     Eq(linked.people[1].name, "Brannoc", "which stays as it was")
     ns.db.characters[GUID].names = { { first = "Brannoc", surname = "" } }
 end
@@ -923,7 +923,7 @@ do
     Eq(linked.people[1].name, "Brannoc", "the name as written stays")
     Eq(linked.people[2].guid, OTHER, "and nobody else's")
     Open()
-    local card = Card("with Brannoc")
+    local card = Card("with Brannoc and Wenna")
     Check(card ~= nil, "on its card")
     Eq(card.guid, OTHER, "linked to who is left")
 end

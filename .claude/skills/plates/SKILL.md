@@ -210,7 +210,7 @@ unstuck), cap = { x, y, w, limit, align }, notes = { x, y, w } }`. Variants:
   `items(plate)` (→ `{ top, x, <own fields> }`; `kind`/`rank` set by core),
   `pool` (page key; killer and foe share `killerPool`), `new(parent)`,
   `write(note, it, c)` (`c.Seed(...)`, `c.now`, `c.named`, `c.ToPerson`),
-  `mark(it, note)`, optional `wants(it)` (row width, `Shared`), `assume(said,
+  `mark(it, note)`, optional `wants(it)` (the most it is laid at in a shared row, `Rows`), `assume(said,
   plate, slot, plan)` (words before laying: as if all shown), `say(said,
   shown, plate)` (words after: asked in `order`, so a witness's creature is
   overruled by a killer card left off), `count` + `counted(shown, plate)`
@@ -237,7 +237,7 @@ unstuck), cap = { x, y, w, limit, align }, notes = { x, y, w } }`. Variants:
   (`QUOTES`) before dropping items; in a row, notes are re-sorted by their
   mark's x.
 - **Notes** are laid by `LayNotes` into `boxes` (column under the caption,
-  or `row` boxes, shared by `Shared`/`ROW.most`). Pools: `notePool`
+  or `row` boxes; a row with fewer notes than boxes is shared out by `Rows`/`RowAt`/`ROW`, see §5). Pools: `notePool`
   (`UI/Paper/Strip.lua`), `findPool` (`Features/Firsts/Card.lua`), `killerPool`
   (`Features/Deaths/Card.lua`, `ns.Deaths.Card`, also the close-call card:
   the card wears a face of the close calls' (`Card.RegisterFace`,
@@ -406,6 +406,19 @@ that is only a recorded run's door is dropped in `Recap.Plates`
   session moments are an open proposal; don't build them unasked.
 - No SavedVariables changes without asking. Plates are computed at view
   time.
+- **A row with fewer notes than boxes gives them its room** (19 Nov, the
+  user: "make space for as much margin content as possible"; the one
+  plate's row and F+L's tucked row; `UI/Journey/Margin.lua`'s `ROW`,
+  `Rows`, `RowAt`, `Shows`). Every kind, not only those with `wants`: the
+  row is laid at its share (at most `ROW.most` 220), the XL/L thresholds
+  and its own 142, and the laying that shows the most is kept, judged note
+  by note in order of importance (shown, words, pieces, least given up for
+  height; equal, the wider). A `wants` kind is laid no wider than the
+  widest wish; people's strips keep 142; three notes, or only people,
+  keep the row as it is. Boxes are laid as near their marks as the row
+  lets them (runs of boxes that would meet centred on their marks), inside
+  the row's ends. Columns (two and three plates, FL, a one plate's long
+  caption) are not this: their widths are the slots'.
 
 ## 6. Tooling
 
