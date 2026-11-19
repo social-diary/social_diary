@@ -40,6 +40,8 @@ ns.UI.JourneyPlate.RegisterMark("campfire", {
     order = 70, cap = 20, count = "campfires",
     radius = MARK.h / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return Campfire.Tip(m.campfire, now) end,
+    -- A row of the ticklist: the place, no time (Text.lua's Campfire.Label).
+    label = function(fire, m) return Campfire.Label(fire or m.campfire) end,
     -- Every sitting on the spot in one account (Text.lua's Campfire.Tips).
     tips = function(list, now)
         local fires = {}

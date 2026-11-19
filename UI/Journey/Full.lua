@@ -45,6 +45,14 @@ local function Back()
     local page = YourDiary.page
     Style.PlaySound("pageTurn")
     local e = page.recap and page.recap.entries[page.open]
+    -- (opened from the ticklist, which stayed on the left page: back to its
+    -- piece's plates, the ticklist built again on them, Page.lua's OpenFull)
+    if page.choosing then
+        page.mode, page.fullMap = "plates", nil
+        YourDiary.DrawRight()
+        YourDiary.FillChoose()
+        return
+    end
     YourDiary.OpenPiece(page.open, page.pieceOf == e and page.piece or nil)
 end
 -- (the pad's B on the full page, UI/Journey/Pad.lua)

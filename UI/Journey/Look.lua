@@ -31,8 +31,12 @@
 --   UI/Journey/Caption.lua  a plate glued in its slot with its caption and
 --                           margin (Plated), and the open level's plates
 --                           (DrawPlates, F+L)
+--   UI/Journey/Glide.lua    the right page eased from one drawing to the
+--                           next after a tick (Glide.Around, GLIDE)
 --   UI/Journey/Full.lua     a zone's whole map across the page
 --   UI/Journey/Empty.lua    the page with nothing on the road yet
+--   UI/Journey/Choose.lua   the left page as a ticklist: what is on the
+--                           right page, chosen (CHOOSE, Choose, Unchoose)
 --   UI/Journey/Page.lua     the page built, refreshed and turned to, and
 --                           its entry points (ns.UI.RefreshJourneyPage,
 --                           RedrawJourneyPage, OpenZoneSheet, JourneyPage,

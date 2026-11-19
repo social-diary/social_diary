@@ -176,6 +176,40 @@ ns.Slash.Register("journey", Command,
     { dev = true, usage = "journey [stats | segments | raw | clear]" })
 
 --------------------------------------------------------------------------
+-- /sd chosen: what the player chose on the ticklist (choose-page.md)
+--------------------------------------------------------------------------
+--
+-- The ticklist has no way back to the diary's choice (the user's, 18 Nov),
+-- so the in-client round needs one: `list` prints this character's
+-- `j.chosen`, `clear` takes it all off. Cards hidden through their editor
+-- (`rec.custom.hidden`) are not touched: the map menu brings those back.
+
+local function ChosenCommand(rest)
+    local verb = (rest or ""):match("^%s*(%S*)")
+    local j = Journey.Mine()
+    local chosen = j and j.chosen
+    if verb == "clear" then
+        if j then j.chosen = nil end
+        Journey.Touch()
+        if ns.UI.RefreshJourneyPage then ns.UI.RefreshJourneyPage(false) end
+        ns.Print("Every choice on this character's pages taken off.")
+        return
+    end
+    local keys = {}
+    for key in pairs(chosen or {}) do keys[#keys + 1] = key end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        local t = tonumber(key:match("^[^:]*:(%d+)"))
+        Line("%-4s %s  (%s)", chosen[key], key, Clock(t))
+    end
+    ns.Print("%d choice(s) on this character's pages.", #keys)
+end
+
+ns.Slash.Register("chosen", ChosenCommand,
+    "Your Diary's ticklist: |cffffd100list|r, |cffffd100clear|r",
+    { dev = true, usage = "chosen [list | clear]" })
+
+--------------------------------------------------------------------------
 -- /sd pen: the fountain pen's numbers, changed live
 --------------------------------------------------------------------------
 --

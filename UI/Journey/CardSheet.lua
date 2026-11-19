@@ -92,9 +92,13 @@ local PERSON = { most = 4, row = 18, level = 20, out = 4, foot = 2, hot = 0.12, 
 -- pick and another are the user's own, word for word.
 local WORDS = {
     add = L["Add custom event..."], pick = L["What happened here?"], another = L["Choose another"], which = L["Which one?"],
-    hidden = L["Left out of this page"], save = L["Save"], cancel = L["Cancel"],
+    save = L["Save"], cancel = L["Cancel"],
     hide = L["Leave it out"], reset = L["Undo my changes"], remove = L["Delete this card"],
     confirm = L["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."],
+    -- The page's own choice (.claude/features/choose-page.md, Phase 4): only
+    -- ever leaving out, as "Leave it out" does; back is the ticklist's alone.
+    leavePlace = L["Leave this place out"], choose = L["Choose what's on this page..."],
+    leavePerson = L["Leave %1$s off this page"],
 }
 
 local CardSheet = {}
@@ -668,7 +672,8 @@ function CardSheet.View() return view end
 -- menu's. The player not on this plate's zone (elsewhere, or in an instance,
 -- where the position is not given) has no place here to lend: then the spot of
 -- the mark Y was pressed on, which is the very spot a right click on it gives;
--- on the plate itself, nothing (nil), and Y is not offered. Never a made-up
+-- on the plate itself, nothing (nil): no add line (Y still opens a close-up's
+-- menu for the page's own lines, PlaceMenu). Never a made-up
 -- place: the middle of the picture would be a spot the player never stood on.
 local function PadWhere(plate, frame)
     local e, mapID = plate.entry, plate.mapID
@@ -683,12 +688,53 @@ local function PadWhere(plate, frame)
     return { mapID = mapID, x = x, y = y, from = e.from, to = e.to }
 end
 
+-- The plate's menu, as a generator (its lines, for the mouse's
+-- MenuUtil.CreateContextMenu and the pad's Pad.Menu.Open alike, so the two
+-- can never drift: the controller-support skill's rule 6): "Add custom
+-- event..." at `where` (the spot under the cursor, or the pad's, PadWhere)
+-- where a card can be added there; "Leave this place out" and "Choose what's
+-- on this page..." on a close-up of the plates' page. Nil where it would hold
+-- nothing; `leaves` whether it holds the page's own lines.
+local function PlaceGenerator(plate, where)
+    local adds = where ~= nil and Kinds()[1] ~= nil
+    -- (no "Left out of this page" list here: whatever is left out, a card
+    -- hidden from its own menu too, comes back on the ticklist alone,
+    -- Core/Chosen.lua, the user's, 18 Nov)
+    -- The page's own choice (.claude/features/choose-page.md): a close-up of
+    -- the plates' page only (a full page's plate has no plan: it is the
+    -- level's whole zone, not a place of this page). The menu only hides
+    -- (the user's, 18 Nov): a place left out comes back on the ticklist
+    -- alone, which the pad reaches too (UI/Journey/Pad.lua).
+    local leaves = plate.plan ~= nil and plate.plan.moments ~= nil and plate.plan.moments[1] ~= nil
+    local page = YourDiary.page
+    local piece = leaves and YourDiary.ShownPiece and YourDiary.ShownPiece()
+    local chooses = piece and not page.choosing and YourDiary.CanChoose(piece)
+    if not (adds or leaves) then return nil, false end
+    return function(_, root)
+        if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
+        if leaves then
+            root:CreateButton(WORDS.leavePlace, function()
+                -- (eased, as a tick on the ticklist: UI/Journey/Glide.lua)
+                if ns.Chosen.LeavePlace(nil, plate.plan) then YourDiary.Glide.Around(Redraw) end
+            end)
+            if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
+        end
+    end, leaves
+end
+CardSheet.PlaceGenerator = PlaceGenerator
+
 local function PlaceMenu(plate)
-    -- (the pad: straight to the picker at its spot, no menu; the cards left
-    -- out of this page are the mouse's to bring back)
+    -- The pad (its Y, CardSheet.PadRight): where the menu holds the page's
+    -- own lines, the same menu on the pad's slip (Pad.Menu), its add line at
+    -- the pad's spot; where it would only add, straight to the picker there,
+    -- as before (the lead's decision, 18 Nov).
     if padCall then
         local where = PadWhere(plate, padCall.frame)
-        if where and Kinds()[1] ~= nil then
+        local generator, leaves = PlaceGenerator(plate, where)
+        if generator and leaves then
+            padCall.did = "menu"
+            if not padCall.dry then ns.UI.Pad.Menu.Open(plate.over or plate, generator) end
+        elseif generator then
             padCall.did = "add"
             if not padCall.dry then StartAdding(plate, where) end
         end
@@ -698,25 +744,50 @@ local function PlaceMenu(plate)
     local x, y = plate:MapAtCursor()
     local where = x and e and e.from and e.to and e.to > e.from and ns.ZoneOf(mapID) == mapID
         and { mapID = mapID, x = x, y = y, from = e.from, to = e.to } or nil
-    local adds = where and Kinds()[1] ~= nil
-    local hidden = {}
-    for _, h in ipairs(e and e.hidden or {}) do
-        if ns.Custom.Spec(h.kind) then hidden[#hidden + 1] = h end
+    local generator = PlaceGenerator(plate, where)
+    if generator then MenuUtil.CreateContextMenu(plate.over, generator) end
+end
+
+-- A person's strip's menu, as a generator (the mouse's and the pad's alike):
+-- "Leave <name> off this page", `out` on every moment of theirs on the
+-- page, the strip's own (a gift of theirs joined to it too) and theirs on the
+-- page's other plates. As a place left out, they come back on the ticklist
+-- alone (the user's, 18 Nov). Nil where there is no name to say.
+local function PersonGenerator(g)
+    local page = YourDiary.page
+    local name = g and g.guid and ns.UI.JourneyText.Short(g.guid)
+    if not (page and name) then return nil end
+    local list, seen = {}, {}
+    local function Add(m)
+        if not seen[m] then seen[m] = true list[#list + 1] = m end
     end
-    if not (adds or hidden[1]) then return end
-    MenuUtil.CreateContextMenu(plate.over, function(_, root)
-        if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
-        if hidden[1] then
-            if adds then root:CreateDivider() end
-            root:CreateTitle(WORDS.hidden)
-            for _, h in ipairs(hidden) do
-                root:CreateButton(Described(ns.Custom.Spec(h.kind), h.rec), function()
-                    ns.Custom.Show(h.rec)
-                    Redraw()
-                end)
-            end
+    for _, m in ipairs(g.moments) do Add(m) end
+    for i = 1, page.layout or 0 do
+        local plan = page.plates[i] and page.plates[i].plan
+        for _, m in ipairs(plan and plan.moments or {}) do
+            if m.guid == g.guid then Add(m) end
         end
-    end)
+    end
+    return function(_, root)
+        root:CreateButton(ns.Fmt(WORDS.leavePerson, name), function()
+            local any = false
+            for _, m in ipairs(list) do any = ns.Chosen.Leave(nil, m) or any end
+            if any then YourDiary.Glide.Around(Redraw) end
+        end)
+    end
+end
+CardSheet.PersonGenerator = PersonGenerator
+
+-- A person's strip's right click (UI/Journey/Margin.lua: strip:SetRight's
+-- `menu`): their menu; `pad`, the pad's Y (UI/Journey/Pad.lua's CardAt),
+-- the same menu on the pad's slip (Pad.Menu), never MenuUtil. The pad has
+-- the way back since the ticklist took it (choose-page.md, "Later: the
+-- gamepad").
+function CardSheet.Person(strip, g, pad)
+    local generator = PersonGenerator(g)
+    if not generator then return end
+    if pad then return ns.UI.Pad.Menu.Open(strip, generator) end
+    MenuUtil.CreateContextMenu(strip, generator)
 end
 
 -- plate.onRight (UI/Journey/Leaders.lua; plate:Right). `spot`: a registered
@@ -756,8 +827,9 @@ end
 -- no right button. `frame` is what the pad stands on among a plate's marks (a
 -- mark's square or a pass's button, whose own right click is asked, so a
 -- print's or a slip's says its card as under the mouse), nil for the plate
--- itself. Returns what it did, "edit" or "add", or nil for nothing; `dry`
--- only says what it would do (the prompt's words), doing nothing.
+-- itself. Returns what it did, "edit", "add" or "menu" (the plate's menu on
+-- the pad's slip, PlaceMenu), or nil for nothing; `dry` only says what it
+-- would do (the prompt's words), doing nothing.
 function CardSheet.PadRight(plate, frame, dry)
     local call = { plate = plate, frame = frame, dry = dry }
     padCall = call

@@ -701,7 +701,9 @@ ns.UI.JourneyPlate.RegisterPass("killer", {
         local At = c.At
         local deaths = {}
         for _, rec in ipairs(ns.Deaths.List(j)) do
-            local d = ns.Deaths.Read(rec)
+            -- (a death the player left off the page has no card, as it has
+            -- no cross: Core/Chosen.lua, the user's, 18 Nov)
+            local d = not ns.Chosen.DeathOut(j, rec.t) and ns.Deaths.Read(rec) or nil
             if d then deaths[#deaths + 1] = d end
         end
         KillerCard.Match(c.crosses, deaths, c.mapID, function(d) return At(d.x, d.y) end, c.entry,
@@ -740,6 +742,28 @@ ns.UI.JourneyPlate.RegisterPass("killer", {
     end,
 })
 
+-- The plate's death moments a killer's card stands for (JourneyMargin's
+-- `moments`, for the ticklist's "no room in the margin"): those at the
+-- segments its cross marks, or holding the time of its death (a card of its
+-- own: an edited one has no cross of its own), and an inserted death's.
+local function DeathMoments(it, plan)
+    local k, list = it.killer, {}
+    for _, m in ipairs(plan.moments or {}) do
+        local seg = m.kind == "death" and m.seg
+        local of = false
+        if seg then
+            for _, s in ipairs(k.cross and k.cross.segs or {}) do of = of or Marks({ segs = { s } }, seg) end
+            local t = k.last
+            of = of or (not k.cross and type(t) == "number" and t >= seg.from - MATCH.slack
+                and t <= (seg.to or seg.from) + MATCH.slack)
+        elseif m.kind == "killedBy" and k.death then
+            of = (m.killedBy.customOf or m.killedBy) == (k.death.customOf or k.death)
+        end
+        if of then list[#list + 1] = m end
+    end
+    return list
+end
+
 -- What killed you, in the margin (ns.UI.JourneyMargin.Register): order
 -- 40, after someone who was there (a witness, 30) and before what nearly
 -- got you (the close call's card, 50, which shares its pool). Left off, its
@@ -757,6 +781,7 @@ ns.UI.JourneyMargin.Register("killer", {
     end,
     mark = function(it) return it.killer.mark end,
     custom = function(it) return "killedBy", it.killer.death end,
+    moments = DeathMoments,
     say = function(said, shown, plate)
         if plate.killer and not shown[1] then said.death = ns.UI.JourneyText.KillerName(plate.killer) end
     end,
@@ -783,6 +808,7 @@ ns.UI.JourneyMargin.Register("killerCustom", {
     end,
     mark = function(it) return it.killer.mark end,
     custom = function(it) return "killedBy", it.killer.death end,
+    moments = DeathMoments,
     say = function(said, shown, plate)
         local on = {}
         for _, it in ipairs(shown) do on[it.killer] = true end

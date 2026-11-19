@@ -20,11 +20,15 @@ ns.Locale.Add("frFR", {
     ["Choose another"] = "En choisir un autre",
     ["What happened here?"] = "Que s’est-il passé ici ?",
     ["Which one?"] = "Lequel ?",
-    ["Left out of this page"] = "Exclu de cette page",
     ["Delete this card"] = "Supprimer cette fiche",
     ["Leave it out"] = "Le laisser de côté",
     ["Undo my changes"] = "Annuler mes modifications",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] = "Supprimer cette fiche que tu as écrite ?\n\nElle disparaît de la carte et de la page. Impossible de revenir en arrière.",
+    ["Leave this place out"] = "Laisser ce lieu de côté",
+    ["Choose what's on this page..."] = "Choisir ce qui figure sur cette page…",
+    ["Leave %1$s off this page"] = "Retirer %1$s de cette page",
+    -- UI/Journey/Choose.lua
+    ["Arrived %s##zone"] = "Arrivée %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Les lieux de chaque niveau sont collés ici :",
     ["Where you stayed a while, darker the longer."] = "Là où tu as passé un moment, plus foncé selon la durée.",
@@ -50,6 +54,8 @@ ns.Locale.Add("frFR", {
     ["The diary is not keeping this character's road just now, so there is nothing to tell here yet."] = "Le journal ne garde pas la route de ce personnage pour le moment, il n’y a donc encore rien à raconter ici.",
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "Rien de ta route n’est encore sur cette carte.",
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "Choisir ce qui figure sur cette page",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "Clic gauche pour revenir",
     ["%s to go back"] = "%s pour revenir",

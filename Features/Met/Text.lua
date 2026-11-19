@@ -73,6 +73,13 @@ function Met.Tips(recs, now)
     return Fmt(L["With %s"], List(names)), lines
 end
 
+-- A row of the ticklist ("Choose what's on this page", the mark's `label`):
+-- who, as a person's own row is their name. What happened is the player's
+-- own line, as long as they wrote it: the tooltip keeps it.
+function Met.Label(rec)
+    return Met.Name(rec) or L["Someone you met"]
+end
+
 -- One card's tooltip, as its mark's alone (Met.Tips).
 function Met.Tip(rec, now)
     return Met.Tips({ rec }, now)

@@ -333,6 +333,25 @@ do
     early:Hide()
 end
 
+-- A death the player left off the page (Core/Chosen.lua) takes its cross and
+-- its card with it: the stop's two are gone, the road's stays.
+do
+    j.chosen = { [("death:%d:"):format(t0)] = "out" }
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    Eq(#page.plates[1].crosses, 1, "the stop's deaths, left out, keep their cross")
+    local list = Cards()
+    Eq(#list, 1, "one killer card")
+    Eq(list[1] and list[1].name:GetText(), "Kolkar Stormer", "the card is still of the deaths left out")
+    j.chosen = nil
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    Eq(#page.plates[1].crosses, 2, "back: both crosses")
+    Eq(Cards()[1].name:GetText(), "Sunscale Lashtail", "back: the card")
+end
+
 --------------------------------------------------------------------------
 Section("the ladder: print, name alone, and left off")
 
@@ -496,6 +515,18 @@ local function Sweep(where)
         end
         Eq(plate.captionFoot, -caption.recorded.points[1].args[4] + math.ceil(caption:GetStringHeight()),
             "the words do not end where the margin was laid under, at " .. L)
+        -- What had no room is kept for the ticklist (Margin.lua's LeftOff,
+        -- Recap.Choices), each item with the moments it stands for.
+        local off = {}
+        for _, it in ipairs(plate.leftOff or {}) do off[it.kind == "person" and it.g.guid or it.kind] = it end
+        Check(plate.leftOff and plate.plan.leftOff == plate.leftOff, "nothing left off is kept, at " .. L)
+        if not card then
+            Check(off.killer and off.killer.moments[1] and off.killer.moments[1].kind == "death",
+                "the killer left off is not its deaths', at " .. L)
+        end
+        if not numa then
+            Check(off[NUMA] and off[NUMA].moments[1] ~= nil, "Numa left off has no moments, at " .. L)
+        end
         -- Who has no strip is in the words.
         if bram == nil then Check(caption:GetText():find("Bram"), "Bram is nowhere, at " .. L) end
     end

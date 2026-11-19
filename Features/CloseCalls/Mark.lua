@@ -28,6 +28,9 @@ ns.UI.JourneyPlate.RegisterMark("close", {
     order = 30, cap = 20, count = "closeCalls",
     radius = CLOSE.stem.h / 2 + 1, halo = false, hover = CLOSE.dot,
     tip = function(m, now) return CloseCalls.Tip(m.call, now) end,
+    -- A row of the ticklist: the creature and the health, short (Text.lua's
+    -- CloseCalls.Label).
+    label = function(call, m) return CloseCalls.Label(call or m.call) end,
     -- Those on one spot told together (Text.lua's Tips).
     tips = function(list, now)
         local calls = {}

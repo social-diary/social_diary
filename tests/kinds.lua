@@ -53,6 +53,12 @@ for _, kind in ipairs(Sorted(Recap.MOMENTS)) do
         kind .. " gathers from a list nobody registered")
     Check(spec.moment ~= nil or spec.field ~= nil, kind .. " puts its record in no field of the moment")
     Check(Plate.MARKS[kind] ~= nil, kind .. " has no mark on the plates")
+    -- A choice on the page points at a moment by its key (Core/Chosen.lua).
+    local key = Recap.Key({ kind = kind, t = 1000, [spec.field or "rec"] = { t = 1000, npcID = 7 } })
+    Check(type(key) == "string" and key:find("^" .. (spec.keyKind or kind) .. ":1000:") ~= nil, kind .. " yields no key")
+    Check(spec.keyKind == nil or (Recap.MOMENTS[spec.keyKind] and Recap.MOMENTS[spec.keyKind].field == spec.field),
+        kind .. " is keyed as a kind that reads another record")
+    Check(spec.key == nil or type(spec.key) == "function", kind .. "'s key is no function")
     Check(not orders[spec.order], kind .. " shares its order with " .. tostring(orders[spec.order]))
     orders[spec.order or 0] = kind
 end

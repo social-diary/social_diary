@@ -31,13 +31,17 @@ ns.Locale.Add("deDE", {
     ["Choose another"] = "Etwas anderes wählen",
     ["What happened here?"] = "Was ist hier passiert?",
     ["Which one?"] = "Welches?",
-    ["Left out of this page"] = "Auf dieser Seite weggelassen",
     ["Delete this card"] = "Diese Karte löschen",
     ["Leave it out"] = "Weglassen",
     ["Undo my changes"] = "Meine Änderungen zurücknehmen",
     ["Delete this card you wrote?\n\nIt comes off the map and the page. This cannot be undone."] =
         "Diese Karte löschen, die du geschrieben hast?\n\nSie verschwindet von der Landkarte und von der Seite. Das kann nicht rückgängig gemacht werden.",
 
+    ["Leave this place out"] = "Diesen Ort weglassen",
+    ["Choose what's on this page..."] = "Auswählen, was auf dieser Seite steht …",
+    ["Leave %1$s off this page"] = "%1$s auf dieser Seite weglassen",
+    -- UI/Journey/Choose.lua
+    ["Arrived %s##zone"] = "Ankunft %s",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Die Orte jeder Stufe werden hier eingeklebt:",
     ["Where you stayed a while, darker the longer."] = "Wo du eine Weile bliebst, dunkler, je länger.",
@@ -70,6 +74,8 @@ ns.Locale.Add("deDE", {
     -- UI/Journey/Full.lua
     ["Nothing of your road is on this map yet."] = "Auf dieser Karte ist noch nichts von deinem Weg.",
 
+    -- UI/Journey/Left.lua
+    ["Choose what's on this page"] = "Auswählen, was auf dieser Seite steht",
     -- UI/Journey/Look.lua
     ["Left click to go back"] = "Linksklick: zurück",
     ["%s to go back"] = "%s: zurück",

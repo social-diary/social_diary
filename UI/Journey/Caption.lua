@@ -81,8 +81,12 @@ local function Plated(ctx, slot, over)
     local e, p, plate, heading, words = ctx.e, ctx.p, ctx.plate, ctx.heading, ctx.words
     plate:SetSlot(slot)
     local aw, ah = ArtSize(slot)
-    plate:Draw(SheetOf(p.mapID), e, Plate.Window(p.mapID, p.cx, p.cy, aw, ah), { moments = MomentsOf(e),
-        cap = Plate.Share(slot), fights = page.fights, witnesses = page.witnesses, now = page.now })
+    local window = Plate.Window(p.mapID, p.cx, p.cy, aw, ah)
+    plate:Draw(SheetOf(p.mapID), e, window, { moments = MomentsOf(e),
+        cap = Plate.Share(slot), fights = page.fights, witnesses = page.witnesses, now = page.now,
+        -- (after a tick, the art printed wide enough for the picture to
+        -- ease from the view before: UI/Journey/Glide.lua; else nil)
+        under = YourDiary.Glide.Under(plate, p.mapID, window) })
     plate.share, plate.plan = Plate.Share(slot), p
     -- A close-up looks at nothing closer. The first plate is the one a full
     -- page was just drawn on, shown all along, so its view would stay (only
@@ -235,6 +239,9 @@ local function DrawPlates(e)
     local page = YourDiary.page
     local plates, layout, pattern = PlatesOf(e)
     page.layout, page.pattern = #plates, pattern
+    -- (after a tick: each plate drawn on the frame it was on, for the page
+    -- to ease from the old drawing to this one, UI/Journey/Glide.lua)
+    YourDiary.Glide.Assign(plates)
     page.notesWritten = 0
     for _, spec in ipairs(MARGIN_ORDER) do
         if spec.count then page[spec.count] = 0 end
@@ -279,6 +286,16 @@ local function DrawPlates(e)
             Plated(ctx, slot, false)
         end
     end
+    -- The slots the plates were drawn in, kept on the piece for the
+    -- ticklist's cap line (UI/Journey/Choose.lua: each box as wide as its
+    -- plate's share of the page), F+L's and TOP's included, and still there
+    -- while a plate's whole map is open. View time only: nothing is saved.
+    local drawn = {}
+    for i = 1, #plates do
+        local s = PlateAt(i).slot
+        drawn[i] = s and { w = s.w, h = s.h } or nil
+    end
+    e.drawnSlots = drawn
     return #plates
 end
 
