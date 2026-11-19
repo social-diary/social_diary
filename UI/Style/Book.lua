@@ -83,6 +83,47 @@ local function Dip(distance)
     return GUTTER_DIP * t * t
 end
 
+-- The open pages' shape, as the pieces the paper is drawn in: each page's
+-- flat body, and DIP_STEP-wide strips near the fold, inset top and bottom
+-- by the dip. Calls fn(page, x1, x2, inset) for every piece (page 1 is the
+-- left), x measured from the book's left edge. Whatever lies on the paper
+-- (grain, a trial paper texture) is cut from the same pieces, so it bends
+-- into the dip with it.
+local function PagePieces(leftWidth, width, fn)
+    fn(1, STACK, leftWidth - GUTTER_REACH, 0)
+    for d = 0, GUTTER_REACH - DIP_STEP, DIP_STEP do
+        local inset = Dip(d + DIP_STEP / 2)
+        fn(1, leftWidth - d - DIP_STEP, leftWidth - d, inset)
+        fn(2, leftWidth + d, leftWidth + d + DIP_STEP, inset)
+    end
+    fn(2, leftWidth + GUTTER_REACH, width - STACK, 0)
+end
+
+-- Lays a texture over one page's pieces: one texture per piece, each
+-- showing its slice of `coords` (l, r, t, b; flipped crops welcome), as
+-- if the whole crop were stretched over the page's width and from `top`
+-- to `height - top` down it. Each keeps its slice in `texCoords`, to set
+-- again after a new SetTexture. Returns the pieces' textures.
+local function PageTextures(book, leftWidth, width, height, page, coords, top, layer, sublevel, path)
+    local l, r, t, b = coords[1], coords[2], coords[3], coords[4]
+    local px1 = page == 1 and STACK or leftWidth
+    local px2 = page == 1 and leftWidth or width - STACK
+    local function U(x) return l + (r - l) * (x - px1) / (px2 - px1) end
+    local function V(y) return t + (b - t) * (y - top) / (height - 2 * top) end
+    local textures = {}
+    PagePieces(leftWidth, width, function(p, x1, x2, inset)
+        if p ~= page then return end
+        local texture = book:CreateTexture(nil, layer, nil, sublevel)
+        texture:SetPoint("TOPLEFT", x1, -inset)
+        texture:SetPoint("BOTTOMRIGHT", book, "BOTTOMLEFT", x2, inset)
+        if path then texture:SetTexture(path) end
+        texture.texCoords = { U(x1), U(x2), V(inset), V(height - inset) }
+        texture:SetTexCoord(unpack(texture.texCoords))
+        textures[#textures + 1] = texture
+    end)
+    return textures
+end
+
 local function PageStack(book, height)
     local P, INK = Style.PAPER, Style.INK
     local circle = Style.Art("circle")
@@ -276,7 +317,6 @@ end
 -- STACK in from the outer ones.
 function Style.Book(parent, leftWidth, width, height)
     local book = CreateFrame("Frame", nil, parent)
-    local BOOK_RIGHT = width - STACK
 
     -- The page colour: two flat bodies, and narrow strips near the fold that
     -- step down into the dip. Each piece carries its own shading along the
@@ -304,33 +344,25 @@ function Style.Book(parent, leftWidth, width, height)
             end
         end
     end
-    Paper(STACK, leftWidth - GUTTER_REACH, 0)
-    for d = 0, GUTTER_REACH - DIP_STEP, DIP_STEP do
-        local inset = Dip(d + DIP_STEP / 2)
-        Paper(leftWidth - d - DIP_STEP, leftWidth - d, inset)
-        Paper(leftWidth + d, leftWidth + d + DIP_STEP, inset)
-    end
-    Paper(leftWidth + GUTTER_REACH, BOOK_RIGHT, 0)
+    PagePieces(leftWidth, width, function(_, x1, x2, inset) Paper(x1, x2, inset) end)
     PageStack(book, height)
 
-    book.paperLeft = book:CreateTexture(nil, "BACKGROUND", nil, -7)
-    book.paperLeft:SetPoint("TOPLEFT", STACK, 0)
-    book.paperLeft:SetPoint("BOTTOMRIGHT", book, "BOTTOMLEFT", leftWidth, 0)
-
-    book.paperRight = book:CreateTexture(nil, "BACKGROUND", nil, -7)
-    book.paperRight:SetPoint("TOPLEFT", leftWidth, 0)
-    book.paperRight:SetPoint("BOTTOMRIGHT", -STACK, 0)
+    -- A trial paper texture (`/sd art paper`), cut to the pages' shape.
+    book.paperLeft = PageTextures(book, leftWidth, width, height, 1, { 0, 1, 0, 1 }, 0, "BACKGROUND", -7)
+    book.paperRight = PageTextures(book, leftWidth, width, height, 2, { 0, 1, 0, 1 }, 0, "BACKGROUND", -7)
 
     function book:ApplyPaper()
         for _, side in ipairs({ "Left", "Right" }) do
-            local texture = self["paper" .. side]
             local path = Style.Art("paper" .. side)
-            texture:SetTexture(path)
-            texture:SetShown(path ~= nil)
+            for _, texture in ipairs(self["paper" .. side]) do
+                texture:SetTexture(path)
+                texture:SetTexCoord(unpack(texture.texCoords))
+                texture:SetShown(path ~= nil)
+            end
         end
     end
     book:ApplyPaper()
-    Style.Grain(book, leftWidth)
+    Style.Grain(book, leftWidth, width, height)
 
     local function Edge(a, ax, b, bx, w, h, orientation, from, to)
         local edge = book:CreateTexture(nil, "BACKGROUND", nil, -6)
@@ -374,22 +406,18 @@ local STAINS = {
 local grainStrength = 1
 
 -- Adds to book.grain, which PageStack started with the stack's wear.
-function Style.Grain(book, leftWidth)
+function Style.Grain(book, leftWidth, width, height)
     local path = Style.Art("grain")
     if path then
         for _, layer in ipairs(GRAIN_LAYERS) do
-            local texture = book:CreateTexture(nil, "BORDER", nil, 0)
-            -- Clear of the dip at the fold, where it would lighten the leather.
-            if layer[1] == 1 then
-                texture:SetPoint("TOPLEFT", STACK, -GUTTER_DIP)
-                texture:SetPoint("BOTTOMRIGHT", book, "BOTTOMLEFT", leftWidth, GUTTER_DIP)
-            else
-                texture:SetPoint("TOPLEFT", leftWidth, -GUTTER_DIP)
-                texture:SetPoint("BOTTOMRIGHT", -STACK, GUTTER_DIP)
+            -- Cut to the paper's pieces, so it bends into the fold with the
+            -- page and stays off the dip, where it would lighten the leather.
+            -- The crop spans GUTTER_DIP in from the top and bottom, where the
+            -- one flat rectangle it once was ended, so the grain lies as it did.
+            local pieces = PageTextures(book, leftWidth, width, height, layer[1], layer[2], GUTTER_DIP, "BORDER", 0, path)
+            for _, texture in ipairs(pieces) do
+                book.grain[#book.grain + 1] = { texture = texture, alpha = layer[3] }
             end
-            texture:SetTexture(path)
-            texture:SetTexCoord(unpack(layer[2]))
-            book.grain[#book.grain + 1] = { texture = texture, alpha = layer[3] }
         end
     end
 
