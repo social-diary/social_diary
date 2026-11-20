@@ -14,8 +14,12 @@ G.PLURAL_FORMS = 1
 G.Upper = function(text) return text end
 G.Capital = function(text) return text end
 
--- "第25".
-G.Ordinal = function(n, context) return "第" .. n end
+-- "第25"; counted times and deaths take their measure word, as the
+-- words for 1 to 12 do ("第三次" ... "第13次").
+G.Ordinal = function(n, context)
+    if context == "time" or context == "death" then return "第" .. n .. "次" end
+    return "第" .. n
+end
 
 -- A date's day is the figure.
 G.Day = function(n) return tostring(n) end

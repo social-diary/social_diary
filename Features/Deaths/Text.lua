@@ -45,7 +45,7 @@ function Deaths.Killed(n)
     n = n or 1
     -- Once says no count, and English has a word for two that is no plural
     -- category (as Text.Times has them); the rest is the count's plural.
-    if n == 1 then return Glue(L["killed you"]) end
+    if n == 1 then return Glue(ns.Locale.They(L["killed you"], nil)) end
     if n == 2 then return Glue(L["killed you twice"]) end
     return Glue(Fmt(L["killed you %s##times"], ns.Plural(n, L["%s time|%s times##plural"], NUMBER[n] or tostring(n))))
 end

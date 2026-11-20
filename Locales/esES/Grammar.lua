@@ -31,9 +31,9 @@ G.Capital = function(text)
     return lead .. Up(first) .. rest
 end
 
--- "25.º", and "25.ª" for a feminine noun: the death ("muerte") and the
--- match ("partida") of the word lists.
-local FEMININE = { death = true, match = true }
+-- "25.º", and "25.ª" for a feminine noun: the death ("muerte"), the
+-- match ("partida") and the time ("por 13.ª vez") of the word lists.
+local FEMININE = { death = true, match = true, time = true }
 G.Ordinal = function(n, context) return n .. (FEMININE[context] and ".ª" or ".º") end
 
 -- A date's day is the figure: "25 oct", "6 de octubre".
@@ -120,6 +120,31 @@ local DOWN = { ["Á"] = "á", ["É"] = "é", ["Í"] = "í", ["Ó"] = "ó", ["Ú"
 G.PeopleSortLabel = function(label)
     local first = label:match("^[\195][\128-\191]") or label:sub(1, 1)
     return (DOWN[first] or first:lower()) .. label:sub(#first + 1)
+end
+
+-- A stranger described, as Spanish says it: the class a noun, the race its
+-- adjective, the level after, all in lower case, the article by the foe's
+-- sex: "un cazador enano de nivel 16", "una cazadora enana". The client
+-- gives the class by sex but the race in one form (the masculine): a race
+-- word's first word ending in -o takes -a for a woman ("Elfo de la noche"
+-- -> "elfa de la noche", "No-muerto" -> "no-muerta"); "Tauren", "Trol"
+-- stay. The words are the ##foe keys, their <they:un/una> picked here.
+local function Low(word)
+    if not word then return nil end
+    local first = word:match("^[\195][\128-\191]") or word:sub(1, 1)
+    return (DOWN[first] or first:lower()) .. word:sub(#first + 1):lower()
+end
+G.FoeName = function(words, foe)
+    local L, Fmt, They = ns.L, ns.Fmt, ns.Locale.They
+    local sex = foe and foe.sex
+    local race, class, level = Low(words.race), Low(words.class), words.level
+    if race and sex == 3 then race = race:gsub("^([^ ]-)o%f[ %z]", "%1a", 1) end
+    local function Say(key, ...) return Fmt(They(L[key], sex), ...) end
+    if level and race and class then return Say("a level %1$d %2$s %3$s##foe", level, race, class) end
+    if level and (race or class) then return Say("a level %1$d %2$s##foe", level, class or race) end
+    if level then return Say("someone at level %d##foe", level) end
+    if race and class then return Say("a %1$s %2$s##foe", race, class) end
+    return Say("a %s##foe", class or race)
 end
 
 -- A first found card's heading, whole: "¡Tu primer objeto verde!".

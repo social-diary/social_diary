@@ -30,9 +30,9 @@ G.Capital = function(text)
     return Up(first) .. rest
 end
 
--- "25°", and "25ª" for a feminine noun: the death ("morte") and the match
--- ("partita") of the word lists.
-local FEMININE = { death = true, match = true }
+-- "25°", and "25ª" for a feminine noun: the death ("morte"), the match
+-- ("partita") and the time ("per la 13ª volta") of the word lists.
+local FEMININE = { death = true, match = true, time = true }
 G.Ordinal = function(n, context) return n .. (FEMININE[context] and "ª" or "°") end
 
 -- A date's day is the figure: "25 ott", "6 ottobre".
@@ -101,6 +101,33 @@ G.PLACE = {
 G.Plural = function(name) return name end
 G.ItemWord = function(n, item) return item end
 G.KillerName = function(k) return k.name end
+
+-- A foe described ("un Dwarf Hunter di Level 16"): the race and class come
+-- in the client's words (English), the article is Italian and goes by the
+-- foe's sex and the word after it: "una Hunter", "un’Orc", "uno Shaman",
+-- "uno Gnome" (UI/Journey/Text/Grammar.lua's FoeName).
+local FEMALE = 3
+local function Article(text, sex)
+    local word = text:match("^un (.*)$")
+    if not word then return text end
+    if sex == FEMALE then
+        return (word:find("^[AEIOUaeiou]") and "un’" or "una ") .. word
+    end
+    local uno = word:find("^[Ss][^AEIOUaeiou]") or word:find("^[Zz]") or word:find("^[Gg][Nn]")
+        or word:find("^[Pp][Ss]") or word:find("^[Xx]")
+    return (uno and "uno " or "un ") .. word
+end
+G.FoeName = function(words, foe)
+    local L, Fmt = ns.L, ns.Fmt
+    local level, race, class = words.level, words.race, words.class
+    local text
+    if level and race and class then text = Fmt(L["a level %1$d %2$s %3$s##foe"], level, race, class)
+    elseif level and (race or class) then text = Fmt(L["a level %1$d %2$s##foe"], level, race or class)
+    elseif level then return Fmt(L["someone at level %d##foe"], level)
+    elseif race and class then text = Fmt(L["a %1$s %2$s##foe"], race, class)
+    else text = Fmt(L["a %s##foe"], race or class) end
+    return Article(text, foe and foe.sex)
+end
 
 -- After "Ordinato per", lower case, accents included.
 local DOWN = { ["À"] = "à", ["È"] = "è", ["É"] = "é", ["Ì"] = "ì", ["Ò"] = "ò", ["Ù"] = "ù" }

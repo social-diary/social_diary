@@ -54,15 +54,18 @@ local function TimesSaid(n)
 end
 Text.TimesSaid = TimesSaid
 
-local function Said(outcome, n, spell)
+-- The <they:...> forms are picked for `sex` before Fmt fills the words in:
+-- Fmt settles any left to the form for no one known (Locales/Locale.lua).
+local function Said(outcome, n, spell, sex)
+    local function They(text) return ns.Locale.They(text, sex) end
     local words = FIGHT[outcome == "lost" and "lost" or "won"]
-    if n <= 1 then return Glue(words[1]) end
+    if n <= 1 then return Glue(They(words[1])) end
     if outcome == "lost" and spell then
-        if n == 2 then return Fmt(SPELL[1], spell) end
-        return Fmt(SPELL[2], ns.UI.Format.Nth(n, NTH_TIME), spell)
+        if n == 2 then return Fmt(They(SPELL[1]), spell) end
+        return Fmt(They(SPELL[2]), ns.UI.Format.Nth(n, NTH_TIME), spell)
     end
-    if n == 2 then return Glue(words[2]) end
-    return Fmt(words[3], ns.UI.Format.Nth(n, NTH_TIME))
+    if n == 2 then return Glue(They(words[2])) end
+    return Fmt(They(words[3]), ns.UI.Format.Nth(n, NTH_TIME))
 end
 
 -- The fight moments on a plate with one person, told as one phrase, longest
@@ -95,12 +98,12 @@ function Text.FightWords(fights, ctx)
     local spell = lost and same >= 2 and ctx.who and latest.mark and ns.Journey.FightSpell(latest.mark, ctx.who) or nil
     local function Whole(phrase)
         if other <= 0 then return They(phrase) end
-        return They(Fmt(lost and L["%1$s. You killed them %2$s.##fight, then the score"]
-            or L["%1$s. They killed you %2$s.##fight, then the score"], phrase, TimesSaid(other)))
+        return Fmt(They(lost and L["%1$s. You killed them %2$s.##fight, then the score"]
+            or L["%1$s. They killed you %2$s.##fight, then the score"]), phrase, TimesSaid(other))
     end
     local list = {}
-    if spell then list[#list + 1] = Whole(Said(latest.outcome, same, spell)) end
-    list[#list + 1] = Whole(Said(latest.outcome, same))
+    if spell then list[#list + 1] = Whole(Said(latest.outcome, same, spell, ctx.sex)) end
+    list[#list + 1] = Whole(Said(latest.outcome, same, nil, ctx.sex))
     return list
 end
 
