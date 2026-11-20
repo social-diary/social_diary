@@ -259,6 +259,13 @@ ns.Locale.Add("deDE", {
         "Nur mit eingeschalteten Namensplaketten. Nicht in Dungeons, Schlachtzügen oder Schlachtfeldern.",
     ["Enable sightings in cities - performance warning:"] = "Sichtungen in Städten (kostet Leistung):",
 
+    -- UI/Settings/Sections/Recording.lua: auto-add
+    ["Auto-Add Players"] = "Spieler automatisch eintragen",
+    ["Off unless you switch it on. Adds someone after 5 minutes grouped with you without a break (not in battlegrounds), or once they’ve been seen near you 3 separate times. Anyone you remove from the diary stays out."] =
+        "Aus, bis du es einschaltest. Trägt Spieler ein, mit denen du 5 Minuten ohne Pause in einer Gruppe warst (nicht auf Schlachtfeldern) oder die zu drei verschiedenen Zeiten in deiner Nähe waren. Wen du aus dem Tagebuch entfernst, bleibt draußen.",
+    ["Sightings count only while “Notice who passes you in the open world” is on."] =
+        "Sichtungen zählen nur, solange „Bemerken, wer in der offenen Welt an dir vorbeikommt“ eingeschaltet ist.",
+
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Tagebuch öffnen",
     ["Opens the journal"] = "Öffnet das Tagebuch",
