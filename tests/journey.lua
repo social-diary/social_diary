@@ -944,16 +944,97 @@ Eq(mark.mapID, MULGORE, "the fight's zone")
 Eq(mark.t, row.time, "the mark's time is the row's")
 local index = J.FightIndex()
 Eq(Text.Fight(mark, index), "beat Tullus Hostilius", "a stranger named while the buffer has them")
--- The buffer lets them go: only the outcome is left.
+-- What they looked like is kept on the mark, not who they were (20 Nov
+-- 2026): this one's record had only a level.
+Eq(mark.foe and mark.foe.level, 20, "the stranger's level not kept on the mark")
+Eq(mark.foe and (mark.foe.race or mark.foe.class), nil, "a race or class made up for the stranger")
+-- The buffer lets them go: the outcome is left, and their description.
 ns.Interactions.Prune(mock.now + 40 * DAY)
 index = J.FightIndex()
-Eq(Text.Fight(mark, index), "won a fight", "a stranger named after the buffer")
+Eq(Text.Fight(mark, index), "beat someone at level 20", "a stranger described after the buffer")
+mark.foe = nil
+Eq(Text.Fight(mark, index), "won a fight", "a stranger with nothing kept of them after the buffer")
+
+-- A stranger described in full: level, race, class (and sex), by tokens and
+-- IDs, the words found when shown; never a name or a GUID.
+do
+    local FOE = F.Player{ guid = "Player-4620-00F0E001", "Grimbald", "Stoutarm", class = "WARRIOR", race = "Human",
+        level = 16, sex = 2 }
+    mock.SetUnit("target", FOE)
+    ns.Characters.ObserveUnit("target")
+    ns.WorldPvP.Kill(FOE.guid)
+    local won = mine.marks[#mine.marks]
+    Eq(won.guid, nil, "a described stranger's GUID kept on the mark")
+    local foe = won.foe or {}
+    Eq(table.concat({ foe.level or "-", foe.race or "-", foe.raceID or "-", foe.class or "-", foe.classID or "-",
+        foe.sex or "-" }, " "), "16 Human 1 WARRIOR 1 2", "the description kept on the mark")
+    for key in pairs(foe) do
+        Check(key ~= "name" and key ~= "first" and key ~= "guid" and key ~= "surname", "the mark keeps their " .. key)
+    end
+    Eq(Text.Fight(won, J.FightIndex()), "beat Grimbald Stoutarm", "a described stranger named while buffered")
+    local name, shorter = Text.FoeStrip(won, J.FightIndex())
+    Eq(name, "a level 16 Human Warrior", "a fight strip's heading")
+    Eq(table.concat(shorter or {}, " / "), "a level 16 Warrior / a Warrior", "the heading's shorter forms")
+    -- An old mark (before 20 Nov) has no `foe`: the buffer's record while
+    -- it has them, then nothing.
+    won.foe = nil
+    Eq((Text.FoeStrip(won, J.FightIndex())), "a level 16 Human Warrior", "an old mark not described from the buffer")
+    ns.Interactions.Prune(mock.now + 40 * DAY)
+    Eq((Text.FoeStrip(won, J.FightIndex())), "someone", "an old mark past the buffer")
+    Eq(Text.Fight(won, J.FightIndex()), "won a fight", "an old mark's words past the buffer")
+    won.foe = foe
+    Eq(Text.Fight(won, J.FightIndex()), "beat a level 16 Human Warrior", "a described stranger's words past the buffer")
+    Eq(Text.MarginWhat({ { kind = "fight", outcome = "won", mark = won } }, 16), "fell\194\160to\194\160you",
+        "a won fight's strip")
+    Eq(Text.MarginWhat({ { kind = "fight", outcome = "lost", mark = won } }, 16), "killed\194\160you",
+        "a lost fight's strip")
+end
+
+-- Partial descriptions read whole, and English takes "an" before a vowel.
+Eq(Text.FoeName({ level = 16, race = "Dwarf", class = "HUNTER" }), "a level 16 Dwarf Hunter", "level, race, class")
+Eq(Text.FoeName({ race = "Dwarf", class = "HUNTER" }), "a Dwarf Hunter", "a skull's level")
+Eq(Text.FoeName({ level = 16, class = "HUNTER" }), "a level 16 Hunter", "no race")
+Eq(Text.FoeName({ level = 16, race = "Scourge" }), "a level 16 Undead", "no class")
+Eq(Text.FoeName({ race = "Orc", class = "WARRIOR" }), "an Orc Warrior", "an before a vowel")
+Eq(Text.FoeName({ race = "Scourge" }), "an Undead", "a race alone")
+Eq(Text.FoeName({ class = "MAGE" }), "a Mage", "a class alone")
+Eq(Text.FoeName({ level = 7 }), "someone at level 7", "a level alone")
+Eq(Text.FoeName({ sex = 3 }), nil, "nothing to say")
+Eq(Text.FoeName(nil), nil, "no description")
+Eq(table.concat(Text.FoeNames({ level = 60, race = "NightElf", class = "WARRIOR" }), " / "),
+    "a level 60 Night Elf Warrior / a level 60 Warrior / a Warrior", "a long description's shorter forms")
+Eq(table.concat(Text.FoeNames({ race = "Orc", class = "WARRIOR" }), " / "), "an Orc Warrior / a Warrior",
+    "no form said twice")
+Eq(J.Foe(nil), nil, "a description of no one")
 
 -- Someone in the diary keeps their name, from the diary.
 local died = ns.WorldPvP.Died({ player = true, guid = TESTER }, mock.now, ns.Where())
 Eq(died.mark.guid, TESTER, "a diary entry's GUID not kept on the mark")
 Eq(died.mark.outcome, "lost", "a death's outcome")
 Eq(Text.Fight(died.mark, J.FightIndex()), "lost to Tester Testerson", "a diary fight's words")
+Check(died.mark.foe ~= nil, "a diary person's fight keeps no description")
+-- The recap names someone else: the mark, and its description, move to them.
+do
+    local guess = F.Player{ guid = "Player-4620-00F0E002", "Wrongo", "Guess", class = "MAGE", race = "Human",
+        level = 30, sex = 2 }
+    local real = F.Player{ guid = "Player-4620-00F0E003", "Real", "Killer", class = "ROGUE", race = "Tauren",
+        level = 18, sex = 3 }
+    for _, who in ipairs({ guess, real }) do
+        mock.SetUnit("target", who)
+        ns.Characters.ObserveUnit("target")
+    end
+    local fight = ns.WorldPvP.Died({ player = true, guid = guess.guid }, mock.now, ns.Where())
+    Eq(fight.mark.foe and fight.mark.foe.class, "MAGE", "setup: the guess described")
+    local moved = ns.WorldPvP.Resolve(fight, { player = true, guid = real.guid }, mock.now, ns.Where())
+    Eq(moved.mark, fight.mark, "setup: the mark moved")
+    Eq(Text.FoeName(moved.mark.foe), "a level 18 Tauren Rogue", "the description did not move with the fight")
+    Eq(moved.mark.guid, nil, "a stranger's GUID kept on a moved mark")
+    -- Moved to someone the diary knows nothing of: no description, not the
+    -- guess's.
+    J.Refight(mine, moved.mark, "Player-4620-00F0E0FF")
+    Eq(moved.mark.foe, nil, "a moved mark kept the guess's description")
+    J.Refight(mine, moved.mark, false)
+end
 -- The recap says it was a creature after all: the mark goes.
 local marks = #mine.marks
 ns.WorldPvP.Resolve(died, { player = false, npcID = 3 }, mock.now, ns.Where())

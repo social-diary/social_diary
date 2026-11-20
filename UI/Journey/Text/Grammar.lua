@@ -191,6 +191,64 @@ function Text.KillerName(k)
     return (name:find("^[AEIOUaeiou]") and "an " or "a ") .. name
 end
 
+-- A foe the diary has no name for, described (20 Nov 2026, the user: a
+-- stranger's strip read "with someone / a fight, lost", which looked
+-- broken): "a level 16 Dwarf Hunter". `foe` is a fight mark's description
+-- (Core/Journey.lua's Journey.Foe: level, race and raceID, class and
+-- classID, sex), or a character record of the same shape; the race and
+-- class in the client's words (ns.UI.Format.RaceName, ClassName). What is
+-- not known is left out ("a Dwarf Hunter" past a skull's level, "a level 16
+-- Hunter"); nil with nothing to say. `drop`: what to leave out for a
+-- shorter one ({ race = true }, { race = true, level = true }: FoeNames).
+-- Each shape is a whole template, so a translation orders it its own way;
+-- English takes "an" before a vowel by the word that follows the article,
+-- and a locale whose words agree with the foe's sex or decline otherwise
+-- gives grammar.FoeName(words, foe) instead ({ level, race, class }, the
+-- words chosen; the client gives class names by sex already).
+local function FoeName(foe, drop)
+    if type(foe) ~= "table" then return nil end
+    drop = drop or {}
+    local Format = ns.UI.Format
+    local level = not drop.level and type(foe.level) == "number" and foe.level > 0 and foe.level or nil
+    local race = not drop.race and Format.RaceName(foe) or nil
+    local class = Format.ClassName(foe)
+    if race == "" then race = nil end
+    if class == "" then class = nil end
+    if not (level or race or class) then return nil end
+    if G.FoeName then return G.FoeName({ level = level, race = race, class = class }, foe) end
+    local an = ((race or class or ""):find("^[AEIOUaeiou]")) ~= nil
+    if level and race and class then return Fmt(L["a level %1$d %2$s %3$s##foe"], level, race, class) end
+    if level and (race or class) then return Fmt(L["a level %1$d %2$s##foe"], level, race or class) end
+    if level then return Fmt(L["someone at level %d##foe"], level) end
+    if race and class then return Fmt(an and L["an %1$s %2$s##foe"] or L["a %1$s %2$s##foe"], race, class) end
+    return Fmt(an and L["an %s##foe"] or L["a %s##foe"], race or class)
+end
+Text.FoeName = FoeName
+
+-- The same, longest first, each one shorter than the one before, for a
+-- strip to take the first its width holds (UI/Paper/Strip.lua's `names`):
+-- whole, then without the race ("a level 60 Warrior": in a fight between
+-- players the level and the class say more), then the class alone.
+function Text.FoeNames(foe)
+    local names = {}
+    for _, drop in ipairs({ {}, { race = true }, { race = true, level = true } }) do
+        local name = FoeName(foe, drop)
+        if name and name ~= names[#names] then names[#names + 1] = name end
+    end
+    return names
+end
+
+-- The description of the foe in a fight mark: what the mark kept of them
+-- (`mark.foe`, marks since 20 Nov 2026), else, for an older mark, the
+-- buffer's record of whoever it finds for it (Journey.FightWho) while it
+-- still has them; nil once nothing says.
+function Text.FoeOf(mark, index)
+    if not mark then return nil end
+    if mark.foe then return mark.foe end
+    local guid = ns.Journey.FightWho(mark, index)
+    return guid and ns.db.characters[guid] or nil
+end
+
 --------------------------------------------------------------------------
 -- The words every kind shares
 --------------------------------------------------------------------------

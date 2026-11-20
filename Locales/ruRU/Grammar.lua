@@ -147,3 +147,24 @@ G.FirstsHeading = function(list, short)
     end
     return G.Capital(text) .. "!"
 end
+
+-- A stranger described (UI/Journey/Text/Grammar.lua's FoeName): the
+-- client's race and class come capitalised ("Дворф", "Охотница"), which
+-- Russian writes lower case inside a phrase: "дворф-охотница 16-го уровня".
+-- No article, so "a" and "an" are one shape. The race comes in its one
+-- (masculine) form; the class by the foe's sex already.
+local function Lower(word)
+    if not word then return nil end
+    local first = word:match("^[%z\1-\127\194-\244][\128-\191]*")
+    if not first then return word end
+    return DownOne(first:lower()) .. word:sub(#first + 1)
+end
+G.FoeName = function(words)
+    local L, Fmt = ns.L, ns.Fmt
+    local level, race, class = words.level, Lower(words.race), Lower(words.class)
+    if level and race and class then return Fmt(L["a level %1$d %2$s %3$s##foe"], level, race, class) end
+    if level and (race or class) then return Fmt(L["a level %1$d %2$s##foe"], level, race or class) end
+    if level then return Fmt(L["someone at level %d##foe"], level) end
+    if race and class then return Fmt(L["a %1$s %2$s##foe"], race, class) end
+    return Fmt(L["a %s##foe"], race or class)
+end

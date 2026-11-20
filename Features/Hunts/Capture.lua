@@ -32,8 +32,9 @@ local addonName, ns = ...
 local Hunts = ns.Hunts
 
 -- Seconds: how long the quest log's updates are gathered into one
--- reading; how long a quest gone from the log waits for its turn-in.
-local WAIT = { scan = 0.2, removed = 1 }
+-- reading; how long a quest gone from the log waits for its turn-in; how
+-- long a want met with too few looted waits for a loot line still to come.
+local WAIT = { scan = 0.2, removed = 1, looted = 1 }
 
 local function Live() return ns.Journey.Kept() end
 
@@ -137,6 +138,27 @@ local function Done(j, questID, index)
     return rec
 end
 
+-- A met want with fewer looted than it wants (Hunts.Short) is ended a
+-- moment later, in case the last loot line is still to come: then it is
+-- no hunt, and keeps nothing. Each such want waits once.
+local waiting = {}
+
+local function Met(j, questID, index)
+    if not Hunts.Short(Hunts.Hunting(j, questID, index)) then return Done(j, questID, index) end
+    local key = Hunts.Key(questID, index)
+    if waiting[key] then return end
+    waiting[key] = true
+    ns.After(WAIT.looted, function()
+        waiting[key] = nil
+        local now = Live()
+        if not Hunts.Hunting(now, questID, index) then return end
+        if Hunts.Short(Hunts.Hunting(now, questID, index)) then
+            ns.Debug("hunt dropped: %s came otherwise than looted", tostring(Hunts.Hunting(now, questID, index).item))
+        end
+        Done(now, questID, index)
+    end)
+end
+
 -- One reading of the log: a want with none had yet begins a hunt, a hunt
 -- whose want is met ends.
 function Hunts.Scan()
@@ -146,7 +168,7 @@ function Hunts.Scan()
         for _, want in ipairs(Wants(quest)) do
             local met = want.finished or (want.have and want.need and want.have >= want.need)
             if Hunts.Hunting(j, quest.questID, want.index) then
-                if met then Done(j, quest.questID, want.index) end
+                if met then Met(j, quest.questID, want.index) end
             elseif not met and want.have == 0 then
                 -- What it is, and every kind that drops it, where QuestieDB
                 -- says (EXT-2).
@@ -231,15 +253,36 @@ ns.On("LOOT_OPENED", function()
     end
 end)
 
+-- The user's own loot lines, in the client's words (as the firsts read
+-- them): a hunted item looted. Mail, a trade, the bank and a vendor say
+-- nothing of the kind, so what came that way is not counted.
+local LOOTED = { "LOOT_ITEM_SELF_MULTIPLE", "LOOT_ITEM_SELF" }
+
+local function Own(text)
+    for _, line in ipairs(LOOTED) do
+        local args = ns.ReadString(_G[line], text)
+        if args then return args[1], tonumber(args[2]) or 1 end
+    end
+end
+
 -- A group member's loot (the party's loot message, plain, probe 12 Oct):
 -- a hunted item they took is one the group's kills gave and the user could
 -- not have (Hunts.Shared). The looter by their GUID, so the message's
 -- words in any language do not matter; "x3" after the link is three.
 ns.OnChat("CHAT_MSG_LOOT", function(text, _, guid)
     local j = Live()
-    if not Hunting(j) or not guid or guid == ns.ownGUID or not ns.Roster.Has(guid) then return end
+    if not Hunting(j) then return end
     text = ns.Plain(text)
     if type(text) ~= "string" then return end
+    local link, count = Own(text)
+    if link then
+        local item = link:match("|h%[(.-)%]|h")
+        if item and Hunts.Looted(j, item, tonumber(link:match("|Hitem:(%d+)")), count) then
+            ns.Debug("hunt looted: %d %s", count, item)
+        end
+        return
+    end
+    if not guid or guid == ns.ownGUID or not ns.Roster.Has(guid) then return end
     local item = text:match("|h%[(.-)%]|h")
     if not item then return end
     local itemID = tonumber(text:match("|Hitem:(%d+)"))

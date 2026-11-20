@@ -22,11 +22,53 @@ local ToPerson = YourDiary.ToPerson
 local Handout, LeaderMark, Leader = YourDiary.Handout, YourDiary.LeaderMark, YourDiary.Leader
 local NoteGuid, Named, Rival, Tier = YourDiary.NoteGuid, YourDiary.Named, YourDiary.Rival, YourDiary.Tier
 
+-- Blood on a fight's strip (20 Nov 2026, the user: "blood splats on that
+-- card, like the witness card"): the witness card's dried blood (UI/Ink/
+-- Blood.lua, one look), on every strip that tells a fight, a stranger's or
+-- a diary person's, as the mark it leads to is the fight's (Plate.PRIORITY).
+-- How much, by how it ended, as BLOOD.amount names it: a fight lost the
+-- witness's "watched" (a thumb's print, a run, a drip: your blood), a fight
+-- won its "saw" (a small stain and a few drops: theirs, and you walked on).
+-- Seeded by the strip's own seed, so it lies the same at every drawing; at
+-- whichever right corner (the tape is at the left) lies further from where
+-- its leader leaves the strip, so the pencil never runs through it.
+local FIGHT_BLOOD = { lost = "watched", won = "saw" }
+
 -- A margin note: a paper strip taped beside the plate, a name in the
 -- diary's hand that opens their page and what happened under it.
 local function NewNote()
     local page = YourDiary.page
-    local strip = ns.UI.PaperStrip(page.right)
+    local hooks = {}
+    local strip = ns.UI.PaperStrip(page.right, hooks)
+    local stain = {}
+    local function Make()
+        local t = strip:CreateTexture(nil, "BORDER", nil, 1)
+        if t.SetSnapToPixelGrid then
+            t:SetSnapToPixelGrid(false)
+            t:SetTexelSnappingBias(0)
+        end
+        return t
+    end
+    -- After the slip is laid (UI/Paper/Strip.lua's `draw`): its writing is
+    -- strip.inkBoxes, as laid. strip.fightBlood says what was spilt (the
+    -- tests), nil without a fight.
+    function hooks.draw(self, _, w, h)
+        local fight = self.note and self.note.fight
+        local B = ns.UI.Blood
+        local amount = fight and B.BLOOD.amount[FIGHT_BLOOD[fight.outcome] or ""]
+        local corner
+        if amount and fight.g and fight.plate then
+            local at = LeaderMark(fight.g, self, fight.plate)
+            if at then
+                local sx, sy = self:Nearest(at[1], at[2])
+                local c = self:Focus().corners
+                local function D(p) return (p[1] - sx) ^ 2 + (p[2] - sy) ^ 2 end
+                corner = D(c[3]) >= D(c[2]) and "br" or "tr"
+            end
+        end
+        self.fightBlood = B.Draw(self, stain, Make, amount, w, h, self.inkBoxes or {}, (fight and fight.key) or "fight",
+            corner)
+    end
     -- Above the plates and the leaders: a strip lies on the page over the
     -- start of its leader, and takes the mouse before anything under it.
     strip:SetFrameLevel(page.right:GetFrameLevel() + STRIPS.level)
@@ -258,6 +300,34 @@ local function MarginNote(plate, e, it, named)
         -- cannot be on a stranger's strip, so the quote's tooltip stays
         -- the diary people's. Ink and tooltip only: the strip lays out as
         -- it did.
+        -- A fight with someone the mark does not name (a stranger: the
+        -- mark keeps no GUID of theirs, Core/Journey.lua's Journey.Fight)
+        -- is headed by what they looked like, "a level 16 Dwarf Hunter",
+        -- with shorter forms for a narrow strip (Text.FoeStrip; 20 Nov
+        -- 2026, the user: "with someone / a fight, lost" read broken). The
+        -- buffer may still have them (Journey.FightWho, by the fight's
+        -- time): then the strip links to their glimpse as a first
+        -- sighting's does, or, someone inked in since, is theirs by name.
+        -- The grouping and the caption's count (People, Named) stay as
+        -- they were: the note is still a stranger's, `someone`.
+        local seedWho = guid or ("someone" .. it.index)
+        local name, names
+        if not g.guid then
+            local fight
+            for _, m in ipairs(g.moments) do
+                if m.kind == "fight" then fight = m end
+            end
+            if fight then
+                local who = fight.mark and ns.Journey.FightWho(fight.mark, page.fights)
+                who = who and ns.db.characters[who] ~= nil and who or nil
+                if who and ns.Diary.IsDiary(who) then
+                    guid = who
+                else
+                    name, names = Text.FoeStrip(fight.mark, page.fights)
+                    guid = who
+                end
+            end
+        end
         local stranger = guid ~= nil and not ns.Diary.IsDiary(guid)
         local tip = quote and Tip or nil
         if stranger then
@@ -265,9 +335,45 @@ local function MarginNote(plate, e, it, named)
                 return ns.UI.PersonText.GlimpseTip(ns.Characters.FullName(guid) or ns.Characters.Name(guid))
             end
         end
-        strip:SetNote({ name = Text.MarginWho(guid), what = Text.MarginWhat(g.moments, e.level), quote = quote,
+        -- A fight on it bleeds (FIGHT_BLOOD): lost, if any was.
+        local outcome
+        for _, m in ipairs(g.moments) do
+            if m.kind == "fight" and outcome ~= "lost" then outcome = m.outcome == "lost" and "lost" or "won" end
+        end
+        -- A foe's strip reads as a fight, not as company (20 Nov 2026, the
+        -- user: "with Mika / killed you" read like a friend's): someone of
+        -- the other faction, every moment of theirs here a fight, is headed
+        -- by their name alone, the subject of what follows ("Mika / killed
+        -- you again"); with time together or a note as well, still "with
+        -- Mika" ("35 min together, then killed you"). Where their faction
+        -- is not known, a rival (tagged foe) or only fights here will do.
+        -- Company is time together, a note, or what they gave you (a
+        -- feature's moment of tier 1, People.lua's TIER); a first sighting
+        -- or a crossed path is not (20 Nov 2026, in the client: "with Mika
+        -- / killed you and first seen, and you'd meet again").
+        local fought = Text.HasFight(g.moments)
+        local fightsOnly = fought and not Text.HasCompany(g.moments)
+        if not name and guid and not stranger and fightsOnly then
+            local record = ns.db.characters[guid]
+            local theirs, mine = record and record.faction, UnitFactionGroup and UnitFactionGroup("player")
+            local known = (theirs == "Horde" or theirs == "Alliance") and (mine == "Horde" or mine == "Alliance")
+            if (known and theirs ~= mine) or not known then name = Text.Short(guid) end
+        end
+        -- The fights told with their count that evening (Text.FightWords):
+        -- by whoever the buffer or the diary knows them as, plain without.
+        local sex
+        for _, m in ipairs(g.moments) do
+            if m.kind == "fight" and m.mark and m.mark.foe and m.mark.foe.sex then sex = m.mark.foe.sex end
+        end
+        local record = guid and ns.db.characters[guid]
+        sex = sex or (record and record.sex)
+        local what, whats = Text.MarginWhat(g.moments, e.level,
+            { who = guid, j = ns.Journey.Mine(), index = page.fights, sex = sex })
+        local seed = table.concat({ seedWho, plate.mapID or 0, level }, ":")
+        strip:SetNote({ name = name or Text.MarginWho(guid), names = names, whats = whats,
+            what = what, quote = quote,
             quoteLines = quoteMost, guid = guid, plain = stranger, rival = Rival(guid), onClick = ToPerson, tip = tip,
-            seed = table.concat({ guid or ("someone" .. it.index), plate.mapID or 0, level }, ":") })
+            seed = seed, fight = outcome and { outcome = outcome, g = g, plate = plate, key = seed .. ":fight" } or nil })
         return strip
     end
     local spec = MARGIN[it.kind]

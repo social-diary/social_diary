@@ -204,15 +204,18 @@ local function People(e)
     return list and Fmt(L["With %s."], list) or nil
 end
 
--- A fight in a few words. A stranger the buffer has let go is "a fight",
--- and how it ended (JRN-10).
+-- A fight in a few words. A stranger the buffer has let go is described
+-- as the mark kept them ("lost to a level 16 Dwarf Hunter", Text.FoeName:
+-- the plate's strip says the same), or, with nothing kept, "a fight" and
+-- how it ended (JRN-10).
 function Text.Fight(mark, index)
     local guid = ns.Journey.FightWho(mark, index)
     local name = guid and Who(guid)
+    local foe = not name and Text.FoeName(Text.FoeOf(mark, index)) or nil
     if mark.outcome == "won" then
-        return name and Fmt(L["beat %s"], name) or L["won a fight"]
+        return name and Fmt(L["beat %s"], name) or foe and Fmt(L["beat %s##foe"], foe) or L["won a fight"]
     end
-    return name and Fmt(L["lost to %s"], name) or L["lost a fight"]
+    return name and Fmt(L["lost to %s"], name) or foe and Fmt(L["lost to %s##foe"], foe) or L["lost a fight"]
 end
 
 local function Fights(e, index)

@@ -12,15 +12,30 @@ local YourDiary = ns.UI.YourDiary
 -- The people on a plate (JRN-22): one note per person, a stranger never
 -- grouped with another, ordered by their marks' height so the leaders do
 -- not cross. Each { guid, moments, marks (page points), top }.
+--
+-- A fight whose mark names no one (a stranger then: Journey.Fight keeps only
+-- a diary person's GUID) but whose foe the buffer still knows, and who is in
+-- the diary now, is theirs here: inked in after the fights, they get one
+-- strip, not one a fight (20 Nov 2026). The moment keeps its own GUID (nil):
+-- the moments' keys are the curation's saved data (Core/JourneyRecap.lua).
+local function Whose(m, index)
+    if m.guid or m.kind ~= "fight" or not m.mark then return m.guid end
+    local who = ns.Journey.FightWho(m.mark, index)
+    return who and ns.Diary.IsDiary(who) and who or nil
+end
+
 local function People(plate)
     local groups, byGuid = {}, {}
+    local page = YourDiary.page
+    local index = page and page.fights or {}
     for _, m in ipairs(plate.people or {}) do
         local at = plate.where[m]
-        local g = m.guid and byGuid[m.guid]
+        local guid = Whose(m, index)
+        local g = guid and byGuid[guid]
         if not g then
-            g = { guid = m.guid, moments = {}, marks = {}, top = at[2] }
+            g = { guid = guid, moments = {}, marks = {}, top = at[2] }
             groups[#groups + 1] = g
-            if m.guid then byGuid[m.guid] = g end
+            if guid then byGuid[guid] = g end
         end
         g.moments[#g.moments + 1] = m
         local known = false
@@ -42,11 +57,22 @@ end
 
 -- Who the first `n` notes name, for the caption not to name them again
 -- (Text.PlateCaption's `named`).
+--
+-- The caption tells a fight by its moment's GUID, which a fight with
+-- someone inked in later has not (People's Whose): such fights on a named
+-- note count as `someone` too, one each, so the caption knows them told.
 local function Named(groups, n)
     local named = { someone = 0 }
     for i = 1, math.min(n, #groups) do
         local guid = NoteGuid(groups[i])
-        if guid then named[guid] = true else named.someone = named.someone + 1 end
+        if guid then
+            named[guid] = true
+            for _, m in ipairs(groups[i].moments) do
+                if m.kind == "fight" and not m.guid then named.someone = named.someone + 1 end
+            end
+        else
+            named.someone = named.someone + 1
+        end
     end
     return named
 end
