@@ -923,7 +923,12 @@ local function Choose()
     page.choosing, page.chooseBlocked, page.chooseNote, page.chooseLand = true, nil, nil, true
     LeftShown(page, false)
     ch:Show()
-    page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "plates", nil, nil, nil, nil
+    -- (a plate's whole map stays open: its menu's "Choose..." opens the
+    -- ticklist beside it, as maximizing a plate keeps the ticklist; Back is
+    -- to the plates, Full.lua)
+    if not (page.mode == "full" and page.fullMap) then
+        page.mode, page.fullMap, page.runVisit, page.matchId, page.session = "plates", nil, nil, nil, nil
+    end
     YourDiary.DrawRight()
     Fill()
     ch.list:SetOffset(0)
