@@ -114,7 +114,6 @@ ns.Locale.Add("deDE", {
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "noch eine Notiz|noch %s Notizen",
     ["a note|%s notes##plural"] = "eine Notiz|%s Notizen",
-    ["you won the fight"] = "du hast den Kampf gewonnen",
     ["you'd meet again"] = "ihr würdet euch wiedersehen",
     ["you'd meet again at level %d"] = "ihr würdet euch auf Stufe %d wiedersehen",
     ["first seen, and %s"] = "zuerst gesehen, und %s",

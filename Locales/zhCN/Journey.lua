@@ -108,7 +108,6 @@ ns.Locale.Add("zhCN", {
     ["one more note|%s more notes##plural"] = "再多%s条笔记",
     ["a note|%s notes##plural"] = "%s条笔记",
     ["killed you"] = "击杀了你",
-    ["you won the fight"] = "你赢得了战斗",
     ["you'd meet again"] = "你们会再次相遇",
     ["you'd meet again at level %d"] = "你们会在%d级再次相遇",
     ["first seen, and %s"] = "首次相见，且%s",

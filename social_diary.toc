@@ -221,6 +221,8 @@ UI/Map/Dungeon.lua
 UI/Ink/Blot.lua
 UI/Map/HeatSheet.lua
 UI/Ink/Pen.lua
+# Blood on a slip (the witness's card, a fight's strip): the pen's seeded stream and the blots' sums.
+UI/Ink/Blood.lua
 UI/Ink/Trail.lua
 UI/Ink/Hand.lua
 UI/Ink/HandData.lua

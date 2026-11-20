@@ -126,7 +126,6 @@ ns.Locale.Add("plPL", {
     ["one more note|%s more notes##plural"] = "Jeszcze jedna notatka|Jeszcze %s notatki|Jeszcze %s notatek",
     ["a note|%s notes##plural"] = "Notatka|%s notatki|%s notatek",
     ["killed you"] = "Śmierć z rąk tej osoby",
-    ["you won the fight"] = "<you:wygrałeś walkę/wygrałaś walkę/zwycięstwo>",
     ["you'd meet again"] = "wasze drogi znów się skrzyżowały",
     ["you'd meet again at level %d"] = "wasze drogi znów się skrzyżowały na poziomie %d",
     ["first seen, and %s"] = "pierwsze spotkanie, %s",

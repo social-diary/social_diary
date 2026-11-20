@@ -78,7 +78,7 @@ local MODULES = {
     Chrome = true, Dialog = true, Entry = true, Format = true, Keys = true, Pool = true,
     Journal = true, Settings = true, Parcel = true, Tour = true, Toast = true, MinimapButton = true,
     Surface = true, Light = true, ItemBox = true, LinkSheet = true, NoteSheet = true, MapSheet = true, MapArt = true,
-    Pen = true, InkTrail = true, InkBlot = true, Hand = true, TimelineText = true,
+    Pen = true, InkTrail = true, InkBlot = true, Blood = true, Hand = true, TimelineText = true,
     YourDiary = true, JourneyPlate = true, JourneyText = true, JourneyLook = true, JourneyMargin = true,
     DungeonMap = true, DungeonPage = true, Hints = true, HintSlip = true,
     PersonText = true, PersonStrips = true, PersonPlate = true, Clippings = true, PersonHeader = true,

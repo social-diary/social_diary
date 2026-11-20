@@ -984,7 +984,7 @@ do
     Eq(Text.Fight(won, J.FightIndex()), "won a fight", "an old mark's words past the buffer")
     won.foe = foe
     Eq(Text.Fight(won, J.FightIndex()), "beat a level 16 Human Warrior", "a described stranger's words past the buffer")
-    Eq(Text.MarginWhat({ { kind = "fight", outcome = "won", mark = won } }, 16), "you won the fight",
+    Eq(Text.MarginWhat({ { kind = "fight", outcome = "won", mark = won } }, 16), "fell\194\160to\194\160you",
         "a won fight's strip")
     Eq(Text.MarginWhat({ { kind = "fight", outcome = "lost", mark = won } }, 16), "killed\194\160you",
         "a lost fight's strip")

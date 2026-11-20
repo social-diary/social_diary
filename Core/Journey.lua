@@ -1349,6 +1349,61 @@ function Journey.FightIndex()
     return index
 end
 
+-- The user's fights with `who` in the play session (a sitting, Core/
+-- Sittings.lua: an evening at the game, no gap of an hour in it) that holds
+-- `mark`, up to and including it: how many they lost and won (20 Nov 2026,
+-- the user: a foe's strip counts the deaths of one evening, "killed you
+-- again", and a new evening starts plain). A mark is theirs where it names
+-- them or the buffer's row of its fight does (FightWho, by `index`). A
+-- route with no sitting at the time (a test's, a gap) counts back from the
+-- mark as a sitting would be cut: fights no more than Sittings.GAP apart.
+-- Nil, nil with no one to count.
+function Journey.SessionFights(j, mark, who, index)
+    if not (j and mark and who) then return nil, nil end
+    -- The sitting holding it, or the one it came just after (a fight a tick
+    -- past the last heartbeat is still that evening's).
+    local sitting
+    for _, st in ipairs(ns.Sittings and ns.Sittings.List(j) or {}) do
+        if st.from <= mark.t and mark.t - st.to <= ns.Sittings.GAP then sitting = st end
+    end
+    local theirs = {}
+    for _, m in ipairs(j.marks or {}) do
+        if m.kind == "fight" and m.t <= mark.t and Journey.FightWho(m, index) == who then theirs[#theirs + 1] = m end
+    end
+    table.sort(theirs, function(a, b) return a.t < b.t end)
+    local from = sitting and sitting.from
+    if not from then
+        from = mark.t
+        for i = #theirs, 1, -1 do
+            if from - theirs[i].t > (ns.Sittings and ns.Sittings.GAP or 3600) then break end
+            from = theirs[i].t
+        end
+    end
+    local lost, won = 0, 0
+    for _, m in ipairs(theirs) do
+        if m.t >= from then
+            if m.outcome == "lost" then lost = lost + 1 else won = won + 1 end
+        end
+    end
+    return lost, won
+end
+
+-- The spell that killed the user in a fight lost to `who`, as the death
+-- recap named it on the fight's row (a kind that sets Core/Rows.lua's
+-- `fight` to "death", its context.spell), found by the mark's time; nil
+-- where the buffer has no such row or it named none.
+function Journey.FightSpell(mark, who)
+    local rows = mark and who and ns.db.interactions[who]
+    local Get = ns.Rows.Get
+    for _, row in ipairs(rows or {}) do
+        if row.time == mark.t and Get(row.type).fight == "death" then
+            local spell = row.context and row.context.spell
+            return type(spell) == "string" and spell ~= "" and spell or nil
+        end
+    end
+    return nil
+end
+
 --------------------------------------------------------------------------
 -- Witnesses to the user's deaths and close calls
 --------------------------------------------------------------------------

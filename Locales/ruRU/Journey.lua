@@ -106,7 +106,6 @@ ns.Locale.Add("ruRU", {
     ["one more note|%s more notes##plural"] = "ещё %s<f> заметка|ещё %s<f> заметки|ещё %s заметок",
     ["a note|%s notes##plural"] = "%s<f> заметка|%s<f> заметки|%s заметок",
     ["killed you"] = "убили тебя",
-    ["you won the fight"] = "бой выигран",
     ["you'd meet again"] = "вы встретитесь снова",
     ["you'd meet again at level %d"] = "вы встретитесь снова на %d-м уровне",
     ["first seen, and %s"] = "первая встреча, и %s",

@@ -107,7 +107,6 @@ ns.Locale.Add("itIT", {
     ["one more note|%s more notes##plural"] = "un’altra nota|altre %s note",
     ["a note|%s notes##plural"] = "una nota|%s note",
     ["killed you"] = "ti ha ucciso",
-    ["you won the fight"] = "hai vinto lo scontro",
     ["you'd meet again"] = "vi incontrereste di nuovo",
     ["you'd meet again at level %d"] = "vi incontrereste di nuovo al Level %d",
     ["first seen, and %s"] = "primo avvistamento, e %s",
