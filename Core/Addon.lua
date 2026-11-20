@@ -56,6 +56,18 @@ function ns.Plain(value, fallback)
     return value
 end
 
+-- A hunter's Feign Death fires PLAYER_DEAD (and UNIT_DIED for a group
+-- member) like a real death (issue #33): every death handler asks this
+-- first. `unit` is a unit token, or a GUID for one that UNIT_DIED gives
+-- (no token for it: not feigning, as far as can be told).
+function ns.Feigning(unit)
+    if type(unit) == "string" and unit:find("-", 1, true) then
+        unit = UnitTokenFromGUID and ns.Plain(UnitTokenFromGUID(unit)) or nil
+    end
+    if not unit or not UnitIsFeignDeath then return false end
+    return ns.Plain(UnitIsFeignDeath(unit)) == true
+end
+
 -- `text` in at most `limit` bytes, never through the middle of a UTF-8
 -- character: a cut that lands on a continuation byte steps back to its start.
 function ns.CutBytes(text, limit)

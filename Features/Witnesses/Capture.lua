@@ -349,7 +349,7 @@ local function Onlookers(f, now)
 end
 
 local function Died()
-    if ns.InBattleground() then return end
+    if ns.InBattleground() or ns.Feigning("player") then return end
     local now = ns.Now()
     local f = fights[#fights]
     if not f or (f.ended and now - f.ended > WAIT.fight) then

@@ -2,6 +2,9 @@
 --
 --   tests/run.lua -v              sections and everything the addon printed
 --   tests/run.lua trade diary     just those files
+--   tests/run.lua --locale deDE   the whole run in another client language
+--   --max-mb 1024 --max-sec 120   the guard's limits per file (the defaults);
+--                                 a file over either stops the run
 --
 -- Loads the addon against the mock in wowmock.lua, once per file, and asserts
 -- the behaviour that the client would otherwise have to prove. Extend this

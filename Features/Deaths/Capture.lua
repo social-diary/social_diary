@@ -465,7 +465,9 @@ local function Died(guid)
     end
 end
 
+-- Neither counts a Feign Death (ns.Feigning, issue #33).
 ns.On("PLAYER_DEAD", function()
+    if ns.Feigning("player") then return end
     Died(ns.ownGUID)
 end)
 
@@ -474,7 +476,7 @@ end)
 -- own death is PLAYER_DEAD's, so it is not counted twice here.
 ns.On("UNIT_DIED", function(_, guid)
     guid = ns.SafeGUID(guid)
-    if guid and guid ~= ns.ownGUID then Died(guid) end
+    if guid and guid ~= ns.ownGUID and not ns.Feigning(guid) then Died(guid) end
 end)
 
 -- Combat over: the earliest the recap can be read.

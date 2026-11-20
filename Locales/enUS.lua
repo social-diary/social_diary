@@ -34,6 +34,10 @@ ns.Locale.Add("enUS", {
     ["recent level_up"] = "recent level_up",
     ["recent %s"] = "recent %s",
     -- Core/Diary.lua
+    ["friend##tag"] = "friend",
+    ["helper##tag"] = "helper",
+    ["foe##tag"] = "foe",
+    ["avoid##tag"] = "avoid",
     ["added |cffffffff%s|r to the diary."] = "added |cffffffff%s|r to the diary.",
     ["deleted everything about |cffffffff%s|r."] = "deleted everything about |cffffffff%s|r.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules.",

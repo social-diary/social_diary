@@ -28,6 +28,10 @@ ns.Locale.Add("ruRU", {
     ["recent group_leave"] = "недавно: выход из группы",
     ["recent level_up"] = "недавно: новый уровень",
     -- Core/Diary.lua
+    ["friend##tag"] = "друг",
+    ["helper##tag"] = "помощник",
+    ["foe##tag"] = "недруг",
+    ["avoid##tag"] = "избегать",
     ["added |cffffffff%s|r to the diary."] = "в дневник добавлено: |cffffffff%s|r.",
     ["deleted everything about |cffffffff%s|r."] = "удалено всё о персонаже |cffffffff%s|r.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "из дневника убрано: |cffffffff%s|r; теперь история хранится по правилам буфера.",

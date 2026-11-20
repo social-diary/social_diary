@@ -232,7 +232,7 @@ function ns.UI.ReunionText(snap)
     local tags, has = {}, {}
     for i, tag in ipairs(snap.tags or {}) do
         local colour = Style.TAG_COLORS[tag] or Style.TAG_DEFAULT
-        tags[i] = "|cff" .. Style.HexOf(colour) .. Style.Upper(tag) .. "|r"
+        tags[i] = "|cff" .. Style.HexOf(colour) .. Style.Upper(ns.Diary.TagLabel(tag)) .. "|r"
         has[tag] = true
     end
     local reason = snap.reason == "nearby" and "nearby" or "group"

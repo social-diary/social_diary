@@ -758,6 +758,20 @@ _G.UnitOnTaxi = function() return M.onTaxi end
 _G.UnitIsAFK = function() return M.afk end
 _G.UnitIsDeadOrGhost = function() return M.dead or M.ghost end
 _G.UnitIsGhost = function() return M.ghost end
+-- Issue #33: a hunter's Feign Death, the user's (M.feigning) or a unit's
+-- (its def's `feigning`).
+M.feigning = false
+_G.UnitIsFeignDeath = function(unit)
+    if unit == "player" then return M.feigning end
+    local def = M.units[unit]
+    return def and def.feigning or false
+end
+_G.UnitTokenFromGUID = function(guid)
+    for token, def in pairs(M.units) do
+        if def.guid == guid then return token end
+    end
+    return nil
+end
 _G.IsResting = function() return M.resting end
 _G.GetMaxPlayerLevel = function() return M.maxLevel end
 
@@ -1326,7 +1340,23 @@ for key, value in pairs(M) do
     end
 end
 
+-- Every global as the mock left it. A test file that stubs a client
+-- function (hooksecurefunc, BuybackItem, ...) or an addon that sets its own
+-- (SocialDiary_*, SLASH_*, BINDING_*) leaves it behind; Reset takes it all
+-- back. Without that, one file's leftover hooksecurefunc stub made every
+-- later load wrap BuybackItem once more, each wrapper holding a whole copy
+-- of the addon: ~100 MB a file, ~10 GB a run.
+local pristine = {}
+for key, value in pairs(_G) do pristine[key] = value end
+
 function M.Reset()
+    for key in pairs(_G) do
+        if pristine[key] == nil then _G[key] = nil end
+    end
+    for key, value in pairs(pristine) do
+        if rawget(_G, key) ~= value then _G[key] = value end
+    end
+
     for i = 1, #named do _G[named[i]] = nil end
     wipe(named)
     for i = 1, #M.savedVariables do _G[M.savedVariables[i]] = nil end

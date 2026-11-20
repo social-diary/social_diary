@@ -2,7 +2,7 @@
 ## Title: Social Diary
 ## Notes: Remembers the people you meet in the open world.
 ## Author: social-diary
-## Version: 4.1.0
+## Version: 4.2.1
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
 ## LoadSavedVariablesFirst: 1
@@ -70,6 +70,18 @@ Locales/deDE/JourneyMatch.lua
 Locales/deDE/JourneyStory.lua
 Locales/deDE/Settings.lua
 Locales/deDE/Windows.lua
+Locales/ptBR/Grammar.lua
+Locales/ptBR/Core.lua
+Locales/ptBR/FeaturesA.lua
+Locales/ptBR/FeaturesB.lua
+Locales/ptBR/Words.lua
+Locales/ptBR/Timeline.lua
+Locales/ptBR/JourneyMatch.lua
+Locales/ptBR/Journey.lua
+Locales/ptBR/JournalDungeon.lua
+Locales/ptBR/Misc.lua
+Locales/ptBR/Settings.lua
+Locales/ptBR/Windows.lua
 Locales/zhCN/Grammar.lua
 Locales/zhCN/Core.lua
 Locales/zhCN/FeaturesA.lua
@@ -470,6 +482,7 @@ Features/Witnesses/Capture.lua
 Dev/Art.lua
 Dev/Diagnostics.lua
 Dev/LootProbe.lua
+Dev/CloseCallProbe.lua
 Dev/HandTest.lua
 Dev/SightingsDebug.lua
 Dev/JourneyDebug.lua

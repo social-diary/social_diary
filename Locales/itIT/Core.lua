@@ -28,6 +28,10 @@ ns.Locale.Add("itIT", {
     ["recent group_leave"] = "ha lasciato il gruppo da poco",
     ["recent level_up"] = "è salita di Level da poco",
     -- Core/Diary.lua
+    ["friend##tag"] = "amico",
+    ["helper##tag"] = "aiutante",
+    ["foe##tag"] = "avversario",
+    ["avoid##tag"] = "da evitare",
     ["added |cffffffff%s|r to the diary."] = "|cffffffff%s|r è stato aggiunto al diario.",
     ["deleted everything about |cffffffff%s|r."] = "è stato eliminato tutto su |cffffffff%s|r.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "|cffffffff%s|r non è più nel diario; la sua cronologia ora segue le regole di conservazione del buffer.",

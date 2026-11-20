@@ -26,6 +26,10 @@ ns.Locale.Add("plPL", {
     ["recent level_up"] = "Ostatni awans",
     ["recent %s"] = "Ostatnie zdarzenie: %s",
     -- Core/Diary.lua
+    ["friend##tag"] = "przyjaciel",
+    ["helper##tag"] = "pomocnik",
+    ["foe##tag"] = "wróg",
+    ["avoid##tag"] = "unikać",
     ["added |cffffffff%s|r to the diary."] = "Dodano |cffffffff%s|r do dziennika.",
     ["deleted everything about |cffffffff%s|r."] = "Usunięto wszystkie dane o |cffffffff%s|r.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "usunięto |cffffffff%s|r z dziennika. Wcześniejsze spotkania pozostaną zapisane ołówkiem.",

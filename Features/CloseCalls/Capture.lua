@@ -164,17 +164,30 @@ local function Amount(spell, d, alone)
     return type(second) == "number" and second or first
 end
 
+-- Whether the user is in a party or raid.
+local function Grouped()
+    return IsInGroup ~= nil and ns.Plain(IsInGroup()) == true
+end
+
 -- The healing the user received in the latest session, from every healer
 -- the meter lists (the user, their group): each healer's spells, broken
 -- down by the unit healed. Nil while any of it does not read.
+--
+-- The user's own heal can come with no one named: a single target, its
+-- unitName "" and amount 0, the spell's total the only number (Healing
+-- Touch, probe 17 Nov, issue #25). Out of a group, the only one it can
+-- have healed is the user, so it counts; in one it may have been anyone's,
+-- and is left.
 local function Received()
     local meter = C_DamageMeter
     local sources, id, which = Session("HealingDone")
     if not (sources and meter.GetCombatSessionSourceFromID) then return nil end
     local total = 0
+    local alone = not Grouped()
     for _, src in ipairs(sources) do
         src = Table(src)
         if not src then return nil end
+        local own = alone and ns.Plain(src.isLocalPlayer) == true
         local guid, creature = ns.Plain(src.sourceGUID), ns.Plain(src.sourceCreatureID)
         local ok, data
         if id == "current" then
@@ -193,7 +206,8 @@ local function Received()
                 d = Table(d)
                 if not d then return nil end
                 if ns.IsSecret(d.unitName) then return nil end
-                if Mine(d.unitName) then
+                local named = d.unitName ~= nil and d.unitName ~= ""
+                if Mine(d.unitName) or (own and not named) then
                     local amount = Amount(spell, d, #targets == 1)
                     if type(amount) ~= "number" then return nil end
                     total = total + amount

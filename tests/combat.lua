@@ -184,6 +184,17 @@ Fight({ Mob(STRIDER1, "Plainstrider") }, 5, { healed = 0 })
 Eq(#ns.CloseCalls.List(j), 5, "setup: a close call with no healing")
 table.remove(j.closeCalls)
 
+-- The user's own heal with no one named (issue #25: Healing Touch, as
+-- the meter gave it, one target with unitName "" and amount 0): alone,
+-- it can only have been on themselves. Two fights as the probe saw them,
+-- 119 and 117 taken of 78, 83 and 80 healed.
+Fight({ Mob(STRIDER1, "Plainstrider") }, -19, { heals = { { from = SELF.guid, to = "", amount = 83 } } })
+Eq(#ns.CloseCalls.List(j), 4, "an own heal with no one named, alone, was not taken off")
+Fight({ Mob(STRIDER1, "Plainstrider") }, 5, { heals = { { from = SELF.guid, to = "", amount = 2 } } })
+Eq(#ns.CloseCalls.List(j), 5, "setup: a close call after an unnamed heal")
+Eq(ns.CloseCalls.List(j)[5].pct, 7, "the unnamed heal, taken off")
+table.remove(j.closeCalls)
+
 -- A group's healers: what they put on the user is taken off; what they
 -- put on others, and the user's heals on others, are not. The meter's
 -- name for the user is told by the first name.
@@ -206,6 +217,10 @@ Fight({ Mob(STRIDER1, "Plainstrider") }, -40, { heals = {
         { unitName = "Bram Redfen", amount = 15 } } } } })
 Eq(#ns.CloseCalls.List(j), 5, "a heal on a list of targets was not read by its share")
 Eq(ns.CloseCalls.List(j)[5].pct, 5, "the user's share of the list")
+table.remove(j.closeCalls)
+-- In a group, an own heal with no one named may have been anyone's.
+Fight({ Mob(STRIDER1, "Plainstrider") }, -20, { heals = { { from = SELF.guid, to = "", amount = 300 } } })
+Eq(#ns.CloseCalls.List(j), 5, "an unnamed own heal in a group was taken off")
 table.remove(j.closeCalls)
 mock.groupSize = 0
 mock.fire("GROUP_ROSTER_UPDATE")

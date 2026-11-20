@@ -22,7 +22,8 @@
 
 local addonName, ns = ...
 
--- SIG-4: at most one row per character per zone per hour.
+-- SIG-4: at most one row per character per zone per hour, and a meeting
+-- that crosses a zone line stays on its first row (#42).
 local BUCKET_SECONDS = 60 * 60
 local DAY = ns.DAY
 local DayStart = ns.DayStart
@@ -103,16 +104,31 @@ function Sightings.Record(guid, data, where, now)
 
     local enc = Encounter(guid, rows, now)
 
+    local function Extend(row)
+        if now > Last(row) then row.last = now end
+        if data.level then row.level = data.level end
+        if data.hostile then row.hostile = true end
+        return "updated", row
+    end
+
     -- Rows are appended in time order, so the last hour is a suffix.
     for i = #rows, 1, -1 do
         local row = rows[i]
         if row.time <= now - BUCKET_SECONDS then break end
 
-        if SamePlace(row, where) and row.me == ns.ownGUID then
-            if now > Last(row) then row.last = now end
-            if data.level then row.level = data.level end
-            if data.hostile then row.hostile = true end
-            return "updated", row
+        if SamePlace(row, where) and row.me == ns.ownGUID then return Extend(row) end
+    end
+
+    -- #42: a zone line crossed together -- a zeppelin or boat full of
+    -- people, or someone walking beside you -- is still the one meeting,
+    -- not a second occasion. Seen within ENCOUNTER_GAP, they stay on the
+    -- row it began on (inside its hour, as SIG-4), filed where it began.
+    -- The rows, not the in-memory encounter, so a /reload mid-ride holds.
+    if #rows > 0 then
+        local latest = LatestRow(rows)
+        if latest.me == ns.ownGUID and latest.time > now - BUCKET_SECONDS
+            and now - Last(latest) <= ENCOUNTER_GAP then
+            return Extend(latest)
         end
     end
 

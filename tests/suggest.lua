@@ -510,7 +510,8 @@ Pad.Input.Force(nil); Pad.Input.Changed()
 --------------------------------------------------------------------------
 Section("without the folder: the Language page stands, with no switch")
 
-mock.Reset()
+mock.Reset()   -- puts the client's GetLocale back: German again
+_G.GetLocale = function() return "deDE" end
 ns = T.Load()
 mock.SetUnit("player", T.F.SELF)
 mock.fire("ADDON_LOADED", ns.addonName)

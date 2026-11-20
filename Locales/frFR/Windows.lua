@@ -4,6 +4,11 @@ local addonName, ns = ...
 if not ns.Locale.Is("frFR") then return end
 
 ns.Locale.Add("frFR", {
+    -- UI/Windows/AutoAdd.lua
+    ["Familiar faces"] = "Visages familiers",
+    ["Add them"] = "Les ajouter",
+    ["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"] = "Tu as vu une personne près de toi 3 fois ou plus.|Tu as vu %d personne près de toi 3 fois ou plus.|Tu as vu %d personnes près de toi 3 fois ou plus.",
+    ["Add them to the diary now? If not, they’re added the next time you see them."] = "Les ajouter au journal maintenant ? Sinon, ces personnes seront ajoutées la prochaine fois que tu les verras.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "aucune interaction pour l’instant",
     ["%d interaction on record|%d interactions on record##plural"] = "%d interaction enregistrée|%d interaction enregistrée|%d interactions enregistrées",
@@ -68,6 +73,7 @@ ns.Locale.Add("frFR", {
     ["Put the page away"] = "Ranger la page",
     ["Remember them"] = "Retenir",
     ["Put the list away"] = "Ranger la liste",
+    ["Not now"] = "Pas maintenant",
     -- UI/Windows/Picker.lua
     ["Remember this"] = "À retenir",
     ["Click somebody to add them. Already in the diary opens their entry."] = "Clique sur quelqu’un pour l’ajouter. Si cette personne est déjà dans le journal, son entrée s’ouvre.",

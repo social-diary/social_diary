@@ -232,7 +232,7 @@ local function FilterMenu()
         end)
         root:CreateDivider()
 
-        FacetMenu(root, L["Tag"], "tag", facets.tags)
+        FacetMenu(root, L["Tag"], "tag", facets.tags, ns.Diary.TagLabel)
         FacetMenu(root, L["Relationship"], "relationship", facets.relationships)
         FacetMenu(root, L["Faction"], "faction", facets.factions, FactionLabel)
         FacetMenu(root, L["Met in zone"], "zone", facets.zones)

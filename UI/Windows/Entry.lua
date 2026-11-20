@@ -316,7 +316,7 @@ function Entry.Form(parent, width, height)
         for i, chip in ipairs(form.chips) do
             local item = list[i]
             if item then
-                chip:SetTag(item[1], item[2], item[3])
+                chip:SetTag(item[1], item[2], item[3], ns.Diary.TagLabel(item[1]))
                 chip.removable = item[3]
                 if not item[3] then form.presets[item[1]] = chip end
                 Place(chip, chip:GetWidth())

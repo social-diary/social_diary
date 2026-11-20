@@ -7,6 +7,11 @@ ns.Locale.Add("frFR", {
     -- Capture/Menus.lua
     ["Social Diary: open entry"] = "Social Diary : ouvrir l’entrée",
     ["Social Diary: remember this"] = "Social Diary : retenir cette personne",
+    -- Core/AutoAdd.lua
+    ["after 5 minutes grouped with you"] = "après 5 minutes en groupe avec toi",
+    ["after they were seen near you 3 times"] = "après 3 passages près de toi",
+    ["added |cffffffff%1$s|r to the diary automatically %2$s."] = "ajout automatique au journal : |cffffffff%1$s|r, %2$s.",
+    ["added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.##plural"] = "ajout au journal d’une personne déjà aperçue près de toi.|ajout au journal de %d personne déjà aperçue près de toi.|ajout au journal de %d personnes déjà aperçues près de toi.",
     -- Core/Candidates.lua
     ["your target"] = "ta cible",
     ["under your cursor"] = "sous ton curseur",
@@ -28,6 +33,10 @@ ns.Locale.Add("frFR", {
     ["recent group_leave"] = "a quitté ton groupe récemment",
     ["recent level_up"] = "a gagné un niveau récemment",
     -- Core/Diary.lua
+    ["friend##tag"] = "ami",
+    ["helper##tag"] = "aide",
+    ["foe##tag"] = "adversaire",
+    ["avoid##tag"] = "à éviter",
     ["added |cffffffff%s|r to the diary."] = "ajout de |cffffffff%s|r au journal.",
     ["deleted everything about |cffffffff%s|r."] = "tout ce qui concernait |cffffffff%s|r est supprimé.",
     ["removed |cffffffff%s|r from the diary; their history is now kept under the buffer's retention rules."] = "retrait de |cffffffff%s|r du journal. Son historique suit désormais les règles de conservation du tampon.",

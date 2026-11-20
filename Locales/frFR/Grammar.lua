@@ -31,9 +31,14 @@ local function Up(text)
 end
 G.Upper = Up
 
--- The first letter up, past an opening « and its no-break space.
+-- The first letter up, past an opening « and its no-break space. The
+-- quote and the space are matched whole: in a Lua pattern "«?" makes only
+-- its last byte optional, which once left every line uncapitalised (#36).
+local QUOTE, NBSP = "«", "\194\160"
 G.Capital = function(text)
-    local lead, first, rest = text:match("^(«?\194?\160?)([%z\1-\127\194-\244][\128-\191]*)(.*)$")
+    local lead = text:sub(1, #QUOTE) == QUOTE and QUOTE or ""
+    if lead ~= "" and text:sub(#lead + 1, #lead + #NBSP) == NBSP then lead = lead .. NBSP end
+    local first, rest = text:sub(#lead + 1):match("^([%z\1-\127\194-\244][\128-\191]*)(.*)$")
     if not first then return text end
     return lead .. Up(first) .. rest
 end
@@ -98,6 +103,7 @@ G.YOU_FOR = {
     ["tu as chuchoté"] = "%s a chuchoté", ["tu as partagé"] = "%s a partagé",
     ["tu as fui"] = "%s a fui", ["tu as fait"] = "%s a fait", ["tu as gagné"] = "%s a gagné",
     ["tu as perdu"] = "%s a perdu", ["tu as abandonné"] = "%s a abandonné",
+    ["tu as porté"] = "%s a porté",
     ["vous avez tous les deux atteint"] = "%s et cette personne ont tous deux atteint",
     ["toi et"] = "%s et", ["avez"] = "ont",
     -- The reader as the object: "%s a tué %s" (the name follows the verb,

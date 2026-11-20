@@ -23,6 +23,37 @@ ns.Diary = Diary
 -- DIA-6. Custom tags are allowed alongside these.
 Diary.PRESET_TAGS = { "friend", "helper", "foe", "avoid" }
 
+-- A preset is saved as its English word, whatever the client's language:
+-- Reunions, rivals and the tag colours read it. Only what the player reads
+-- is translated. Built on first use, when the locale's words are in.
+local presetLabels, presetByLabel
+local function PresetLabels()
+    if not presetLabels then
+        presetLabels = {
+            friend = L["friend##tag"],
+            helper = L["helper##tag"],
+            foe = L["foe##tag"],
+            avoid = L["avoid##tag"],
+        }
+        presetByLabel = {}
+        for tag, label in pairs(presetLabels) do presetByLabel[label:lower()] = tag end
+    end
+    return presetLabels, presetByLabel
+end
+
+-- A tag as the player reads it: a preset in their language, their own as
+-- they wrote it.
+function Diary.TagLabel(tag)
+    return PresetLabels()[tag] or tag
+end
+
+-- Tags as the player reads them, joined with ", ".
+function Diary.TagList(tags)
+    local out = {}
+    for i = 1, #tags do out[i] = Diary.TagLabel(tags[i]) end
+    return table.concat(out, ", ")
+end
+
 local MAX_TAGS = 12
 local MAX_TAG_CHARS = 24
 local MAX_NOTE_CHARS = 2000
@@ -240,6 +271,9 @@ function Edit.AddTag(entry, tag)
     tag = Clean(tag, MAX_TAG_CHARS)
     if not tag then return false end
     tag = tag:lower()
+    -- A preset typed in the player's language is the preset ("Freund").
+    local _, byLabel = PresetLabels()
+    tag = byLabel[tag] or tag
 
     if Edit.HasTag(entry, tag) then return false end
     if #entry.tags >= MAX_TAGS then return false end
