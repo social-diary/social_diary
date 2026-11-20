@@ -44,12 +44,23 @@ G.Day = function(n) return n .. "." end
 -- "2,5"
 G.DECIMAL = ","
 
--- A number word that arrives as a value before a feminine noun, marked
--- "<f>" in the words ("%s<f> Stunde"): "ein" becomes "eine"; the mark goes
--- either way.
+-- The last pass over every filled template (ns.Fmt), for two marks the
+-- words may carry:
+--   "<f>"    after a number word that arrives as a value before a feminine
+--            noun ("%s<f> Stunde"): "ein" becomes "eine"; the mark goes
+--            either way.
+--   "<cap>"  before a value that opens a sentence the English opens with
+--            a word of its own ("Found %s" -> "<cap>%s gefunden"): the
+--            value's first letter goes up once it is filled in ("Dein
+--            erstes Blaues gefunden").
 G.Agree = function(text)
-    if not text:find("<f>", 1, true) then return text end
-    return (text:gsub("([Ee]in)<f>", "%1e"):gsub("<f>", ""))
+    if text:find("<f>", 1, true) then
+        text = text:gsub("([Ee]in)<f>", "%1e"):gsub("<f>", "")
+    end
+    if text:find("<cap>", 1, true) then
+        text = text:gsub("<cap>([^<]*)", function(rest) return G.Capital(rest) end)
+    end
+    return text
 end
 
 -- A creature is named bare, as the client gives it ("Ebenenschreiter hat
@@ -103,12 +114,15 @@ G.YOU_FOR = {
 --   ENDINGS   by how the last word of the noun ends ("gebirge" for
 --             "Rotkammgebirge"), for every name that ends so
 --
--- Each value is the gender, and "an" after it for a place one is at, not
--- in (a well, a lake, a tower: "am Wasserbrunnen", "zum Wasserbrunnen"):
+-- Each value is the gender, and after it how one is there, where it is
+-- not "in" a place:
 --
 --   "n" das   "m" der   "f" die (one)   "p" die (more than one)
 --   "-" no article: the name stays bare ("in Eisenschmiede")
---   "m an", "f an", ...
+--   "... an"  at it, not in it (a coast, a well, a crossing):
+--             "an der Dunkelküste", "zur Dunkelküste", "von der Dunkelküste"
+--   "... auf" on it (an island, a clearing, a plain):
+--             "auf der Mondlichtung", "zur Mondlichtung", "von der Mondlichtung"
 --
 -- The article the client gives decides the gender over the tables ("Das",
 -- "Der"); after "Die" a table's "f" makes it feminine, anything else is
@@ -124,32 +138,38 @@ local NAMES = {
 
 local ENDINGS = {
     -- Every key in ["..."]: WoW's Lua takes no ä, ö, ü or ß in a bare name.
-    -- The places one is at, not in ("n an", "m an"), stand first in
-    -- their gender's lines.
+    -- Each gender: the places one is in, then "an", then "auf".
     -- neuter: das
-    ["kreuz"] = "n an",
     ["gebirge"] = "n", ["land"] = "n", ["tal"] = "n", ["moor"] = "n", ["kloster"] = "n", ["verlies"] = "n",
+    ["kreuz"] = "n an", ["ufer"] = "n an", ["tor"] = "n an",
+    ["plateau"] = "n auf", ["feld"] = "n auf",
     -- masculine: der
-    ["brunnen"] = "m an",
     ["wald"] = "m", ["sumpf"] = "m", ["krater"] = "m", ["abgrund"] = "m", ["schlund"] = "m", ["bruch"] = "m",
     ["winkel"] = "m", ["koven"] = "m",
+    ["brunnen"] = "m an", ["see"] = "m an", ["strand"] = "m an", ["fluss"] = "m an", ["wasserfall"] = "m an",
+    ["pass"] = "m an", ["hang"] = "m an", ["wall"] = "m an", ["turm"] = "m an", ["schacht"] = "m an",
+    ["hof"] = "m an",
+    ["platz"] = "m auf", ["gipfel"] = "m auf",
     -- feminine: die (one)
-    ["kuppe"] = "f an",
-    ["steppe"] = "f", ["schlucht"] = "f", ["küste"] = "f", ["lichtung"] = "f", ["ebene"] = "f", ["wüste"] = "f",
-    ["spitze"] = "f", ["bahn"] = "f", ["insel"] = "f", ["burg"] = "f", ["feste"] = "f", ["festung"] = "f",
-    ["zitadelle"] = "f", ["höhle"] = "f", ["grotte"] = "f", ["oase"] = "f", ["mine"] = "f", ["halle"] = "f",
-    ["wacht"] = "f", ["klamm"] = "f", ["senke"] = "f", ["tiefe"] = "f", ["marsch"] = "f", ["kammer"] = "f",
-    ["arena"] = "f", ["enklave"] = "f", ["kluft"] = "f", ["quelle"] = "f", ["heide"] = "f", ["straße"] = "f",
+    ["steppe"] = "f", ["schlucht"] = "f", ["wüste"] = "f", ["spitze"] = "f", ["bahn"] = "f", ["burg"] = "f",
+    ["feste"] = "f", ["festung"] = "f", ["zitadelle"] = "f", ["höhle"] = "f", ["grotte"] = "f", ["oase"] = "f",
+    ["mine"] = "f", ["halle"] = "f", ["wacht"] = "f", ["klamm"] = "f", ["senke"] = "f", ["tiefe"] = "f",
+    ["marsch"] = "f", ["kammer"] = "f", ["arena"] = "f", ["enklave"] = "f", ["kluft"] = "f", ["quelle"] = "f",
     ["ruine"] = "f", ["kapelle"] = "f", ["kathedrale"] = "f", ["akademie"] = "f", ["stätte"] = "f",
-    ["zuflucht"] = "f", ["anhöhe"] = "f", ["mühle"] = "f", ["farm"] = "f", ["hütte"] = "f", ["brücke"] = "f",
-    ["grube"] = "f", ["werft"] = "f", ["taverne"] = "f", ["hölle"] = "f", ["allee"] = "f", ["wiese"] = "f",
+    ["zuflucht"] = "f", ["hütte"] = "f", ["grube"] = "f", ["werft"] = "f", ["taverne"] = "f",
+    ["hölle"] = "f",
+    ["küste"] = "f an", ["mühle"] = "f an", ["kuppe"] = "f an", ["brücke"] = "f an", ["furt"] = "f an", ["klippe"] = "f an",
+    ["insel"] = "f auf", ["lichtung"] = "f auf", ["ebene"] = "f auf", ["anhöhe"] = "f auf", ["wiese"] = "f auf",
+    ["farm"] = "f auf", ["straße"] = "f auf", ["heide"] = "f auf", ["allee"] = "f auf",
     -- plural: die (more than one)
     ["marschen"] = "p", ["tiefen"] = "p", ["höhlen"] = "p", ["berge"] = "p", ["wälder"] = "p",
+    ["klippen"] = "p an",
 }
 G.NAMES, G.ENDINGS = NAMES, ENDINGS
 
--- The preposition per role, gender and kind ("in" or "an"), and the case
--- the words after it take. `bare` is the one before a name with no article.
+-- The preposition per role, gender and kind ("in", "an" or "auf"), and the case
+-- the words after it take. `bare` is the one before a name with no article:
+-- "in Durotar", and for a name opening on a genitive, "an Jansens Hof".
 local PREPOSITIONS = {
     ["in"] = {
         ["in"]  = { case = "dat", bare = "in",      n = "im",          m = "im",          f = "in der",      p = "in den" },
@@ -161,13 +181,22 @@ local PREPOSITIONS = {
         around  = { case = "acc", bare = "rund um", n = "rund um das", m = "rund um den", f = "rund um die", p = "rund um die" },
     },
     an = {
-        ["in"]  = { case = "dat", n = "am",          m = "am",          f = "an der",      p = "an den" },
-        to      = { case = "dat", n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
-        into    = { case = "dat", n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
-        from    = { case = "dat", n = "vom",         m = "vom",         f = "von der",     p = "von den" },
-        through = { case = "acc", n = "über das",    m = "über den",    f = "über die",    p = "über die" },
-        near    = { case = "dat", n = "am",          m = "am",          f = "an der",      p = "an den" },
-        around  = { case = "acc", n = "rund um das", m = "rund um den", f = "rund um die", p = "rund um die" },
+        ["in"]  = { case = "dat", bare = "an",      n = "am",          m = "am",          f = "an der",      p = "an den" },
+        to      = { case = "dat", bare = "zu",      n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
+        into    = { case = "dat", bare = "zu",      n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
+        from    = { case = "dat", bare = "von",     n = "vom",         m = "vom",         f = "von der",     p = "von den" },
+        through = { case = "acc", bare = "über",    n = "über das",    m = "über den",    f = "über die",    p = "über die" },
+        near    = { case = "dat", bare = "bei",     n = "am",          m = "am",          f = "an der",      p = "an den" },
+        around  = { case = "acc", bare = "rund um", n = "rund um das", m = "rund um den", f = "rund um die", p = "rund um die" },
+    },
+    auf = {
+        ["in"]  = { case = "dat", bare = "auf",     n = "auf dem",     m = "auf dem",     f = "auf der",     p = "auf den" },
+        to      = { case = "dat", bare = "zu",      n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
+        into    = { case = "dat", bare = "zu",      n = "zum",         m = "zum",         f = "zur",         p = "zu den" },
+        from    = { case = "dat", bare = "von",     n = "vom",         m = "vom",         f = "von der",     p = "von den" },
+        through = { case = "acc", bare = "über",    n = "über das",    m = "über den",    f = "über die",    p = "über die" },
+        near    = { case = "dat", bare = "bei",     n = "auf dem",     m = "auf dem",     f = "auf der",     p = "auf den" },
+        around  = { case = "acc", bare = "rund um", n = "rund um das", m = "rund um den", f = "rund um die", p = "rund um die" },
     },
 }
 for _, kind in pairs(PREPOSITIONS) do kind.at, kind.round = kind.near, kind.around end
@@ -208,7 +237,7 @@ end
 local function Entry(value)
     if not value then return nil, "in" end
     local gender, kind = value:match("^([nmfp%-])%s*(%a*)$")
-    return gender, kind == "an" and "an" or "in"
+    return gender, PREPOSITIONS[kind] and kind or "in"
 end
 
 -- The longest ending that fits the noun: "hochland" before "land".
@@ -220,13 +249,23 @@ local function ByEnding(noun)
     return best and ENDINGS[best]
 end
 
--- The name's gender ("-" or nil: bare), its kind, and the name without
--- its article.
+-- The name's gender ("-" or nil: bare; "g": a genitive in the article's
+-- place), its kind, and the name without its article.
+-- A name that opens on someone's genitive ("Jansens Hof", "Thex’ Turm")
+-- takes no article: the genitive stands in its place. An adjective ends in
+-- "es" ("Altes Kloster"), a genitive here in another s or an apostrophe.
+local function OpensOnGenitive(head)
+    local first = head:match("^(%S+) %S")
+    if not first or not first:find("^%u") then return false end
+    return (first:find("[^e]s$") or first:find("\226\128\153$") or first:find("'$")) and true or false
+end
+
 local function Article(name)
     local article, rest = name:match("^([Dd][aei][rse]) (.+)$")
     article = article and article:lower()
     if article ~= "das" and article ~= "der" and article ~= "die" then article, rest = nil, name end
     local gender, kind = Entry(NAMES[name] or ByEnding(LastWord(Split(rest)):lower()))
+    if not article and not NAMES[name] and OpensOnGenitive(Split(rest)) then return "g", kind, rest end
     if article == "das" then return "n", kind, rest end
     if article == "der" then return "m", kind, rest end
     if article == "die" then return gender == "f" and "f" or "p", kind, rest end
@@ -239,6 +278,7 @@ local function Place(role)
         if not gender or gender == "-" then
             return PREPOSITIONS["in"][role].bare .. " " .. rest
         end
+        if gender == "g" then return PREPOSITIONS[kind][role].bare .. " " .. rest end
         local forms = PREPOSITIONS[kind][role]
         local head, tail = Split(rest)
         return forms[gender] .. " " .. Decline(head, gender, forms.case) .. tail
