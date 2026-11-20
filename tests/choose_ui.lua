@@ -670,6 +670,22 @@ Eq(lines[MW.choose], nil, "\"Choose...\" offered with the ticklist open")
 Eq(lines[MW.leavePlace], "button", "\"Leave this place out\" gone with the ticklist open")
 page.chooser.done:Click()
 
+-- A plate maximized (its whole map): "Choose..." there too, and the ticklist
+-- opens beside the whole map, which stays (20 Nov: the line was missing).
+YD.OpenFull(1413)
+Check(page.mode == "full", "setup: the whole map open")
+lines = Menu(function() page.plates[1]:Right() end)
+Eq(lines[MW.choose], "button", "no \"Choose what's on this page...\" on a whole map's menu")
+Eq(lines[MW.leavePlace], nil, "\"Leave this place out\" on a whole map (not a place of the page)")
+mock.MenuClick(MW.choose)
+Check(page.choosing and page.chooser:IsShown(), "\"Choose...\" on the whole map did not open the ticklist")
+Check(page.mode == "full" and page.fullMap == 1413, "\"Choose...\" on the whole map closed it")
+lines = Menu(function() page.plates[1]:Right() end)
+Eq(lines[MW.choose], nil, "\"Choose...\" on the whole map with the ticklist open")
+YD.FullBack()
+Check(page.mode == "plates" and page.choosing, "back from the whole map: the ticklist not there")
+page.chooser.done:Click()
+
 -- Someone's strip: their menu, the mouse's alone.
 local strip = PersonStrip()
 Check(strip ~= nil, "setup: the fight's person has a strip")

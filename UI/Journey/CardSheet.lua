@@ -1580,10 +1580,14 @@ local function PlaceGenerator(plate, where)
     -- (the user's, 18 Nov): a place left out comes back on the ticklist
     -- alone, which the pad reaches too (UI/Journey/Pad.lua).
     local leaves = plate.plan ~= nil and plate.plan.moments ~= nil and plate.plan.moments[1] ~= nil
+    -- "Choose..." on a close-up and on the open level's whole map (a plate
+    -- maximized: the ticklist stays beside it, UI/Journey/Page.lua's
+    -- OpenFull; it was missing there, 20 Nov), never while it is open.
     local page = YourDiary.page
-    local piece = leaves and YourDiary.ShownPiece and YourDiary.ShownPiece()
-    local chooses = piece and not page.choosing and YourDiary.CanChoose(piece)
-    if not (adds or leaves) then return nil, false end
+    local here = leaves or (page ~= nil and page.mode == "full")
+    local piece = here and YourDiary.ShownPiece and YourDiary.ShownPiece()
+    local chooses = (piece and not page.choosing and YourDiary.CanChoose(piece)) and true or false
+    if not (adds or leaves or chooses) then return nil, false end
     return function(_, root)
         if adds then root:CreateButton(WORDS.add, function() StartAdding(plate, where) end) end
         if leaves then
@@ -1591,9 +1595,9 @@ local function PlaceGenerator(plate, where)
                 -- (eased, as a tick on the ticklist: UI/Journey/Glide.lua)
                 if ns.Chosen.LeavePlace(nil, plate.plan) then YourDiary.Glide.Around(Redraw) end
             end)
-            if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
         end
-    end, leaves
+        if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
+    end, leaves or chooses
 end
 CardSheet.PlaceGenerator = PlaceGenerator
 
