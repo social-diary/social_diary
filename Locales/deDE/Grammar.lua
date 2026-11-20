@@ -132,6 +132,7 @@ local ENDINGS = {
     -- masculine: der
     ["brunnen"] = "m an",
     ["wald"] = "m", ["sumpf"] = "m", ["krater"] = "m", ["abgrund"] = "m", ["schlund"] = "m", ["bruch"] = "m",
+    ["winkel"] = "m", ["koven"] = "m",
     -- feminine: die (one)
     ["kuppe"] = "f an",
     ["steppe"] = "f", ["schlucht"] = "f", ["küste"] = "f", ["lichtung"] = "f", ["ebene"] = "f", ["wüste"] = "f",
@@ -143,7 +144,7 @@ local ENDINGS = {
     ["zuflucht"] = "f", ["anhöhe"] = "f", ["mühle"] = "f", ["farm"] = "f", ["hütte"] = "f", ["brücke"] = "f",
     ["grube"] = "f", ["werft"] = "f", ["taverne"] = "f", ["hölle"] = "f", ["allee"] = "f", ["wiese"] = "f",
     -- plural: die (more than one)
-    ["marschen"] = "p", ["tiefen"] = "p", ["höhlen"] = "p", ["berge"] = "p",
+    ["marschen"] = "p", ["tiefen"] = "p", ["höhlen"] = "p", ["berge"] = "p", ["wälder"] = "p",
 }
 G.NAMES, G.ENDINGS = NAMES, ENDINGS
 
