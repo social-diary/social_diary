@@ -18,6 +18,15 @@ local CHIEF = "Creature-0-4615-1-832-3035-00004B6B01"
 local MEAT = "|cffffffff|Hitem:4739::::::::5:::::|h[Plainstrider Meat]|h|r"
 local SHELLS = "|cff9d9d9d|Hitem:5134::::::::5:::::|h[Cracked Egg Shells]|h|r"
 
+-- The user's own loot lines (the client's enUS strings): what a hunt counts
+-- as looted.
+_G.LOOT_ITEM_SELF = "You receive loot: %s."
+_G.LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
+local function Looted(link, n)
+    local text = "You receive loot: " .. link .. (n and ("x" .. n) or "") .. "."
+    mock.fire("CHAT_MSG_LOOT", text, "x", "", "", "", "", 0, 0, "", 0, 1, F.SELF.guid)
+end
+
 local function Mob(guid, name, extra)
     local def = { guid = guid, name = { name }, isPlayer = false, hostile = true }
     for key, value in pairs(extra or {}) do def[key] = value end
@@ -330,6 +339,10 @@ mock.loot = { { link = MEAT, sources = { STRIDER1, 1 } }, { link = SHELLS, sourc
 mock.fire("LOOT_OPENED")
 Eq(hunt.from[2955], true, "the meat's source")
 Eq(hunt.from[2958], nil, "a kind that dropped nothing")
+Looted(MEAT)
+Eq(hunt.looted, 1, "the meat looted")
+Looted(SHELLS)
+Eq(hunt.looted, 1, "another item counted as the meat")
 
 MEAT_QUEST.objectives[1].numFulfilled = 1
 MEAT_QUEST.objectives[1].text = "Plainstrider Meat: 1/2"
@@ -338,6 +351,7 @@ mock.RunTimers()
 Check(ns.Hunts.Hunting(j, 781, 1), "a hunt ended with one of two")
 
 mock.fire("PARTY_KILL", SELF.guid, STRIDER1)
+Looted(MEAT)
 MEAT_QUEST.objectives[1].numFulfilled = 2
 MEAT_QUEST.objectives[1].finished = true
 mock.fire("QUEST_LOG_UPDATE")
@@ -376,6 +390,7 @@ mock.RunTimers()
 mock.loot = { { link = "|Hitem:7073|h[Wolf Pelt]|h", sources = { WOLF, 1 } } }
 mock.fire("PARTY_KILL", SELF.guid, WOLF)
 mock.fire("LOOT_OPENED")
+Looted("|Hitem:7073|h[Wolf Pelt]|h", 4)
 mock.quests = {}
 mock.fire("QUEST_TURNED_IN", 790)
 mock.fire("QUEST_REMOVED", 790)
@@ -416,11 +431,72 @@ cured.from[2958] = nil
 CURED.objectives[1].numFulfilled, CURED.objectives[1].finished = 2, true
 mock.fire("QUEST_LOG_UPDATE")
 mock.RunTimers()
+mock.RunTimers() -- (crafted, never looted: it waits for a loot line first)
 Eq(ns.Hunts.Hunting(j, 791, 1), nil, "the met want did not end the hunt")
 Eq(#ns.Hunts.List(j), 2, "a crafted want kept a hunt")
 mock.quests = {}
 mock.fire("QUEST_REMOVED", 791)
 mock.RunTimers()
+
+-- Met with items that were not looted (20 Nov, in the client: 2 Turtle
+-- Meat off 2 Snapjaws, the other 8 bought at the auction house and
+-- mailed): no hunt, so no lucky card for 2 kills.
+local TURTLE = "|cffffffff|Hitem:3712::::::::31:::::|h[Turtle Meat]|h|r"
+local SNAPJAW = "Creature-0-4615-1-832-2408-00004B6C01"
+local BISQUE = { questID = 7321, title = "Soothing Turtle Bisque", objectives = {
+    { text = "Turtle Meat: 0/10", type = "item", numFulfilled = 0, numRequired = 10, finished = false } } }
+mock.quests = { BISQUE }
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+local turtle = ns.Hunts.Hunting(j, 7321, 1)
+Check(turtle, "setup: the turtle meat not counted")
+Eq(turtle.looted, 0, "a new hunt's loot not counted from none")
+mock.loot = { { link = TURTLE, sources = { SNAPJAW, 1 } } }
+for _ = 1, 2 do
+    mock.fire("PARTY_KILL", SELF.guid, SNAPJAW)
+    mock.fire("LOOT_OPENED")
+    Looted(TURTLE)
+end
+BISQUE.objectives[1].numFulfilled, BISQUE.objectives[1].text = 2, "Turtle Meat: 2/10"
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+-- The mail: no loot line, the log jumps to all ten.
+BISQUE.objectives[1].numFulfilled, BISQUE.objectives[1].finished = 10, true
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+Check(ns.Hunts.Hunting(j, 7321, 1), "a want met short did not wait for a late loot line")
+mock.RunTimers()
+Eq(ns.Hunts.Hunting(j, 7321, 1), nil, "a want met by mail still counted")
+Eq(#ns.Hunts.List(j), 2, "a hunt met by mail kept")
+
+-- A loot line that comes just after the log is met still counts.
+BISQUE.objectives[1].numFulfilled, BISQUE.objectives[1].finished = 0, false
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+turtle = ns.Hunts.Hunting(j, 7321, 1)
+for _ = 1, 3 do mock.fire("PARTY_KILL", SELF.guid, SNAPJAW) end
+mock.fire("LOOT_OPENED")
+Looted(TURTLE, 9)
+BISQUE.objectives[1].numFulfilled, BISQUE.objectives[1].finished = 10, true
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+Check(ns.Hunts.Hunting(j, 7321, 1), "a want met one short ended before its last loot line")
+Looted(TURTLE)
+mock.RunTimers()
+Eq(ns.Hunts.Hunting(j, 7321, 1), nil, "the want met did not end the hunt")
+Eq(#ns.Hunts.List(j), 3, "a hunt with its last loot line late kept nothing")
+Eq(ns.Hunts.List(j)[3].kills, 3, "its kills")
+
+-- A hunt begun before loot was counted is judged as before.
+mock.quests = {}
+mock.fire("QUEST_REMOVED", 7321)
+mock.RunTimers()
+j.hunting["7321:1"] = { questID = 7321, index = 1, item = "Turtle Meat", need = 10, since = mock.now,
+    kills = { [2408] = 2 }, from = { [2408] = true }, names = {} }
+mock.fire("QUEST_TURNED_IN", 7321)
+Eq(#ns.Hunts.List(j), 4, "an old hunt with no loot count dropped")
+table.remove(j.hunts)
+table.remove(j.hunts)
 
 -- By id where both are known: a hunt that knows its item (QuestieDB) takes
 -- no other item by name, and takes its own under any name.

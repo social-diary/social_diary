@@ -92,9 +92,18 @@ Hunts.T = T
 -- those count with the user's own, so the kills are set against every
 -- item the group's kills gave: `shared`, the group's copies.
 --
+-- Only the items the user looted count as the kills' (20 Nov, in the
+-- client: 2 Turtle Meat looted off 2 Snapjaws, 8 bought at the auction
+-- house and mailed over, kept as 2 kills for 10, good luck). The user's
+-- own loot lines say what was looted (`looted`); mail, a trade, the bank
+-- or a vendor give none. A hunt whose want was met with fewer looted than
+-- it wanted is no hunt and keeps nothing (Hunts.Short).
+--
 -- j.hunting[key] is a hunt under way, key "questID:objective": { questID,
 -- index, title, item, itemID, need, since, kills = { [npcID] = n }, from =
--- { [npcID] = true }, names = { [npcID] = name }, shared }. Kills are counted for
+-- { [npcID] = true }, names = { [npcID] = name }, shared, looted }.
+-- `looted` is nil on a hunt begun before it was counted (20 Nov), which
+-- is judged as before. Kills are counted for
 -- every kind, because the first drop is what says which kind counted.
 -- Saved, so a hunt carries over a logout; given up after T.huntAge (the
 -- list's `prune`, at login), or when the quest leaves the log.
@@ -155,7 +164,8 @@ function Hunts.Begin(j, info)
     j.hunting = j.hunting or {}
     if j.hunting[key] then return j.hunting[key] end
     local hunt = { questID = info.questID, index = info.index, title = info.title, item = info.item,
-        itemID = info.itemID, need = info.need, since = info.t or ns.Now(), kills = {}, from = {}, names = {} }
+        itemID = info.itemID, need = info.need, since = info.t or ns.Now(), kills = {}, from = {}, names = {},
+        looted = 0 }
     for _, npcID in ipairs(info.droppers or {}) do hunt.from[npcID] = true end
     j.hunting[key] = hunt
     return hunt
@@ -221,6 +231,27 @@ function Hunts.Shared(j, item, itemID, n)
     return any
 end
 
+-- Item `item` (its name, `itemID` where the link says), `n` of them,
+-- looted by the user: counted in every hunt for it. Whether any was.
+function Hunts.Looted(j, item, itemID, n)
+    if not (j and j.hunting and item) then return false end
+    local any = false
+    for _, hunt in pairs(j.hunting) do
+        if hunt.looted and Same(hunt, item, itemID) then
+            hunt.looted = hunt.looted + (n or 1)
+            any = true
+        end
+    end
+    if any then Journey.Touch() end
+    return any
+end
+
+-- Whether `hunt` under way has looted fewer than it wants: the rest came
+-- some other way (mail, a trade, the bank, a vendor).
+function Hunts.Short(hunt)
+    return hunt ~= nil and hunt.looted ~= nil and hunt.looted < hunt.need
+end
+
 -- How many items a finished hunt's kills gave: the user's, and the
 -- group's copies (`shared`).
 function Hunts.Items(hunt)
@@ -284,12 +315,14 @@ end
 -- `where` says otherwise. `rec` is { t, level, Rates }: Rate(itemID,
 -- npcID) functions, the drop rate in percent where it is known (EXT-2),
 -- the best source first, the next where the first cannot be believed. Returns the record
--- kept, or nil when there was nothing to count.
+-- kept, or nil when there was nothing to count or the user looted fewer
+-- than it wanted (Hunts.Short).
 function Hunts.Done(j, questID, index, rec, where)
     local key = Hunts.Key(questID, index)
     local hunt = j and j.hunting and j.hunting[key]
     if not hunt then return nil end
     j.hunting[key] = nil
+    if Hunts.Short(hunt) then return nil end
     local kills, npcID, most, byKind, kinds = 0, nil, -1, {}, 0
     for id in pairs(hunt.from) do
         local n = hunt.kills[id] or 0
