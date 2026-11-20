@@ -48,8 +48,20 @@ G.DECIMAL = ","
 -- "<f>" in the words ("%s<f> Stunde"): "ein" becomes "eine"; the mark goes
 -- either way.
 G.Agree = function(text)
+    if text:find("<acc>", 1, true) then text = G.Accusative(text) end
     if not text:find("<f>", 1, true) then return text end
     return (text:gsub("([Ee]in)<f>", "%1e"):gsub("<f>", ""))
+end
+
+-- A stranger's description (G.FoeName, in the nominative) after a verb or
+-- "gegen", marked "<acc>%s" in the words: "besiegte einen Jäger der Stufe
+-- 16", "verlor gegen jemanden auf Stufe 12"; "eine" stays. "Untoter" is an
+-- adjective and declines with it.
+G.Accusative = function(text)
+    text = text:gsub("<acc>([Ee])in Untoter", "%1inen Untoten")
+    text = text:gsub("<acc>([Ee])in ", "%1inen ")
+    text = text:gsub("<acc>([Jj])emand ", "%1emanden ")
+    return (text:gsub("<acc>", ""))
 end
 
 -- A creature is named bare, as the client gives it ("Ebenenschreiter hat
@@ -259,6 +271,26 @@ G.EACH_PLACE = true
 G.Plural = function(name) return name end
 G.ItemWord = function(n, item) return item end
 G.KillerName = function(k) return k.name end
+
+-- A stranger described, in the nominative, for a strip's heading ("eine
+-- Jägerin der Stufe 16 (Zwerg) / hat dich getötet") and, marked "<acc>",
+-- in prose. The class comes in the foe's own form (Format.ClassName), so
+-- its article goes by their sex; a race alone is a masculine word as the
+-- client gives it ("ein Zwerg", "ein Untoter").
+G.FoeName = function(words, foe)
+    local L, Fmt = ns.L, ns.Fmt
+    local level, race, class = words.level, words.race, words.class
+    local text
+    if level and race and class then text = Fmt(L["a level %1$d %2$s %3$s##foe"], level, race, class)
+    elseif level and (race or class) then text = Fmt(L["a level %1$d %2$s##foe"], level, class or race)
+    elseif level then return Fmt(L["someone at level %d##foe"], level)
+    elseif race and class then text = Fmt(L["a %1$s %2$s##foe"], race, class)
+    else text = Fmt(L["a %s##foe"], class or race) end
+    if class and type(foe) == "table" and foe.sex == 3 then
+        text = text:gsub("^([Ee])in ", "%1ine ")
+    end
+    return text
+end
 
 -- "Sortiert nach Zuletzt getroffen": German nouns keep their capital.
 G.PeopleSortLabel = function(label) return label end

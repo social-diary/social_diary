@@ -272,7 +272,10 @@ local Seed, Width, Turned = Surface.Seed, Surface.Width, Surface.Turned
 --            its picture takes, the close call's under its heading, and the
 --            tests read it so); box ({ x, y, w, h } as laid); turn, flat
 --            and turnsText (how it lies as laid: its turn in radians, laid
---            flat, whether text can turn in this client); overfull
+--            flat, whether text can turn in this client); overfull; inkBoxes
+--            (where its writing lies as laid, from its middle, y down: { name,
+--            lines, marks }, boxes { x0, y0, x1, y1 }: what blood keeps off,
+--            UI/Ink/Blood.lua)
 --   methods  :Pad() → l, t, r, b, its margins round the writing
 --            :Least(over, tapeAt, clear) → the least width for its tape,
 --            `tapeAt` of the way along, to start `clear` px past what is
@@ -595,7 +598,11 @@ function ns.UI.PaperStrip(parent, card)
     -- Written gives them: no escape codes), quoteLines (the most lines the
     -- quote may take, STRIP.quote.lines at most), guid (a link to their page when
     -- given), plain (with a guid: a stranger's link, the name in INK, not
-    -- INK_STRONG), rival, seed, onClick(guid), and for a slip that is not a
+    -- INK_STRONG), names (shorter forms of the name, longest first: the
+    -- first the slip's width holds is written where the name is too wide),
+    -- whats (shorter forms of what happened, longest first: the first
+    -- that keeps to its lines where `what` would run past them), rival,
+    -- seed, onClick(guid), and for a slip that is not a
     -- person's: tack (fastened with a brass tack, TACK, instead of tape), strong
     -- (the name in INK_STRONG without a page to open), tip (a tooltip's
     -- lines, as Style.Tooltip takes them), picture ({ w, h, gap }: room over
@@ -714,13 +721,27 @@ function ns.UI.PaperStrip(parent, card)
 
         -- The writing: the name, their note quoted, then what happened in
         -- lines.
-        self.name:SetSize(0, 0)
-        local nameW, nameH = Width(self.name) + 2, math.max(math.ceil(self.name:GetStringHeight() or 0), 14)
         -- A blot before the name moves it along; a link at its line's end
         -- (the tour's, EXTRA) takes room after it.
         local blot, aside, foot = note.blot, note.aside, note.foot
         Extras(note)
         local indent = blot and (blot.size + EXTRA.blot.gap) or 0
+        -- The name, or where it is wider than the slip may be, the first of
+        -- its shorter forms (`names`) that fits: a stranger described, "a
+        -- level 60 Night Elf Warrior", is longer than any name (20 Nov 2026).
+        -- Without `names` the name stays as written (a card's `plan` hook
+        -- may have written its own: UI/Journal/Strips.lua's facts).
+        if note.names then
+            self.name:SetText(note.name or "")
+            self.name:SetSize(0, 0)
+            for _, shorter in ipairs(note.names) do
+                if indent + Width(self.name) + 2 <= inner then break end
+                self.name:SetText(shorter)
+                self.name:SetSize(0, 0)
+            end
+        end
+        self.name:SetSize(0, 0)
+        local nameW, nameH = Width(self.name) + 2, math.max(math.ceil(self.name:GetStringHeight() or 0), 14)
         local asideW = 0
         if aside then
             self.aside.label:SetFontObject(aside.font or Style.FONT.body)
@@ -753,6 +774,13 @@ function ns.UI.PaperStrip(parent, card)
         self.quoteLines = #said
         local most = note.lines or STRIP.lines
         local wrapped = Balanced(note.what, inner, nil, most)
+        -- Where what happened runs past its lines, the first of its shorter
+        -- forms (`whats`) that does not: a fight's spell given up before its
+        -- words are cut (20 Nov 2026).
+        for _, shorter in ipairs(note.whats or {}) do
+            if #wrapped <= most then break end
+            wrapped = Balanced(shorter, inner, nil, most)
+        end
         for i = most + 1, #wrapped do wrapped[i] = nil end
         local lineH = 0
         -- The picture's room over the name, and the gap under it.
@@ -983,18 +1011,32 @@ function ns.UI.PaperStrip(parent, card)
             self.under = { lx = lx, ly = ly, w = under.w, h = under.h, X = X, Y = Y, x = px, y = py }
         end
         -- Their words, the first line's opening quote in the margin.
+        -- Where the writing lies, from the strip's middle (y down), { x0, y0,
+        -- x1, y1 } each: the name, each line of their words and of what
+        -- happened, and marks (the rival's foot). For blood on a fight's
+        -- strip (UI/Ink/Blood.lua's Keep: its `writing`) and the tests.
+        local writing = { name = self.nameBox, lines = {}, marks = {} }
+        self.inkBoxes = writing
         local quoteTop = top + nameH + underH + Q.gap
         for i = 1, #said do
             local line = self.said[i]
             local w = Width(line) + 2
             local lx = left - (i == 1 and hang or 0)
-            Write(line, lx + w / 2, quoteTop + (i - 0.5) * quoteH, w, quoteH)
+            local ly = quoteTop + (i - 0.5) * quoteH
+            Write(line, lx + w / 2, ly, w, quoteH)
+            writing.lines[#writing.lines + 1] = { lx, ly - quoteH / 2, lx + w, ly + quoteH / 2 }
         end
         local lineTop = top + nameH + underH + quoteGap + whatGap
         for i = 1, #wrapped do
             local line = self.lines[i]
             local w = Width(line) + 2
-            Write(line, left + w / 2, lineTop + (i - 0.5) * lineH, w, lineH)
+            local ly = lineTop + (i - 0.5) * lineH
+            Write(line, left + w / 2, ly, w, lineH)
+            writing.lines[#writing.lines + 1] = { left, ly - lineH / 2, left + w, ly + lineH / 2 }
+        end
+        if note.rival then
+            writing.marks[#writing.marks + 1] = { -W / 2 + RIVAL.inset, H / 2 - RIVAL.inset - 1,
+                W / 2 - RIVAL.inset, H / 2 - RIVAL.inset + 1 }
         end
         -- The foot, under what happened.
         local footTop = lineTop + (#wrapped > 0 and lineH * #wrapped or 0) + EXTRA.foot.gap

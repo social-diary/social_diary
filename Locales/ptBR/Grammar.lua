@@ -37,9 +37,9 @@ G.Capital = function(text)
     return lead .. Up(first) .. rest
 end
 
--- "25º", and "25ª" for a feminine noun: the death ("morte") and the match
--- ("partida") of the word lists.
-local FEMININE = { death = true, match = true }
+-- "25º", and "25ª" for a feminine noun: the death ("morte"), the match
+-- ("partida") and the time ("pela 13ª vez") of the word lists.
+local FEMININE = { death = true, match = true, time = true }
 G.Ordinal = function(n, context) return n .. (FEMININE[context] and "ª" or "º") end
 
 -- A date's day is the figure: "1 de outubro", "25 de outubro".
@@ -116,6 +116,32 @@ G.PLACE = {
 G.Plural = function(name) return name end
 G.ItemWord = function(n, item) return item end
 G.KillerName = function(k) return k.name end
+
+-- A foe described ("um Caçador Anão de nível 16"): the same shapes as the
+-- English (UI/Journey/Text/Grammar.lua, FoeName), with no "a"/"an" to
+-- choose and the article agreeing with the foe's sex ("uma Caçadora").
+-- The client gives the class in the foe's gender; the race name it gives
+-- is one form for both (see the voice file).
+G.FoeName = function(w, foe)
+    -- The forms picked before the values go in (ns.Fmt would take the
+    -- form for no one known).
+    local sex = foe and foe.sex
+    local L = setmetatable({}, { __index = function(_, key) return ns.Locale.They(ns.L[key], sex) end })
+    local Fmt = ns.Fmt
+    local text
+    if w.level and w.race and w.class then
+        text = Fmt(L["a level %1$d %2$s %3$s##foe"], w.level, w.race, w.class)
+    elseif w.level and (w.race or w.class) then
+        text = Fmt(L["a level %1$d %2$s##foe"], w.level, w.class or w.race)
+    elseif w.level then
+        text = Fmt(L["someone at level %d##foe"], w.level)
+    elseif w.race and w.class then
+        text = Fmt(L["a %1$s %2$s##foe"], w.race, w.class)
+    else
+        text = Fmt(L["a %s##foe"], w.class or w.race)
+    end
+    return text
+end
 
 -- After "Ordenado por", lower case, accents included.
 local DOWN = { ["Á"] = "á", ["À"] = "à", ["Â"] = "â", ["Ã"] = "ã", ["Ä"] = "ä",

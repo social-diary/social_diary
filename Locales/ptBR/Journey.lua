@@ -99,6 +99,16 @@ ns.Locale.Add("ptBR", {
     ["In good company"] = "Em boa companhia",
     ["On the road"] = "Na estrada",
     -- UI/Journey/Text/Grammar.lua
+    -- A foe described: "um Caçador Anão de nível 16", "uma Caçadora ...".
+    -- The article agrees with the foe (grammar.FoeName picks <they:>);
+    -- the class comes from the client in the foe's gender.
+    ["a level %1$d %2$s %3$s##foe"] = "<they:um/uma> %3$s %2$s de nível %1$d",
+    ["a level %1$d %2$s##foe"] = "<they:um/uma> %2$s de nível %1$d",
+    ["someone at level %d##foe"] = "alguém de nível %d",
+    ["an %1$s %2$s##foe"] = "<they:um/uma> %2$s %1$s",
+    ["a %1$s %2$s##foe"] = "<they:um/uma> %2$s %1$s",
+    ["an %s##foe"] = "<they:um/uma> %s",
+    ["a %s##foe"] = "<they:um/uma> %s",
     ["a##one"] = "uma",
     ["five"] = "cinco",
     ["four"] = "quatro",
@@ -109,14 +119,28 @@ ns.Locale.Add("ptBR", {
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "mais uma nota|mais %s<f> notas",
     ["a note|%s notes##plural"] = "uma nota|%s<f> notas",
-    ["a fight, lost"] = "uma luta, perdida",
     ["killed you"] = "te matou",
-    ["a fight, won"] = "uma luta, ganha",
-    ["you won the fight"] = "você venceu a luta",
+    -- Under the foe's name, the foe the subject: "Mika / te matou de novo".
+    -- The foe's sex picks <they:> ("Você a matou uma vez"); "morreu para
+    -- você" needs none.
+    ["killed you again"] = "te matou de novo",
+    ["killed you for the %s time"] = "te matou pela %s vez",
+    ["fell to you"] = "morreu para você",
+    ["fell to you again"] = "morreu para você de novo",
+    ["fell to you for the %s time"] = "morreu para você pela %s vez",
+    ["killed you again, with %s"] = "te matou de novo, com %s",
+    ["killed you for the %1$s time, with %2$s"] = "te matou pela %1$s vez, com %2$s",
+    ["once|%s times##spoken##plural"] = "uma vez|%s vezes",
+    ["killed you, then fell to you"] = "te matou, depois morreu para você",
+    ["fell to you, then killed you"] = "morreu para você, depois te matou",
+    ["%1$s. You killed them %2$s.##fight, then the score"] = "%1$s. Você <they:o/a> matou %2$s.",
+    ["%1$s. They killed you %2$s.##fight, then the score"] = "%1$s. Matou você %2$s.",
+    ["%1$s, then %2$s##company, then fight"] = "%1$s, depois %2$s",
     ["you'd meet again"] = "vocês se encontrariam novamente",
     ["you'd meet again at level %d"] = "vocês se encontrariam novamente no nível %d",
     ["first seen, and %s"] = "visto pela primeira vez, e %s",
     ["with someone"] = "com alguém",
+    ["someone##foe"] = "alguém",
     -- UI/Journey/Text/Notes.lua
     ["And one more note.|And %d more notes.##plural"] = "E mais uma nota.|E mais %d notas.",
     -- UI/Journey/Text/Prose.lua
@@ -153,6 +177,8 @@ ns.Locale.Add("ptBR", {
     ["won a fight"] = "ganhou uma luta",
     ["lost a fight"] = "perdeu uma luta",
     ["lost to %s"] = "perdeu para %s",
+    ["beat %s##foe"] = "venceu %s",
+    ["lost to %s##foe"] = "perdeu para %s",
     ["Nothing on the road at this level."] = "Nada na estrada neste nível.",
     ["so far"] = "até agora",
     ["someone##whom"] = "alguém",

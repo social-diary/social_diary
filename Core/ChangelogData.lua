@@ -7,6 +7,19 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.2",
+        summary = "This small update brings improvements to the PvP labels in _Your Diary_.",
+        groups = {
+            { heading = "Changes", entries = {
+                { text = "PvP labels in _Your Diary_ now show the opponents level, class and race, or, if they are in your Diary, their name." },
+                { text = "Improved the design of the PvP labels in _Your Diary_." },
+            } },
+            { heading = "Fixes", entries = {
+                { text = "Quest drops are now only judged on looted items. Items that come from trading and mails are ignored for lucky / unlucky cards." },
+            } },
+        },
+    },
+    {
         version = "4.2.1",
         summary = "A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.",
         groups = {
@@ -45,16 +58,6 @@ ns.Changelog = {
                 { text = "_Your Diary_ now detects when you equip upgrades of your existing equipment and displays them on your Diary's plates" },
                 { text = "Added Polish to the diary’s language settings", thanks = "KO.Media" },
                 { text = "You can now make the Diary auto-add players you encounter often or do dungeons and raids with", thanks = "ubrider, replayablecontent46369" },
-            } },
-        },
-    },
-    {
-        version = "4.0.2",
-        summary = "A hotfix for the Gamepad UI, where opening a player's menu locked the controller. For now, add players with the Remember key or the macros when playing with a controller.",
-        groups = {
-            { heading = "Fixes", entries = {
-                { text = "A player's menu no longer locks the controller with the Gamepad UI", sub = { { text = "The diary's entry is left out of that menu for now" } } },
-                { text = "German zone names now take their article and case", thanks = "CarnVanBeck" },
             } },
         },
     },

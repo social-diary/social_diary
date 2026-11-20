@@ -445,7 +445,7 @@ for i = 1, page.notePool.used do
     if note:IsShown() then notes[#notes + 1] = note.name:GetText() .. ": " .. note:What() end
 end
 Check(Any(notes, "^with Bram: 15\194\160min together$"), "Bram's note: " .. table.concat(notes, "; "))
-Check(Any(notes, "^with someone: a fight, won$"), "a stranger is not someone: " .. table.concat(notes, "; "))
+Check(Any(notes, "^someone: fell\194\160to\194\160you$"), "a stranger with nothing kept of them is not someone: " .. table.concat(notes, "; "))
 -- Wrapped on its strip a line at a time; the lines joined here.
 Check(Any(notes, "^with Numa: first seen, and +you'd meet again at"), "Numa's note: " .. table.concat(notes, "; "))
 Check(page.leaderPool.used >= 1, "the notes have no leaders")
@@ -593,9 +593,180 @@ end
 -- A name in the margin opens their page; someone opens nothing.
 local stranger
 for i = 1, page.notePool.used do
-    if page.notePool[i].name:GetText() == "with someone" then stranger = page.notePool[i] end
+    if page.notePool[i].name:GetText() == "someone" then stranger = page.notePool[i] end
 end
 Check(stranger and stranger.guid == nil, "the stranger's note has someone to open")
+
+-- A stranger's fight strip describes them as the mark kept them (20 Nov
+-- 2026, the user: "with someone / a fight, lost" read broken): "a level 12
+-- Orc Mage / fell to you", never their name; a description wider than
+-- the strip takes its shorter form; while the buffer still has them, the
+-- strip links to their glimpse, the heading still the description.
+do
+    local fightMark
+    for _, m in ipairs(j.marks) do
+        if m.kind == "fight" and m.t == t0 + 1000 then fightMark = m end
+    end
+    local function Strip()
+        for i = 1, page.notePool.used do
+            local strip = page.notePool[i]
+            if strip:IsShown() and strip:What() == "fell\194\160to\194\160you" then return strip end
+        end
+    end
+    fightMark.foe = { level = 12, race = "Orc", raceID = 2, class = "MAGE", classID = 8, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    local strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Orc Mage", "a described stranger's strip heading")
+    Check(strip and strip.guid == nil, "a stranger's fight strip past the buffer opens someone")
+    Eq(page.notesWritten, 3, "the described stranger's strip is not one of the three")
+
+    -- Blood on a fight's strip (20 Nov 2026, the user: "like the witness
+    -- card"): the witness's dried blood (UI/Ink/Blood.lua), a won fight's a
+    -- small stain, a lost one's more; never under the name or a line's
+    -- start, its core never under a word; across the slip's right corner
+    -- away from its leader, which it keeps clear of; the same at every
+    -- drawing; and nothing else of the strip changes.
+    local Blood = ns.UI.Blood
+    local function Area(quads)
+        local area = 0
+        for _, q in ipairs(quads) do
+            area = area + math.abs((q[1] * q[4] - q[3] * q[2]) + (q[3] * q[6] - q[5] * q[4])
+                + (q[5] * q[8] - q[7] * q[6]) + (q[7] * q[2] - q[1] * q[8])) / 2
+        end
+        return area
+    end
+    local function Bled(s, label)
+        local blood = s.fightBlood
+        Check(blood and blood.drawn > 0, "no blood on " .. label)
+        if not (blood and blood.drawn > 0) then return end
+        local W, H = s.box[3], s.box[4]
+        local hard, inked, on, off, far = 0, 0, 0, 0, 0
+        for _, piece in ipairs(blood.pieces) do
+            local q = piece.q
+            if Blood.Under(q, blood.hard) then hard = hard + 1 end
+            if piece.level > 1 and Blood.Under(q, blood.words) then inked = inked + 1 end
+            local x, y = (q[1] + q[3] + q[5] + q[7]) / 4, (q[2] + q[4] + q[6] + q[8]) / 4
+            if math.abs(x) <= W / 2 and math.abs(y) <= H / 2 then on = on + 1 else off = off + 1 end
+            local B = Blood.BLOOD
+            if x > W / 2 + B.out.side + 1 or math.abs(y) > H / 2 + B.out.foot + 1 or x < -W / 2 - 1 then
+                far = far + 1
+            end
+        end
+        Eq(hard, 0, "blood under the name or a line's start on " .. label)
+        Eq(inked, 0, "the blood's core under a word on " .. label)
+        Check(not Blood.Under(blood.stain.levels[1][1] or { 0, 0, 0, 0, 0, 0, 0, 0 }, { s.inkBoxes.name }),
+            "blood under the name on " .. label)
+        Check(on > 0 and off > 0, "the blood is not across the slip's edge on " .. label)
+        Eq(far, 0, "blood far past the slip on " .. label)
+        -- Clear of its leader: no piece within 3 px of the pencil.
+        local link
+        for _, l in ipairs(page.links) do
+            if l.strip == s then link = l end
+        end
+        Check(link ~= nil, "no leader for " .. label)
+        local near = math.huge
+        for _, piece in ipairs(link and blood.pieces or {}) do
+            local q = piece.q
+            local px, py = s:Out((q[1] + q[3] + q[5] + q[7]) / 4, (q[2] + q[4] + q[6] + q[8]) / 4)
+            local P = link.points
+            for k = 1, #P - 1, 2 do near = math.min(near, math.sqrt((P[k] - px) ^ 2 + (P[k + 1] - py) ^ 2)) end
+        end
+        Check(near >= 3, "the blood under the leader on " .. label .. ": " .. near .. " px")
+        -- At the right corner further from where the leader leaves.
+        if link then
+            local c, P = s:Focus().corners, link.points
+            local function D(p) return (p[1] - P[1]) ^ 2 + (p[2] - P[2]) ^ 2 end
+            Eq(blood.corner, D(c[3]) >= D(c[2]) and "br" or "tr", "the blood at the leader's corner on " .. label)
+        end
+        Eq(s:Focus().words, s.name, "the pad's words on " .. label)
+        return Area(blood.stain.levels[1])
+    end
+    local wonArea = Bled(strip, "a won fight's strip")
+    local first = strip.fightBlood.points
+    local box = table.concat(strip.box, ",")
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    local again = strip.fightBlood.points
+    local same = #first == #again
+    for i = 1, math.min(#first, #again) do
+        same = same and first[i].x == again[i].x and first[i].y == again[i].y and first[i].t == again[i].t
+    end
+    Check(same, "a fight's strip bled differently drawn again")
+    Eq(table.concat(strip.box, ","), box, "the blood moved the strip")
+    fightMark.outcome = "lost"
+    ns.Journey.Touch()
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    local lostStrip
+    for i = 1, page.notePool.used do
+        local s = page.notePool[i]
+        if s:IsShown() and s:What() == "killed\194\160you" then lostStrip = s end
+    end
+    local lostArea = lostStrip and Bled(lostStrip, "a lost fight's strip")
+    Check(lostArea and wonArea and lostArea > wonArea, "a lost fight bled no more than a won one: "
+        .. tostring(lostArea) .. ", " .. tostring(wonArea))
+    -- Laid flat: still there, square with the strip.
+    ns.SetSetting("flatSheets", true)
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    for i = 1, page.notePool.used do
+        local s = page.notePool[i]
+        if s:IsShown() and s:What() == "killed\194\160you" then lostStrip = s end
+    end
+    Check(lostStrip.fightBlood and lostStrip.fightBlood.drawn > 0, "laid flat, the fight's blood is gone")
+    ns.SetSetting("flatSheets", false)
+    -- No fight, no blood: Bram's time together, Numa's first sighting.
+    for i = 1, page.notePool.used do
+        local s = page.notePool[i]
+        if s:IsShown() and s ~= lostStrip then
+            Eq(s.fightBlood, nil, "blood on a strip with no fight: " .. s.name:GetText())
+        end
+    end
+    fightMark.outcome = "won"
+    ns.Journey.Touch()
+    -- In the mock every letter is 6 px: "a level 60 Night Elf Warrior" is
+    -- wider than the row's 142 px box, so the strip says less.
+    fightMark.foe = { level = 60, race = "NightElf", raceID = 4, class = "WARRIOR", classID = 1, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 60 Warrior", "a wide description not shortened on its strip")
+    Check(strip and strip.name:GetStringWidth() + 2 <= strip:GetWidth(), "the heading wider than its strip")
+    -- Still in the buffer: their glimpse behind the strip, in the plainer
+    -- ink; the heading as before.
+    local GRIM = "Player-4620-00F0E010"
+    ns.Characters.Observe(GRIM, { first = "Grimbald", surname = "Stoutarm", level = 12, faction = "Alliance" })
+    local row = ns.Interactions.Add(GRIM, "pvp_kill", { hostile = true, time = t0 + 1000 })
+    fightMark.foe = { level = 12, race = "Orc", raceID = 2, class = "MAGE", classID = 8, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Orc Mage", "a buffered stranger named on their fight strip")
+    Eq(strip and strip.guid, GRIM, "a buffered stranger's fight strip does not open their glimpse")
+    Check(strip and strip.note.plain == true, "a buffered stranger's strip is not in the plainer ink")
+    -- An old mark (no `foe`) while the buffer has them: their record says.
+    fightMark.foe = nil
+    ns.db.characters[GRIM].race, ns.db.characters[GRIM].class = "Dwarf", "HUNTER"
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Hunter", "an old mark not described from the buffer")
+    -- Inked in since: theirs by name.
+    ns.Diary.Add(GRIM, { source = "test" })
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "Grimbald", "a foe inked in since not named, bare, on their fight strip")
+    Eq(strip and strip.guid, GRIM, "their fight strip does not open their page")
+    ns.Diary.Remove(GRIM, true)
+    ns.Interactions.Remove(GRIM, row)
+    ns.db.characters[GRIM] = nil
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    Eq(Strip() and Strip().name:GetText(), "someone", "the stranger's strip after the test")
+end
 
 -- One leader per strip (10 Oct, in the client: a person with two marks on
 -- a plate had a long pencil line to each): Bram also fought you on the
@@ -627,9 +798,18 @@ do
     for _, link in ipairs(page.links) do
         if link.strip == babaStrip then Eq(link.mark, toFight, "Bram's leader does not go to the fight") end
     end
+    -- A diary person's strip that tells a fight bleeds too, as a lost one.
+    Check(babaStrip.fightBlood and babaStrip.fightBlood.drawn > 0, "Bram's fight strip has no blood")
+    Eq(babaStrip.fightBlood and #babaStrip.fightBlood.points,
+        #ns.UI.Blood.Spill(ns.UI.Blood.BLOOD.amount.watched, babaStrip.box[3], babaStrip.box[4], babaStrip.inkBoxes,
+            babaStrip.note.seed .. ":fight", babaStrip.fightBlood.corner), "Bram's lost fight not a lost fight's blood")
     ns.Journey.Refight(j, fight, false)
     ns.UI.RefreshJourneyPage(false)
     Open(10)
+    for i = 1, page.notePool.used do
+        local strip = page.notePool[i]
+        if strip:IsShown() and strip.guid == A then Eq(strip.fightBlood, nil, "Bram's strip bleeds with no fight") end
+    end
 end
 
 -- Each note is a paper strip taped beside the plate (UI/Paper/Strip.lua),
@@ -701,7 +881,7 @@ do
     end
     local whats = {
         Text.MarginWhat({ { kind = "session", seconds = 12000 }, { kind = "note" } }, 5),
-        "twenty minutes together and you won the fight",
+        "twenty minutes together, then fell to you",
         "first seen, and you'd meet again at level 14",
     }
     local orphaned, laid, alone, taped = 0, 0, {}, {}

@@ -148,6 +148,14 @@ Bring()
 --------------------------------------------------------------------------
 Section("a hunt with QuestieDB: every kind, and what it should have taken (EXT-2)")
 
+-- The user's own loot lines (the client's enUS strings): a hunt counts only
+-- what was looted.
+_G.LOOT_ITEM_SELF = "You receive loot: %s."
+_G.LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
+local function Looted(n)
+    mock.fire("CHAT_MSG_LOOT", "You receive loot: " .. MEAT .. "x" .. n .. ".", "x", "", "", "", "", 0, 0, "", 0, 1, F.SELF.guid)
+end
+
 local QUEST = { questID = 781, title = "Break Sharptusk!", objectives = {
     { text = "Plainstrider Meat: 0/7", type = "item", numFulfilled = 0, numRequired = 7, finished = false } } }
 mock.quests = { QUEST }
@@ -168,6 +176,7 @@ for _ = 1, 11 do mock.fire("PARTY_KILL", STRANGER.guid, ADULT) end
 mock.fire("PARTY_KILL", SELF.guid, WOLF)
 mock.loot = { { link = MEAT, sources = { STRIDER, 1 } } }
 mock.fire("LOOT_OPENED")
+Looted(7)
 QUEST.objectives[1].numFulfilled, QUEST.objectives[1].finished = 7, true
 mock.fire("QUEST_LOG_UPDATE")
 mock.RunTimers()
@@ -196,6 +205,7 @@ Check(hunt and not hunt.from[2956], "without QuestieDB, a kind before it dropped
 for _ = 1, 4 do mock.fire("PARTY_KILL", SELF.guid, STRIDER) end
 for _ = 1, 3 do mock.fire("PARTY_KILL", STRANGER.guid, ADULT) end
 mock.fire("LOOT_OPENED")
+Looted(7)
 QUEST.objectives[1].numFulfilled, QUEST.objectives[1].finished = 7, true
 mock.fire("QUEST_LOG_UPDATE")
 mock.RunTimers()
@@ -259,6 +269,7 @@ Loot("You receive loot: " .. MEAT .. ".", SELF.guid)
 Loot("Someone receives loot: " .. MEAT .. ".", "Player-4615-0CCCCCCC")
 Loot("Someone receives loot: |cffffffff|Hitem:2589::::::::5:::::|h[Linen Cloth]|h|r.", STRANGER.guid)
 Eq(hunt.shared, 2, "the group's copies (not the user's, a stranger's or another item)")
+Looted(6)
 QUEST.objectives[1].numFulfilled, QUEST.objectives[1].finished = 7, true
 mock.fire("QUEST_LOG_UPDATE")
 mock.RunTimers()

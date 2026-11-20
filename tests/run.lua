@@ -50,6 +50,7 @@ local FILES = {
     "pad_yourdiary",
     "pad_plates", "pad_cards", "pad_full", "pad_run", "pad_battlegrounds", "pad_dungeon", "pad_people", "pad_people_edit", "pad_nearby", "pad_windows", "pad_intro", "pad_keys", "pad_round2", "pad_menu",
     "journey_ui",
+    "fight_strip",
     "killer_card",
     "combat_ui",
     "custom_cards",

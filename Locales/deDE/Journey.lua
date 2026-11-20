@@ -111,16 +111,44 @@ ns.Locale.Add("deDE", {
     ["In good company"] = "In guter Gesellschaft",
     ["On the road"] = "Unterwegs",
 
+    -- UI/Journey/Text/Grammar.lua: a stranger described (Grammar.lua's
+    -- G.FoeName fills these and makes "ein" "eine" before a woman's class:
+    -- "eine Jägerin der Stufe 16 (Zwerg)"). The race goes in brackets, as
+    -- the client gives it in one form only.
+    ["a level %1$d %2$s %3$s##foe"] = "ein %3$s der Stufe %1$d (%2$s)",
+    ["a level %1$d %2$s##foe"] = "ein %2$s der Stufe %1$d",
+    ["someone at level %d##foe"] = "jemand auf Stufe %d",
+    ["a %1$s %2$s##foe"] = "ein %2$s (%1$s)",
+    ["an %1$s %2$s##foe"] = "ein %2$s (%1$s)",
+    ["a %s##foe"] = "ein %s",
+    ["an %s##foe"] = "ein %s",
+
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "noch eine Notiz|noch %s Notizen",
     ["a note|%s notes##plural"] = "eine Notiz|%s Notizen",
-    ["a fight, lost"] = "ein Kampf, verloren",
-    ["a fight, won"] = "ein Kampf, gewonnen",
-    ["you won the fight"] = "du hast den Kampf gewonnen",
     ["you'd meet again"] = "ihr würdet euch wiedersehen",
     ["you'd meet again at level %d"] = "ihr würdet euch auf Stufe %d wiedersehen",
     ["first seen, and %s"] = "zuerst gesehen, und %s",
     ["with someone"] = "mit jemandem",
+    -- A fight, under the foe's name, the foe its subject ("Mika / hat dich
+    -- wieder getötet"); the ordinals are "first##time"'s ("zum dritten Mal").
+    ["killed you again"] = "hat dich wieder getötet",
+    ["killed you for the %s time"] = "hat dich zum %s Mal getötet",
+    ["fell to you"] = "ist dir unterlegen",
+    ["fell to you again"] = "ist dir wieder unterlegen",
+    ["fell to you for the %s time"] = "ist dir zum %s Mal unterlegen",
+    ["killed you again, with %s"] = "hat dich wieder mit %s getötet",
+    ["killed you for the %1$s time, with %2$s"] = "hat dich zum %1$s Mal mit %2$s getötet",
+    ["once|%s times##spoken##plural"] = "einmal|%smal",
+    ["killed you, then fell to you"] = "hat dich getötet und ist dir dann unterlegen",
+    ["fell to you, then killed you"] = "ist dir unterlegen und hat dich dann getötet",
+    ["%1$s. You killed them %2$s.##fight, then the score"] = "%1$s. Du hast <they:ihn/sie> %2$s getötet.",
+    ["%1$s. They killed you %2$s.##fight, then the score"] = "%1$s. <they:Er/Sie> hat dich %2$s getötet.",
+    -- The fight needs its subject after "dann" in German ("dann hat er
+    -- dich getötet"), so the two stand apart: "Zusammen 35 Min. – hat dich
+    -- getötet".
+    ["%1$s, then %2$s##company, then fight"] = "%1$s – %2$s",
+    ["someone##foe"] = "jemand",
 
     -- UI/Journey/Text/Notes.lua
     ["And one more note.|And %d more notes.##plural"] = "Und noch eine Notiz.|Und noch %d Notizen.",
@@ -160,6 +188,10 @@ ns.Locale.Add("deDE", {
     ["won a fight"] = "gewann einen Kampf",
     ["lost a fight"] = "verlor einen Kampf",
     ["lost to %s"] = "verlor gegen %s",
+    -- A stranger described (G.FoeName, nominative): "<acc>" turns its
+    -- "ein" into "einen" (Grammar.lua's G.Agree).
+    ["beat %s##foe"] = "besiegte <acc>%s",
+    ["lost to %s##foe"] = "verlor gegen <acc>%s",
     ["Nothing on the road at this level."] = "Auf dieser Stufe blieb der Weg still.",
     ["so far"] = "bisher",
     ["someone##whom"] = "jemanden",

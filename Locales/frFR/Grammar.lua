@@ -142,6 +142,43 @@ G.Plural = function(name) return name end
 G.ItemWord = function(n, item) return item end
 G.KillerName = function(k) return k.name end
 
+-- A stranger described (UI/Journey/Text/Grammar.lua's FoeName): "un
+-- chasseur nain de niveau 16", "une chasseresse naine de niveau 16". The
+-- class is the noun, lower case (the client gives it by sex already); the
+-- race after it is an adjective, lower case and agreed for a woman; a race
+-- alone is the noun and keeps its capital ("une Naine"). The race arrives
+-- in the client's masculine; only the endings below change, anything else
+-- as it comes ("elfe de la nuit", "gnome", "troll", "tauren").
+local DOWN_FIRST = { ["É"] = "é", ["È"] = "è", ["À"] = "à", ["Ê"] = "ê", ["Ô"] = "ô", ["Î"] = "î" }
+local function Lower(word)
+    local first = word:match("^[\195][\128-\191]") or word:sub(1, 1)
+    return (DOWN_FIRST[first] or first:lower()) .. word:sub(#first + 1)
+end
+local function Feminine(race)
+    if race:find("^[Mm]ort%-vivant$") then return race:sub(1, 1) .. "orte-vivante" end
+    if race:find("ain$") then return race .. "e" end
+    if race == "Orc" or race == "orc" then return race:sub(1, 1) .. "rque" end
+    return race
+end
+G.FoeName = function(words, foe)
+    local L, Fmt = ns.L, ns.Fmt
+    local level, race, class = words.level, words.race, words.class
+    local female = foe and foe.sex == 3
+    if race and female then race = Feminine(race) end
+    if class then
+        class = Lower(class)
+        if race then race = Lower(race) end
+    end
+    local text
+    if level and race and class then text = Fmt(L["a level %1$d %2$s %3$s##foe"], level, race, class)
+    elseif level and (race or class) then text = Fmt(L["a level %1$d %2$s##foe"], level, race or class)
+    elseif level then return Fmt(L["someone at level %d##foe"], level)
+    elseif race and class then text = Fmt(L["a %1$s %2$s##foe"], race, class)
+    else text = Fmt(L["a %s##foe"], race or class) end
+    if female then text = (text:gsub("^un ", "une ")) end
+    return (text)
+end
+
 -- After "Trié par", lower case, accents included.
 local DOWN = { ["É"] = "é", ["È"] = "è", ["À"] = "à", ["Ê"] = "ê", ["Ô"] = "ô", ["Î"] = "î" }
 G.PeopleSortLabel = function(label)

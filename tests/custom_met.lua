@@ -260,7 +260,7 @@ do
     -- hands them out anew each laying, and an automatic strip takes no click.
     j.marks = { { kind = "fight", outcome = "lost", guid = OTHER, t = t0 + 10, mapID = MAP, x = 0.42, y = 0.40 } }
     Open()
-    local person = Strip("with Wenna")
+    local person = Strip("Wenna")
     Check(person ~= nil, "an automatic strip beside them")
     Eq(person.onRight, nil, "takes no right click of a card that had its strip")
     Check(Strip("with Old Tom").onRight ~= nil, "theirs still does")

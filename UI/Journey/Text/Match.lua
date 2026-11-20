@@ -220,7 +220,7 @@ end
 -- of them"; the print's heading, "and everyone else, 111 more".
 function Text.RollKilled(n, of)
     if of == 1 or n == of then
-        return n == 1 and L["killed you"] or ns.Plural(n, L["killed you in all %s|killed you in all %s##plural"], Said(n))
+        return n == 1 and ns.Locale.They(L["killed you"], nil) or ns.Plural(n, L["killed you in all %s|killed you in all %s##plural"], Said(n))
     end
     return ns.Plural(n, L["killed you in %s of them|killed you in %s of them##plural"], Said(n))
 end
