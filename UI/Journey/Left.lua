@@ -68,7 +68,7 @@ end
 -- proposal, 5 Nov 2026). Asked first: with neither (a stale strip whose
 -- record the buffer has just forgotten), nothing happens, no page turns and
 -- no sound, rather than an empty People page. Every name on Your Diary
--- (faces, prose, margin strips, the "met" strip, the witness card, the
+-- (faces, prose, margin strips, a free card's strip, the witness card, the
 -- dungeon notes) comes here.
 local function ToPerson(guid)
     if not (guid and ns.UI.Journal.Route(guid)) then return end
@@ -115,6 +115,7 @@ local function NamesOf(e)
     for _, person in ipairs(e.people or {}) do
         if ns.Diary.IsDiary(person.guid) then Add(person.guid) end
     end
+    for _, guid in ipairs(Text.LinkedGuids(e)) do Add(guid) end
     table.sort(names, function(a, b) return #a.name > #b.name end)
     return names
 end

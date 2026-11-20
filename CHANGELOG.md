@@ -2,11 +2,13 @@
 
 ## [Unreleased]
 
+## [4.2.0]
+
+This Update brings the diary in Brazilian Portuguese.
+
 ### Shiny new Things
 
-- Adds Brazilian Portuguese support
-- You can now choose what each page of _Your Diary_ shows
-  - Right-click a _Plate_ or a person to leave it out
+- Added Brazilian Portuguese to the diary’s language settings (thanks thiagocoutinhor)
 
 ## [4.1.1]
 

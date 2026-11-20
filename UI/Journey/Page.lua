@@ -377,6 +377,24 @@ function OpenLevel(i)
     OpenPiece(i, nil)
 end
 
+-- Opens the page time `t` falls on: the entry holding it (a level, or a
+-- week past the cap) at the piece that holds it (PieceAt). From another
+-- page of the book: a free card's slip on a person's timeline
+-- (Features/Note/Timeline.lua). False where no entry had begun by then.
+local function OpenAt(t)
+    local page = YourDiary.page
+    if not (page and page.recap and t) then return false end
+    -- (the last begun by then: the newest runs on to now)
+    local at
+    for i, e in ipairs(page.recap.entries) do
+        if e.from <= t then at = i end
+    end
+    if not at then return false end
+    OpenPiece(at, PieceAt(page.recap.entries[at], t))
+    return true
+end
+YourDiary.OpenAt = OpenAt
+
 -- Where run `id` has its page: entry `i` and the index of its piece that
 -- holds it (nil where `i` is spliced and the entry holds it whole). Looked
 -- for in entry `i` first, then the others, newest first: a run begun in

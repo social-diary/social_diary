@@ -86,7 +86,15 @@ local RING = { r = 10, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, be
 -- the last name. hot: the ink under the mouse, faint so the name stays readable.
 -- (2 Nov, in the client: laid by its middle at its full height, one
 -- name floated a row and a half under the line.)
-local PERSON = { most = 4, row = 18, level = 20, out = 4, foot = 2, hot = 0.12, paper = { 0.93, 0.88, 0.74 } }
+-- inset: the room a row's picture takes before its words (an item's). edge:
+-- how near the sheet's foot and head the paper may come; it opens upward
+-- where there is more room over the line than under it, and shows only the
+-- rows that room holds, so it never runs off the sheet. Its words are cut
+-- with an ellipsis at the paper's width, never past it.
+-- (19 Nov, in the client: long item names ran past the paper and the sheet,
+-- and the paper lay over the caption's box and the foot's links.)
+local PERSON = { most = 4, row = 18, level = 40, out = 4, foot = 2, hot = 0.12, paper = { 0.93, 0.88, 0.74 },
+    inset = 18, edge = 8 }
 
 -- The words of the form and the menus, all furniture (the copywriter's §1). Add,
 -- pick and another are the user's own, word for word.
@@ -150,9 +158,11 @@ end
 -- The form
 --------------------------------------------------------------------------
 
+local Lines
+
 local function LetGo()
     for _, row in ipairs(view.rows or {}) do
-        if row.box then row.box:ClearFocus() end
+        for _, line in ipairs(Lines(row)) do line.box:ClearFocus() end
     end
 end
 
@@ -172,6 +182,210 @@ end
 
 -- A field's row. Numbers are a writing line and not Style.NumberField, which
 -- will not take the minus of a skull's -1, nor stay empty for "no value".
+--
+-- Every row answers Set and Get; a row of the free card's field types
+-- (note-card.md, phase 3: icon, people, item, flag, a text of several lines)
+-- also Load(values), what it has from the card, Key(), what it holds as a
+-- string to tell a change by, and Extra(fields), what it writes under keys
+-- of its own (an item's ID). Lines(row) is every line written on in it, a
+-- person's names hung under one (`found`, `rows`) where it has them.
+--
+-- An optional field (`optional`, the mob and the item) is not on the form
+-- until it is added: a paper strip, "+ A creature", stands for it (row.add,
+-- among the others' on one row, where the first of them would be), and
+-- added, the field has a link after its line to take it off again, which
+-- clears it. A card that has one opens with it on.
+
+-- What a person's line, a list of people and an item's line offer as they
+-- are written on: the rows the search finds hang from the underline, over
+-- the rows below. `find(text)` the entries, `fill(line, entry)` one written
+-- on its line, `pick(entry)` one chosen. `holder` has its box; it gets found
+-- (the paper they lie on) and rows (theirs), and Offer().
+local function Offering(holder, find, fill, pick)
+    local S = view.sheet
+    local found = CreateFrame("Frame", nil, S)
+    found:SetFrameLevel(S:GetFrameLevel() + PERSON.level)
+    local paper = found:CreateTexture(nil, "BACKGROUND")
+    paper:SetAllPoints()
+    paper:SetColorTexture(PERSON.paper[1], PERSON.paper[2], PERSON.paper[3], 1)
+    -- Ruled down its sides and foot, in the line's own ink, so it reads as the
+    -- line opened out and not as a slip lying near it.
+    for _, edge in ipairs({ { "TOPLEFT", "BOTTOMLEFT", 1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 },
+        { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 } }) do
+        local rule = found:CreateTexture(nil, "BORDER")
+        rule:SetPoint(edge[1])
+        rule:SetPoint(edge[2])
+        if edge[3] then rule:SetWidth(edge[3]) else rule:SetHeight(edge[4]) end
+        rule:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], Style.HAIRLINE_HOT)
+    end
+    found:Hide()
+    holder.found, holder.rows = found, {}
+    -- Where the paper goes, for `n` rows: under the line, or over it where
+    -- there is more room there; as wide as the line's column, never past the
+    -- sheet's margin. How many rows the room holds.
+    local function Hang(n)
+        local at, H = holder.box.padAt, view.H
+        local w = SHEET.line
+        found:ClearAllPoints()
+        if not (at and H) then
+            found:SetPoint("TOPLEFT", holder.box, "BOTTOMLEFT", -PERSON.out, -1)
+            found:SetWidth(w + 2 * PERSON.out)
+            return n, w
+        end
+        local left = at[1] - (holder.box:GetWidth() or 0) / 2
+        w = math.min(SHEET.line, SHEET.w - SHEET.margin - left)
+        local below = math.floor((H - PERSON.edge - (at[2] + 11) - PERSON.foot) / PERSON.row)
+        local above = math.floor((at[2] - 11 - PERSON.edge - PERSON.foot) / PERSON.row)
+        local up = below < n and above > below
+        if up then
+            found:SetPoint("BOTTOMLEFT", holder.box, "TOPLEFT", -PERSON.out, 1)
+        else
+            found:SetPoint("TOPLEFT", holder.box, "BOTTOMLEFT", -PERSON.out, -1)
+        end
+        found:SetWidth(w + 2 * PERSON.out)
+        holder.up = up
+        return math.max(0, math.min(n, up and above or below)), w
+    end
+    function holder.Offer()
+        local list = holder.box:HasFocus() and find(holder.box:GetText()) or {}
+        local n, w = Hang(#list)
+        for i = n + 1, #list do list[i] = nil end
+        for i, entry in ipairs(list) do
+            local line = holder.rows[i]
+            if not line then
+                line = CreateFrame("Button", nil, found)
+                line:SetHeight(PERSON.row)
+                line:SetPoint("TOPLEFT", PERSON.out, -(i - 1) * PERSON.row)
+                line:SetPoint("TOPRIGHT", -PERSON.out, -(i - 1) * PERSON.row)
+                line.text = Style.Text(line, FONT.note)
+                line.text:SetPoint("LEFT")
+                line.text:SetWordWrap(false)
+                line.text:SetMaxLines(1)
+                local hot = line:CreateTexture(nil, "HIGHLIGHT")
+                hot:SetAllPoints()
+                hot:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], PERSON.hot)
+                line:SetScript("OnClick", function(self)
+                    pick(self.entry)
+                    found:Hide()
+                end)
+                holder.rows[i] = line
+            end
+            line.entry = entry
+            fill(line, entry)
+            -- (cut with an ellipsis at the paper's width: the client's, for a
+            -- line of fixed width that may not wrap)
+            line.text:SetWidth(w - (line.picture and line.picture:IsShown() and PERSON.inset or 0) - 2)
+            line:Show()
+        end
+        for i = #list + 1, #holder.rows do holder.rows[i]:Hide() end
+        found:SetHeight(#list * PERSON.row + PERSON.foot)
+        found:SetShown(#list > 0)
+    end
+end
+
+-- A person's line: who the search finds (Custom.FindPeople). Typing is not
+-- picking: whatever was linked lets go at the first key.
+local function PersonLine(holder, width, field)
+    holder.box = Style.WritingLine(view.sheet, width, FONT.note, field.hint)
+    holder.box:SetMaxLetters(field.most or 60)
+    Offering(holder, function(text) return ns.Custom.FindPeople(text, PERSON.most) end,
+        function(line, person)
+            line.person = person
+            line.text:SetText(person.name)
+        end,
+        function(person) holder:Set(person.name, person.guid) end)
+    holder.box:HookScript("OnTextChanged", function(_, typed)
+        if typed then
+            holder.guid = nil
+            holder.Offer()
+        end
+    end)
+    function holder:Set(value, guid)
+        self.guid = guid
+        self.box:SetValue(value)
+        self.box:SetCursorPosition(0)
+        self.found:Hide()
+    end
+    function holder:Get() return self.box:GetText() or "" end
+    return holder
+end
+
+-- Every line written on in `row` (its own, if it has one).
+function Lines(row)
+    return row.box and { row } or {}
+end
+CardSheet.Lines = Lines
+
+-- Tab walks the lines shown, as on the entry form; Enter on a line of one
+-- line saves the card, on any line of any kind's form (a text of several
+-- takes it as a new line).
+local function Save() view.save:GetScript("OnClick")(view.save) end
+local function Writable(box, multi)
+    box:SetScript("OnTabPressed", function(self)
+        local all = {}
+        for _, row in ipairs(view.rows or {}) do
+            for _, line in ipairs(Lines(row)) do
+                if line.found then line.found:Hide() end
+                if line.box:IsShown() then all[#all + 1] = line.box end
+            end
+        end
+        for i, other in ipairs(all) do
+            if other == self then return all[i % #all + 1]:SetFocus() end
+        end
+    end)
+    if not multi then box:SetScript("OnEnterPressed", function() Save() end) end
+end
+
+-- The free card's controls, each on the line's column (SHEET.label in):
+--   ICONS   the icon grid: `across` a row, each in a `cell` px square drawn
+--           `size` px (ns.NoteIcons, at a card's hand, no mark's blot); the
+--           chosen one on a wash of ink at `chosen`, as a word circled
+--   WRITE   a text of several lines: ruled every `pitch` px, as many rows as
+--           the field keeps lines and `more` (it wraps: three lines of the
+--           player's run longer than three rows), scrolled past that
+--   MORE    the "+ Add" strips: `h` px tall, their words `pad` px in from
+--           each end, `gap` between two, turned at most `turn` degrees
+--   OFF     the link that takes an added field off: `gap` px after its line
+--   FACES   who was there: round portraits `size` px, `pitch` apart, their
+--           names small under them (`name` px tall, cut with an ellipsis at
+--           the pitch); the cross on the rim `cross` px, `out` in from the
+--           frame's corner; a name only typed its `initial` in Morpheus
+--           capitals on a `blank` of paper. `line`: from the faces' top to
+--           the search line's middle under them
+--           (19 Nov, after the client: the chosen one in full ink on a warm
+--           wash, Style.SELECTED, the other fifteen at `dim`, as pencil
+--           beside ink; the ink's 0.13 disc under it was hardly seen. The
+--           pad's ring stays the only sign of where the pad is.)
+local ICONS = { across = 8, cell = 22, size = 18, dim = 0.55 }
+local WRITE = { pitch = 20, more = 1 }
+local MORE = { h = 22, pad = 9, gap = 10, turn = 1.2 }
+local OFF = { gap = 8 }
+local FACES = { size = 30, pitch = 44, name = 12, cross = 13, out = 3, initial = 16,
+    blank = { 0.86, 0.80, 0.66 }, line = 58, fade = 0.15 }
+-- FACES.fade: a face just added comes up from nothing over this many
+-- seconds, easing out (its alpha only; what is laid stays where it is).
+
+-- The rows of a kind whose fields name a `group` (the free card's: what it
+-- is, who and what with, how it goes on the page), from one row's middle to
+-- the next's past what the first stands taller: `within` a group (6 px of
+-- air between two lines), `between` two (24 px), with a faint rule in the
+-- middle of that air, centred, `rule` of the writing's width, in the ink at
+-- `alpha` (a section's break in a printed book, not a line to write on).
+-- A kind with no groups keeps SHEET.row everywhere.
+local BEAT = { within = 26, between = 44, rule = 0.4, alpha = 0.25 }
+
+-- The card as it will look, beside the form (a kind's `preview`): the
+-- margin's own card at `w` (the plates' L band, the caption column's
+-- width), laid on the right page with its left edge `over` px back over the
+-- slip's right edge and its top `top` px under the slip's, a level over
+-- the slip, so it reads as clipped on beside what is written. Only looked
+-- at: nothing of it takes the mouse, and the pad does not go to it.
+local PREVIEW = { w = 176, over = 14, top = 58, level = 6 }
+CardSheet.ICONS, CardSheet.WRITE, CardSheet.MORE, CardSheet.FACES = ICONS, WRITE, MORE, FACES
+CardSheet.BEAT, CardSheet.PREVIEW = BEAT, PREVIEW
+
+local AddField, TakeOff, AddPerson, TakePerson
+
 local function NewRow(field)
     local S = view.sheet
     local row = { field = field, label = Style.Text(S, FONT.heading) }
@@ -205,68 +419,337 @@ local function NewRow(field)
         end
         function row:Get() return self.value or "" end
     elseif field.type == "person" then
+        PersonLine(row, SHEET.line, field)
+        row.box.group = row.label
+        Writable(row.box)
+    elseif field.type == "people" then
+        -- Who was there, as round faces in a row (the note sheet's, UI/Paper/
+        -- NoteSheet.lua: the portrait, a paper cross on its rim to take them
+        -- off), each with their name small under it; under the faces one
+        -- line to search on and add the next, gone once `count` are there.
+        -- A name picked from the search is the diary's face; one only typed
+        -- (Enter, or left on the line when the card is saved) is its
+        -- initial on a blank of paper.
+        row.people, row.most, row.faces = {}, field.count or ns.Custom.PEOPLE_MOST, {}
+        local function Same(a, b)
+            if a.guid or b.guid then return a.guid == b.guid end
+            return a.name:lower() == b.name:lower()
+        end
+        -- Someone on the card, once, while there is room; the line cleared.
+        function row:Add(name, guid)
+            name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
+            if name == "" then return false end
+            local p = { name = name, guid = guid }
+            for _, other in ipairs(self.people) do
+                if Same(other, p) then return false end
+            end
+            if #self.people >= self.most then return false end
+            self.people[#self.people + 1] = p
+            self.box:SetValue("")
+            self.found:Hide()
+            return true
+        end
+        function row:Drop(i)
+            table.remove(self.people, i)
+        end
         row.box = Style.WritingLine(S, SHEET.line, FONT.note, field.hint)
         row.box:SetMaxLetters(field.most or 60)
         row.box.group = row.label
-        local found = CreateFrame("Frame", nil, S)
-        found:SetFrameLevel(S:GetFrameLevel() + PERSON.level)
-        found:SetPoint("TOPLEFT", row.box, "BOTTOMLEFT", -PERSON.out, -1)
-        found:SetPoint("TOPRIGHT", row.box, "BOTTOMRIGHT", PERSON.out, -1)
-        local paper = found:CreateTexture(nil, "BACKGROUND")
-        paper:SetAllPoints()
-        paper:SetColorTexture(PERSON.paper[1], PERSON.paper[2], PERSON.paper[3], 1)
-        -- Ruled down its sides and foot, in the line's own ink, so it reads as the
-        -- line opened out and not as a slip lying near it.
-        for _, edge in ipairs({ { "TOPLEFT", "BOTTOMLEFT", 1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 },
-            { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 } }) do
-            local rule = found:CreateTexture(nil, "BORDER")
-            rule:SetPoint(edge[1])
-            rule:SetPoint(edge[2])
-            if edge[3] then rule:SetWidth(edge[3]) else rule:SetHeight(edge[4]) end
-            rule:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], Style.HAIRLINE_HOT)
-        end
-        found:Hide()
-        row.found, row.rows = found, {}
-        local function Offer()
-            local people = row.box:HasFocus() and ns.Custom.FindPeople(row.box:GetText(), PERSON.most) or {}
-            for i, person in ipairs(people) do
-                local line = row.rows[i]
-                if not line then
-                    line = CreateFrame("Button", nil, found)
-                    line:SetHeight(PERSON.row)
-                    line:SetPoint("TOPLEFT", PERSON.out, -(i - 1) * PERSON.row)
-                    line:SetPoint("TOPRIGHT", -PERSON.out, -(i - 1) * PERSON.row)
-                    line.text = Style.Text(line, FONT.note)
-                    line.text:SetPoint("LEFT")
-                    local hot = line:CreateTexture(nil, "HIGHLIGHT")
-                    hot:SetAllPoints()
-                    hot:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], PERSON.hot)
-                    line:SetScript("OnClick", function(self)
-                        row:Set(self.person.name, self.person.guid)
-                        found:Hide()
-                    end)
-                    row.rows[i] = line
-                end
+        Writable(row.box)
+        Offering(row, function(text) return ns.Custom.FindPeople(text, PERSON.most) end,
+            function(line, person)
                 line.person = person
                 line.text:SetText(person.name)
-                line:Show()
-            end
-            for i = #people + 1, #row.rows do row.rows[i]:Hide() end
-            found:SetHeight(#people * PERSON.row + PERSON.foot)
-            found:SetShown(#people > 0)
-        end
-        -- Typing is not picking: whatever was linked lets go at the first key.
+            end,
+            function(person)
+                if row:Add(person.name, person.guid) then AddPerson(row) end
+            end)
         row.box:HookScript("OnTextChanged", function(_, typed)
-            if typed then
-                row.guid = nil
-                Offer()
+            if typed then row.Offer() end
+        end)
+        -- Enter adds what is typed as a name of its own; on an empty line,
+        -- it saves the card as on every other line.
+        row.box:SetScript("OnEnterPressed", function(self)
+            if (self:GetText() or ""):find("%S") then
+                if row:Add(self:GetText()) then AddPerson(row) end
+            else
+                Save()
             end
         end)
-        function row:Set(value, guid)
-            self.guid = guid
-            self.box:SetValue(value)
-            self.found:Hide()
+        function row:Face(i)
+            local o = self.faces[i]
+            if o then return o end
+            o = Style.Portrait(S, FACES.size)
+            o.group = row.label
+            o.initial = Style.Text(o, FONT.title)
+            o.initial:SetFont(Style.MORPHEUS, FACES.initial, "")
+            o.initial:SetPoint("CENTER", 0, -1)
+            o.initial:SetJustifyH("CENTER")
+            o.initial:SetTextColor(Style.INK_STRONG[1], Style.INK_STRONG[2], Style.INK_STRONG[3])
+            o.name = Style.Text(S, FONT.small)
+            o.name:SetJustifyH("CENTER")
+            o.name:SetWordWrap(false)
+            o.name:SetMaxLines(1)
+            Style.Tooltip(o, function(self)
+                local p = self.person
+                return p and (p.guid and ns.Characters.FullName(p.guid) or p.name) or nil
+            end)
+            -- Its cross on the rim, in paper and ink, as the note sheet's.
+            local cross = CreateFrame("Button", nil, o)
+            cross:SetSize(FACES.cross, FACES.cross)
+            cross:SetPoint("CENTER", o, "TOPRIGHT", -FACES.out, -FACES.out)
+            cross:SetFrameLevel(o:GetFrameLevel() + 2)
+            local INK, P = Style.INK, Style.PAPER
+            local disc = cross:CreateTexture(nil, "BACKGROUND", nil, 0)
+            disc:SetAllPoints()
+            Style.Disc(disc, INK[1], INK[2], INK[3], 0.85)
+            local face = cross:CreateTexture(nil, "BACKGROUND", nil, 1)
+            face:SetPoint("TOPLEFT", 1, -1)
+            face:SetPoint("BOTTOMRIGHT", -1, 1)
+            Style.Disc(face, P[1], P[2], P[3], 1)
+            local mark = Style.Text(cross, FONT.tag)
+            mark:SetPoint("CENTER", 0, 1)
+            mark:SetText("\195\151")  -- the multiplication sign, U+00D7
+            mark:SetTextColor(Style.INK_STRONG[1], Style.INK_STRONG[2], Style.INK_STRONG[3])
+            cross:SetScript("OnClick", function() TakePerson(row, o.at) end)
+            Style.Tooltip(cross, function()
+                local p = o.person
+                return p and ns.Fmt(L["Click to take %s off the card."], p.guid and ns.UI.JourneyText.Short(p.guid) or p.name) or nil
+            end)
+            o.cross = cross
+            self.faces[i] = o
+            return o
         end
+        -- Each face as who it shows: the diary's portrait, else the initial.
+        function row:Faces()
+            for i, o in ipairs(self.faces) do
+                if not self.people[i] then
+                    o:Hide()
+                    o.name:Hide()
+                end
+            end
+            for i, p in ipairs(self.people) do
+                local o = self:Face(i)
+                o.person, o.at = p, i
+                local record = p.guid and ns.Characters.Get(p.guid) or nil
+                if record then
+                    o:SetCharacter(record)
+                    o.initial:Hide()
+                else
+                    local B = FACES.blank
+                    o.icon:SetColorTexture(B[1], B[2], B[3], 1)
+                    o.icon:SetTexCoord(0, 1, 0, 1)
+                    o.initial:SetText(ns.UI.JourneyText.Upper((p.name:match("^[%z\1-\127\194-\244][\128-\191]*") or "?")))
+                    o.initial:Show()
+                end
+                o.name:SetText(p.guid and ns.UI.JourneyText.Short(p.guid) or p.name)
+            end
+        end
+        function row:Set(list)
+            self.people = {}
+            for _, p in ipairs(type(list) == "table" and list or {}) do
+                if type(p) == "table" then self:Add(p.name, p.guid) end
+            end
+            self.box:SetValue("")
+            self.found:Hide()
+            self:Faces()
+        end
+        -- The people on the card, and a name left on the line with room for it.
+        function row:Get()
+            local out = {}
+            for i, p in ipairs(self.people) do out[i] = { name = p.name, guid = p.guid } end
+            local typed = (self.box:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if typed ~= "" and #out < self.most then
+                local dup = false
+                for _, p in ipairs(out) do
+                    if not p.guid and p.name:lower() == typed:lower() then dup = true end
+                end
+                if not dup then out[#out + 1] = { name = typed } end
+            end
+            return out
+        end
+        function row:Key()
+            local parts = {}
+            for _, p in ipairs(self:Get()) do parts[#parts + 1] = p.name .. "\1" .. tostring(p.guid) end
+            return table.concat(parts, "\2")
+        end
+        function row:Load(values) self:Set(values[field.key]) end
+    elseif field.type == "icon" then
+        -- The sixteen, always in sight (one click, nothing to open), a row of
+        -- eight twice; the chosen one washed. Their names are their tooltips.
+        local icons = ns.NoteIcons
+        row.cells = {}
+        for i, key in ipairs(icons and icons.KEYS or {}) do
+            local cell = CreateFrame("Button", nil, S)
+            cell.iconKey, cell.at = key, i
+            cell.chosen = cell:CreateTexture(nil, "BACKGROUND")
+            cell.chosen:SetPoint("CENTER")
+            cell.chosen:SetSize(ICONS.cell, ICONS.cell)
+            local W = Style.SELECTED
+            Style.Disc(cell.chosen, W[1], W[2], W[3], W[4])
+            cell.picture = icons.New(cell, ICONS.size)
+            cell.picture:SetPoint("CENTER")
+            cell.picture:SetIcon(key)
+            cell.group = row.label
+            Style.Tooltip(cell, function() return { { icons.NAMES[key] or key } } end)
+            cell:SetScript("OnClick", function()
+                if row.value ~= key then Style.PlaySound("write") end
+                row:Set(key)
+                CardSheet.Changed()
+            end)
+            row.cells[i] = cell
+        end
+        function row:Set(value)
+            self.value = icons and icons.Known(value) or value
+            for _, cell in ipairs(self.cells) do
+                local on = cell.iconKey == self.value
+                cell.chosen:SetShown(on)
+                cell.picture:SetAlpha(on and 1 or ICONS.dim)
+            end
+        end
+        -- Every icon in full ink again, none washed (the form put away).
+        function row:Plain()
+            for _, cell in ipairs(self.cells) do
+                cell.chosen:Hide()
+                cell.picture:SetAlpha(1)
+            end
+        end
+        function row:Get() return self.value end
+        function row:Key() return tostring(self.value) end
+        function row:Load(values) self:Set(values[field.key]) end
+    elseif field.type == "flag" then
+        -- Its label is its words, beside the box: no label in the column.
+        row.flag = Style.Checkbox(S, SHEET.w - 2 * SHEET.margin, field.label, function() return row.value end,
+            function(on) row.value = on end)
+        function row:Set(value)
+            self.value = value == true
+            self.flag:SetChecked(self.value)
+        end
+        function row:Get() return self.value == true end
+        function row:Key() return tostring(self.value == true) end
+        function row:Load(values) self:Set(values[field.key]) end
+    elseif field.type == "item" then
+        -- A line to write its name on, the player's own items offered as it
+        -- is written (Custom.FindItems: picture and name in its quality's
+        -- ink), or a shift-click of an item (CardSheet.InsertLink). Picked,
+        -- it wears its picture at the line's start and its name its ink.
+        row.box = Style.WritingLine(S, SHEET.line, FONT.note, field.hint)
+        row.box:SetMaxLetters(field.most or 60)
+        row.box.group = row.label
+        Writable(row.box)
+        row.picture = row.box:CreateTexture(nil, "ARTWORK")
+        row.picture:SetSize(14, 14)
+        row.picture:SetPoint("LEFT", 0, 0)
+        row.picture:Hide()
+        local function Look()
+            local on = row.id ~= nil and row.iconFile ~= nil
+            row.picture:SetShown(on)
+            if on then row.picture:SetTexture(row.iconFile) end
+            row.box:SetTextInsets(on and PERSON.inset or 0, 0, 0, 0)
+            local ink = row.id and ns.UI.ItemBox.Ink(row.quality) or Style.INK_STRONG
+            row.box:SetTextColor(ink[1], ink[2], ink[3])
+        end
+        Offering(row, function(text) return ns.Custom.FindItems(text, PERSON.most) end,
+            function(line, it)
+                line.item = it
+                if not line.picture then
+                    line.picture = line:CreateTexture(nil, "ARTWORK")
+                    line.picture:SetSize(14, 14)
+                    line.picture:SetPoint("LEFT")
+                    line.text:ClearAllPoints()
+                    line.text:SetPoint("LEFT", PERSON.inset, 0)
+                    line:SetScript("OnEnter", function(self)
+                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                        local ok = type(GameTooltip.SetHyperlink) == "function"
+                            and pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. self.item.itemID)
+                        if not ok then GameTooltip:SetText(self.item.name) end
+                        GameTooltip:Show()
+                    end)
+                    line:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                end
+                line.picture:SetTexture(it.icon)
+                line.picture:SetShown(it.icon ~= nil)
+                line.text:SetText(it.name)
+                local ink = ns.UI.ItemBox.Ink(it.quality)
+                line.text:SetTextColor(ink[1], ink[2], ink[3])
+            end,
+            function(it) row:Set(it.name, it.itemID, it.quality, it.icon) end)
+        row.box:HookScript("OnEditFocusLost", function(self) self:SetCursorPosition(0) end)
+        row.box:HookScript("OnTextChanged", function(_, typed)
+            if typed then
+                row.id, row.quality, row.iconFile = nil, nil, nil
+                Look()
+                row.Offer()
+            end
+        end)
+        function row:Set(name, id, quality, icon)
+            self.id = id
+            local link = id and ("item:" .. id) or nil
+            self.quality = id and (quality or ns.UI.ItemBox.Quality(link)) or nil
+            self.iconFile = id and (icon or ns.UI.ItemBox.Icon(link)) or nil
+            self.box:SetValue(name or "")
+            -- (from its first letter, its picture's inset kept: an edit box
+            -- given its text keeps the scroll it had, 19 Nov in the client:
+            -- "ather Boots")
+            self.box:SetCursorPosition(0)
+            self.found:Hide()
+            Look()
+            CardSheet.Changed()
+        end
+        function row:Get() return self.box:GetText() or "" end
+        function row:Key() return self:Get() .. "\1" .. tostring(self.id) end
+        function row:Extra(fields) fields[ns.Custom.ItemKey(field)] = self.id or false end
+        function row:Load(values) self:Set(values[field.key], values[ns.Custom.ItemKey(field)]) end
+    elseif field.type == "text" and (field.lines or 1) > 1 then
+        -- A text of several lines: ruled as the entry form's note is
+        -- (UI/Windows/Entry.lua's BuildNote), on a frame that scrolls it.
+        local rows = (field.lines or 1) + WRITE.more
+        local scroll = CreateFrame("ScrollFrame", nil, S)
+        scroll:EnableMouse(true)
+        local box = CreateFrame("EditBox", nil, scroll)
+        box:SetMultiLine(true)
+        box:SetAutoFocus(false)
+        box:SetMaxLetters(field.most or 60)
+        box:SetFontObject(FONT.note)
+        box:SetSpacing(WRITE.pitch - 14)
+        box:SetWidth(SHEET.line)
+        box:SetHeight(WRITE.pitch)
+        scroll:SetScrollChild(box)
+        -- (its rules on the box, so they move with what is written)
+        for i = 1, rows + 4 do
+            local rule = box:CreateTexture(nil, "BACKGROUND")
+            rule:SetHeight(1)
+            rule:SetPoint("TOPLEFT", 0, -(i * WRITE.pitch - 1))
+            rule:SetPoint("TOPRIGHT", 0, -(i * WRITE.pitch - 1))
+            rule:SetColorTexture(Style.INK[1], Style.INK[2], Style.INK[3], Style.HAIRLINE)
+            if i == 1 then box.line = rule end
+        end
+        Style.Placeholder(box, field.hint, true):SetPoint("TOPLEFT", 0, -3)
+        scroll:SetScript("OnMouseDown", function() box:SetFocus() end)
+        box:SetScript("OnCursorChanged", function(_, _, y, _, height)
+            local offset, shown = scroll:GetVerticalScroll(), rows * WRITE.pitch
+            y = -y
+            if y < offset then
+                scroll:SetVerticalScroll(y)
+            elseif y + height > offset + shown then
+                scroll:SetVerticalScroll(y + height - shown)
+            end
+        end)
+        box:SetScript("OnTextChanged", function(self)
+            self:UpdateHint()
+            scroll:UpdateScrollChildRect()
+        end)
+        box:SetScript("OnEditFocusGained", function(self) self:UpdateHint() end)
+        box:SetScript("OnEditFocusLost", function(self) self:UpdateHint() end)
+        box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        function box:SetValue(text)
+            self:SetText(text or "")
+            self:UpdateHint()
+        end
+        box.group = row.label
+        Writable(box, true)
+        row.box, row.scroll, row.shown = box, scroll, rows
+        function row:Set(value) self.box:SetValue(value) end
         function row:Get() return self.box:GetText() or "" end
     else
         local number = field.type == "number"
@@ -274,12 +757,29 @@ local function NewRow(field)
             not number and field.hint or nil)
         row.box:SetMaxLetters(number and 4 or (field.most or 60))
         row.box.group = row.label
+        Writable(row.box)
         if number and field.hint then
             row.hint = Style.Text(S, FONT.small)
             row.hint:SetText(field.hint)
         end
         function row:Set(value) self.box:SetValue(value) end
         function row:Get() return self.box:GetText() or "" end
+    end
+    -- Whatever is written on a line may change the card beside the form.
+    if row.box then row.box:HookScript("OnTextChanged", function() CardSheet.Changed() end) end
+    if field.optional then
+        -- Its "+ Add" strip, a blank paper slip written on (the picker's
+        -- cards are), whose tape lifts under the mouse; a click is `guid`'s.
+        local strip = ns.UI.PaperStrip(S)
+        strip.addKey = field.key
+        strip.words = Style.Text(strip, FONT.noteWritten)
+        strip.words:SetFont(Style.NEUTON_ITALIC, 14, "")
+        strip.words:SetJustifyH("CENTER")
+        strip.words:SetText(field.add or ns.Fmt(L["+ Add %s"], field.label))
+        row.add = strip
+        row.off = K.Link(FONT.small, function() TakeOff(row) end)
+        row.off:SetText(L["Remove"])
+        row.off.group = row.label
     end
     return row
 end
@@ -288,48 +788,161 @@ local function RowsOf(kind, spec)
     view.rowsOf[kind] = view.rowsOf[kind] or {}
     local rows = view.rowsOf[kind]
     if not rows[1] then
-        local boxes = {}
-        for i, field in ipairs(spec.fields) do
-            rows[i] = NewRow(field)
-            if rows[i].box then boxes[#boxes + 1] = rows[i].box end
-        end
-        -- Tab walks the lines, as on the entry form.
-        -- Enter saves the card, on any line of any kind's form.
-        for i, box in ipairs(boxes) do
-            box:SetScript("OnTabPressed", function()
-                for _, row in ipairs(rows) do
-                    if row.found then row.found:Hide() end
-                end
-                boxes[i % #boxes + 1]:SetFocus()
-            end)
-            box:SetScript("OnEnterPressed", function() view.save:GetScript("OnClick")(view.save) end)
-        end
+        for i, field in ipairs(spec.fields) do rows[i] = NewRow(field) end
     end
     return rows
 end
 
+-- Everything of a row on the form or off it. What Lay decides as it lays
+-- (an optional field's strip or its line, a people's lines past the first,
+-- a people's faces) it shows again there.
 local function ShowRow(row, on)
-    row.label:SetShown(on)
-    for _, part in pairs({ row.box, row.hint }) do part:SetShown(on) end
+    row.label:SetShown(on and not row.flag)
+    for _, part in pairs({ row.box, row.hint, row.scroll, row.flag, row.off, row.add }) do
+        part:SetShown(on)
+    end
+    -- (the faces Lay shows, as many as there are people)
+    for _, o in ipairs(row.faces or {}) do
+        o:Hide()
+        o.name:Hide()
+    end
     if row.found and not on then row.found:Hide() end
     for _, box in pairs(row.toggles or {}) do box:SetShown(on) end
+    for _, cell in ipairs(row.cells or {}) do cell:SetShown(on) end
+end
+
+-- Whether a row holds anything: an optional field opens on where it does.
+local function Filled(row)
+    local value = row:Get()
+    if row.field.type == "item" and row.id then return true end
+    return value ~= nil and value ~= "" and value ~= false
 end
 
 -- What is to be written: all of an inserted card, of one that exists what
 -- changed since the form opened. An edit sent the name unchanged would look the
--- creature up again and might change its picture for nothing.
+-- creature up again and might change its picture for nothing. A row of the
+-- free card's types tells a change by its Key; an optional field taken off
+-- (or never added) holds nothing, so it is written cleared.
 local function Fields()
     local fields, any = {}, false
     for _, row in ipairs(view.rows) do
         local value = row:Get()
+        local now = row.Key and row:Key() or value
         local guidKey = row.field.type == "person" and ns.Custom.GuidKey(row.field)
-        if view.where or value ~= row.was or (guidKey and row.guid ~= row.guidWas) then
+        if view.where or now ~= row.was or (guidKey and row.guid ~= row.guidWas) then
             fields[row.field.key] = value
             if guidKey then fields[guidKey] = row.guid end
+            if row.Extra then row:Extra(fields) end
             any = true
         end
     end
     return fields, any
+end
+
+--------------------------------------------------------------------------
+-- The card beside the form (a kind's `preview`, PREVIEW)
+--------------------------------------------------------------------------
+
+-- What the form holds, as the card will be written: every row's value (an
+-- optional field not on the form holds none), cleaned as a save cleans it,
+-- over what the card already had. Its time is the card's, or the spot's,
+-- so it is turned and torn as it will lie on the page.
+local function Holding()
+    local fields = {}
+    for _, row in ipairs(view.rows) do
+        local on = not (row.field.optional and not row.on)
+        fields[row.field.key] = on and row:Get() or false
+        if row.Extra then
+            row:Extra(fields)
+            if not on then fields[ns.Custom.ItemKey(row.field)] = false end
+        end
+    end
+    local base = view.rec and ns.Custom.Values(view.rec) or nil
+    local rec = ns.Custom.Shaped(view.kind, base, fields)
+    if rec then
+        rec.t = rec.t or (view.where and view.where.from) or ns.Now()
+    end
+    return rec
+end
+
+-- Every frame of `frame` and under it deaf to the mouse: the card beside the
+-- form is only looked at (its name would open a page, its item's box show
+-- a tooltip over the form).
+local function Deaf(frame)
+    frame:EnableMouse(false)
+    for _, child in ipairs({ frame:GetChildren() }) do Deaf(child) end
+end
+
+-- The card written again from what the form holds, or put away where the
+-- kind has none (or the picker is up).
+local function Preview()
+    local holder = view and view.preview
+    if not holder then return end
+    local spec = view.kind and ns.Custom.Spec(view.kind)
+    local how = spec and spec.preview
+    if not (how and view.rows and view.title:IsShown()) then
+        holder:Hide()
+        return
+    end
+    holder:ClearAllPoints()
+    holder:SetPoint("TOPLEFT", view.sheet, "TOPRIGHT", -PREVIEW.over, -PREVIEW.top)
+    holder:SetSize(PREVIEW.w, 1)
+    holder:SetFrameLevel(view.sheet:GetFrameLevel() + PREVIEW.level)
+    holder:Show()
+    holder.cards = holder.cards or {}
+    local card = holder.cards[view.kind]
+    if not card then
+        card = how.new(holder)
+        holder.cards[view.kind] = card
+    end
+    for kind, other in pairs(holder.cards) do
+        if kind ~= view.kind then other:Hide() end
+    end
+    local rec = Holding()
+    if not rec then
+        card:Hide()
+        return
+    end
+    how.write(card, rec, ns.Now())
+    card:Layout(0, 0, PREVIEW.w)
+    card:Show()
+    Deaf(holder)
+    -- (for the tests: what it was written from)
+    holder.rec = rec
+end
+CardSheet.Preview = Preview
+
+-- Something on the form changed: the card beside it written again. Rows
+-- loaded as the form opens say nothing (view.loading); Open writes it once
+-- they all are.
+function CardSheet.Changed()
+    if view and view:IsShown() and not view.loading then Preview() end
+end
+
+-- A face just added comes up from nothing (FACES.fade, the fader in Build).
+local function FadeIn(o)
+    o:SetAlpha(0)
+    o.name:SetAlpha(0)
+    view.fading[o] = { at = 0 }
+    view.fader:Show()
+end
+
+-- The form put away: what it changed of its own looks given back. Every
+-- face in full (a fade cut short), every icon in full ink and unwashed,
+-- the card beside it put away.
+local function Settle()
+    for o in pairs(view.fading) do
+        o:SetAlpha(1)
+        o.name:SetAlpha(1)
+        view.fading[o] = nil
+    end
+    view.fader:Hide()
+    for _, rows in pairs(view.rowsOf or {}) do
+        for _, row in ipairs(rows) do
+            if row.Plain then row:Plain() end
+        end
+    end
+    view.preview:Hide()
 end
 
 -- The kinds that may be added, by their types' order, then their `at` within a
@@ -421,6 +1034,7 @@ local function Build()
     local book = ns.UI.JournalFrame()
     view, K = ns.UI.LooseSheet(book, SHEET.w, 300, { crease = CREASE, straight = true })
     view.rowsOf = {}
+    CardSheet.Hook()
     view.title = Style.Text(view.sheet, FONT.page)
     view.heading = Style.Text(view.sheet, FONT.noteWritten)
     view.heading:SetText(WORDS.pick)
@@ -461,22 +1075,47 @@ local function Build()
     end)
     view.reset:SetText(WORDS.reset)
     -- It destroys what they wrote: asked first, and the slip stays till answered.
+    -- (deleted, the slip torn up: the tear, not the sheet put away)
     view.remove = K.Link(FONT.body, function()
         local rec = view.rec
         ns.UI.Dialog.Confirm(WORDS.confirm, function()
             ns.Custom.Remove(rec)
-            Close()
+            Style.PlaySound("tear")
+            Close(true)
             Redraw()
         end)
     end)
     view.remove:SetText(WORDS.remove)
     view.remove:SetColor(Style.ACCENT[1], Style.ACCENT[2], Style.ACCENT[3])
 
+    -- The faint rules between a kind's groups of rows (BEAT), made as wanted.
+    view.rules = {}
+    -- The card beside the form (PREVIEW): on the view, not the slip, so the
+    -- pad's search of the slip's controls never finds it.
+    view.preview = CreateFrame("Frame", nil, view)
+    view.preview:Hide()
+    -- A face just added, coming up (FACES.fade): { frame, name, at }.
+    view.fading = {}
+    view.fader = CreateFrame("Frame", nil, view)
+    view.fader:Hide()
+    view.fader:SetScript("OnUpdate", function(self, elapsed)
+        local left = false
+        for o, f in pairs(view.fading) do
+            f.at = math.min(1, f.at + (elapsed or 0) / FACES.fade)
+            local a = 1 - (1 - f.at) ^ 3
+            o:SetAlpha(a)
+            o.name:SetAlpha(a)
+            if f.at >= 1 then view.fading[o] = nil else left = true end
+        end
+        if not left then self:Hide() end
+    end)
+
     -- Turning to another page, or shutting the book, puts it away unwritten.
     YourDiary.page.right:HookScript("OnHide", function()
         if view:IsShown() then view:Hide(true) end
     end)
     view:HookScript("OnHide", RingOff)
+    view:HookScript("OnHide", Settle)
     view:HookScript("OnHide", PadRefresh)
     view:Hide()
 end
@@ -499,7 +1138,9 @@ local function ShowForm(on)
     view.save:SetShown(on)
     -- (on both; said, so the pad finds it shown: CardPad.lua)
     view.cancel:Show()
+    for _, rule in ipairs(view.rules) do rule:Hide() end
     if not on then
+        view.preview:Hide()
         view.another:Hide()
         view.hide:Hide()
         view.reset:Hide()
@@ -508,45 +1149,174 @@ local function ShowForm(on)
 end
 
 -- Lays the slip for what `view` holds: its height from its rows, each row and
--- only the links that apply.
+-- only the links that apply. An optional field not added has no row: its
+-- strip goes on one row with the others', where the first of them would be.
 local function Lay(spec)
     local M, W = SHEET.margin, SHEET.w
-    local rows = view.rows
     local rec, inserted = view.rec, view.rec and view.rec.inserted
     local detected = rec and not inserted
     local saved = rec and (rec.customOf or rec)
     local changed = detected and saved.custom ~= nil
-    local quiet = detected or inserted
-    -- A row's middle: the rows before it, one taller for each line its toggles
-    -- wrap to.
+    -- (only a detected card's links have a row of their own over the foot:
+    -- an inserted card's Delete is on the foot, left, away from Save)
+    local quiet = detected
     local across = math.max(1, math.floor(SHEET.line / SHEET.toggle))
-    local ys, last = {}, SHEET.first
-    for i, row in ipairs(rows) do
+    local list, strips = {}, nil
+    for _, row in ipairs(view.rows) do
+        if row.field.optional and not row.on then
+            if not strips then
+                strips = {}
+                list[#list + 1] = { strips = strips }
+            end
+            strips[#strips + 1] = row
+        else
+            list[#list + 1] = { row = row }
+        end
+    end
+    -- How much taller than one line a row stands: a line for each its
+    -- toggles wrap to, the icon grid's second row, a text's rows, the
+    -- faces of who was there over their line.
+    local function Extra(row)
+        if not row then return 0 end
+        if row.field.values then return (math.ceil(#row.field.values / across) - 1) * SHEET.wrap end
+        if row.cells then
+            return (math.ceil(#row.cells / ICONS.across) - 1) * ICONS.cell + ICONS.cell - 20
+        end
+        if row.scroll then return (row.shown - 1) * WRITE.pitch end
+        if row.faces then
+            -- (the faces over the line; with everyone there, the faces alone)
+            if not row.people[1] then return 0 end
+            return #row.people < row.most and FACES.line - 10 or FACES.size + FACES.name - 20
+        end
+        return 0
+    end
+    -- A row's group (BEAT), the strips' that of the first of them; nil for
+    -- a kind with no groups.
+    local function Group(at)
+        local row = at.row or at.strips[1]
+        return row.field.group
+    end
+    -- A row's middle: the rows before it, and what each stands taller; in a
+    -- kind of groups, close within one and apart between two, a rule in
+    -- the air between (rules: its middle).
+    local ys, rules, last = {}, {}, SHEET.first
+    for i, at in ipairs(list) do
         ys[i] = last
-        local lines = row.field.values and math.ceil(#row.field.values / across) or 1
-        last = last + (lines - 1) * SHEET.wrap + (i < #rows and SHEET.row or 0)
+        local gap = 0
+        if i < #list then
+            local this, next = Group(at), Group(list[i + 1])
+            if this == nil and next == nil then
+                gap = SHEET.row
+            elseif this == next then
+                gap = BEAT.within
+            else
+                gap = BEAT.between
+                rules[#rules + 1] = last + Extra(at.row) + 10 + (BEAT.between - 20) / 2
+            end
+        end
+        last = last + Extra(at.row) + gap
     end
     local linksAt = last + SHEET.links
     local footAt = (quiet and linksAt or last + SHEET.links - 6) + SHEET.foot
     local H = footAt + SHEET.bottom
+    -- (the sheet's height, for what hangs from a line: Offering's Hang)
+    view.H = H
 
     Place(W, H)
 
     K.PlaceText(view.title, M, SHEET.title)
-    for i, row in ipairs(rows) do
-        local y = ys[i]
-        local x = M + SHEET.label
-        K.PlaceText(row.label, M, y)
-        if row.toggles then
-            for _, box in pairs(row.toggles) do
-                K.PlaceButton(box, x + box.at % across * SHEET.toggle,
-                    y + math.floor(box.at / across) * SHEET.wrap - box.height / 2,
-                    #row.field.values == 1 and SHEET.line or SHEET.toggle, box.height)
+    for i, y in ipairs(rules) do
+        local rule = view.rules[i]
+        if not rule then
+            rule = view.sheet:CreateTexture(nil, "ARTWORK")
+            local INK = Style.INK
+            rule:SetColorTexture(INK[1], INK[2], INK[3], BEAT.alpha)
+            view.rules[i] = rule
+        end
+        K.Place(rule, M + (W - 2 * M) * BEAT.rule / 2, y, (W - 2 * M) * BEAT.rule, 1)
+        rule:Show()
+    end
+    for i = #rules + 1, #view.rules do view.rules[i]:Hide() end
+    -- (for the tests: where they lie)
+    view.ruleAt = rules
+    local x = M + SHEET.label
+    for i, at in ipairs(list) do
+        local y, row = ys[i], at.row
+        if at.strips then
+            -- The "+ Add" strips, one after another along the line.
+            local sx = x
+            for _, r in ipairs(at.strips) do
+                local strip = r.add
+                local w = K.Width(strip.words) + 2 + 2 * MORE.pad
+                strip:SetNote({ size = { w, MORE.h }, guid = r.field.key, turn = MORE.turn,
+                    seed = "more:" .. r.field.key, onClick = function() AddField(r) end })
+                strip:Layout(sx, y - MORE.h / 2, w)
+                strip:Lay(strip.words, 0, 0, w - 2 * MORE.pad + 4, 20)
+                strip.words:Show()
+                -- (where the pad reads it, as a button the sheet placed: CardPad)
+                strip.padAt = { sx + w / 2, y }
+                sx = sx + w + MORE.gap
             end
+        elseif row.flag then
+            K.PlaceButton(row.flag, M, y - row.flag.height / 2, W - 2 * M, row.flag.height)
         else
-            local w = row.field.type == "number" and SHEET.short or SHEET.line
-            K.PlaceButton(row.box, x, y - 10, w, 20)
-            if row.hint then K.PlaceText(row.hint, x + w + SHEET.gap, y) end
+            K.PlaceText(row.label, M, y)
+            if row.add then
+                row.add:Hide()
+                row.box:Show()
+                row.off:Show()
+                row.label:Show()
+            end
+            if row.toggles then
+                for _, box in pairs(row.toggles) do
+                    K.PlaceButton(box, x + box.at % across * SHEET.toggle,
+                        y + math.floor(box.at / across) * SHEET.wrap - box.height / 2,
+                        #row.field.values == 1 and SHEET.line or SHEET.toggle, box.height)
+                end
+            elseif row.cells then
+                for _, cell in ipairs(row.cells) do
+                    local c = cell.at - 1
+                    K.PlaceButton(cell, x + c % ICONS.across * ICONS.cell,
+                        y - ICONS.cell / 2 + math.floor(c / ICONS.across) * ICONS.cell, ICONS.cell, ICONS.cell)
+                end
+            elseif row.scroll then
+                K.PlaceButton(row.scroll, x, y - 10, SHEET.line, row.shown * WRITE.pitch)
+                row.box.padAt = row.scroll.padAt
+            elseif row.faces then
+                local top = y - 10
+                row:Faces()
+                for i in ipairs(row.people) do
+                    local o = row.faces[i]
+                    -- (each in its pitch, the name under it as wide)
+                    local px = x + (i - 1) * FACES.pitch
+                    K.PlaceButton(o, px + (FACES.pitch - FACES.size) / 2, top, FACES.size, FACES.size)
+                    o:Show()
+                    K.Place(o.name, px + 1, top + FACES.size + 1, FACES.pitch - 2, FACES.name)
+                    o.name:SetWidth(FACES.pitch - 2)
+                    o.name:Show()
+                    if row.fresh == i then FadeIn(o) end
+                end
+                row.fresh = nil
+                local room = #row.people < row.most
+                row.box:SetShown(room)
+                if not room then row.found:Hide() end
+                if room then
+                    K.PlaceButton(row.box, x, (row.people[1] and top + FACES.line or y) - 10, SHEET.line, 20)
+                end
+            else
+                local w = row.field.type == "number" and SHEET.short or SHEET.line
+                if row.off then w = w - K.Width(row.off.label) - OFF.gap end
+                K.PlaceButton(row.box, x, y - 10, w, 20)
+                if row.hint then K.PlaceText(row.hint, x + w + SHEET.gap, y) end
+                if row.off then row.off:PlaceAt(x + w + OFF.gap, y) end
+            end
+        end
+    end
+    -- An optional field not added: its strip stands for it, nothing else.
+    for _, row in ipairs(view.rows) do
+        if row.add and not row.on then
+            row.add:Show()
+            for _, part in ipairs({ row.label, row.box, row.off, row.found }) do part:Hide() end
         end
     end
 
@@ -559,10 +1329,102 @@ local function Lay(spec)
         view.hide:PlaceAt(M, linksAt)
         if changed then view.reset:PlaceAt(M + K.Width(view.hide.label) + SHEET.linkGap, linksAt) end
     elseif inserted then
-        view.remove:PlaceAt(M, linksAt)
+        view.remove:PlaceAt(M, footAt)
     end
     view.save:PlaceAt(W - M, footAt, "RIGHT")
     view.cancel:PlaceAt(W - M - K.Width(view.save.label) - SHEET.linkGap, footAt, "RIGHT")
+    Preview()
+end
+
+-- Laid again, as the rows that are on have changed: the pad, if in hand, put
+-- on `key` (the field added, the strip of the one taken off), the cursor on
+-- `box` with the mouse.
+local function Relay(key, box)
+    Lay(ns.Custom.Spec(view.kind))
+    if ns.UI.Pad.Input.Active() then
+        view.padFocus = key
+    elseif box then
+        box:SetFocus()
+    end
+    PadRefresh()
+end
+
+-- An optional field added from its strip: on the form, and written on.
+function AddField(row)
+    row.on = true
+    Style.PlaySound("hint")
+    Relay("field:" .. row.field.key, row.box)
+end
+
+-- An optional field taken off again: cleared, and its strip back.
+function TakeOff(row)
+    row:Set("", nil)
+    row.on = false
+    Relay("more:" .. row.field.key)
+end
+
+-- Someone added to who was there: their face shown, the form laid again
+-- (the line moves under the faces), the cursor kept on the line to add the
+-- next; with the pad, the pad on it.
+function AddPerson(row)
+    local room = #row.people < row.most
+    Style.PlaySound("hint")
+    -- (their face comes up as the form is laid again: Lay)
+    row.fresh = #row.people
+    Relay(room and ("field:" .. row.field.key) or ("face:" .. row.field.key .. ":" .. #row.people),
+        room and row.box or nil)
+end
+
+-- Someone taken off the card (their face's cross): the pad on the next
+-- face, else the line.
+function TakePerson(row, i)
+    row:Drop(i)
+    local next = row.people[i] or row.people[i - 1]
+    Relay(next and ("face:" .. row.field.key .. ":" .. (row.people[i] and i or i - 1)) or ("field:" .. row.field.key))
+end
+
+-- A shift-clicked item (HandleModifiedItemClick, through the chat's
+-- ChatEdit_InsertLink: CardSheet.Hook) while the form lies open for a kind
+-- with an item's field and no chat line is being written: into that field,
+-- added if it was not. True where it was taken.
+function CardSheet.InsertLink(link)
+    if not (view and view:IsShown() and view.rows and type(link) == "string") then return false end
+    local active = _G.ChatEdit_GetActiveWindow
+    if type(active) == "function" and active() then return false end
+    local it = ns.Custom.ItemOf(link)
+    if not it then return false end
+    for _, row in ipairs(view.rows) do
+        if row.field.type == "item" then
+            row:Set(it.name, it.itemID, ns.UI.ItemBox.Quality(link), ns.UI.ItemBox.Icon(link))
+            row.box:ClearFocus()
+            if row.field.optional and not row.on then
+                row.on = true
+                Lay(ns.Custom.Spec(view.kind))
+                PadRefresh()
+            end
+            return true
+        end
+    end
+    return false
+end
+
+-- Hooked once, after the client's own (hooksecurefunc: a post-hook, so the
+-- chat's link goes where it always did and nothing of the client's is
+-- touched). Both the old global and its namespaced successor where the
+-- client has them; one shift-click reaching both is taken once.
+local hooked, lastLink, lastAt
+function CardSheet.Hook()
+    if hooked or type(hooksecurefunc) ~= "function" then return end
+    hooked = true
+    local function Insert(link)
+        local at = GetTime and GetTime() or 0
+        if link == lastLink and at == lastAt then return end
+        lastLink, lastAt = link, at
+        CardSheet.InsertLink(link)
+    end
+    if type(_G.ChatEdit_InsertLink) == "function" then hooksecurefunc("ChatEdit_InsertLink", Insert) end
+    local util = _G.ChatFrameUtil
+    if type(util) == "table" and type(util.InsertLink) == "function" then hooksecurefunc(util, "InsertLink", Insert) end
 end
 
 -- Each kind's rows off but `kind`'s.
@@ -587,17 +1449,24 @@ function Open(kind, rec, where)
     local values = rec and ns.Custom.Values(rec) or spec.defaults or {}
     -- What a detected card shows but keeps elsewhere (Core/Custom.lua's `values`).
     if rec and spec.values then spec.values(values, rec.customOf or rec) end
+    -- (the card beside the form written once they are all in: Lay)
+    view.loading = true
     for _, row in ipairs(view.rows) do
         ShowRow(row, true)
         local value = values[row.field.key]
         row.was = value ~= nil and tostring(value) or ""
-        if row.field.type == "person" then
+        if row.Load then
+            row:Load(values)
+            row.was = row:Key()
+        elseif row.field.type == "person" then
             row.guidWas = values[ns.Custom.GuidKey(row.field)]
             row:Set(row.was, row.guidWas)
         else
             row:Set(row.was)
         end
+        if row.field.optional then row.on = Filled(row) end
     end
+    view.loading = false
     Lay(spec)
     -- A new card is to be written on at once; a card opened may be only to
     -- leave it out, and a line with the cursor would take the keys from play.
@@ -605,8 +1474,13 @@ function Open(kind, rec, where)
     -- (UI/Journey/CardPad.lua), and a line holding it unasked would take the
     -- keyboard's keys from play with no sign of it under the pad's box.
     if where and not ns.UI.Pad.Input.Active() then
-        local first = view.rows[1]
-        if first and first.box then first.box:SetFocus() end
+        for _, row in ipairs(view.rows) do
+            local first = Lines(row)[1]
+            if first and first.box:IsShown() then
+                first.box:SetFocus()
+                break
+            end
+        end
     end
     PadRefresh()
 end

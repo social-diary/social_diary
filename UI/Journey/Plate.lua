@@ -310,9 +310,14 @@ local function Clamp(v, lo, hi) return v < lo and lo or (v > hi and hi or v) end
 --            reads over the art; false where the shape lays its own paper
 --            (on a dot of paper as a death's cross is: kit.halo).
 --   hover    the size of its hover square (MARK.hover where nil).
---   draw     function(kit, x, y, arg): the mark round x, y on the card,
+--   draw     function(kit, x, y, arg, rec): the mark round x, y on the card,
 --            only through the kit (below), so it turns and is lit with
---            the card and its textures come from the plate's pools.
+--            the card and its textures come from the plate's pools. `rec`
+--            is the record of the spot's first moment (its moment's
+--            `field`, as the page reads it: a custom card's copy), so a
+--            mark may be what the card chose (a free card's icon); nil
+--            where there is none: the picker draws each kind without one,
+--            and a mark must draw then too.
 --   arg      optional function(list) → draw's `arg`, from the moments
 --            merged on the spot (say, the best of their records, or the
 --            ink it is drawn in); it may sort `list` (the order the kept
@@ -369,7 +374,7 @@ local function Clamp(v, lo, hi) return v < lo and lo or (v > hi and hi or v) end
 --   P, INK, INK_STRONG  the paper and the inks (Style's)
 local ROAD_DEATHS = 60
 local markKinds = ns.Registry.New({
-    what = "Plate.RegisterMark(kind, { draw = function(kit, x, y, arg) ... })",
+    what = "Plate.RegisterMark(kind, { draw = function(kit, x, y, arg, rec) ... })",
     key = "kind", order = "order", default = 100,
     check = function(kind, spec) return type(spec.draw) == "function" end,
 })
@@ -2160,7 +2165,9 @@ local function New(parent, slot)
                 local x, y = Apart(c.x, c.y, Radius(spec.kind))
                 if spec.halo then Halo(x, y, spec.halo, true) end
                 local arg = spec.arg and spec.arg(c.list) or nil
-                spec.draw(kit, x, y, arg)
+                local moment, first = ns.JourneyRecap.MOMENTS[spec.kind], c.list[1]
+                local rec = moment and first and (moment.field and first[moment.field] or first.rec) or nil
+                spec.draw(kit, x, y, arg, rec)
                 local words = spec.tips and function() return Tip(spec.tips(c.list, now)) end
                     or spec.tip and Tell(c.list, spec.tip) or nil
                 local button = hoverPool:Next(x, y, words, hover, spec.kind)
