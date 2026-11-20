@@ -91,7 +91,7 @@ ns.Locale.Add("ptBR", {
     ["%s fight|%s fights##plural"] = "%s<f> luta|%s<f> lutas",
     ["Where the diary began"] = "Onde o diário começou",
     ["Into a new zone for the first time"] = "Numa nova zona pela primeira vez",
-    ["%s for the first time##zone"] = "Pela primeira vez %s",
+    ["%s for the first time##zone"] = "%s pela primeira vez",
     ["The way into a dungeon"] = "Entrada de masmorra",
     ["The way %s##zone"] = "Entrada %s",
     ["A long stay"] = "Uma estadia longa",
