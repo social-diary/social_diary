@@ -105,9 +105,7 @@ ns.Locale.Add("ruRU", {
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "ещё %s<f> заметка|ещё %s<f> заметки|ещё %s заметок",
     ["a note|%s notes##plural"] = "%s<f> заметка|%s<f> заметки|%s заметок",
-    ["a fight, lost"] = "проигранный бой",
     ["killed you"] = "убили тебя",
-    ["a fight, won"] = "выигранный бой",
     ["you won the fight"] = "бой выигран",
     ["you'd meet again"] = "вы встретитесь снова",
     ["you'd meet again at level %d"] = "вы встретитесь снова на %d-м уровне",

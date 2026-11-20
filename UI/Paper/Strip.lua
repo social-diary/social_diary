@@ -595,7 +595,9 @@ function ns.UI.PaperStrip(parent, card)
     -- Written gives them: no escape codes), quoteLines (the most lines the
     -- quote may take, STRIP.quote.lines at most), guid (a link to their page when
     -- given), plain (with a guid: a stranger's link, the name in INK, not
-    -- INK_STRONG), rival, seed, onClick(guid), and for a slip that is not a
+    -- INK_STRONG), names (shorter forms of the name, longest first: the
+    -- first the slip's width holds is written where the name is too wide),
+    -- rival, seed, onClick(guid), and for a slip that is not a
     -- person's: tack (fastened with a brass tack, TACK, instead of tape), strong
     -- (the name in INK_STRONG without a page to open), tip (a tooltip's
     -- lines, as Style.Tooltip takes them), picture ({ w, h, gap }: room over
@@ -714,13 +716,27 @@ function ns.UI.PaperStrip(parent, card)
 
         -- The writing: the name, their note quoted, then what happened in
         -- lines.
-        self.name:SetSize(0, 0)
-        local nameW, nameH = Width(self.name) + 2, math.max(math.ceil(self.name:GetStringHeight() or 0), 14)
         -- A blot before the name moves it along; a link at its line's end
         -- (the tour's, EXTRA) takes room after it.
         local blot, aside, foot = note.blot, note.aside, note.foot
         Extras(note)
         local indent = blot and (blot.size + EXTRA.blot.gap) or 0
+        -- The name, or where it is wider than the slip may be, the first of
+        -- its shorter forms (`names`) that fits: a stranger described, "a
+        -- level 60 Night Elf Warrior", is longer than any name (20 Nov 2026).
+        -- Without `names` the name stays as written (a card's `plan` hook
+        -- may have written its own: UI/Journal/Strips.lua's facts).
+        if note.names then
+            self.name:SetText(note.name or "")
+            self.name:SetSize(0, 0)
+            for _, shorter in ipairs(note.names) do
+                if indent + Width(self.name) + 2 <= inner then break end
+                self.name:SetText(shorter)
+                self.name:SetSize(0, 0)
+            end
+        end
+        self.name:SetSize(0, 0)
+        local nameW, nameH = Width(self.name) + 2, math.max(math.ceil(self.name:GetStringHeight() or 0), 14)
         local asideW = 0
         if aside then
             self.aside.label:SetFontObject(aside.font or Style.FONT.body)

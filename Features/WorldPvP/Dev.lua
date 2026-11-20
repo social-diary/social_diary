@@ -17,8 +17,12 @@ local BARRENS = 1413
 TestData.Register("route", function(c)
     local j, J = c.j, ns.Journey
     -- Level 11: lost a fight at the Forgotten Pools, ten minutes before
-    -- leaving them; with a stranger, so no one is named.
-    J.Fight(j, "lost", nil, c.Stop(11, "The Forgotten Pools").to - 600, { mapID = BARRENS, x = 0.45, y = 0.46 })
+    -- leaving them; with a stranger, so no one is named, only described as
+    -- the mark keeps them (Journey.Foe: "a level 14 Dwarf Hunter / killed
+    -- you" on its strip, 20 Nov 2026).
+    local lost = J.Fight(j, "lost", nil, c.Stop(11, "The Forgotten Pools").to - 600,
+        { mapID = BARRENS, x = 0.45, y = 0.46 })
+    if lost then lost.foe = { level = 14, race = "Dwarf", raceID = 3, class = "HUNTER", classID = 3, sex = 2 } end
     -- At the cap: won one by Lushwater Oasis with Tester, on the evening
     -- Tester was first met, six days ago (TestData.Write; the oasis stop that
     -- begins 300 s in). Timed off now as that stop is: c.Stop finds the

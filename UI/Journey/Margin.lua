@@ -258,6 +258,34 @@ local function MarginNote(plate, e, it, named)
         -- cannot be on a stranger's strip, so the quote's tooltip stays
         -- the diary people's. Ink and tooltip only: the strip lays out as
         -- it did.
+        -- A fight with someone the mark does not name (a stranger: the
+        -- mark keeps no GUID of theirs, Core/Journey.lua's Journey.Fight)
+        -- is headed by what they looked like, "a level 16 Dwarf Hunter",
+        -- with shorter forms for a narrow strip (Text.FoeStrip; 20 Nov
+        -- 2026, the user: "with someone / a fight, lost" read broken). The
+        -- buffer may still have them (Journey.FightWho, by the fight's
+        -- time): then the strip links to their glimpse as a first
+        -- sighting's does, or, someone inked in since, is theirs by name.
+        -- The grouping and the caption's count (People, Named) stay as
+        -- they were: the note is still a stranger's, `someone`.
+        local seedWho = guid or ("someone" .. it.index)
+        local name, names
+        if not g.guid then
+            local fight
+            for _, m in ipairs(g.moments) do
+                if m.kind == "fight" then fight = m end
+            end
+            if fight then
+                local who = fight.mark and ns.Journey.FightWho(fight.mark, page.fights)
+                who = who and ns.db.characters[who] ~= nil and who or nil
+                if who and ns.Diary.IsDiary(who) then
+                    guid = who
+                else
+                    name, names = Text.FoeStrip(fight.mark, page.fights)
+                    guid = who
+                end
+            end
+        end
         local stranger = guid ~= nil and not ns.Diary.IsDiary(guid)
         local tip = quote and Tip or nil
         if stranger then
@@ -265,9 +293,10 @@ local function MarginNote(plate, e, it, named)
                 return ns.UI.PersonText.GlimpseTip(ns.Characters.FullName(guid) or ns.Characters.Name(guid))
             end
         end
-        strip:SetNote({ name = Text.MarginWho(guid), what = Text.MarginWhat(g.moments, e.level), quote = quote,
+        strip:SetNote({ name = name or Text.MarginWho(guid), names = names,
+            what = Text.MarginWhat(g.moments, e.level), quote = quote,
             quoteLines = quoteMost, guid = guid, plain = stranger, rival = Rival(guid), onClick = ToPerson, tip = tip,
-            seed = table.concat({ guid or ("someone" .. it.index), plate.mapID or 0, level }, ":") })
+            seed = table.concat({ seedWho, plate.mapID or 0, level }, ":") })
         return strip
     end
     local spec = MARGIN[it.kind]

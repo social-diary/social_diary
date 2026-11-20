@@ -13,7 +13,8 @@ local L, Fmt = ns.L, ns.Fmt
 
 -- What happened with one person on one plate, for their margin note:
 -- "35 min together and a note", "killed you", "first seen, and you'd meet
--- again at level 4". A stranger's note has only fights (JRN-22). The
+-- again at level 4". A stranger's note has only fights (JRN-22), or a
+-- first sighting. The
 -- short phrases are held together by no-break spaces as a time is ("a
 -- note", "killed you"), so a strip's last line is never "note" alone
 -- (10 Oct, in the client: "3 h 20 min together and a / note"); the strip
@@ -43,13 +44,14 @@ function Text.MarginWhat(moments, level)
     elseif notes > 0 then
         parts[#parts + 1] = Glue(ns.Plural(notes, L["a note|%s notes##plural"], NUMBER[notes] or notes))
     end
+    -- A fight says the same for anyone: a stranger's strip is headed by
+    -- what they looked like (Text.FoeStrip), so "a level 16 Dwarf Hunter /
+    -- killed you" reads as one sentence, as "with Koko / killed you" reads
+    -- as a note (20 Nov 2026, the user: "a fight, lost" under "with
+    -- someone" looked broken).
     for _, m in ipairs(moments) do
         if m.kind == "fight" then
-            if m.outcome == "lost" then
-                parts[#parts + 1] = m.guid and Glue(L["killed you"]) or L["a fight, lost"]
-            else
-                parts[#parts + 1] = m.guid and L["you won the fight"] or L["a fight, won"]
-            end
+            parts[#parts + 1] = m.outcome == "lost" and Glue(L["killed you"]) or L["you won the fight"]
         end
     end
     for _, m in ipairs(moments) do
@@ -73,4 +75,18 @@ function Text.MarginWho(guid)
     local name = guid and Short(guid)
     if not name then return L["with someone"] end
     return Fmt(L["with %s"], name)
+end
+
+-- The heading of a stranger's fight strip, whom the diary has no name for
+-- (a fight moment with no guid: Journey.Fight keeps only a diary person's):
+-- what they looked like, "a level 16 Dwarf Hunter", from what the mark kept
+-- or the buffer's record (Text.FoeOf), with shorter forms for a narrow
+-- strip; with nothing to go on, "someone" (it reads on into "killed you").
+-- Returns the heading and the shorter ones.
+function Text.FoeStrip(mark, index)
+    local names = Text.FoeNames(Text.FoeOf(mark, index))
+    if #names == 0 then return L["someone##foe"], nil end
+    local shorter = {}
+    for i = 2, #names do shorter[#shorter + 1] = names[i] end
+    return names[1], #shorter > 0 and shorter or nil
 end

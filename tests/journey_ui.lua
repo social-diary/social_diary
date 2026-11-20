@@ -445,7 +445,7 @@ for i = 1, page.notePool.used do
     if note:IsShown() then notes[#notes + 1] = note.name:GetText() .. ": " .. note:What() end
 end
 Check(Any(notes, "^with Bram: 15\194\160min together$"), "Bram's note: " .. table.concat(notes, "; "))
-Check(Any(notes, "^with someone: a fight, won$"), "a stranger is not someone: " .. table.concat(notes, "; "))
+Check(Any(notes, "^someone: you won the fight$"), "a stranger with nothing kept of them is not someone: " .. table.concat(notes, "; "))
 -- Wrapped on its strip a line at a time; the lines joined here.
 Check(Any(notes, "^with Numa: first seen, and +you'd meet again at"), "Numa's note: " .. table.concat(notes, "; "))
 Check(page.leaderPool.used >= 1, "the notes have no leaders")
@@ -593,9 +593,74 @@ end
 -- A name in the margin opens their page; someone opens nothing.
 local stranger
 for i = 1, page.notePool.used do
-    if page.notePool[i].name:GetText() == "with someone" then stranger = page.notePool[i] end
+    if page.notePool[i].name:GetText() == "someone" then stranger = page.notePool[i] end
 end
 Check(stranger and stranger.guid == nil, "the stranger's note has someone to open")
+
+-- A stranger's fight strip describes them as the mark kept them (20 Nov
+-- 2026, the user: "with someone / a fight, lost" read broken): "a level 12
+-- Orc Mage / you won the fight", never their name; a description wider than
+-- the strip takes its shorter form; while the buffer still has them, the
+-- strip links to their glimpse, the heading still the description.
+do
+    local fightMark
+    for _, m in ipairs(j.marks) do
+        if m.kind == "fight" and m.t == t0 + 1000 then fightMark = m end
+    end
+    local function Strip()
+        for i = 1, page.notePool.used do
+            local strip = page.notePool[i]
+            if strip:IsShown() and strip:What() == "you won the fight" then return strip end
+        end
+    end
+    fightMark.foe = { level = 12, race = "Orc", raceID = 2, class = "MAGE", classID = 8, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    local strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Orc Mage", "a described stranger's strip heading")
+    Check(strip and strip.guid == nil, "a stranger's fight strip past the buffer opens someone")
+    Eq(page.notesWritten, 3, "the described stranger's strip is not one of the three")
+    -- In the mock every letter is 6 px: "a level 60 Night Elf Warrior" is
+    -- wider than the row's 142 px box, so the strip says less.
+    fightMark.foe = { level = 60, race = "NightElf", raceID = 4, class = "WARRIOR", classID = 1, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 60 Warrior", "a wide description not shortened on its strip")
+    Check(strip and strip.name:GetStringWidth() + 2 <= strip:GetWidth(), "the heading wider than its strip")
+    -- Still in the buffer: their glimpse behind the strip, in the plainer
+    -- ink; the heading as before.
+    local GRIM = "Player-4620-00F0E010"
+    ns.Characters.Observe(GRIM, { first = "Grimbald", surname = "Stoutarm", level = 12, faction = "Alliance" })
+    local row = ns.Interactions.Add(GRIM, "pvp_kill", { hostile = true, time = t0 + 1000 })
+    fightMark.foe = { level = 12, race = "Orc", raceID = 2, class = "MAGE", classID = 8, sex = 2 }
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Orc Mage", "a buffered stranger named on their fight strip")
+    Eq(strip and strip.guid, GRIM, "a buffered stranger's fight strip does not open their glimpse")
+    Check(strip and strip.note.plain == true, "a buffered stranger's strip is not in the plainer ink")
+    -- An old mark (no `foe`) while the buffer has them: their record says.
+    fightMark.foe = nil
+    ns.db.characters[GRIM].race, ns.db.characters[GRIM].class = "Dwarf", "HUNTER"
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "a level 12 Hunter", "an old mark not described from the buffer")
+    -- Inked in since: theirs by name.
+    ns.Diary.Add(GRIM, { source = "test" })
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    strip = Strip()
+    Eq(strip and strip.name:GetText(), "with Grimbald", "someone inked in since not named on their fight strip")
+    Eq(strip and strip.guid, GRIM, "their fight strip does not open their page")
+    ns.Diary.Remove(GRIM, true)
+    ns.Interactions.Remove(GRIM, row)
+    ns.db.characters[GRIM] = nil
+    ns.UI.RefreshJourneyPage(false)
+    Open(10)
+    Eq(Strip() and Strip().name:GetText(), "someone", "the stranger's strip after the test")
+end
 
 -- One leader per strip (10 Oct, in the client: a person with two marks on
 -- a plate had a long pencil line to each): Bram also fought you on the

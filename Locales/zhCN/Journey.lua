@@ -107,9 +107,7 @@ ns.Locale.Add("zhCN", {
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "再多%s条笔记",
     ["a note|%s notes##plural"] = "%s条笔记",
-    ["a fight, lost"] = "一场战斗，落败",
     ["killed you"] = "击杀了你",
-    ["a fight, won"] = "一场战斗，获胜",
     ["you won the fight"] = "你赢得了战斗",
     ["you'd meet again"] = "你们会再次相遇",
     ["you'd meet again at level %d"] = "你们会在%d级再次相遇",

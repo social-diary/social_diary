@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- Quest drops are now only judged on looted items. Items that come from trading and mails are ignored for lucky / unlucky cards.
+
 ## [4.2.1]
 
 A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.

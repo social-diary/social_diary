@@ -109,9 +109,7 @@ ns.Locale.Add("ptBR", {
     -- UI/Journey/Text/Margin.lua
     ["one more note|%s more notes##plural"] = "mais uma nota|mais %s<f> notas",
     ["a note|%s notes##plural"] = "uma nota|%s<f> notas",
-    ["a fight, lost"] = "uma luta, perdida",
     ["killed you"] = "te matou",
-    ["a fight, won"] = "uma luta, ganha",
     ["you won the fight"] = "você venceu a luta",
     ["you'd meet again"] = "vocês se encontrariam novamente",
     ["you'd meet again at level %d"] = "vocês se encontrariam novamente no nível %d",

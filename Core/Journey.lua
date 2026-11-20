@@ -1096,7 +1096,8 @@ end
 -- buffer, and a stranger's go after bufferDays (INT-2). The mark keeps when,
 -- where and how it ended; whom only while they are in the diary, so a
 -- stranger's identity never outlives the buffer. Their name is read from
--- the buffer at view time (Journey.FightWho) for as long as it has them.
+-- the buffer at view time (Journey.FightWho) for as long as it has them;
+-- what they looked like (level, race, class: `foe`, Foe below) stays.
 
 local function Compact(marks)
     local keep = {}
@@ -1113,6 +1114,34 @@ local function Compact(marks)
     for i = #keep + 1, #marks do marks[i] = nil end
 end
 
+-- What the mark keeps of a foe in place of who they were (20 Nov 2026, the
+-- user: a stranger's strip read "with someone / a fight, lost", which looked
+-- broken): their level, race, class and sex as the character record had them
+-- at the fight, so the plate can say "a level 16 Dwarf Hunter / killed you"
+-- long after the buffer let their name go. A description, never an identity:
+-- no name, no GUID. Race and class by their tokens and IDs, which no locale
+-- changes, the words found at view time (UI/Journey/Text/Margin.lua's
+-- Text.FoeName, through ns.UI.Format.RaceName and ClassName). `sex` too, for
+-- a locale whose class names have a feminine form. Nil where the record says
+-- nothing of them. A field marks of before 20 Nov lack: they read the
+-- buffer's record while it has them (Text.FoeOf).
+local FOE = { "level", "race", "raceID", "class", "classID", "sex" }
+
+local function Foe(guid)
+    local record = guid and ns.db.characters[guid]
+    if not record then return nil end
+    local foe, any = {}, false
+    for _, key in ipairs(FOE) do
+        local value = record[key]
+        if type(value) == "number" or type(value) == "string" then
+            foe[key] = value
+            if key ~= "sex" then any = true end
+        end
+    end
+    return any and foe or nil
+end
+Journey.Foe = Foe
+
 -- `outcome` is "won" or "lost". `where` is { mapID, x, y } on the zone map,
 -- or nil to place it by time.
 function Journey.Fight(j, outcome, guid, now, where)
@@ -1120,7 +1149,7 @@ function Journey.Fight(j, outcome, guid, now, where)
     guid = ns.SafeGUID(guid)
     where = where or {}
     local mark = { t = now, kind = "fight", outcome = outcome, mapID = where.mapID, x = where.x, y = where.y,
-        guid = guid and ns.Diary.IsDiary(guid) and guid or nil }
+        guid = guid and ns.Diary.IsDiary(guid) and guid or nil, foe = Foe(guid) }
     local marks = j.marks
     marks[#marks + 1] = mark
     -- Over the cap by a tenth, the oldest strangers' fights go at once.
@@ -1290,6 +1319,9 @@ function Journey.Refight(j, mark, guid)
     else
         guid = ns.SafeGUID(guid)
         mark.guid = guid and ns.Diary.IsDiary(guid) and guid or nil
+        -- The description moves with it: the new foe's, or none (never the
+        -- first guess's, which was someone else).
+        mark.foe = Foe(guid)
     end
     Touch()
 end
