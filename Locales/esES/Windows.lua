@@ -5,8 +5,6 @@ ns.Locale.Add("esES", {
     -- UI/Windows/AutoAdd.lua
     ["Familiar faces"] = "Caras conocidas",
     ["Add them"] = "Añadir",
-    ["You’ve seen %d person near you 3 times or more.|You’ve seen %d people near you 3 times or more.##plural"] = "Has visto a %d persona cerca de ti 3 veces o más.|Has visto a %d personas cerca de ti 3 veces o más.",
-    ["Add them to the diary now? If not, they’re added the next time you see them."] = "¿Añadir al diario ahora? Si no, cada persona se añadirá la próxima vez que la veas.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "sin anotaciones todavía",
     ["%d interaction on record|%d interactions on record##plural"] = "%d anotación|%d anotaciones",

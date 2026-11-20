@@ -74,16 +74,18 @@ local function Column(parent, x, y, width)
         return self:Place(hint, hint:GetStringHeight(), indent, 8)
     end
 
-    function column:Checkbox(text, get, set, indent, hint)
-        local box = Style.Checkbox(self.parent, self.width - (indent or 0), text, get, set, hint)
+    -- `follow`, if given, makes the label a link too (Style.Checkbox).
+    function column:Checkbox(text, get, set, indent, hint, follow)
+        local box = Style.Checkbox(self.parent, self.width - (indent or 0), text, get, set, hint, follow)
         box.group = self.group
         return self:Place(box, box.height, indent, hint and 8)
     end
 
     -- "Forget people outside the diary after [30] days": the sentence on the
     -- left, wrapping, and the number and its unit in a column on the right,
-    -- so the numbers line up. `.box` is the field.
-    function column:Number(text, unit, min, max, get, set)
+    -- so the numbers line up. `.box` is the field; `steps`, if given, its
+    -- ladder (Style.NumberField: left and right climb it with the pad).
+    function column:Number(text, unit, min, max, get, set, steps)
         local row = CreateFrame("Frame", nil, self.parent)
 
         row.label = Style.Text(row, FONT.body)
@@ -91,7 +93,7 @@ local function Column(parent, x, y, width)
         row.label:SetWidth(self.width - FIELD_W - UNIT_W - 8)
         row.label:SetText(text)
 
-        row.box = Style.NumberField(row, FIELD_W, min, max, get, set)
+        row.box = Style.NumberField(row, FIELD_W, min, max, get, set, steps)
         row.box:SetPoint("TOPRIGHT", row, "TOPRIGHT", -UNIT_W, 1)
 
         row.unit = Style.Text(row, FONT.body)
@@ -240,23 +242,28 @@ end
 -- other writer of a setting does, so a setting is written one way only. Every switch refreshes the page, so the
 -- settings that depend on it fade or come back.
 -- `hint` is the switch's small print, hung under its label.
-local function Switch(c, text, key, indent, after, hint)
+-- `link`, if given ({ open = fn, prompt = text }), underlines the label and
+-- makes it a way on: a click on the words calls `open()`, the box alone
+-- switches; with the pad, A switches and X opens, `prompt` its legend's
+-- words (UI/Settings/Pad.lua).
+local function Switch(c, text, key, indent, after, hint, link)
     local page = SettingsUI.page
     local box = c:Checkbox(text, function() return Saved()[key] end, function(v)
         ns.SetSetting(key, v)
         if after then after(v) end
         ns.UI.Settings.Refresh()
-    end, indent, hint)
+    end, indent, hint, link and link.open)
+    if link then box.followPrompt = link.prompt end
     page.controls[#page.controls + 1] = box
     return box
 end
 
-local function Number(c, text, unit, key, min, max, after)
+local function Number(c, text, unit, key, min, max, after, steps)
     local page = SettingsUI.page
     local row = c:Number(text, unit, min, max, function() return Saved()[key] end, function(v)
         ns.SetSetting(key, v)
         if after then after(v) end
-    end)
+    end, steps)
     page.controls[#page.controls + 1] = row
     return row
 end

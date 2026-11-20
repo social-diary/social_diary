@@ -8,10 +8,6 @@ ns.Locale.Add("esES", {
     ["Social Diary: open entry"] = "Social Diary: abrir la entrada",
     ["Social Diary: remember this"] = "Social Diary: recordar a esta persona",
     -- Core/AutoAdd.lua
-    ["after 5 minutes grouped with you"] = "tras 5 minutos en grupo contigo",
-    ["after they were seen near you 3 times"] = "tras pasar 3 veces cerca de ti",
-    ["added |cffffffff%1$s|r to the diary automatically %2$s."] = "|cffffffff%1$s|r entró en el diario automáticamente %2$s.",
-    ["added %d person you’ve seen near you before to the diary.|added %d people you’ve seen near you before to the diary.##plural"] = "se añadió al diario %d persona que ya habías visto cerca de ti.|se añadieron al diario %d personas que ya habías visto cerca de ti.",
     -- Core/Candidates.lua
     ["your target"] = "tu objetivo",
     ["under your cursor"] = "bajo el cursor",
