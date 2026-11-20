@@ -79,7 +79,7 @@ ns.Locale.Add("ptBR", {
     ["And %s.##more"] = "E %s.",
     ["one more close call|%s more close calls##plural"] = "mais uma escapada por pouco|mais %s escapadas por pouco",
     ["a close call"] = "uma escapada por pouco",
-    ["a close call with %s"] = "uma escapada por pouco com %s",
+    ["a close call with %s"] = "uma escapada por pouco de %s",
     -- Features/Deaths/Kind.lua
     ["Death"] = "Morte",
     ["A death"] = "Uma morte",
