@@ -71,6 +71,7 @@ Locales/deDE/JourneyStory.lua
 Locales/deDE/Settings.lua
 Locales/deDE/Windows.lua
 Locales/ptBR/Grammar.lua
+Locales/ptBR/AreaHead.lua
 Locales/ptBR/Core.lua
 Locales/ptBR/FeaturesA.lua
 Locales/ptBR/FeaturesB.lua

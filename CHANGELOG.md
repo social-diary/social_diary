@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changes
+
+- Zone and dungeon names now read with their article in Brazilian Portuguese
+
 ## [4.2.2]
 
 This small update brings improvements to the PvP labels in _Your Diary_.

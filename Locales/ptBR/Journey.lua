@@ -155,7 +155,7 @@ ns.Locale.Add("ptBR", {
     ["Reached on %1$s %2$s, %3$s.##zone"] = "Chegou %2$s, %3$s, em %1$s.",
     ["Reached on %1$s %2$s.##zone"] = "Chegou %2$s, em %1$s.",
     ["Reached on %s."] = "Chegou em %s.",
-    ["%1$s of fighting %3$s.##zone"] = "%1$s de lutas %3$s.",
+    ["%1$s of fighting %3$s.##zone"] = "%1$s de luta %3$s.",
     ["%3$s kept you fighting for %2$s."] = "%3$s te fez lutar por %2$s.",
     ["%1$s of quests %3$s.##zone"] = "%1$s de missões %3$s.",
     ["Quests kept you %3$s for %2$s.##zone"] = "As missões te ocuparam %3$s por %2$s.",
