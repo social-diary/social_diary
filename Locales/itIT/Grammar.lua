@@ -78,7 +78,7 @@ G.YOU_FOR = {
     ["con te"] = "con %s", ["dal tuo gruppo"] = "dal gruppo di %s", ["del tuo gruppo"] = "del gruppo di %s",
     ["ha cercato di salvarti"] = "ha cercato di salvare %s",
     ["hai abbandonato il duello"] = "%s ha abbandonato il duello",
-    ["hai condiviso"] = "%s ha condiviso", ["hai lasciato"] = "%s ha lasciato",
+    ["hai condiviso"] = "%s ha condiviso", ["hai indossato"] = "%s ha indossato",["hai lasciato"] = "%s ha lasciato",
     ["hai perso"] = "%s ha perso", ["hai raggiunto"] = "%s ha raggiunto",
     ["hai tirato"] = "%s ha tirato", ["hai ucciso"] = "%s ha ucciso", ["hai vinto"] = "%s ha vinto",
     ["sei morta"] = "%s è morta", ["sei morto"] = "%s è morto",

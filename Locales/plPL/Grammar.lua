@@ -74,6 +74,7 @@ grammar.YOU_FOR = {
     ["pokonujesz"] = "%s pokonuje",
     ["uciekłeś"] = "%s uciekł", ["uciekłaś"] = "%s uciekła",
     ["uciekasz"] = "%s ucieka",
+    ["założyłeś"] = "%s założył", ["założyłaś"] = "%s założyła",
 }
 
 local firsts = {
