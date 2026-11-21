@@ -29,6 +29,16 @@ Eq(ns.Locale.FirstLetter(""), "", "an empty name")
 
 string.upper = ClientUpper
 
+Section("the English defaults, under a client upper")
+Eq(G.Upper("Bram and 夏溪"), "BRAM AND 夏溪", "Upper touches ASCII letters only")
+Eq(G.Capital("夏溪 waved"), "夏溪 waved", "Capital leaves a Chinese first letter alone")
+Eq(G.Capital("bram waved"), "Bram waved", "and still capitals an ASCII one")
+
+Section("a name's initial, under a client upper")
+Eq(ns.Locale.Initial("bram"), "B", "an ASCII name's initial is a capital")
+Eq(ns.Locale.Initial("夏溪"), "夏", "a Chinese name's initial is its whole first character")
+Eq(ns.Locale.Initial("하늘"), "하", "and a Korean one")
+
 Section("a tooltip's time line, under a client upper")
 local english = Text.When(now - 60, nil, now)
 Check(english:sub(1, 1) == "T", "the English line starts with a capital: " .. english)
