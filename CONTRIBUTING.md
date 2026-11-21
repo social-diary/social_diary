@@ -90,6 +90,19 @@ positional `%1$s`, `ns.Plural` for counts, zones through `ns.ZoneIn`) are in
   `--check` only says whether it is up to date; `--missing <id>` lists the
   keys a locale has no words for yet, and `--context <id> [path]` shows each
   with the code round it (what its values are, where it shows).
+- **What your locale is missing,** after an update of the English:
+
+  ```sh
+  luajit Dev/Locale/status.lua         # every locale: translated, missing, unused, broken files
+  luajit Dev/Locale/status.lua deDE    # one locale: the missing keys, ready to paste
+  ```
+
+  The second lists each missing key as a commented line, grouped under the
+  file of yours it belongs in and the key it goes next to; paste the block
+  there, remove the `-- `, and write your words in place of the English. It
+  also lists keys the code no longer uses (reworded or removed: delete
+  them), and every file WoW's Lua 5.1 would refuse to load (with `luac5.1`
+  installed), such as a missing comma or a key with an umlaut written bare.
 - **Tests:** `luajit tests/run.lua` (its `locale` file checks every locale
   in the TOC: no unknown keys, the same placeholders, one plural form per
   category; keys still to translate are listed as a note, not a failure, and
