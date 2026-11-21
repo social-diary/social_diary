@@ -261,7 +261,7 @@ local function Lay(slip, node, depth, openIndex)
     local widest, sub = 0, false
     for _, e in ipairs(children) do
         if e.kind == "title" then
-            widest = math.max(widest, Measure(slip, (e.text or ""):upper()) - SLIP.lead)
+            widest = math.max(widest, Measure(slip, Style.Upper(e.text or "")) - SLIP.lead)
         elseif Choosable(e) then
             widest = math.max(widest, Measure(slip, e.text))
             sub = sub or HasSub(e)
@@ -296,7 +296,7 @@ local function Lay(slip, node, depth, openIndex)
             line.label:SetText(e.text or "")
             Ink(line, e, openIndex == i)
         elseif e.kind == "title" then
-            line.heading:SetText((e.text or ""):upper())
+            line.heading:SetText(Style.Upper(e.text or ""))
         end
         line.element, line.index = e, i
         slip.at[i] = line

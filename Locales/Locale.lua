@@ -340,6 +340,15 @@ end
 Locale.grammar.Upper = function(text) return text:upper() end
 Locale.grammar.Capital = function(text) return (text:gsub("^%l", string.upper)) end
 
+-- The first letter of a text, whole: "B" of "Bram", "夏" of "夏溪". A
+-- text's first byte is only its first letter in ASCII; a byte cut from a
+-- longer letter reads as a box, and some clients' string.upper changes
+-- such a byte on its own (an initial, a line's first letter). Upper it
+-- with the locale's Upper, never byte by byte.
+function Locale.FirstLetter(text)
+    return text:match("^[\1-\127\194-\244][\128-\191]*") or text:sub(1, 1)
+end
+
 --------------------------------------------------------------------------
 -- A zone or dungeon after a preposition. The client gives a bare name
 -- ("Brachland"), and the preposition and the name are one unit in most

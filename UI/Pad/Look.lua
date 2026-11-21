@@ -789,7 +789,7 @@ local function Entry(slip, e)
     x = x - 2 + SLIP.glyphGap
     local main = Main(e)
     local words = Style.Text(entry, main and Style.FONT.headingRubric or Style.FONT.heading)
-    words:SetText((e[2] or ""):upper())
+    words:SetText(Style.Upper(e[2] or ""))
     words:SetPoint("LEFT", entry, "LEFT", x, 0)
     entry.span = x + words:GetStringWidth()
     entry:SetSize(entry.span, SLIP.glyph)
