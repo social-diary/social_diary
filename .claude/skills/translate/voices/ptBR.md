@@ -160,12 +160,31 @@ shorter phrasing ("Reencontro", not "Um reencontro com alguém").
 The city list's on/off column pads to 3 characters: **sim / não** (never
 "ligado / desligado"), or the column drifts.
 
+## Places (settled with the user, 18 Nov 2026)
+
+The client gives a place bare; Portuguese says it with an article,
+contracted into the preposition: "na Floresta de Elwynn", "para o Vale de
+Alterac", "das Minas Mortas", "pelas Montanhas de Alterac", "nos Sertões". The gender
+is the head noun's, which in Portuguese is the name's first word, read
+from `HEAD` in `grammar.PLACE`. A plural head ("montanhas", "cavernas")
+takes "nas"/"nos" and "para as"/"para os". A destination is **"para a /
+para o / para as / para os"**, never "à/ao".
+
+A name whose first word is no common noun stays bare, as before: a city or
+a proper name ("em Orgrimmar", "em Ventobravo", "em Durotar", "em Mil
+Agulhas"), and a zone whose head is not in `HEAD` yet. An article the
+client's name brings with it ("A Cidade Afogada", "O Cárcere", "O Grande
+Oceano") is used and dropped. A list gives every name its own phrase
+(`EACH_PLACE`): "na Floresta de Elwynn e no Vale de Alterac".
+
+`HEAD` was read from the client's own list of zones and dungeons
+(wowhead.com/forever/pt/zones, 18 Nov 2026): every name there reads with
+its article, and the proper names stay bare. A zone added later whose head
+is not in `HEAD` reads bare until its noun is added; nothing guesses.
+
 ## Not settled
 - Whether the tab reads "Seu Diário" or "Diário" on a narrow book spine (?).
 - The gender of "they" for a stranger with no name in the key: masculine
   for now ("Um adversário entrou no seu grupo").
-- How a bare zone name reads after a preposition ("em Floresta de
-  Elwynn" until the client's names are exported: `grammar.ZONES` is
-  empty, see the report).
 - The ptBR client's exact wording for the game terms above: to check on a
   client in that language.
