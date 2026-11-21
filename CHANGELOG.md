@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [4.2.3]
+
+A small Update: new gear and more of the diary's wording now read in your language.
+
+### Fixes
+
+- Missing translations added to all languages (thanks CarnVanBeck)
+
 ## [4.2.2]
 
 This small update brings improvements to the PvP labels in _Your Diary_.

@@ -7,6 +7,15 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.3",
+        summary = "A small Update: new gear and more of the diary's wording now read in your language.",
+        groups = {
+            { heading = "Fixes", entries = {
+                { text = "Missing translations added to all languages", thanks = "CarnVanBeck" },
+            } },
+        },
+    },
+    {
         version = "4.2.2",
         summary = "This small update brings improvements to the PvP labels in _Your Diary_.",
         groups = {
@@ -47,17 +56,6 @@ ns.Changelog = {
             { heading = "Fixes", entries = {
                 { text = "Feign Death no longer counts as a death", thanks = "JasonLudeli" },
                 { text = "Healing yourself no longer records false _Close Calls_" },
-            } },
-        },
-    },
-    {
-        version = "4.1.0",
-        summary = "This Update brings an exciting new Addition to _Your Diary_: Gear Upgrades! Whenever you equip a better Item, it gets written down. Just trying it on will not trigger it. There may be some funkiness going on with 2H->2x1H weapons and so on – Please report issues on this! The Diary also now, optionally, adds Players you encounter often enough automatically.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "_Your Diary_ now detects when you equip upgrades of your existing equipment and displays them on your Diary's plates" },
-                { text = "Added Polish to the diary’s language settings", thanks = "KO.Media" },
-                { text = "You can now make the Diary auto-add players you encounter often or do dungeons and raids with", thanks = "ubrider, replayablecontent46369" },
             } },
         },
     },
