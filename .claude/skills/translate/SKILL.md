@@ -107,6 +107,7 @@ the voice file, `/copywriter`, and its path), never two on one file.
 ```sh
 luajit Dev/Locale/extract.lua --context <id> <path>   # keys still to write, with their code
 luajit Dev/Locale/extract.lua --missing <id>          # the bare list
+luajit Dev/Locale/status.lua [<id>]                   # coverage of every locale, or one locale's gaps by target file, its unused keys and its files Lua 5.1 refuses
 ```
 
 For each key, read its context before writing: what each value will be (a

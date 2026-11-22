@@ -124,7 +124,7 @@ after a colon, after "bei"/"in"/"nach" where no article is needed). Never
 Zones, subzones and dungeons are the exception: the client gives them in
 the nominative with their article ("Das Brachland"), and `G.PLACE` in
 `Grammar.lua` reads it (settled 13 Nov 2026, from players' reports of
-"Flog nach Das Brachland", "Zum ersten Mal nach Stormwind"):
+"Flogst nach Das Brachland", "Zum ersten Mal nach Stormwind"):
 - `in` dative ("im Brachland", "in den Sümpfen des Elends"), `to` "nach"
   before a bare name and "in" + accusative before an article ("nach
   Stormwind", "in das Brachland": spelled out, not "ins"), `into` "in"
@@ -132,8 +132,11 @@ the nominative with their article ("Das Brachland"), and `G.PLACE` in
 - What a place is, is said in two tables of one format: `NAMES` (the
   whole name as the client gives it) and `ENDINGS` (the end of the noun's
   last word, "gebirge"). The value is the gender, `"n"`, `"m"`, `"f"`,
-  `"p"`, or `"-"` for no article, and `" an"` after it for a place one is
-  at ("m an": "am/zum/vom Wasserbrunnen").
+  `"p"`, or `"-"` for no article, and after it how one is there where it
+  is not "in": `" an"` for a place one is at (coast, well, lake, crossing:
+  "an der / zur / von der Dunkelküste"), `" auf"` for one stood on
+  (island, clearing, plain: "auf der / zur Mondlichtung"). Both say "zum/
+  zur" where the English has "to" ("Flogst zur Dunkelküste", 20 Nov 2026).
 - The client's own article decides the gender; after "Die" an `"f"` makes
   it feminine, else plural. A bare name with no entry stays bare (cities).
 - Every name of a list takes its own preposition (`EACH_PLACE`).
