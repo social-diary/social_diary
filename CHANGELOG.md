@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [4.2.4]
+
+This update brings support for Traditional Chinese.
+
 ### Shiny new Things
 
 - Added Traditional Chinese support
