@@ -935,7 +935,7 @@ function YourDiary.DrawRun(e, visit)
                 local who = x.f.me and Text.RUN.you or (x.f.first or NameOf(visit, x.f.guid))
                 local killer = x.d.killer and x.d.killer.name
                 local line = Text.RunDiedTo(who, killer)
-                GameTooltip:AddLine(line:sub(1, 1):upper() .. line:sub(2), 1, 1, 1)
+                GameTooltip:AddLine(ns.Locale.grammar.Capital(line), 1, 1, 1)
             end
             GameTooltip:Show()
         end).pad = { kind = "fallen", key = "fallen", words = run.fallenHead }

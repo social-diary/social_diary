@@ -337,8 +337,31 @@ end
 -- "Rückblick"), so a locale whose letters need it gives its own.
 --   Upper(text)    the whole text in capitals (headings, rubrics)
 --   Capital(text)  the first letter up, as a line starts
-Locale.grammar.Upper = function(text) return text:upper() end
-Locale.grammar.Capital = function(text) return (text:gsub("^%l", string.upper)) end
+-- The defaults touch ASCII letters only: some clients' string.upper (and
+-- %l) also take bytes above 127 for Latin-1 letters, which cuts a Chinese,
+-- Japanese, Korean or Thai character, or an emoji, wherever one comes in
+-- (a name, a zone) under these languages.
+Locale.grammar.Upper = function(text) return (text:gsub("[a-z]+", string.upper)) end
+Locale.grammar.Capital = function(text) return (text:gsub("^[a-z]", string.upper)) end
+
+-- The first letter of a text, whole: "B" of "Bram", "夏" of "夏溪". A
+-- text's first byte is only its first letter in ASCII; a byte cut from a
+-- longer letter reads as a box, and some clients' string.upper changes
+-- such a byte on its own (an initial, a line's first letter). Upper it
+-- with the locale's Upper, never byte by byte.
+function Locale.FirstLetter(text)
+    return text:match("^[\1-\127\194-\244][\128-\191]*") or text:sub(1, 1)
+end
+
+-- A name's initial, as the face shows it when there is no portrait: the
+-- first letter in capitals. A letter of three bytes or more (Chinese,
+-- Japanese, Korean, Thai, an emoji) has no capital and stays as it is,
+-- whatever the reader's language.
+function Locale.Initial(text)
+    local first = Locale.FirstLetter(text)
+    if #first > 2 then return first end
+    return Locale.grammar.Upper(first)
+end
 
 --------------------------------------------------------------------------
 -- A zone or dungeon after a preposition. The client gives a bare name

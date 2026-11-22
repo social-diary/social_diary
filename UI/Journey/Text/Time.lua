@@ -65,7 +65,7 @@ end
 
 local function When(t, level, now)
     local text = Format.At(t, now)
-    text = text:sub(1, 1):upper() .. text:sub(2)
+    text = G.Capital(text)
     if level then text = Fmt(L["%1$s, at level %2$d"], text, level) end
     return text
 end

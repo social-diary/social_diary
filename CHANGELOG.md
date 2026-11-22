@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- Chinese, Japanese, Korean and Thai first letters no longer show as boxes
+
 ## [4.2.4]
 
 This update brings support for Traditional Chinese.

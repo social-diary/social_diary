@@ -110,7 +110,7 @@ local function Plated(ctx, slot, over)
     -- the day first where the heading had no room for it.
     local function Words(said)
         local text = Text.PlateCaption(p, ctx.began, said)
-        return day and (day:sub(1, 1):upper() .. day:sub(2) .. ". " .. text) or text
+        return day and (ns.Locale.grammar.Capital(day) .. ". " .. text) or text
     end
     -- The margin (WriteMargin) under the words, and the words naming
     -- what had no room in the margin: written once more and the margin

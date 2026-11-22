@@ -184,7 +184,7 @@ function Style.Medallion(parent, size)
         else
             icon:SetColorTexture(Style.PAPER[1] * 0.92, Style.PAPER[2] * 0.92, Style.PAPER[3] * 0.92, 1)
             local name = (visit.name or "?"):gsub("^The ", "")
-            self.initial:SetText(name:sub(1, 1):upper())
+            self.initial:SetText(ns.Locale.Initial(name))
             self.how = "initial"
         end
         self.initial:SetShown(self.how == "initial")
