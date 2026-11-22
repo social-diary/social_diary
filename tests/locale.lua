@@ -439,7 +439,7 @@ for _, id in ipairs(LOCALES) do
     if RULES[id] then RuleHolds(G, RULES[id], id) end
     -- A line starts with a capital, wherever the script has them (a
     -- pattern that never matched once left French all lower case, #36).
-    if id ~= "zhCN" then
+    if id ~= "zhCN" and id ~= "zhTW" then
         Eq(G.Capital("a new belt"), "A new belt", id .. ": Capital lifts the first letter")
         Eq(G.Capital("été"), G.Upper("é") .. "té", id .. ": and one outside ASCII")
     end
@@ -510,8 +510,8 @@ do
     for _, id in ipairs({ "zhCN", "zhTW", "koKR" }) do
         local ns = GrammarNs(id)
         local Text = ns.UI.JourneyText
-        -- A client with its own words (zhCN) reads them, so only the space
-        -- is checked there; one without (zhTW, koKR) reads the English.
+        -- A client with its own words (zhCN, zhTW) reads them, so only the
+        -- space is checked there; one without (koKR) reads the English.
         local own = ns.Locale.id == id
         local function Plain(got, english, what)
             if own then
