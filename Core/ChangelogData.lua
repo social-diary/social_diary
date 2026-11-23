@@ -7,6 +7,15 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.4",
+        summary = "This update brings support for Traditional Chinese.",
+        groups = {
+            { heading = "Shiny new Things", entries = {
+                { text = "Added Traditional Chinese support" },
+            } },
+        },
+    },
+    {
         version = "4.2.3",
         summary = "A small Update: new gear and more of the diary's wording now read in your language.",
         groups = {
@@ -43,19 +52,6 @@ ns.Changelog = {
         groups = {
             { heading = "Shiny new Things", entries = {
                 { text = "Added Brazilian Portuguese to the diary’s language settings", thanks = "thiagocoutinhor" },
-            } },
-        },
-    },
-    {
-        version = "4.1.1",
-        summary = "A small Update: the preset tags now speak your language, and Feign Death or healing yourself no longer leaves false deaths and _Close Calls_ in your diary.",
-        groups = {
-            { heading = "Changes", entries = {
-                { text = "The preset tags now show in your language", thanks = "YaN9Yu96" },
-            } },
-            { heading = "Fixes", entries = {
-                { text = "Feign Death no longer counts as a death", thanks = "JasonLudeli" },
-                { text = "Healing yourself no longer records false _Close Calls_" },
             } },
         },
     },

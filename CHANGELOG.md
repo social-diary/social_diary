@@ -6,6 +6,14 @@
 
 - Zone and dungeon names now read with their article in Brazilian Portuguese
 
+## [4.2.4]
+
+This update brings support for Traditional Chinese.
+
+### Shiny new Things
+
+- Added Traditional Chinese support
+
 ## [4.2.3]
 
 A small Update: new gear and more of the diary's wording now read in your language.
