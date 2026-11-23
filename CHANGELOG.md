@@ -2,9 +2,18 @@
 
 ## [Unreleased]
 
+## [4.2.5]
+
+This Update brings five more dungeons to the _Dungeon View_. A quest item everyone in your group loots, like a boss's head, no longer counts as a lucky drop in _Your Diary_.
+
+### Changes
+
+- _Dungeon View_ now knows five more dungeons and more default routes
+  - Blackmaw Hold and The Shaper's Terrace maps are in beta
+
 ### Fixes
 
-- _Your Diary_ no longer mistakes quest items the whole group loots for evaluating quest item drop luck
+- _Your Diary_ no longer calls quest items the whole group loots lucky
 
 ## [4.2.4]
 
