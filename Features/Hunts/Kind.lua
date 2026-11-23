@@ -92,6 +92,15 @@ Hunts.T = T
 -- those count with the user's own, so the kills are set against every
 -- item the group's kills gave: `shared`, the group's copies.
 --
+-- Not so what a corpse gives everyone on the quest, a copy each (22 Nov,
+-- in the client: Baron Vardus's head, the user's and the group member's
+-- off the one kill, kept as 1 kill for 2 where 2 were expected: good
+-- luck). QuestieDB says which items are (Hunts.EachOwn): a group member's
+-- copy of one takes none from the user and is not counted. A hunt kept
+-- with such copies counted keeps them, marked `each`, which leaves them
+-- out of every reckoning (Hunts.Items); the mark is made when the hunt is
+-- next read with QuestieDB here (Hunts.Rated).
+--
 -- Only the items the user looted count as the kills' (20 Nov, in the
 -- client: 2 Turtle Meat looted off 2 Snapjaws, 8 bought at the auction
 -- house and mailed over, kept as 2 kills for 10, good luck). The user's
@@ -109,8 +118,8 @@ Hunts.T = T
 -- list's `prune`, at login), or when the quest leaves the log.
 --
 -- j.hunts holds each one finished, oldest first: { t, mapID, x, y, level,
--- questID, title, item, itemID, need, shared, kills, npcID, name, byKind,
--- expected, display }. `itemID` from QuestieDB, else from the loot link
+-- questID, title, item, itemID, need, shared, each, kills, npcID, name,
+-- byKind, expected, display }. `itemID` from QuestieDB, else from the loot link
 -- (for the item's icon; older records have none). The creature is the kind that dropped it most often killed;
 -- `byKind` each kind's own kills, { [npcID] = { n, name } }, where there
 -- were more kinds than one; `expected` the kills the drop rates said it
@@ -215,14 +224,22 @@ function Hunts.Drop(j, item, npcID, name, itemID)
     return any
 end
 
+-- Whether item `itemID` is one a corpse gives everyone on its quest, so
+-- that a group member's copy takes none from the user: where QuestieDB
+-- says (EXT-2). Without it no item is known to be.
+function Hunts.EachOwn(itemID)
+    local Q = ns.QuestieBridge
+    return itemID ~= nil and Q ~= nil and Q.PartyLoot(itemID) == true
+end
+
 -- Item `item` (its name, `itemID` where the link says), `n` of them,
--- looted by a group member: gone from the user's hunts for it. Whether any
--- was.
+-- looted by a group member: gone from the user's hunts for it, unless
+-- everyone loots their own (Hunts.EachOwn). Whether any was.
 function Hunts.Shared(j, item, itemID, n)
     if not (j and j.hunting and item) then return false end
     local any = false
     for _, hunt in pairs(j.hunting) do
-        if (itemID and hunt.itemID == itemID) or hunt.item == item then
+        if ((itemID and hunt.itemID == itemID) or hunt.item == item) and not Hunts.EachOwn(hunt.itemID or itemID) then
             hunt.shared = (hunt.shared or 0) + (n or 1)
             any = true
         end
@@ -253,9 +270,20 @@ function Hunts.Short(hunt)
 end
 
 -- How many items a finished hunt's kills gave: the user's, and the
--- group's copies (`shared`).
+-- group's copies (`shared`), unless those were each their own (`each`).
 function Hunts.Items(hunt)
-    return (hunt.need or 0) + (hunt.shared or 0)
+    return (hunt.need or 0) + (hunt.each and 0 or hunt.shared or 0)
+end
+
+-- The group's copies of a finished hunt, counted before it was known that
+-- everyone loots their own of the item (Hunts.EachOwn): marked `each`,
+-- which leaves them out, and the expectation reckoned with them dropped,
+-- for the caller to read again. Only ever the mark: what was caught of
+-- the group stays in the record.
+local function Each(hunt)
+    if hunt.shared and not hunt.each and Hunts.EachOwn(hunt.itemID) then
+        hunt.each, hunt.expected = true, nil
+    end
 end
 
 -- How likely a hunt is at least this slow: `kills` for `items` where
@@ -341,8 +369,11 @@ function Hunts.Done(j, questID, index, rec, where)
     local shared = hunt.shared and hunt.shared > 0 and hunt.shared or nil
     local done = { t = rec and rec.t or ns.Now(), mapID = spot.mapID, x = spot.x, y = spot.y,
         level = rec and rec.level, questID = questID, title = hunt.title, item = hunt.item, itemID = hunt.itemID, need = hunt.need,
-        shared = shared, kills = kills, npcID = npcID, name = byKind[npcID].name, byKind = kinds > 1 and byKind or nil,
-        expected = Rated(byKind, kills, hunt.need + (shared or 0), rates) }
+        shared = shared, kills = kills, npcID = npcID, name = byKind[npcID].name, byKind = kinds > 1 and byKind or nil }
+    -- Copies counted while QuestieDB was away, and known now for each
+    -- their own, are left out of what was expected from the start.
+    Each(done)
+    done.expected = Rated(byKind, kills, Hunts.Items(done), rates)
     -- On the list as Journey.Append keeps one (the newest T.hunts), with
     -- the record's fields in their own order. As there, the oldest goes past
     -- any the player has changed, which do not count against the cap either:
@@ -418,7 +449,9 @@ end
 -- Bandanas, from before, had no rate, and its card none to show). The
 -- kinds are the ones it kept: one, or its `byKind`. A rate kept that
 -- cannot be believed (Hunts.Believable) is read again the same way, and
--- dropped where no source can be. Whether it has a rate.
+-- dropped where no source can be. So is one reckoned with the group's
+-- copies of an item everyone loots their own of (Each, above; 22 Nov).
+-- Whether it has a rate.
 --
 -- Only ever a detected record's own values: a copy the player's words are on
 -- (Hunts.Read, an inserted card's too) says what they said. Its typed item
@@ -427,8 +460,8 @@ end
 function Hunts.Rated(hunt)
     if not hunt then return false end
     if hunt.customOf then return hunt.expected ~= nil end
-    local items = Hunts.Items(hunt)
-    if hunt.expected and Hunts.Believable(hunt.kills or 0, items, hunt.expected) then return true end
+    Each(hunt)
+    if hunt.expected and Hunts.Believable(hunt.kills or 0, Hunts.Items(hunt), hunt.expected) then return true end
     local Q = ns.QuestieBridge
     if not (Q and Q.On() and hunt.questID and hunt.need and hunt.kills and hunt.kills > 0) then
         return hunt.expected ~= nil
@@ -437,7 +470,9 @@ function Hunts.Rated(hunt)
     local byKind = hunt.byKind or (hunt.npcID and { [hunt.npcID] = { n = hunt.kills } })
     if not (itemID and byKind) then return hunt.expected ~= nil end
     hunt.itemID = itemID
-    hunt.expected = Rated(byKind, hunt.kills, items, {
+    -- Again, for a hunt whose item is only now known.
+    Each(hunt)
+    hunt.expected = Rated(byKind, hunt.kills, Hunts.Items(hunt), {
         function(id) return Q.DropRate(itemID, id) end,
         function(id) return Q.WowheadRate(itemID, id) end,
     })

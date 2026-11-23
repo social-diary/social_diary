@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- _Your Diary_ no longer mistakes quest items the whole group loots for evaluating quest item drop luck
+
 ## [4.2.4]
 
 This update brings support for Traditional Chinese.

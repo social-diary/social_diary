@@ -136,6 +136,26 @@ function Bridge.Droppers(itemID)
     return out
 end
 
+-- The server's item flag for a drop a corpse gives everyone who may loot
+-- it (its "party loot", in QuestieDB's `flags` as the server has them).
+local PARTY_LOOT = 2048
+
+local partyLoot = {}
+
+-- Whether item `itemID` is looted by each of a group off the same corpse,
+-- a copy of their own for everyone on its quest: so the heads and other
+-- trophies of the named, where what a quest gathers by the dozen goes to
+-- one of them only. nil where QuestieDB is away.
+function Bridge.PartyLoot(itemID)
+    if type(itemID) ~= "number" then return nil end
+    if partyLoot[itemID] ~= nil then return partyLoot[itemID] end
+    if not DB() then return nil end
+    local flags = Get("Item", itemID, "flags")
+    local each = type(flags) == "number" and flags % (PARTY_LOOT * 2) >= PARTY_LOOT
+    partyLoot[itemID] = each
+    return each
+end
+
 -- The drop tables, read off QuestieDB's support data once: [itemID] =
 -- { [npcID] = percent }. A table that does not read is empty.
 local tables
@@ -216,5 +236,5 @@ end
 
 -- For the tests: forget what was kept.
 function Bridge.Reset()
-    names, droppers, tables = {}, {}, nil
+    names, droppers, partyLoot, tables = {}, {}, {}, nil
 end

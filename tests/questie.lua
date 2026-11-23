@@ -24,14 +24,19 @@ local MEAT = "|cffffffff|Hitem:4739::::::::5:::::|h[Plainstrider Meat]|h|r"
 -- in; GetRaw gives the English.
 local db = {
     npc = { [2955] = "Plainstrider", [2956] = "Adult Plainstrider", [3108] = "Encrusted Surf Crawler",
-        [474] = "Defias Rogue Wizard" },
+        [474] = "Defias Rogue Wizard", [2306] = "Baron Vardus" },
     german = { [2955] = "Ebenenschreiter" },
     items = { [4739] = { name = "Plainstrider Meat", npcDrops = { 2956, 2955 } },
         [5001] = { name = "Gnoll Paw", npcDrops = { 98 } }, [5002] = { name = "Gnoll Tooth", npcDrops = { 98 } },
-        [1019] = { name = "Red Linen Bandana", npcDrops = { 474 } } },
+        [1019] = { name = "Red Linen Bandana", npcDrops = { 474 } },
+        -- `flags` as the server has them: 2048 is a drop a corpse gives
+        -- everyone on the quest (a head), alone or among other flags.
+        [3626] = { name = "Head of Baron Vardus", npcDrops = { 2306 }, flags = 2048 },
+        [5004] = { name = "Gnoll Chief's Ear", flags = 2052 }, [5005] = { name = "Gnoll Rag", flags = 4160 } },
     quests = { [781] = { objectives = { nil, nil, { { 4739, nil, 0 } } } },
         [800] = { objectives = { nil, nil, { { 5001 }, { 5002 } } } },
-        [83] = { objectives = { nil, nil, { { 1019 } } } } },
+        [83] = { objectives = { nil, nil, { { 1019 } } } },
+        [566] = { objectives = { nil, nil, { { 3626 } } } } },
 }
 local function Entity(get)
     return {
@@ -54,9 +59,9 @@ local function Bring()
                 -- The bandana as QuestieDB has it (12 Oct): 66% for every
                 -- Defias in the server data, 37% on Wowhead.
                 return { wowheadData = "return { [4739] = { [2955] = 30.0, [2956] = 40.0 }, [5001] = { [98] = 10.0 },"
-                        .. " [1019] = { [474] = 36.9752 } }",
+                        .. " [1019] = { [474] = 36.9752 }, [3626] = { [2306] = 81.6895 } }",
                     cmangosData = "return { [4739] = { [2955] = 25.0, [2956] = 50.0 }, [5002] = { [98] = 0 },"
-                        .. " [1019] = { [474] = 66.0 } }" }
+                        .. " [1019] = { [474] = 66.0 }, [3626] = { [2306] = 100.0 } }" }
             end
             if name == "QuestieItemDropCorrections" then
                 return { Era = { [5001] = { [98] = -1 }, [5003] = { [98] = 60.0 } } }
@@ -77,6 +82,7 @@ Away()
 Eq(Q.On(), false, "on without QuestieDB")
 Eq(Q.NpcName(2955), nil, "a name without QuestieDB")
 Eq(Q.DropRate(4739, 2955), nil, "a rate without QuestieDB")
+Eq(Q.PartyLoot(3626), nil, "a copy for everyone without QuestieDB")
 Bring()
 Eq(Q.On(), true, "off with QuestieDB")
 Eq(Q.Status(), "on", "the settings' status with QuestieDB")
@@ -110,6 +116,11 @@ Eq(Q.ItemFor(800, "Something Else"), nil, "one of two, unmatched")
 Eq(Q.ItemFor(999, "Plainstrider Meat"), nil, "an unknown quest")
 Eq(table.concat(Q.Droppers(4739), ","), "2955,2956", "every kind that drops it")
 Eq(Q.Droppers(9999), nil, "an item nothing drops")
+Eq(Q.PartyLoot(3626), true, "a head, a copy for everyone on the quest")
+Eq(Q.PartyLoot(5004), true, "the flag among others")
+Eq(Q.PartyLoot(5005), false, "other flags without it")
+Eq(Q.PartyLoot(4739), false, "an item with no flags")
+Eq(Q.PartyLoot(9999), false, "an unknown item")
 
 Eq(Q.DropRate(4739, 2955), 25.0, "cmangos before wowhead")
 Eq(Q.DropRate(5001, 98), 10.0, "a correction pointing at wowhead")
@@ -286,6 +297,96 @@ mock.groupSize = 0
 Eq(ns.Hunts.Expected({ [1] = { n = 5 }, [2] = { n = 5 } }, 10, 2, function(id) return id == 1 and 20 or nil end), nil,
     "an expectation with a kind unrated")
 Eq(ns.Hunts.Expected({ [1] = { n = 10 } }, 10, 2, function() return 20 end), 10, "two at 20%")
+
+--------------------------------------------------------------------------
+Section("what a corpse gives everyone on the quest is no one's to miss")
+
+-- Baron Vardus's head (22 Nov, in the client): one kill gave the user
+-- theirs and the group member theirs. Counted as the group's, that was
+-- 1 kill for 2 where 2 were expected at his 100%: good luck.
+local VARDUS = "Creature-0-4615-1-832-2306-00004B6C11"
+local HEAD = "|cffffffff|Hitem:3626::::::::35:::::|h[Head of Baron Vardus]|h|r"
+local WANTED = { questID = 566, title = "WANTED: Baron Vardus", objectives = {
+    { text = "Head of Baron Vardus: 0/1", type = "item", numFulfilled = 0, numRequired = 1, finished = false } } }
+mock.quests = { QUEST, WANTED }
+mock.groupSize = 2
+mock.SetUnit("party1", STRANGER)
+mock.fire("GROUP_ROSTER_UPDATE")
+mock.fire("QUEST_ACCEPTED", 566)
+mock.RunTimers()
+hunt = ns.Hunts.Hunting(j, 566, 1)
+Check(hunt and hunt.itemID == 3626, "setup: the head not counted")
+mock.fire("PARTY_KILL", SELF.guid, VARDUS)
+Loot("Someone receives loot: " .. HEAD .. ".", STRANGER.guid)
+Eq(hunt.shared, nil, "the group member's own copy counted as one the user missed")
+Loot("You receive loot: " .. HEAD .. ".", SELF.guid)
+WANTED.objectives[1].numFulfilled, WANTED.objectives[1].finished = 1, true
+mock.fire("QUEST_LOG_UPDATE")
+mock.RunTimers()
+done = ns.Hunts.List(j)[#ns.Hunts.List(j)]
+Check(done and done.questID == 566, "the head's hunt kept nothing")
+Eq(done.kills, 1, "the one kill")
+Eq(done.shared, nil, "no copies of the group's")
+Eq(ns.Hunts.Items(done), 1, "the one head the kill gave the user")
+Eq(done.expected, 1, "one kill expected for one head")
+Eq(ns.Hunts.GoodLuck(done), false, "the one kill that was expected was good luck")
+Eq(ns.Hunts.BadLuck(j, done), false, "or bad")
+mock.quests = { QUEST }
+mock.groupSize = 0
+
+-- Counted while QuestieDB was away, and known by the hunt's end: the
+-- copies stay as they were caught, marked, and out of the reckoning.
+ns.Hunts.Begin(j, { questID = 566, index = 2, title = "WANTED: Baron Vardus", item = "Head of Baron Vardus", need = 1,
+    t = mock.now, itemID = 3626, droppers = { 2306 } })
+Away()
+ns.Hunts.Kill(j, 2306, "Baron Vardus")
+Eq(ns.Hunts.Shared(j, "Head of Baron Vardus", 3626, 1), true, "without QuestieDB, a group member's copy is not counted")
+ns.Hunts.Looted(j, "Head of Baron Vardus", 3626, 1)
+Bring()
+done = ns.Hunts.Done(j, 566, 2, { t = mock.now, Rates = { Q.DropRate, Q.WowheadRate } }, { mapID = 1412, x = 0.5, y = 0.5 })
+Eq(done.shared, 1, "what was caught of the group is kept")
+Eq(done.each, true, "marked: each their own")
+Eq(ns.Hunts.Items(done), 1, "and left out of the items")
+Eq(done.expected, 1, "and of what was expected")
+
+-- A hunt kept before (the saved one): read with QuestieDB here, its
+-- copies are marked and its rate read again; without, it is as it was.
+local head = { t = mock.now, mapID = 1412, x = 0.5, y = 0.5, level = 35, questID = 566, title = "WANTED: Baron Vardus",
+    item = "Head of Baron Vardus", itemID = 3626, need = 1, shared = 1, kills = 1, npcID = 2306, name = "Baron Vardus",
+    expected = 2 }
+local function Among(list, rec)
+    for _, r in ipairs(list) do
+        if r == rec then return true end
+    end
+    return false
+end
+j.hunts[#j.hunts + 1] = head
+Away()
+Eq(ns.Hunts.Rated(head), true, "without QuestieDB a kept rate is lost")
+Eq(head.expected, 2, "without QuestieDB, the rate as it was kept")
+Eq(head.each, nil, "without QuestieDB, nothing is known of the item")
+Eq(Among(R.Gather(j, 0, mock.now + 1, {}).fortunes, head), true, "setup: as it was kept, it is good luck")
+Bring()
+Eq(Among(R.Gather(j, 0, mock.now + 1, {}).fortunes, head), false, "the head is still good luck on the page")
+Eq(head.each, true, "its copies marked: each their own")
+Eq(head.shared, 1, "what was caught of the group is kept in the record")
+Eq(ns.Hunts.Items(head), 1, "the one head")
+Eq(head.expected, 1, "its rate read again, for the one head")
+Eq(ns.Hunts.GoodLuck(head), false, "one kill where one was expected is good luck")
+-- Marked once, it reads the same with QuestieDB gone again.
+Away()
+Eq(ns.Hunts.Rated(head), true, "marked, its rate is lost without QuestieDB")
+Eq(ns.Hunts.Items(head), 1, "marked, the group's copies are back without QuestieDB")
+Eq(head.expected, 1, "marked, its rate changes without QuestieDB")
+Bring()
+table.remove(j.hunts)
+-- What only one of the group can loot is the group's as before.
+local meat = { questID = 781, item = "Plainstrider Meat", itemID = 4739, need = 7, shared = 2, kills = 20, npcID = 2955,
+    expected = 36 }
+Eq(ns.Hunts.Rated(meat), true, "the meat's rate is lost")
+Eq(meat.each, nil, "the meat's copies are marked each their own")
+Eq(ns.Hunts.Items(meat), 9, "the meat the group took is not counted")
+Eq(meat.expected, 36, "the meat's rate is read again")
 
 --------------------------------------------------------------------------
 Section("bad luck with the rate known: eight more, and a quarter more")
