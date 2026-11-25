@@ -323,5 +323,6 @@ function People.PencilledCount()
             end
         end
     end
-    return n
+    -- And the sighted strangers still packed (Core/Strangers.lua).
+    return n + ns.Strangers.Pencilled(seen)
 end

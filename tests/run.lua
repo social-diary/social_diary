@@ -80,6 +80,7 @@ local FILES = {
     "diary_scale",
     "minimap",
     "sightings",
+    "strangers",
     "timeline",
     "person_plate",
     "person_page",

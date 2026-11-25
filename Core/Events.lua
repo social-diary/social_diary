@@ -183,6 +183,15 @@ function ns.On(event, handler)
     list.live = list.live + 1
 end
 
+-- What follows an event once every handler of it has run. Logging out,
+-- the strangers are packed again (Core/Strangers.lua): last, so that
+-- whoever a handler still asked after is packed with the rest. The frame
+-- listens for these whoever else does (registered below, with the
+-- dispatch), so Off leaves them registered.
+local AFTER = {
+    PLAYER_LOGOUT = function() ns.Strangers.Close() end,
+}
+
 -- Removal leaves a `false` tombstone rather than compacting, so a handler may
 -- call Off on its own event from inside dispatch without disturbing the loop.
 -- Tombstones are bounded by the number of registrations and the whole list is
@@ -200,7 +209,7 @@ function ns.Off(event, handler)
 
     if list.live <= 0 then
         handlers[event] = nil
-        if not IsMessage(event) then frame:UnregisterEvent(event) end
+        if not IsMessage(event) and not AFTER[event] then frame:UnregisterEvent(event) end
     end
 end
 
@@ -348,7 +357,13 @@ local function Dispatch(event, ...)
     end
 end
 
-frame:SetScript("OnEvent", function(_, event, ...) Dispatch(event, ...) end)
+for event in pairs(AFTER) do frame:RegisterEvent(event) end
+
+frame:SetScript("OnEvent", function(_, event, ...)
+    Dispatch(event, ...)
+    local after = AFTER[event]
+    if after then Call(after, event) end
+end)
 
 -- One of the SD_* messages above, to every handler On registered for it, in
 -- registration order. A client event's name is refused: firing one by hand
@@ -415,9 +430,21 @@ ns.On("PLAYER_LOGIN", function()
     -- Each on its own: a bad row in one must not stop the rest, login after
     -- login. The records' prune comes after the rows': a record goes once
     -- the rows that held on to it have.
-    for _, step in ipairs({ ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
+    -- Last, the strangers still tables are packed (Core/Strangers.lua):
+    -- those the roll-up unpacked and kept, a diary whose number is past
+    -- STEPS.diary[6] without having run it, or a save that never heard
+    -- the logout.
+    for _, step in ipairs({ ns.Strangers.Attach, ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
         ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune,
-        function() ns.Matches.Expire() ns.Matches.Rollup() end }) do
+        function() ns.Matches.Expire() ns.Matches.Rollup() end,
+        function()
+            local started = debugprofilestop and debugprofilestop()
+            local packed = ns.Strangers.Pack()
+            if packed > 0 then
+                ns.Debug("packed %d stranger(s)%s", packed,
+                    started and (" in %.0f ms"):format(debugprofilestop() - started) or "")
+            end
+        end }) do
         Call(step)
     end
     ns.Debug("v%s loaded. /sd opens the journal, /sd help lists commands.", ns.version)

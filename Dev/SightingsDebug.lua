@@ -204,6 +204,38 @@ local function SightingRollup(rest)
 end
 
 
+-- The packed strangers (Core/Strangers.lua): how many are packed, how many
+-- are tables this session, and what the lines weigh. `pack` packs every
+-- stranger now, as logging out does. `unpack` unpacks them all and keeps
+-- them so through this session's logout or reload: the diary saved as it
+-- was before strangers were packed, which a build from before can read.
+local function SightingPacked(_, name)
+    local Strangers = ns.Strangers
+    if name == "pack" then
+        local started = debugprofilestop and debugprofilestop()
+        Strangers.Hold(false)
+        local n = Strangers.Pack()
+        ns.Print("packed %d stranger(s)%s.", n,
+            started and (" in %.1f ms"):format(debugprofilestop() - started) or "")
+    elseif name == "unpack" then
+        local started = debugprofilestop and debugprofilestop()
+        Strangers.Hold(true)
+        local n = Strangers.UnpackAll()
+        ns.Print("unpacked %d stranger(s)%s. This session is saved as tables; |cffffd100/sd sightings pack|r takes that back.",
+            n, started and (" in %.1f ms"):format(debugprofilestop() - started) or "")
+    end
+
+    local people, sighted, rows = Strangers.Count()
+    local tables, withRows = ns.CountKeys(ns.db.characters), ns.CountKeys(ns.db.sightings)
+    ns.Print("strangers packed: %d (%d sighted, %d row(s)), about %d KB saved; as tables: %d record(s), %d with rows",
+        people, sighted, rows, math.ceil(Strangers.Bytes() / 1024), tables, withRows)
+    if Strangers.Broken() > 0 then
+        ns.Print("|cffc04040%d line(s) would not open this session and were left as they are.|r", Strangers.Broken())
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(("   whole diary about %d KB; diary schema v%d"):format(
+        math.ceil(ns.EstimateSize() / 1024), ns.db.schema))
+end
+
 local function Sub(name, fn, help, usage, alias)
     ns.Slash.Register(name, fn, help, { under = "sightings", dev = true, usage = usage, alias = alias })
 end
@@ -216,6 +248,8 @@ Sub("around", SightingAround, "seen-around stretches for a diary entry, or your 
 Sub("tooltip", SightingTooltip, "why your target does or does not get the \"Seen N times\" line")
 Sub("on", SightingSwitch, "switch passive detection", "on | off", { "off" })
 Sub("rollup", SightingRollup, "roll sightings older than [days] into summaries now", "rollup [days] [confirm]")
+Sub("packed", SightingPacked, "the strangers packed into lines: counts and size; pack or unpack them all now",
+    "packed | pack | unpack", { "pack", "unpack" })
 Sub("reset", function()
     ns.SightingCapture.ResetStats()
     ns.Print("sighting counters reset.")

@@ -21,7 +21,7 @@ local function SizeText(bytes)
         ns.Diary.Count(), P(ns.Characters.Count(), L["%d character known|%d characters known##plural"]),
         P(ns.CountKeys(ns.db.sessions), L["%d session|%d sessions##plural"]),
         P(rows, L["%d interaction|%d interactions##plural"]),
-        P(ns.CountKeys(ns.db.sightings), L["%d sighting|%d sightings##plural"]), math.ceil(bytes / 1024))
+        P(select(2, ns.Sightings.Count()), L["%d sighting|%d sightings##plural"]), math.ceil(bytes / 1024))
 end
 
 -- Past ns.SIZE_WARNING: what it costs, and what to turn down. Empty below.

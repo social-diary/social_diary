@@ -880,6 +880,10 @@ function Recap.FirstSightings(j, ctx)
     if not (j and ctx and ctx.characters) then return list end
     local own = ctx.own or {}
     local from, to = j.startedAt or -math.huge, ctx.now or math.huge
+    -- Only someone in the diary or the buffer can have mattered (Hinge):
+    -- whoever of them is still packed is a record before the walk.
+    ns.Strangers.UnpackThose(ctx.diary)
+    ns.Strangers.UnpackThose(ctx.interactions)
     for guid, record in pairs(ctx.characters) do
         local t = record.firstSeen
         if t and t >= from and t <= to and not record.isSelf and not own[guid] then

@@ -36,6 +36,8 @@ Never commit images (`*.png` is gitignored) or anything recorded from real playe
 
 The addon is live, so players' saved data has to survive every update. Never drop, move or reinterpret saved fields without a migration: bump the matching schema in `Core/DB.lua`, add a `STEPS` entry, and test it on an old-shaped table.
 
+Strangers with nothing in the interaction buffer are saved packed, one line each in `db.strangers`, and become their record in `db.characters` and their rows in `db.sightings` only when someone asks for their GUID (`Core/Strangers.lua`). Asking by GUID needs nothing. Code that walks either table (`pairs`, `next`, a count) finds only the people who are tables: unpack or count the packed strangers first with one of `ns.Strangers`' helpers. `tests/strangers.lua` lists every such walk and fails on a new one.
+
 When working on UI, invoke a subagent and supply it with the /frontend-design skill, as this agent has the expertise to design the UI. Give it /controller-support (`.claude/skills/controller-support/`) as well: everything a player can reach must work with WoW Forever's Gamepad UI the way the rest of the diary does, and that skill holds the rules (no Blizzard Gamepad UI calls, the focus model, the chosen look, the button map, tests).
 
 Work on Your Diary's plates (layouts, captions, margin notes and cards, marks, the full zone page) goes to a subagent that loads /plates (`.claude/skills/plates/`) as well as /frontend-design.
