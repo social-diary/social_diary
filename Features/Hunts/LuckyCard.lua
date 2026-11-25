@@ -89,36 +89,13 @@ local ROW = { [13] = 17, [11] = 15 }
 local TAG = { pad = { 9, 5, 8, 5 }, line = { [16] = 19, [14] = 17 }, paper = { 0.97, 0.935, 0.84 },
     turn = { 1.8, 3.0 }, shadow = { 0.6, 0.8, 0.40 }, soft = { out = 0.6, blur = 2.0, alpha = 0.26 },
     tape = { w = 22, h = 10, slant = { 39, 51 } } }
--- The strike through the printed expectation: a single pass of the route's
--- pen (UI/Ink/Pen.lua: mitred, the nib's share, stroked into quads that
--- share their edges), left to right, in ink at `alpha` (a hair of paper
--- shows through, as ink does; the readability comes from the shape, not
--- the alpha), `width` px wide before the nib's share (about 1.1 px on the
--- page: a little lighter than the underline, as it lies on type). A
--- quadratic, as the underline is: from `lead` px before the words to `tail`
--- past them, `low` of the type's size under the row's middle (toward the
--- small letters' middle, so it crosses the figures near theirs), sagging
--- `sag` px in its middle, tilted `slant` degrees (mostly rising, as a hand
--- strikes) but never more than `keep` of the figures' half cap band (`cap`
--- of the size) at either end, so it stays inside the words; each end given
--- or taken `jitter`; a piece every `step` px, at most `most`; tapered from
--- `from` of its width over its first `over` px and to `end` over its last
--- `off` px. (Until 13 Nov a scribble: one pen line of tall zigzag strokes
--- over the words. In the client, the user: too strong over the words,
--- "let's replace it with a single strikethrough using our pen tech".
--- `lead` and `tail` are the scribble's, so nothing on the card moved.)
-local STRIKE = { width = 1.15, nib = { angle = 40, thin = 0.6, thick = 1.2 }, alpha = 0.92, cap = 0.70, low = 0.06,
-    lead = { 2, 4 }, tail = { 2, 4.5 }, slant = { -2.4, 0.4 }, keep = 0.5, sag = 0.4, jitter = 0.35, step = 4,
-    taper = { from = 0.8, over = 3, ["end"] = 0.4, off = 7 }, most = 28 }
--- The underline under "dropped" (at S, the count): the same pen, a
--- quadratic from `lead` px before the word to `run` past it, `drop` px under
--- the baseline (through the p's tails, as a hand's underline runs), sagging
--- `sag` in its middle and rising `rise` toward its end as the hand flicks
--- off; each end given or taken `jitter`; a piece every `step` px, at most
--- `most`; tapered from `from` over `over` px and to `end` over its last
--- `off`.
-local UNDER = { width = 1.35, nib = STRIKE.nib, drop = 3.4, sag = 0.5, rise = 1.3, lead = 1.5, run = 4,
-    jitter = 0.4, step = 3.5, taper = { from = 0.85, over = 3, ["end"] = 0.4, off = 7 }, most = 16 }
+-- The strike through the printed expectation and the underline under
+-- "dropped": the diary's shared scribbles (UI/Ink/Scribble.lua, where their
+-- looks are commented), moved there unchanged on 24 Nov 2026 when a sheet
+-- among the plates wanted the same pen; the same tables, so the card draws
+-- what it drew.
+local Scribble = ns.UI.Scribble
+local STRIKE, UNDER = Scribble.STRIKE, Scribble.UNDER
 -- S, on a light plate's print: the slip's margins, its height (`height`:
 -- its foot `bottom` px inside the print's, so it covers the print's border
 -- and the lowest of the map), its own turn on the print (`turn`, degrees),
@@ -203,85 +180,11 @@ local function Random(key)
     return function(a, b) return a + (b - a) * rand() end, rand
 end
 
--- The strike through printed words from x0, `w` wide, their row's middle
--- at `mid`, type `size` px, seeded by `seed` (a string): its points
--- { { x, y }, ... }, left to right (STRIKE); and, for the tests, the
--- figures' half cap band.
-function LuckyCard.Strike(seed, x0, mid, w, size)
-    local U = Random(seed)
-    local S = STRIKE
-    local half = S.cap * size / 2
-    local ax, zx = x0 - U(S.lead[1], S.lead[2]), x0 + w + U(S.tail[1], S.tail[2])
-    local y = mid + S.low * size
-    -- A hand is never level: tilted about its middle, kept inside the words.
-    local most = S.keep * half
-    local tilt = math.max(-most, math.min(most, math.tan(math.rad(U(S.slant[1], S.slant[2]))) * (zx - ax) / 2))
-    local ay, zy = y - tilt + U(-S.jitter, S.jitter), y + tilt + U(-S.jitter, S.jitter)
-    local cx, cy = (ax + zx) / 2, (ay + zy) / 2 + 2 * S.sag
-    local len = math.sqrt((zx - ax) ^ 2 + (zy - ay) ^ 2)
-    local n = math.min(S.most, math.max(3, math.ceil(len / S.step)))
-    local P = {}
-    for i = 0, n do
-        local t = i / n
-        local u = 1 - t
-        P[#P + 1] = { x = u * u * ax + 2 * u * t * cx + t * t * zx, y = u * u * ay + 2 * u * t * cy + t * t * zy }
-    end
-    return P, half
-end
-
--- The underline under a word from x0 to x1, its baseline at `base`: its
--- points (UNDER), seeded by `seed`.
-function LuckyCard.Underline(seed, x0, x1, base)
-    local U = Random(seed)
-    local D = UNDER
-    local ax, ay = x0 - D.lead, base + D.drop + U(-D.jitter, D.jitter) + 0.3
-    local zx, zy = x1 + D.run, base + D.drop - D.rise + U(-D.jitter, D.jitter)
-    local cx, cy = (ax + zx) / 2, (ay + zy) / 2 + 2 * D.sag
-    local len = math.sqrt((zx - ax) ^ 2 + (zy - ay) ^ 2)
-    local n = math.min(D.most, math.max(3, math.ceil(len / D.step)))
-    local P = {}
-    for i = 0, n do
-        local t = i / n
-        local u = 1 - t
-        P[#P + 1] = { x = u * u * ax + 2 * u * t * cx + t * t * zx, y = u * u * ay + 2 * u * t * cy + t * t * zy }
-    end
-    return P
-end
-
--- `P` drawn with the pen (STRIKE's or UNDER's look): the quads, as
--- the pen's primitives (ns.UI.Pen), each vertex's half-width its nib's
--- share of the width, tapered where the pen lands and where it lifts.
-function LuckyCard.Pen(P, look)
-    local Pen = ns.UI.Pen
-    local n = #P
-    if n < 2 then return {} end
-    P[1].s = 0
-    for i = 2, n do P[i].s = P[i - 1].s + math.sqrt((P[i].x - P[i - 1].x) ^ 2 + (P[i].y - P[i - 1].y) ^ 2) end
-    local total, T = P[n].s, look.taper
-    local M = Pen.Mitres(P)
-    local function Half(i)
-        local a, b = P[math.max(i - 1, 1)], P[math.min(i + 1, n)]
-        local t = math.min(1, T.from + (1 - T.from) * P[i].s / T.over)
-        local left = total - P[i].s
-        if left < T.off then t = t * (T["end"] + (1 - T["end"]) * left / T.off) end
-        return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y, look.nib) * t
-    end
-    local prims = {}
-    Pen.Stroke(prims, 0, P, M, Half, function() return 0 end, function() return look.alpha or STRIKE.alpha end,
-        Style.INK_STRONG, nil, look.most)
-    return prims
-end
-
--- A piece of the pen laid flat where corners cannot move: from the middle
--- of its start to the middle of its end, as wide as it is on average.
--- Returns its middle, length, width and angle (y down).
-local function Flat(q)
-    local sx, sy = (q.x1 + q.x4) / 2, (q.y1 + q.y4) / 2
-    local ex, ey = (q.x2 + q.x3) / 2, (q.y2 + q.y3) / 2
-    local dx, dy = ex - sx, ey - sy
-    local width = (math.sqrt((q.x1 - q.x4) ^ 2 + (q.y1 - q.y4) ^ 2) + math.sqrt((q.x2 - q.x3) ^ 2 + (q.y2 - q.y3) ^ 2)) / 2
-    return (sx + ex) / 2, (sy + ey) / 2, math.sqrt(dx * dx + dy * dy) + 0.3, math.max(width, 0.4), math.atan2(-dy, dx)
-end
+-- The strike, the underline, the pen that draws them and a piece of it laid
+-- flat: the shared scribbles' (UI/Ink/Scribble.lua), under the names the
+-- card and its tests always used.
+LuckyCard.Strike, LuckyCard.Underline, LuckyCard.Pen = Scribble.Strike, Scribble.Underline, Scribble.Pen
+local Flat = Scribble.Flat
 
 --------------------------------------------------------------------------
 -- Measures

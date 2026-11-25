@@ -263,6 +263,11 @@ Style.FONT = {
     pencilName = Font("SocialDiaryFontPencilName", NEUTON_ITALIC, 22, Style.GRAPHITE),
     pencilNameSmall = Font("SocialDiaryFontPencilNameSmall", NEUTON_ITALIC, 18, Style.GRAPHITE),
     pencilHand = Font("SocialDiaryFontPencilHand", NEUTON_ITALIC, 16, Style.GRAPHITE),
+    -- The hand a size down in graphite: what the diary worked out, written
+    -- beside the ink of what happened, on a line of the 14 px hand (a
+    -- sheet among Your Diary's plates: how long, "and five other things";
+    -- the city-trips proposal's three inks, 24 Nov 2026).
+    pencilHandSmall = Font("SocialDiaryFontPencilHandSmall", NEUTON_ITALIC, 14, Style.GRAPHITE),
     margin =Font("SocialDiaryFontMargin", FRIZ, 12, Style.ACCENT),
     -- The person's page in Goodmountain (GOODMOUNTAIN, above), mixed case:
     -- their name on their page (27; a long

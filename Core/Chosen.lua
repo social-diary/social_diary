@@ -221,7 +221,13 @@ end
 --     look, reason, madeRoomFor }
 --     One for every moment of the zone, in time order, but one for all the
 --     trips through one dungeon's door in the zone (the plate draws one door
---     for them): ticked, they go together.
+--     for them): ticked, they go together. Likewise one for a sheet's moment
+--     and the stays it tells (Recap.Tells: a visit told once): `sheet` its
+--     kind, `lead` and `moment` the sheet's own moment, first in `moments`
+--     and `keys` whatever the times.
+--   choices.plates[i].sheet the kind of a sheet on the page, and
+--   choices.sheet the kind of the page's sheet, where it has one (the cap
+--     line and the meter, UI/Journey/Choose.lua).
 --
 -- Looks: `diary` (a faded tick: on the page, the diary's pick), `diaryOff`
 -- (an empty box: the diary left it off), `keep` (a red tick: the player's; a
@@ -336,8 +342,19 @@ function Recap.Choices(j, e, ctx, cover)
         if m then all[#all + 1] = m end
     end
 
-    local zones, byMap, doors = {}, {}, {}
-    for _, m in ipairs(all) do
+    -- A visit told once (RegisterMoment's `sheet`): the stay a sheet tells is
+    -- in the sheet's row, read from the moments alone (Recap.Tells), never
+    -- from the grouping, so the row stands as the list is stable.
+    local toldBy = {}
+    for _, s in ipairs(all) do
+        if Recap.IsSheet(s) then
+            for _, m in ipairs(all) do
+                if not toldBy[m] and Recap.Tells(s, m) then toldBy[m] = s end
+            end
+        end
+    end
+    local zones, byMap, doors, sheets = {}, {}, {}, {}
+    local function ZoneOf(m)
         local zone = byMap[m.mapID]
         if not zone then
             zone = { row = "zone", key = "zone:" .. tostring(m.mapID), mapID = m.mapID, t = m.t, rows = {} }
@@ -345,9 +362,27 @@ function Recap.Choices(j, e, ctx, cover)
             zones[#zones + 1] = zone
         end
         zone.t = math.min(zone.t, m.t)
+        return zone
+    end
+    -- A sheet's row: its own moment first (its words and time), then the
+    -- stays it tells.
+    local function SheetRow(s)
+        local row = sheets[s]
+        if not row then
+            row = { row = "moment", kind = s.kind, sheet = s.kind, lead = s, moments = {}, zone = ZoneOf(s) }
+            row.zone.rows[#row.zone.rows + 1] = row
+            sheets[s] = row
+        end
+        return row
+    end
+    for _, m in ipairs(all) do
+        local zone = ZoneOf(m)
         local door = m.kind == "dungeon" and m.name and (tostring(m.mapID) .. ":" .. m.name) or nil
         local row = door and doors[door]
-        if row then
+        if Recap.IsSheet(m) or toldBy[m] then
+            row = SheetRow(toldBy[m] or m)
+            row.moments[#row.moments + 1] = m
+        elseif row then
             row.moments[#row.moments + 1] = m
         else
             row = { row = "moment", kind = m.kind, moments = { m }, zone = zone }
@@ -362,7 +397,9 @@ function Recap.Choices(j, e, ctx, cover)
     end
     for _, zone in ipairs(zones) do
         for _, row in ipairs(zone.rows) do
+            local lead = row.lead
             table.sort(row.moments, function(a, b)
+                if lead and (a == lead) ~= (b == lead) then return a == lead end
                 if a.t ~= b.t then return a.t < b.t end
                 return Chosen.Key(a) < Chosen.Key(b)
             end)
@@ -442,7 +479,8 @@ function Recap.Choices(j, e, ctx, cover)
     for i, plate in ipairs(plates) do
         local mine = false
         for _, m in ipairs(plate.moments) do mine = mine or Mine(m) end
-        choices.plates[i] = { mine = mine, mapID = plate.mapID }
+        choices.plates[i] = { mine = mine, mapID = plate.mapID, sheet = plate.sheet }
+        if plate.sheet then choices.sheet = plate.sheet end
         if mine then choices.mine = choices.mine + 1 else choices.diary = choices.diary + 1 end
     end
     choices.full = #plates >= choices.max and choices.mine >= choices.max

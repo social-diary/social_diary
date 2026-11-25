@@ -110,7 +110,7 @@ local waiting = false
 -- How the next arrival may have come (the firsts' way): each window's
 -- state (true while open, else when it closed); the last trade completed
 -- { guid, t, received }; what was said about an item as it came, by key:
--- { from, t }, `from` "mail", "returned", "buyback", "craft", "loot" or
+-- { from, t }, `from` "mail", "auction", "returned", "buyback", "craft", "loot" or
 -- "push" (handed over: a quest's or a vendor's); and the candidates just
 -- made, for a line that comes after the bags changed: { key, t }.
 local windows, lastTrade, said, made = {}, nil, {}, {}
@@ -303,7 +303,7 @@ local function Said(key, from)
                 Note("%s was old gear coming back (%s): given up", cand.link, how)
                 Upgrades.Gone(j, key)
                 since[key] = nil
-            elseif cand and how and cand.from ~= "trade" and cand.from ~= "mail" then
+            elseif cand and how and cand.from ~= "trade" and cand.from ~= "mail" and cand.from ~= "auction" then
                 cand.from = how
             end
         end
@@ -585,12 +585,23 @@ end
 -- (AutoLootMailItem, the client's "Open All" too). Hooked after the call,
 -- while the letter still holds them: the server has not answered yet. A
 -- letter come back to its sender (the header's tenth value) brings the
--- user's own things home.
+-- user's own things home. A letter carrying an auction's invoice as its
+-- buyer's (GetInboxInvoiceInfo's first value "buyer": what was bought or
+-- won at the auction house comes by letter) brings it "auction", not
+-- "mail" (the user, 25 Nov 2026: "Can't we deduce it from ... purchasing
+-- an auction?"; the invoice's order is this build's own,
+-- Blizzard_MailFrame/MailFrame.lua:790 on the `forever` branch:
+-- invoiceType, itemName, playerName, bid, buyout, ...). A seller's invoice
+-- carries coin, never an item, so only the buyer's is asked for.
 local function Letter(index, attachment)
     if type(GetInboxItemLink) ~= "function" then return end
     local returned = type(GetInboxHeaderInfo) == "function" and ns.Plain((select(10, GetInboxHeaderInfo(index)))) == true
+    local from = returned and "returned" or "mail"
+    if not returned and type(GetInboxInvoiceInfo) == "function" and ns.Plain((GetInboxInvoiceInfo(index))) == "buyer" then
+        from = "auction"
+    end
     for a = attachment or 1, attachment or ATTACHMENTS_MAX_RECEIVE or 16 do
-        Said(Upgrades.Key(ns.Plain(GetInboxItemLink(index, a))), returned and "returned" or "mail")
+        Said(Upgrades.Key(ns.Plain(GetInboxItemLink(index, a))), from)
     end
 end
 

@@ -267,33 +267,58 @@ local function DrawPlates(e)
     for _, spec in ipairs(MARGIN_ORDER) do
         if tucked and spec.fits and not spec.fits(plates[2], tucked[2]) then tucked = nil end
     end
+    page.sheetAt = {}
     for i, p in ipairs(plates) do
         local slot = layout[i]
         local plate = PlateAt(i)
-        local heading, words = page.headingPool:Next(), page.captionPool:Next()
-        local ctx = { e = e, p = p, plate = plate, heading = heading, words = words, before = plates[i - 1],
-            began = began, j = j }
-        if i == 1 and tucked then
-            if Plated(ctx, tucked[1], true) then
-                layout, page.pattern = tucked, "F+L"
-            else
+        if p.sheet then
+            -- A sheet (RegisterMoment's `sheet`) is drawn after the maps,
+            -- below; the map plate of its place stays out of sight.
+            plate:Hide()
+            plate.plan = nil
+        else
+            local heading, words = page.headingPool:Next(), page.captionPool:Next()
+            local ctx = { e = e, p = p, plate = plate, heading = heading, words = words, before = plates[i - 1],
+                began = began, j = j }
+            if i == 1 and tucked then
+                if Plated(ctx, tucked[1], true) then
+                    layout, page.pattern = tucked, "F+L"
+                else
+                    Plated(ctx, slot, false)
+                end
+            -- One plate with a short caption has it over the plate (TOP); a
+            -- caption that will not stay short is under it, as on every other
+            -- page.
+            elseif not (slot.top and Plated(ctx, slot.top, true)) then
                 Plated(ctx, slot, false)
             end
-        -- One plate with a short caption has it over the plate (TOP); a
-        -- caption that will not stay short is under it, as on every other
-        -- page.
-        elseif not (slot.top and Plated(ctx, slot.top, true)) then
-            Plated(ctx, slot, false)
+        end
+    end
+    -- The sheets (UI/Journey/Sheet.lua), each in its slot, after the maps
+    -- so they know who the margins' strips name (the caption's rule: no
+    -- one named twice on a page). No caption, margin or leaders.
+    local named = {}
+    for i, p in ipairs(plates) do
+        if not p.sheet then
+            for _, it in ipairs(PlateAt(i).margin or {}) do
+                if it.kind == "person" and it.g and it.g.guid then named[it.g.guid] = true end
+            end
+        end
+    end
+    for i, p in ipairs(plates) do
+        if p.sheet then
+            YourDiary.Sheet.Draw(i, p, layout[i], { e = e, before = plates[i - 1], j = j, named = named })
         end
     end
     -- The slots the plates were drawn in, kept on the piece for the
     -- ticklist's cap line (UI/Journey/Choose.lua: each box as wide as its
     -- plate's share of the page), F+L's and TOP's included, and still there
-    -- while a plate's whole map is open. View time only: nothing is saved.
+    -- while a plate's whole map is open; a sheet's marked (`sheet`, its
+    -- kind: the meter's fixed half). View time only: nothing is saved.
     local drawn = {}
-    for i = 1, #plates do
-        local s = PlateAt(i).slot
-        drawn[i] = s and { w = s.w, h = s.h } or nil
+    for i, p in ipairs(plates) do
+        local s = p.sheet and layout[i] or PlateAt(i).slot
+        drawn[i] = s and { w = s.w, h = s.h, sheet = p.sheet } or nil
     end
     e.drawnSlots = drawn
     return #plates

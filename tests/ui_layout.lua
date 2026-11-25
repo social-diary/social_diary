@@ -83,6 +83,7 @@ local MODULES = {
     DungeonMap = true, DungeonPage = true, Hints = true, HintSlip = true,
     PersonText = true, PersonStrips = true, PersonPlate = true, Clippings = true, PersonHeader = true,
     Glimpse = true, Pad = true, Scale = true, Suggest = true, AutoAdd = true, AutoAddRules = true,
+    Scribble = true, Sketch = true, Leaf = true, JourneySheet = true,
 }
 
 local function IsModule(v)

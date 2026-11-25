@@ -241,10 +241,16 @@ UI/Ink/Blood.lua
 UI/Ink/Trail.lua
 UI/Ink/Hand.lua
 UI/Ink/HandData.lua
+# The diary's shared marks with the pen (a strike, a ring, a thread, ...) and the hand that draws
+# small things (the free card's icons, a sheet's): after the pen, before anything that draws them.
+UI/Ink/Scribble.lua
+UI/Ink/Sketch.lua
 UI/Journey/Plate.lua
 UI/Paper/LinkSheet.lua
 UI/Paper/NoteSheet.lua
 UI/Paper/HintSlip.lua
+# A leaf glued among Your Diary's plates (a sheet a feature draws, UI/Journey/Sheet.lua).
+UI/Paper/Leaf.lua
 UI/Words/Timeline.lua
 # The person's page's words (ns.UI.PersonText): its strips, their tooltips,
 # its plate's marks.
@@ -273,6 +279,7 @@ UI/Journey/Layouts.lua
 UI/Journey/Leaders.lua
 UI/Journey/People.lua
 UI/Journey/Margin.lua
+UI/Journey/Sheet.lua
 UI/Journey/Caption.lua
 UI/Journey/Glide.lua
 UI/Journey/Full.lua
@@ -436,6 +443,17 @@ Features/QuestFinales/Data.lua
 Features/QuestFinales/Text.lua
 Features/QuestFinales/Mark.lua
 Features/QuestFinales/Capture.lua
+# City trips anywhere in the block, after Quest finales by choice: every
+# client event and message it hears it shares only with listeners that
+# keep their own state (the loot line, the skill events, the quest
+# messages, the world settling, the zone, the logout, two mailbox hooks),
+# it writes j.trips alone and reads none of theirs; the auction house,
+# money, mail-sent, recipe and taxi-control events are its own
+# (Features/CityTrips/Capture.lua's header).
+Features/CityTrips/Kind.lua
+Features/CityTrips/Text.lua
+Features/CityTrips/Sheet.lua
+Features/CityTrips/Capture.lua
 Features/Duels/Kind.lua
 Features/Duels/Text.lua
 Features/Duels/Mark.lua
@@ -522,6 +540,7 @@ Features/Firsts/Dev.lua
 Features/Upgrades/Dev.lua
 Features/ProfessionCaps/Dev.lua
 Features/QuestFinales/Dev.lua
+Features/CityTrips/Dev.lua
 Features/WorldPvP/Dev.lua
 Features/Deaths/Dev.lua
 Features/CloseCalls/Dev.lua

@@ -49,9 +49,12 @@ Upgrades.Giver = Giver
 -- its giver (the user, 15 Nov: "always name them"), while the diary knows
 -- them; nothing said how it came, and it is only "newly worn". The diary
 -- speaks to "you", so what the player made is "yourself", never "myself".
+-- What came by a letter carrying an auction's invoice is "auction" (25
+-- Nov 2026; older records say "mail" for it): bought, and where.
 local HEADING = { loot = L["Looted"], quest = L["A quest's reward"], vendor = L["Bought"],
-    craft = L["Made it yourself"], mail = L["Came by mail"] }
-local HEADING_SHORT = { quest = L["From a quest"], craft = L["Made by hand"], mail = L["By mail"] }
+    craft = L["Made it yourself"], mail = L["Came by mail"], auction = L["Bought at auction"] }
+local HEADING_SHORT = { quest = L["From a quest"], craft = L["Made by hand"], mail = L["By mail"],
+    auction = L["At auction"] }
 
 function Upgrades.Heading(rec, short)
     if rec.from == "trade" then
@@ -107,7 +110,7 @@ end
 -- How it came, for a list, in the words a first found's tooltip says it;
 -- nil where nothing said.
 local HOW = { loot = L["looted"], quest = L["a quest's reward"], vendor = L["bought"], craft = L["made by hand"],
-    mail = L["by mail"] }
+    mail = L["by mail"], auction = L["bought at auction"] }
 
 function Upgrades.How(rec)
     if rec.from == "trade" then

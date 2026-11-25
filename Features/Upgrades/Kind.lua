@@ -132,8 +132,10 @@ end
 -- mapID, x, y, level, link, key, quality, slot, ilvl, from, guid, found,
 -- was }. `t`, the place and `level` are the first put-on's; `link` the
 -- item as worn when the two minutes were up; `from` how it came, when that
--- could be told ("loot", "quest", "vendor", "craft", "mail", "trade", and
--- then `guid`, who gave it); `found` when it arrived in the bags; `ilvl`
+-- could be told ("loot", "quest", "vendor", "craft", "mail", "auction":
+-- a letter with an auction's buyer's invoice, since 25 Nov 2026, older
+-- records saying "mail" for it, "trade", and then `guid`, who gave it);
+-- `found` when it arrived in the bags; `ilvl`
 -- its item level where the client gave one; `was` what it took the place
 -- of, { link, ilvl }: the last thing of its kind worn in that slot
 -- (Upgrades.Kind; never nil since 16 Nov, an item with nothing of its kind
@@ -415,6 +417,20 @@ local function Moment(kind)
     end
 end
 
+-- An upgrade offered to a sheet among the plates as an errand of the visit
+-- it tells (RegisterMoment's `errand`): first put on in town, during a
+-- round of errands there, it is one of them ("worn"), told on that sheet
+-- with how it came, its card and mark off the plates while the sheet is on
+-- the page (the user, 25 Nov 2026: "sheet only"). Every upgrade is offered,
+-- the lead and the pieces alike; which sheet takes it, if any, is the
+-- core's (its span and map). The errand: `link` the item as worn, `from`
+-- how it came, `guid` a gift's giver while the diary knows them (a
+-- stranger is never named), `slot`.
+local function Errand(rec)
+    return { kind = "worn", link = rec.link, from = rec.from, guid = Upgrades.Giver and Upgrades.Giver(rec) or nil,
+        slot = rec.slot }
+end
+
 -- The moments are registered once their marks are (kinds.lua: a moment
 -- needs a mark of its kind): Upgrades.Moments(), called at the foot of
 -- Mark.lua.
@@ -427,6 +443,7 @@ function Upgrades.Moments()
             for _, rec in ipairs(pieces) do into[#into + 1] = rec end
         end,
         rankAs = function(m) return m.gift and "session" or "upgrade" end,
+        errand = Errand,
         moment = Moment("upgrade") })
     -- (keyed as an upgrade, Recap.Key's `keyKind`: the lead turns into a
     -- piece when a better one is put on later in the piece, and a choice on
@@ -434,6 +451,7 @@ function Upgrades.Moments()
     ns.JourneyRecap.RegisterMoment("piece", { order = 75, entry = Upgrades.PIECES, field = "upgrade", rank = 6.5,
         light = true, keyKind = "upgrade",
         gather = function() end,
+        errand = Errand,
         moment = Moment("piece") })
 end
 

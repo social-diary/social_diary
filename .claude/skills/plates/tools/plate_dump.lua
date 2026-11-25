@@ -6,7 +6,8 @@
 -- on stdout (pattern, each plate's weight and moment kinds, what made the
 -- margin) and its geometry in $SD_PLATES_OUT/out.txt. With
 -- $SD_PLATES_FORCE=1 (the default) each weighted page (FL, LF, FFL, FLF,
--- LFF, LFL, F+L) is also forced onto a page with that many plates,
+-- LFF, LFL, F+L, and the eight with a sheet: H, HF, ...; the plate in a
+-- sheet's slot drawn as a blank leaf) is also forced onto a page with that many plates,
 -- whatever their weights, so pages testdata never produces still get
 -- drawn; where no page has that many, onto a week drawn whole (as it was
 -- before the pages went by sitting), the only place three plates still
@@ -60,7 +61,7 @@ local function Summary(label, e)
     for k, p in ipairs(e.plates or {}) do
         local ks = {}
         for _, m in ipairs(p.moments or {}) do ks[#ks + 1] = m.kind end
-        kinds[k] = (p.light and "L" or "F") .. "(" .. table.concat(ks, ",") .. ")"
+        kinds[k] = (p.sheet and "H" or p.light and "L" or "F") .. "(" .. table.concat(ks, ",") .. ")"
     end
     local margins = {}
     for i, plate in ipairs(page.plates) do
@@ -85,6 +86,15 @@ local function Dump(label)
             local s = p.slot
             out:write(("PLATE %d %g %g %g %g %g %g %s %s %s\n"):format(i, s.x, s.y, s.w, s.h, s.t or 0, s.pad,
                 s.pc or 0, table.concat(s.corners or {}, ","), s.lift or "-"))
+        end
+    end
+    -- A sheet (UI/Journey/Sheet.lua): its leaf as a plate with no card
+    -- margin, photo corners or caption (corners "," reads as none).
+    for i, leaf in pairs(page.sheetAt or {}) do
+        local s = leaf.slot
+        if leaf:IsShown() and s then
+            out:write(("PLATE %d %g %g %g %g %g %g %s %s %s\n"):format(i, s.x, s.y, s.w, s.h, s.t or 0, 0, 0, ",",
+                s.lift or "-"))
         end
     end
     for _, key in ipairs({ "headingPool", "captionPool" }) do
@@ -162,7 +172,16 @@ if (os.getenv("SD_PLATES_FORCE") or "1") ~= "0" then
                 if e.plates and #e.plates == n then
                     local layout, pattern = e.layout, e.pattern
                     e.layout, e.pattern = LAYOUT[key], key
+                    -- (a page with a sheet, H: the plate in the sheet's slot
+                    -- drawn as a sheet nobody registered, a blank leaf)
+                    local made = {}
+                    for k, slot in ipairs(LAYOUT[key]) do
+                        if slot.sheet and not e.plates[k].sheet then
+                            e.plates[k].sheet, made[#made + 1] = "plates_tool", e.plates[k]
+                        end
+                    end
                     if at.whole then DrawWhole(at) else Draw(at) end
+                    for _, p in ipairs(made) do p.sheet = nil end
                     Dump("forced_" .. key .. "_entry" .. at.i .. (at.k and ("_s" .. at.k) or "")
                         .. (at.whole and "_whole" or ""))
                     e.layout, e.pattern = layout, pattern

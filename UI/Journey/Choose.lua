@@ -152,6 +152,15 @@ local HEAD, ENTRY = YourDiary.HEAD, YourDiary.ENTRY
 -- UI/Journey/CardSheet.lua's: radius, dashes, ...), in the leaders' pencil.
 -- `shake`: the box (and the cap line's frames) on a blocked tick, `amp` px
 -- either way, `times` there and back over `secs`, dying away.
+-- A sheet on the page (UI/Journey/Sheet.lua; the city-trips proposal's
+-- hook 6, 24 Nov 2026): its frame is a fixed half of the meter, `sheet` px
+-- (28 of the 60 with the gap: a rule, not its area's share, which came to
+-- 36), drawn as two rules of writing and no fill (`rules`: `inset` px in
+-- from its sides, the first `first` px down, the second `second` px down and
+-- `short` of the first's length), in the frame's ink: red the player's,
+-- graphite the diary's. The maps share the other half by area as ever, or,
+-- where the sheet is alone, it is one empty frame: with a sheet, fewer maps
+-- is room the page really has free, which no page without one has.
 local CHOOSE = {
     rubric = 20, title = 40, cap = 70, meter = 60, frameMin = 9, frameH = 9, frameGap = 4, capGap = 8, capY = 1,
     noteH = 28,
@@ -162,6 +171,7 @@ local CHOOSE = {
     strikeW = 1.2, strikeOver = 3,
     frames = { mine = 0.95, fill = 0.70, diary = 0.55, diaryFill = 0.25, free = 0.38, hot = 1 },
     ring = { r = 9, dashes = 9, share = 0.62, uneven = 0.25, wander = 0.8, bends = 4, step = 1.5, width = 1.4 },
+    sheet = 28, rules = { inset = 3, first = 3, second = 5, short = 0.6 },
     shake = { amp = 2.5, times = 3, secs = 0.45 },
     ease = YourDiary.GLIDE and YourDiary.GLIDE.secs or 0.28,
 }
@@ -173,6 +183,10 @@ YourDiary.CHOOSE = CHOOSE
 local WORDS = {
     title = L["Choose what's on this page"],
     cap = L["Three maps fit a page."],
+    -- The cap line with a sheet on the page: what a sheet takes (one line,
+    -- 168 px beside the meter).
+    -- COPY: placeholder, the copywriter's to replace
+    capSheet = L["Errands take half a page."],
     blocked = L["No room for it beside what you chose. Leave something out first."],
     -- A frame's tooltip: its zone, and whose choice it is; an empty one.
     yours = L["Your choice"],
@@ -231,6 +245,12 @@ end
 local PEOPLE = { session = true, fight = true, note = true, first = true }
 
 local function CardLabel(m, now)
+    -- (a sheet's moment: its drawer's words, UI/Journey/Sheet.lua's `label`)
+    local sheet = YourDiary.SHEETS and YourDiary.SHEETS[m.kind]
+    if sheet then
+        local words = sheet.label(m)
+        if type(words) == "string" and words ~= "" then return words end
+    end
     if PEOPLE[m.kind] and m.guid then
         return ns.Characters.FullName(m.guid) or ns.Characters.Name(m.guid) or L["Someone"]
     end
@@ -261,10 +281,19 @@ local function CardLabel(m, now)
 end
 
 -- A row's words: its moment's; a door's trips together with how many.
+-- A sheet's row stands for its moment and the stays it tells, and says
+-- the sheet's words alone.
 local function RowLabel(row, now)
     local label = CardLabel(row.moment, now)
-    if #row.moments > 1 then label = Fmt(L["%1$s, %2$s"], label, Format.Times(#row.moments)) end
+    if #row.moments > 1 and not row.sheet then label = Fmt(L["%1$s, %2$s"], label, Format.Times(#row.moments)) end
     return label
+end
+
+-- A sheet row's tooltip title, where its drawer gives one (`tip`).
+local function SheetTip(row, now)
+    local spec = row.sheet and YourDiary.SHEETS and YourDiary.SHEETS[row.sheet]
+    local title = spec and spec.tip and spec.tip(row.moment, now)
+    return type(title) == "string" and title ~= "" and title or nil
 end
 
 -- The tooltip's line for why a row (or a zone) is not on the page; nil where
@@ -283,7 +312,7 @@ local function Items(choices, now)
     for _, zone in ipairs(choices.zones) do
         items[#items + 1] = { zone = zone, row = zone, label = ZoneName(zone.mapID), height = CHOOSE.place }
         for _, row in ipairs(zone.rows) do
-            items[#items + 1] = { card = row, row = row, label = RowLabel(row, now),
+            items[#items + 1] = { card = row, row = row, label = RowLabel(row, now), title = SheetTip(row, now),
                 time = Format.Clock(row.t or 0), height = CHOOSE.card }
         end
         items[#items].height = items[#items].height + CHOOSE.gap
@@ -295,7 +324,7 @@ end
 -- says so by its ink, and by its mark ringed on its map).
 local function Tip(item)
     if not item then return nil end
-    local list = { { item.label } }
+    local list = { { item.title or item.label } }
     local why = Reason(item.row)
     if why then list[#list + 1] = { Capital(why), 1, 1, 1, true } end
     return list
@@ -376,11 +405,13 @@ end
 -- The link between a row and its mark
 --------------------------------------------------------------------------
 
--- The plate showing map `n` while the ticklist is open, nil for any other.
+-- The plate showing map `n` while the ticklist is open, nil for any other;
+-- the leaf where the `n`th is a sheet (its SetRing is a pencil line under
+-- its heading, as the ledger marks a row: a sheet has no mark to ring).
 local function PlateOf(n)
     local page = YourDiary.page
     if not (page and page.choosing and page.mode == "plates" and n and n <= (page.layout or 0)) then return nil end
-    return page.plates[n]
+    return YourDiary.SheetAt(n) or page.plates[n]
 end
 
 -- A plate's place on the page, top to bottom (nil where the ticklist is
@@ -602,6 +633,17 @@ local function Frame(parent)
         if side[3] then t:SetHeight(1) else t:SetWidth(1) end
         f.edges[#f.edges + 1] = t
     end
+    -- A sheet's two rules of writing (CHOOSE.rules), shown for a sheet only.
+    local R = CHOOSE.rules
+    f.rules = {}
+    for i, y in ipairs({ R.first, R.second }) do
+        local t = f:CreateTexture(nil, "ARTWORK", nil, 1)
+        t:SetHeight(1)
+        t:SetPoint("TOPLEFT", R.inset, -y)
+        if i == 1 then t:SetPoint("TOPRIGHT", -R.inset, -y) end
+        t:Hide()
+        f.rules[i] = t
+    end
     return f
 end
 
@@ -609,10 +651,10 @@ end
 -- order): `meter` px less the gaps, shared by the cards' areas, none under
 -- `frameMin`, whole pixels adding up to the meter (the remainders to the
 -- largest shares). No slots: one frame the whole width (an empty page).
-local function Widths(slots)
+local function Share(slots, meter)
     local n = #slots
-    if n == 0 then return { CHOOSE.meter } end
-    local room = CHOOSE.meter - (n - 1) * CHOOSE.frameGap
+    if n == 0 then return { meter } end
+    local room = meter - (n - 1) * CHOOSE.frameGap
     local area, total = {}, 0
     for i, s in ipairs(slots) do
         area[i] = math.max((s.w or 0) * (s.h or 0), 1)
@@ -651,6 +693,34 @@ local function Widths(slots)
         local i = order[(k - 1) % n + 1]
         widths[i] = widths[i] + 1
     end
+    return widths
+end
+
+-- With a sheet among them (`sheet` on its slot, DrawPlates'), its frame the
+-- fixed half (CHOOSE.sheet) and the maps sharing the rest (Share), or, the
+-- sheet alone, one empty frame there, after the sheet's.
+local function Widths(slots)
+    local at
+    for i, s in ipairs(slots) do
+        if s.sheet then at = i end
+    end
+    if not at then return Share(slots, CHOOSE.meter) end
+    local rest = {}
+    for i, s in ipairs(slots) do
+        if i ~= at then rest[#rest + 1] = s end
+    end
+    local room = CHOOSE.meter - CHOOSE.sheet - CHOOSE.frameGap
+    local share = Share(rest, room)
+    local widths, k = {}, 0
+    for i = 1, #slots do
+        if i == at then
+            widths[i] = CHOOSE.sheet
+        else
+            k = k + 1
+            widths[i] = share[k]
+        end
+    end
+    if #rest == 0 then widths[#slots + 1] = room end
     return widths
 end
 YourDiary.MeterWidths = Widths
@@ -731,8 +801,17 @@ local function FrameLook(f, kind, hot)
     end
     if hot and kind then edge = FR.hot end
     for _, t in ipairs(f.edges) do t:SetColorTexture(c[1], c[2], c[3], edge) end
+    -- A sheet's frame: its two rules of writing, no fill.
+    local sheet = kind ~= nil and f.sheet ~= nil
+    if sheet then fill = nil end
     f.fill:SetColorTexture(c[1], c[2], c[3], fill or 0)
     f.fill:SetShown(fill ~= nil)
+    local R = CHOOSE.rules
+    for i, t in ipairs(f.rules) do
+        t:SetColorTexture(c[1], c[2], c[3], edge)
+        if i == 2 then t:SetWidth(math.max(1, math.floor(((f.w or CHOOSE.sheet) - 2 * R.inset) * R.short + 0.5))) end
+        t:SetShown(sheet)
+    end
     f.kind, f.hot = kind, (hot and kind) and true or nil
 end
 
@@ -892,10 +971,10 @@ local function Fill()
     Meter(ch, widths, from)
     for k, f in ipairs(ch.frames) do
         local p = choices.plates[k]
-        f.mapID = p and p.mapID or nil
+        f.mapID, f.sheet = p and p.mapID or nil, p and p.sheet or nil
         FrameLook(f, p and (p.mine and "mine" or "diary") or nil)
     end
-    ch.cap:SetText(WORDS.cap)
+    ch.cap:SetText(choices.sheet and WORDS.capSheet or WORDS.cap)
     local blocked = page.chooseBlocked == true
     ch.note:SetText(blocked and WORDS.blocked or page.chooseNote or "")
     local ink = blocked and Style.RUBRIC or Style.INK_FADED

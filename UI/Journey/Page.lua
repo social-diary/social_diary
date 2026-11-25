@@ -148,6 +148,8 @@ local function DrawRight()
     YourDiary.Glide.Finish()
     for _, pool in ipairs(page.rightPools) do pool:Begin() end
     page.links = {}
+    -- (the sheets drawn on this page, DrawPlates': none on any other)
+    page.sheetAt = {}
     page.nothing:Hide()
     for _, part in pairs({ page.foot.name, page.foot.meta, page.foot.hint }) do part:Hide() end
     local shown = 0
@@ -179,6 +181,7 @@ local function DrawRight()
         end
     end
     for i = shown + 1, #page.plates do page.plates[i]:Hide() end
+    YourDiary.Sheet.Settle()
     for _, pool in ipairs(page.rightPools) do pool:Finish() end
     PlaceOff(page.mode == "full")
     -- (the right page drawn anew: the pad finds its plates and notes

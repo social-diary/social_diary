@@ -42,20 +42,36 @@ local function Holds(plate, slot)
     return ns.JourneyRecap.Holds(plate, w, h)
 end
 
+-- A plate's weight on the page: `H` a sheet (RegisterMoment's `sheet`), `L`
+-- a light plate a snapshot holds, else `F`.
+local function Weight(p)
+    if p.sheet then return "H" end
+    return (p.light and Holds(p, SNAPSHOT)) and "L" or "F"
+end
+
+-- The print test the room rule asks (Core/JourneyRecap.lua's Recap.Room):
+-- a plate this page draws `L`, as Weight weighs it.
+ns.JourneyRecap.Print = function(p) return not p.sheet and Weight(p) == "L" end
+
 -- The page for `plates`, keyed by their weights in time order (LAYOUT's
 -- FL, LFF, ...; any other pattern the page for that many), and that key.
 -- A light plate is drawn light only where a snapshot holds it: a level's
 -- pin far from the first spot is drawn full, so nothing on it goes
 -- missing (the user's choice, 13 Oct). Nil where a slot does not hold its
--- plate, for the plates to be grouped at a smaller window.
+-- plate, for the plates to be grouped at a smaller window. A pattern with
+-- a sheet (`H`) has its own page or none: never the page for that many,
+-- whose slots are a map's (the room rule, Recap.Room, leaves only the
+-- eight LAYOUT has).
 local function LayoutFor(plates)
     if #plates == 0 then return {}, "" end
     local key = {}
-    for i, p in ipairs(plates) do key[i] = (p.light and Holds(p, SNAPSHOT)) and "L" or "F" end
+    for i, p in ipairs(plates) do key[i] = Weight(p) end
     key = table.concat(key)
-    local layout = LAYOUT[key] or LAYOUT[#plates]
+    local layout = LAYOUT[key]
+    if not layout and key:find("H", 1, true) then return nil end
+    layout = layout or LAYOUT[#plates]
     for i, p in ipairs(plates) do
-        if not Holds(p, layout[i]) then return nil end
+        if not (p.sheet or Holds(p, layout[i])) then return nil end
     end
     return layout, key
 end
@@ -78,11 +94,29 @@ local function PlatesOf(e)
         local aw, ah = SMALLEST[n][1], SMALLEST[n][2]
         cover = function(mapID) return Plate.Cover(mapID, aw, ah) end
         plates = ns.JourneyRecap.Plates(j, e, page.ctx or {}, cover)
-        layout, key = LayoutFor(plates)
-        if layout then break end
+        -- Maps beside a sheet are grouped at the two-plate window (the
+        -- room rule's: the full slot beside a sheet is LAYOUT[2]'s first,
+        -- its art SMALLEST[2]), never the one plate's.
+        local sheet = false
+        for _, p in ipairs(plates) do sheet = sheet or p.sheet ~= nil end
+        if not (sheet and n < 2) then
+            layout, key = LayoutFor(plates)
+            if layout then break end
+        end
     end
-    -- The last window always holds in the page for its count, as before.
-    if not layout then layout, key = LAYOUT[#plates], string.rep("F", #plates) end
+    -- The last window always holds in the page for its count, as before. A
+    -- sheet's page is its own whatever its maps hold (the room rule leaves
+    -- only patterns LAYOUT has).
+    if not layout then
+        local weights = {}
+        for i, p in ipairs(plates) do weights[i] = Weight(p) end
+        key = table.concat(weights)
+        if LAYOUT[key] and key:find("H", 1, true) then
+            layout = LAYOUT[key]
+        else
+            layout, key = LAYOUT[#plates], string.rep("F", #plates)
+        end
+    end
     -- (and the window they were grouped at, `cover`, for the ticklist's
     -- places, Recap.Choices, to be grouped as the page's are)
     e.plates, e.layout, e.pattern, e.cover = plates, layout, key, cover
@@ -112,4 +146,5 @@ local function MomentsOf(e)
 end
 
 YourDiary.ArtSize, YourDiary.Holds, YourDiary.LayoutFor, YourDiary.PlatesOf = ArtSize, Holds, LayoutFor, PlatesOf
+YourDiary.Weight = Weight
 YourDiary.SheetOf, YourDiary.MomentsOf = SheetOf, MomentsOf

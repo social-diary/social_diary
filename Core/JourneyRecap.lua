@@ -113,6 +113,57 @@ Recap.DOOR_ONLY = DOOR_ONLY
 --           inserted (Core/Custom.lua's header). Without it the kind cannot
 --           be custom
 --
+--   sheet   true: its moments are told on a sheet, not on a map. A sheet is
+--           a half-page leaf glued among the plates, which the feature
+--           draws itself (UI/Journey/Sheet.lua's RegisterSheet: the kind
+--           registers its drawer there too, and needs no mark on the
+--           plates; tests/kinds.lua asks for the one in place of the
+--           other). Each moment of it opens a plate of its own, whatever
+--           its rank: one that takes no other moment in and joins no map
+--           plate, carries `sheet` (the kind), has no window to hold
+--           (Recap.Holds is true for it) and is weighed `H` on the page
+--           (UI/Journey/Look.lua's LAYOUT: the sheet is 444 by 240 on every
+--           page that has one). What may stand beside it is the room rule's
+--           (Recap.Room): one full plate, or up to two prints, and never a
+--           second sheet. Its moment keeps its spot (mapID, x, y, as every
+--           moment does): the ticklist lists it under that zone.
+--           A sheet's moment may also name the span it tells, `from` and
+--           `to` (times), on its own `mapID`: a visit told once. A `stay`
+--           moment on that map whose stop overlaps from..to is then the
+--           sheet's to tell: it goes into the sheet's plate and opens none
+--           of its own while the sheet is on the page (cut for room, the
+--           sheet lets it go again, and it is grouped as ever), and the
+--           ticklist's row for the sheet stands for both, their keys
+--           together, as one dungeon door's trips are (Recap.Choices).
+--           Core reads the flag and the span, nothing else of the feature.
+--   stands  optional, a sheet's: function(rec, errands) → whether its
+--           record is told at all, given the errands offered to it (below;
+--           a list, empty where none were). Asked as the entry is gathered
+--           (Recap.Gather), once every kind has gathered, so it is where
+--           the sheet and its errands are both known: an errand may be
+--           kept minutes after the visit ended. A record it refuses leaves
+--           the entry (as one its gather left out). Without it, every
+--           record gathered is told.
+--   errand  optional, any kind's but a sheet's: function(rec) → an errand,
+--           or nil: its record offered to a sheet, as one of the errands of
+--           the visit the sheet tells. An errand is a table of the kind's
+--           own choosing, `kind` a word its reader knows (the drawer of a
+--           sheet reads the errands it knows by their `kind` and passes
+--           over the rest; neither feature names the other, they share the
+--           word); core adds `t`, the moment's time. It is offered to the
+--           sheet moment of the same entry whose span (`from`..`to`) holds
+--           its moment's time and whose map is its moment's map (each as
+--           its `moment` places it), the first such sheet in order. Then,
+--           while that sheet is on the page, the moment is the sheet's to
+--           tell (Recap.Told): it goes into the sheet's plate as a told
+--           stay does, so its own card and mark are on no map plate; cut
+--           for room or left out, the sheet lets it go, and it is grouped
+--           as ever. Unlike a stay it keeps its own row in the ticklist
+--           (Recap.Tells is the stays' alone): left out there, it is off
+--           the sheet too; the sheet left out, it is back on its plate.
+--           The sheet's moment carries its errands as `errands`, in time
+--           order ({ errand, moment } each), for its drawer.
+--
 -- An entry with any feature's records is kept, as one with people or time
 -- on the road is (Recap.Build's weeks).
 
@@ -130,6 +181,34 @@ function Recap.RegisterMoment(kind, spec)
     LIGHT[kind] = spec.light or nil
     return spec
 end
+
+-- Whether `m` is told on a sheet (its kind registered with `sheet`).
+local function IsSheet(m)
+    local spec = MOMENT[m.kind]
+    return spec ~= nil and spec.sheet == true
+end
+Recap.IsSheet = IsSheet
+
+-- Whether sheet moment `sheet` tells `m`, the same visit: a stay on the
+-- sheet's map whose stop overlaps the span the sheet names (its `from` and
+-- `to`). A sheet that names no span tells nothing but itself.
+local function Tells(sheet, m)
+    if m.kind ~= "stay" or m.mapID ~= sheet.mapID then return false end
+    local from, to = sheet.from, sheet.to
+    if type(from) ~= "number" or type(to) ~= "number" then return false end
+    local seg = m.seg
+    local a, b = seg and seg.from or m.t, seg and seg.to or m.t
+    return a ~= nil and b ~= nil and a <= to and b >= from
+end
+Recap.Tells = Tells
+
+-- Whether sheet moment `sheet` has `m` to tell on the page: a stay of the
+-- same visit (Tells), or an errand offered to it (RegisterMoment's
+-- `errand`: Recap.Moments sets `m.errandOf`).
+local function Told(sheet, m)
+    return m.errandOf == sheet or Tells(sheet, m)
+end
+Recap.Told = Told
 
 -- Above everything, people included (1): a card the player just wrote or
 -- changed has to be on the page, and a plate with a better moment would
@@ -266,6 +345,10 @@ local function ByTime(a, b)
     return a.t < b.t
 end
 
+-- The errands offered to the entry's sheets (RegisterMoment's `errand` and
+-- `stands`): below, where a moment is placed (Own).
+local Offer
+
 -- Everything between a and b: the places in the order visited with the
 -- time in each, the longest stops in the order made, dungeons, flights, who you were with,
 -- fights and notes.
@@ -386,6 +469,9 @@ local function Gather(j, a, b, ctx)
             end
         end
     end
+    -- Every kind gathered: the errands offered to its sheets, and the
+    -- sheets that stand with them.
+    Offer(j, e)
 
     return e
 end
@@ -1041,6 +1127,68 @@ local function Own(j, mapID, x, y, t)
 end
 Recap.Own = Own
 
+-- A feature's record placed as its moment is (Moments, below): the moment
+-- and its map.
+local function Placed(j, spec, rec)
+    if spec.moment then
+        local m, map = spec.moment(j, rec, Own)
+        return m, map
+    end
+    local map = Own(j, rec.mapID, rec.x, rec.y, rec.t)
+    return { kind = spec.kind, t = rec.t }, map
+end
+
+-- RegisterMoment's `errand` and `stands`, for entry `e` once every kind has
+-- gathered: each record a kind offers as an errand goes to the first sheet
+-- (in the kinds' order, then the entry's) whose span holds its moment's
+-- time on its moment's map; a sheet whose `stands` refuses what it was
+-- offered leaves the entry, and what was offered to it is free for the
+-- next. Kept as e.errands = { [record] = { sheet = the sheet's record,
+-- errand } }, which Moments turns into moments (a record, not a moment:
+-- Moments makes new moments each time it is asked). Nothing is written on
+-- a record.
+Offer = function(j, e)
+    e.errands = {}
+    local offered
+    for _, spec in ipairs(MOMENTS) do
+        if spec.errand then
+            for _, rec in ipairs(e[spec.entry] or {}) do
+                local m, map = Placed(j, spec, rec)
+                local errand = m and map and spec.errand(rec)
+                if type(errand) == "table" then
+                    errand.t = m.t
+                    offered = offered or {}
+                    offered[#offered + 1] = { rec = rec, errand = errand, t = m.t, mapID = map }
+                end
+            end
+        end
+    end
+    for _, spec in ipairs(MOMENTS) do
+        if spec.sheet and (offered or spec.stands) then
+            local list, kept = e[spec.entry] or {}, {}
+            for _, rec in ipairs(list) do
+                local m, map = Placed(j, spec, rec)
+                local mine, errands = {}, {}
+                local from, to = m and m.from, m and m.to
+                if type(from) == "number" and type(to) == "number" then
+                    for _, o in ipairs(offered or {}) do
+                        if not e.errands[o.rec] and o.mapID == map and o.t >= from and o.t <= to then
+                            mine[#mine + 1] = o
+                            errands[#errands + 1] = o.errand
+                        end
+                    end
+                end
+                if not spec.stands or spec.stands(rec, errands) then
+                    kept[#kept + 1] = rec
+                    for _, o in ipairs(mine) do e.errands[o.rec] = { sheet = rec, errand = o.errand } end
+                end
+            end
+            for i = #list, 1, -1 do list[i] = nil end
+            for i, rec in ipairs(kept) do list[i] = rec end
+        end
+    end
+end
+
 -- What put an entry's places on the page (JRN-21): every moment of `e`
 -- with a spot on a zone map, each { kind, mapID, x, y, t, ... }. `all`
 -- (the ticklist's, Recap.Choices): the ones the player left out too, marked
@@ -1172,6 +1320,31 @@ function Recap.Moments(j, e, ctx, all)
             end
         end
     end
+    -- The errands offered to the entry's sheets (Offer, as it was gathered):
+    -- each one's moment marked `errandOf` its sheet's moment, and listed on
+    -- it, in time order, as `errands` ({ errand, moment }). One the player
+    -- left out is no errand of it (here it is gone already, or, for the
+    -- ticklist, marked `out`).
+    if e.errands and next(e.errands) ~= nil then
+        local sheetOf = {}
+        for _, m in ipairs(list) do
+            local spec = MOMENT[m.kind]
+            if spec and spec.sheet and spec.field and m[spec.field] then sheetOf[m[spec.field]] = m end
+        end
+        for _, m in ipairs(list) do
+            local spec = MOMENT[m.kind]
+            local offer = spec and spec.errand and spec.field and e.errands[m[spec.field]]
+            local s = offer and sheetOf[offer.sheet]
+            if s and m.chosen ~= "out" then
+                m.errandOf = s
+                s.errands = s.errands or {}
+                s.errands[#s.errands + 1] = { errand = offer.errand, moment = m }
+            end
+        end
+        for _, s in pairs(sheetOf) do
+            if s.errands then table.sort(s.errands, function(a, b) return a.moment.t < b.moment.t end) end
+        end
+    end
     return list
 end
 
@@ -1188,9 +1361,53 @@ Recap.Fits, Recap.PLATES = Fits, PLATES
 -- Whether `plate` (Recap.Plates's) still holds at another window w, h than
 -- the one it was grouped at: its moments span no more than PLATES.inset of
 -- it, as Fits asks of each moment going in. The UI asks it of a slot of
--- another size (a small print, a page whose slots differ).
+-- another size (a small print, a page whose slots differ). A sheet has no
+-- window, so every slot holds it (RegisterMoment's `sheet`).
 function Recap.Holds(plate, w, h)
+    if plate.sheet then return true end
     return plate.x1 - plate.x0 <= w * PLATES.inset and plate.y1 - plate.y0 <= h * PLATES.inset
+end
+
+-- Whether the page draws `plate` as a print (a light plate in a snapshot's
+-- slot) rather than full. The UI's to say, as only it knows a snapshot's
+-- window: UI/Journey/Layouts.lua sets this to its own test (light, and held
+-- by a snapshot: the `L` LayoutFor writes). The plate's weight alone until
+-- then (the tests of the core).
+function Recap.Print(plate)
+    return plate.light == true
+end
+
+-- The room rule (the city-trips proposal's hook 3, 24 Nov 2026): whether
+-- `plates`, the ones a page would show, fit one right page. With no sheet,
+-- as ever: PLATES.max. With a sheet, half the page is the sheet's and the
+-- other half holds one full plate, or up to two prints (LAYOUT's eight
+-- pages with an `H`: H, HF, FH, HL, LH, HLL, LHL, LLH), and never a second
+-- sheet. Asked by Recap.Plates alone, so the page (PlatesOf) and a tick's
+-- simulation (Chosen.Tick) ask the one rule, and a page never falls
+-- through to a map's slot for a sheet (LAYOUT[#plates]).
+function Recap.Room(plates)
+    local sheets, prints, full = 0, 0, 0
+    for _, p in ipairs(plates) do
+        if p.sheet then
+            sheets = sheets + 1
+        elseif Recap.Print(p) then
+            prints = prints + 1
+        else
+            full = full + 1
+        end
+    end
+    if sheets == 0 then return #plates <= PLATES.max end
+    if sheets > 1 then return false end
+    return (full == 0 and prints <= 2) or (full == 1 and prints == 0)
+end
+
+-- Whether the player kept anything on `plate`: a keep, or a card of theirs
+-- (both rank as CUSTOM_RANK).
+local function Kept(plate)
+    for _, m in ipairs(plate.moments) do
+        if m.chosen == "keep" or Rank(m) <= CUSTOM_RANK then return true end
+    end
+    return false
 end
 
 -- JRN-21 (Decisions 2, 3, 10): the places `e` is remembered by, at most
@@ -1206,6 +1423,10 @@ end
 -- and fitted none (a second stay in a zone shown, filler, a level's pin),
 -- in the order placed. Neither is read by the page: the ticklist's
 -- (Recap.Choices).
+-- A sheet's moment (RegisterMoment's `sheet`) is a plate of its own,
+-- `sheet` its kind, holding it and the stays and errands it tells (Told)
+-- and nothing else; the page is then cut to the room rule (Room), which may send the
+-- sheet itself to `spare`.
 function Recap.Plates(j, e, ctx, cover)
     local moments = Recap.Moments(j, e, ctx or {})
     -- A level's pins rank last, so they are placed after everything else:
@@ -1216,80 +1437,156 @@ function Recap.Plates(j, e, ctx, cover)
         if ra ~= rb then return ra < rb end
         return a.t < b.t
     end)
-    local plates, loose = {}, {}
-    for _, m in ipairs(moments) do
-        local w, h = cover(m.mapID)
-        w, h = w or PLATES.window, h or PLATES.window
-        local into
+
+    -- The places, with the stays and errands each sheet tells in its plate
+    -- (Told), except a sheet in `freed` (one cut for room: its visit's stay
+    -- and errands are grouped as ever, so the visit is still on the page as
+    -- a place, and an errand's card and mark are back on it).
+    local function Arrange(freed)
+        -- Which sheet tells each stay or errand: the first in rank order
+        -- that does.
+        local toldBy = {}
+        for _, s in ipairs(moments) do
+            if IsSheet(s) and not freed[s] then
+                for _, m in ipairs(moments) do
+                    if not toldBy[m] and Told(s, m) then toldBy[m] = s end
+                end
+            end
+        end
+        local plates, loose, sheetOf = {}, {}, {}
+        for _, m in ipairs(moments) do
+            if IsSheet(m) then
+                -- A sheet opens a plate of its own, whatever its rank, and
+                -- nothing else goes in but what it tells (below).
+                local plate = { mapID = m.mapID, x0 = m.x, x1 = m.x, y0 = m.y, y1 = m.y, t = m.t, rank = Rank(m),
+                    moments = { m }, sheet = m.kind }
+                plates[#plates + 1] = plate
+                sheetOf[m] = plate
+            elseif not toldBy[m] then
+                local w, h = cover(m.mapID)
+                w, h = w or PLATES.window, h or PLATES.window
+                local into
+                for _, plate in ipairs(plates) do
+                    if not plate.sheet and Fits(plate, m, w, h) then
+                        into = plate
+                        break
+                    end
+                end
+                if into then
+                    into.x0, into.x1 = math.min(into.x0, m.x), math.max(into.x1, m.x)
+                    into.y0, into.y1 = math.min(into.y0, m.y), math.max(into.y1, m.y)
+                    into.moments[#into.moments + 1] = m
+                    into.t = math.min(into.t, m.t)
+                else
+                    -- Only a moment that would win a plate opens one. A long stay
+                    -- opens one in a zone no plate shows yet (a level that went
+                    -- somewhere quiet still shows it went); the longest road, and
+                    -- then a level's pin, only when there is nothing at all. A pin alone
+                    -- took a plate, and the same spot is the next level's start:
+                    -- one level-up was two plates (11 Oct, in the client: Goldshire
+                    -- last under level 9 and first under level 10, empty both times).
+                    -- (A sheet is no map: a zone it is on is not shown by it.)
+                    local rank, shown = Rank(m), false
+                    for _, plate in ipairs(plates) do shown = shown or (not plate.sheet and plate.mapID == m.mapID) end
+                    -- (a moment the player kept opens one, a level's pin too)
+                    local opens = (m.kind ~= "level" or m.chosen == "keep")
+                        and (rank < RANK.stay or (rank == RANK.stay and not shown))
+                    local maps = 0
+                    for _, plate in ipairs(plates) do if not plate.sheet then maps = maps + 1 end end
+                    if opens or maps == 0 then
+                        plates[#plates + 1] = { mapID = m.mapID, x0 = m.x, x1 = m.x, y0 = m.y, y1 = m.y,
+                            t = m.t, rank = rank, moments = { m } }
+                    else
+                        loose[#loose + 1] = m
+                    end
+                end
+            end
+        end
+        -- The stays and errands a sheet tells, in its plate: a visit told once.
+        for _, m in ipairs(moments) do
+            local plate = toldBy[m] and sheetOf[toldBy[m]]
+            if plate then plate.moments[#plate.moments + 1] = m end
+        end
+        -- A plate that is only a dungeon's door (with an arrival or a level's
+        -- pin at most) is left out where the run behind the door was recorded:
+        -- the run has a page of its own (UI/Journey/Run.lua; the user, 28 Oct),
+        -- and a map with one door on it beside it says nothing more. Not where
+        -- the player kept anything on it (Core/Chosen.lua): the ticklist lists
+        -- every door, and a door kept is wanted on the page.
+        for i = #plates, 1, -1 do
+            local doorOnly, recorded, kept = true, false, false
+            for _, m in ipairs(plates[i].moments) do
+                kept = kept or m.chosen == "keep"
+                if m.kind == "dungeon" then
+                    recorded = recorded or m.visit ~= nil
+                elseif not DOOR_ONLY[m.kind] then
+                    doorOnly = false
+                end
+            end
+            if doorOnly and recorded and not kept then table.remove(plates, i) end
+        end
+        table.sort(plates, function(a, b)
+            if a.rank ~= b.rank then return a.rank < b.rank end
+            if #a.moments ~= #b.moments then return #a.moments > #b.moments end
+            return a.t < b.t
+        end)
         for _, plate in ipairs(plates) do
-            if Fits(plate, m, w, h) then
-                into = plate
-                break
-            end
+            plate.cx, plate.cy = (plate.x0 + plate.x1) / 2, (plate.y0 + plate.y1) / 2
+            table.sort(plate.moments, ByTime)
+            plate.light = true
+            for _, m in ipairs(plate.moments) do plate.light = plate.light and LIGHT[m.kind] == true end
         end
-        if into then
-            into.x0, into.x1 = math.min(into.x0, m.x), math.max(into.x1, m.x)
-            into.y0, into.y1 = math.min(into.y0, m.y), math.max(into.y1, m.y)
-            into.moments[#into.moments + 1] = m
-            into.t = math.min(into.t, m.t)
-        else
-            -- Only a moment that would win a plate opens one. A long stay
-            -- opens one in a zone no plate shows yet (a level that went
-            -- somewhere quiet still shows it went); the longest road, and
-            -- then a level's pin, only when there is nothing at all. A pin alone
-            -- took a plate, and the same spot is the next level's start:
-            -- one level-up was two plates (11 Oct, in the client: Goldshire
-            -- last under level 9 and first under level 10, empty both times).
-            local rank, shown = Rank(m), false
-            for _, plate in ipairs(plates) do shown = shown or plate.mapID == m.mapID end
-            -- (a moment the player kept opens one, a level's pin too)
-            local opens = (m.kind ~= "level" or m.chosen == "keep")
-                and (rank < RANK.stay or (rank == RANK.stay and not shown))
-            if opens or #plates == 0 then
-                plates[#plates + 1] = { mapID = m.mapID, x0 = m.x, x1 = m.x, y0 = m.y, y1 = m.y,
-                    t = m.t, rank = rank, moments = { m } }
-            else
-                loose[#loose + 1] = m
+        -- The page: the best PLATES.max, then cut to the room rule (Room).
+        -- At most one sheet is taken (a second is spare, never on the page);
+        -- a pattern with no room loses its lowest-ranked plate the player
+        -- has not kept (the sheet as any other), or, all of them kept, its
+        -- lowest, and the best of the rest is asked in its place. Without a
+        -- sheet the first try always fits: the best three, as ever.
+        local out = {}
+        local page
+        while true do
+            page = {}
+            local sheets = 0
+            for _, plate in ipairs(plates) do
+                if not out[plate] and #page < PLATES.max and not (plate.sheet and sheets > 0) then
+                    if plate.sheet then sheets = sheets + 1 end
+                    page[#page + 1] = plate
+                end
             end
+            if Recap.Room(page) or #page == 0 then break end
+            local cut
+            for i = #page, 1, -1 do
+                if not Kept(page[i]) then
+                    cut = page[i]
+                    break
+                end
+            end
+            out[cut or page[#page]] = true
+        end
+        -- The places that did not fit are kept beside the page's, best first,
+        -- for the ticklist (.claude/features/choose-page.md): `spare`, which the
+        -- page never reads. (A door left out above is not one: it is never shown.)
+        local on, spare = {}, {}
+        for _, plate in ipairs(page) do on[plate] = true end
+        for _, plate in ipairs(plates) do
+            if not on[plate] then spare[#spare + 1] = plate end
+        end
+        return page, spare, loose
+    end
+
+    local plates, spare, loose = Arrange({})
+    -- A sheet cut for room lets its visit's stay go: grouped again with
+    -- that sheet telling nothing, so the place is not lost with it.
+    local freed, again = {}, false
+    for _, plate in ipairs(spare) do
+        if plate.sheet and #plate.moments > 1 then
+            for _, m in ipairs(plate.moments) do
+                if IsSheet(m) then freed[m] = true end
+            end
+            again = true
         end
     end
-    -- A plate that is only a dungeon's door (with an arrival or a level's
-    -- pin at most) is left out where the run behind the door was recorded:
-    -- the run has a page of its own (UI/Journey/Run.lua; the user, 28 Oct),
-    -- and a map with one door on it beside it says nothing more. Not where
-    -- the player kept anything on it (Core/Chosen.lua): the ticklist lists
-    -- every door, and a door kept is wanted on the page.
-    for i = #plates, 1, -1 do
-        local doorOnly, recorded, kept = true, false, false
-        for _, m in ipairs(plates[i].moments) do
-            kept = kept or m.chosen == "keep"
-            if m.kind == "dungeon" then
-                recorded = recorded or m.visit ~= nil
-            elseif not DOOR_ONLY[m.kind] then
-                doorOnly = false
-            end
-        end
-        if doorOnly and recorded and not kept then table.remove(plates, i) end
-    end
-    table.sort(plates, function(a, b)
-        if a.rank ~= b.rank then return a.rank < b.rank end
-        if #a.moments ~= #b.moments then return #a.moments > #b.moments end
-        return a.t < b.t
-    end)
-    -- The places that did not fit are kept beside the page's, best first,
-    -- for the ticklist (.claude/features/choose-page.md): `spare`, which the
-    -- page never reads. (A door left out above is not one: it is never shown.)
-    local spare = {}
-    for i = PLATES.max + 1, #plates do spare[#spare + 1] = plates[i] end
-    for i = #plates, PLATES.max + 1, -1 do plates[i] = nil end
-    local function Finish(plate)
-        plate.cx, plate.cy = (plate.x0 + plate.x1) / 2, (plate.y0 + plate.y1) / 2
-        table.sort(plate.moments, ByTime)
-        plate.light = true
-        for _, m in ipairs(plate.moments) do plate.light = plate.light and LIGHT[m.kind] == true end
-    end
-    for _, plate in ipairs(plates) do Finish(plate) end
-    for _, plate in ipairs(spare) do Finish(plate) end
+    if again then plates, spare, loose = Arrange(freed) end
     table.sort(plates, ByTime)
     plates.spare, plates.loose = spare, loose
     return plates

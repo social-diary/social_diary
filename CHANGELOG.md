@@ -8,6 +8,7 @@
   - Right-click a _Plate_ or a person to leave it out
 - Auto-Add Players now follows rules you can create yourself
   - Each rule also can set a tag to the new entry, to find them in _People_
+- _Your Diary_ remembers your city trips: auctions, mail, crafting, quests and the gear you put on in town on one sheet
 
 ## [4.2.6]
 

@@ -298,6 +298,51 @@ LAYOUT.LFL = { Snap(272, 4, 2.0, FOUR, nil, { x = 12, y = 26, w = 248, limit = 1
     { x = 8, y = 140, w = 260, h = 226, t = -1.2, pad = 8, pc = 24, corners = FOUR,
         cap = { x = 282, y = 156, w = 176, limit = 392 } },
     Snap(22, 392, 1.6, LOST, "br", { x = 214, y = 412, w = 244, limit = 528 }) }
+-- A page with a sheet (the city-trips proposal, round 2, 24 Nov 2026; its
+-- hook 2): a moment kind registered with `sheet` (Core/JourneyRecap.lua's
+-- RegisterMoment) is told on a half-page leaf its feature draws
+-- (UI/Journey/Sheet.lua), weighed `H` in the key, in the stack by its time
+-- as any plate. The leaf is 444 by 240 on every page, LAYOUT[1]'s width, so
+-- a feature has one fill to plan; it has no card margin, photo corners or
+-- caption (`pad` 0 only so the slot measures as the others do; `sheet`
+-- marks it). Beside it the room rule (Recap.Room) leaves one full plate in
+-- LAYOUT[2]'s first slot, 260 by 236 with its 176 px caption column, whose
+-- art is SMALLEST[2] exactly (the window maps beside a sheet are grouped
+-- at, PlatesOf), or up to two prints (Snap). These eight are all there are;
+-- any other pattern with an H is cut by the room rule before it is asked,
+-- and never falls through to LAYOUT[#plates].
+-- The proposal's slots, checked against the album's rules (turned extents,
+-- the 9.9 px a lifted corner's shadow reaches, the not-kept line at x 246,
+-- y 512) and changed where the arithmetic did not hold:
+--   FH, LLH  the lower leaf lifts at its lower left; turned -0.9 degrees,
+--            at x 10 that corner came to 8.1 px from the page's edge, under
+--            the 10 a lifted side keeps: x 12 (its right edge 8.1 px in).
+--   HLL      the second print's caption 4 px lower (y 400), so the print's
+--            lifted shadow (to y 398) does not lie on its heading, and it
+--            stops at 506 (`limit`), as a caption right of the not-kept
+--            line ends above it; the first's 2 px lower with it (394).
+--   LHL      the leaf 2 px higher (y 138) and the lower print 2 px higher
+--            than proposed (y 394, LFL's 392 + 2): between the leaf's foot
+--            and the print's photo corner 12 px, where the proposal had
+--            about 6, and the print's lifted shadow 3.6 px inside the foot.
+-- H, HL and LH have no lifted corner (none proposed): the leaf lies glued
+-- flat, and the prints beside it are FOUR-cornered.
+local function Leaf(x, y, t, lift)
+    return { x = x, y = y, w = 444, h = 240, t = t, pad = 0, lift = lift, sheet = true }
+end
+LAYOUT.H = { Leaf(10, 30, -1.0) }
+LAYOUT.HF = { Leaf(10, -2, -1.0),
+    { x = 8, y = 256, w = 260, h = 236, t = 1.4, pad = 8, pc = 24, corners = LOST, lift = "br",
+        cap = { x = 282, y = 274, w = 176, limit = 528 } } }
+LAYOUT.FH = { LAYOUT[2][1], Leaf(12, 258, -0.9, "bl") }
+LAYOUT.HL = { Leaf(10, -2, -1.0), Snap(14, 262, -2.0, FOUR, nil, { x = 206, y = 284, w = 252, limit = 528 }) }
+LAYOUT.LH = { LAYOUT.LFF[1], Leaf(10, 146, 1.0) }
+LAYOUT.HLL = { Leaf(10, -2, -1.0), Snap(14, 258, -1.8, FOUR, nil, { x = 16, y = 394, w = 200 }),
+    Snap(264, 262, 1.6, LOST, "br", { x = 266, y = 400, w = 192, limit = 506 }) }
+LAYOUT.LHL = { LAYOUT.LFL[1], Leaf(10, 138, 1.0),
+    Snap(22, 394, 1.6, LOST, "br", { x = 214, y = 414, w = 244, limit = 528 }) }
+LAYOUT.LLH = { Snap(14, 2, -1.8, FOUR, nil, { x = 16, y = 136, w = 200, limit = 248 }),
+    Snap(264, 6, 1.6, FOUR, nil, { x = 266, y = 140, w = 192, limit = 248 }), Leaf(12, 258, -0.9, "bl") }
 -- FL may instead be the one plate's page with the light plate's print
 -- tucked in (`tucked`, F+L, the proposal mockup's TUCKED, which it turned
 -- down as the default; the user wants it as an option, 13 Oct): the full

@@ -49,7 +49,9 @@
 --                       at an edge; the few tiles more stay, clipped under
 --                       the card's margin, until the plate is next drawn.
 --   a plate that leaves fades out where it was, quicker (`out`).
---   a plate that comes  fades in where it lands (`enter`).
+--   a plate that comes  fades in where it lands (`enter`), and so does a
+--                       sheet come onto the page (UI/Journey/Sheet.lua); a
+--                       sheet that stays is drawn in place, unmoved.
 --   the writing         headings, captions, strips and cards: whatever is
 --                       not exactly as it was (its place, width, words)
 --                       fades in where it now stands (`words`), starting as
@@ -242,6 +244,11 @@ function Glide.Ask()
         for k = 1, pool.used or 0 do from.writing[Sig(pool[k])] = true end
     end
     for _, link in ipairs(page.links or {}) do from.links[LinkSig(link)] = true end
+    -- (a sheet, UI/Journey/Sheet.lua: which kinds were on the page)
+    from.sheets = {}
+    for _, leaf in pairs(page.sheetAt or {}) do
+        if leaf:IsShown() then from.sheets[leaf.kind or leaf] = true end
+    end
     page.glideFrom = from
 end
 
@@ -278,7 +285,9 @@ function Glide.Assign(plates)
     local pairsOf = {}
     for _, o in ipairs(from.plates) do
         for j, p in ipairs(plates) do
-            local score = Score(o, p)
+            -- (a sheet is no map: it takes no map's frame, and a map plate
+            -- of the stay it now tells leaves, fading)
+            local score = p.sheet and 0 or Score(o, p)
             if score > 0 then pairsOf[#pairsOf + 1] = { o = o, j = j, score = score } end
         end
     end
@@ -444,6 +453,13 @@ function Glide.Go()
                     end)
                 end
             end
+        end
+    end
+    -- A sheet come onto the page fades in where it lands, as a plate does;
+    -- one that stayed is drawn in place (it has no picture to ease).
+    for _, leaf in pairs(page.sheetAt or {}) do
+        if leaf:IsShown() and not (to.from.sheets and to.from.sheets[leaf.kind or leaf]) then
+            Fade(leaf, GLIDE.enter[1], GLIDE.enter[2])
         end
     end
     for _, frame in ipairs(to.leaving) do

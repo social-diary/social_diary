@@ -144,6 +144,18 @@
 --
 -- The list is virtual, so a row's frame is found as the pad lands on its
 -- item (Find, the group's `reveal`): scrolled into view, then its words.
+--
+-- A sheet among the plates (UI/Journey/Sheet.lua; the city-trips proposal's
+-- hook 7, 24 Nov 2026) is an item of group `page` with a plate's look (its
+-- outline, its heading red). A goes in among its stops (group `stops`,
+-- spatial), which its drawer gave the leaf (leaf:Name, leaf:Stop) as a
+-- plate gives its marks, only where it has one: each takes the pen's box on
+-- its words, its tooltip shows as under the mouse, and A is its click (a
+-- name's: their page) or nothing (a stop with only a tooltip). X is not
+-- offered: a sheet has no whole map. Y opens its menu on the pad's slip
+-- (CardSheet.SheetMenu, the mouse's generator). B: stops, sheet, the left
+-- page's row. With the ticklist open the pad on it lights its row and its
+-- frame, as on a plate. No Blizzard frame, and no click passed on.
 
 local addonName, ns = ...
 
@@ -207,6 +219,11 @@ local PROMPT = {
     done = { "PAD1", L["Done"], main = true },
     backList = { "PAD2", L["Back to the list"] },
     menu = { "PAD4", L["Open the menu"] },
+    -- A sheet's stops (the card sheet's settled words, UI/Journey/CardPad.lua),
+    -- and back out of them.
+    stops = { "PAD1", L["Go to the names"], main = true },
+    -- COPY: placeholder, the copywriter's to replace (copy TBD, copywriter)
+    backSheet = { "PAD2", L["Back to the sheet"] },
 }
 
 -- The whole map with the pad: `speed` card px a second the right stick
@@ -347,6 +364,17 @@ local function Plates(page)
     return out
 end
 
+-- The sheets shown on the right page now, by their place among the plates
+-- (UI/Journey/Sheet.lua).
+local function Sheets(page)
+    local out = {}
+    for i = 1, Count(page) do
+        local leaf = YourDiary.SheetAt(i)
+        if leaf and leaf:IsShown() then out[i] = leaf end
+    end
+    return out
+end
+
 local function Middle(corners)
     local x, y = 0, 0
     for _, c in ipairs(corners) do x, y = x + c[1] / #corners, y + c[2] / #corners end
@@ -375,6 +403,52 @@ local function BuildRight(f, page)
     if scope.inPlate and not plates[scope.inPlate] then
         scope.inPlate = nil
         if f.group == "marks" then f:Within("page") end
+    end
+    local sheets = Sheets(page)
+    if scope.inSheet and not sheets[scope.inSheet] then
+        scope.inSheet = nil
+        if f.group == "stops" then f:Within("page") end
+    end
+    for i = 1, Count(page) do
+        local leaf = sheets[i]
+        if leaf then
+            f:Add("page", {
+                key = "sheet:" .. i .. ":" .. tostring(leaf.kind), sheet = i, heading = leaf.heading,
+                available = function() return leaf:IsShown() end,
+                center = function()
+                    local x, y = Middle(leaf:Corners())
+                    return x, -y
+                end,
+                outline = function()
+                    return { anchor = page.right, corners = leaf:Corners(), level = leaf:GetFrameLevel() }
+                end,
+                enter = function()
+                    if page.choosing and YourDiary.ChooseLightMap then YourDiary.ChooseLightMap(i) end
+                end,
+                leave = function()
+                    if page.choosing and YourDiary.ChooseLightMap then YourDiary.ChooseLightMap(nil) end
+                end,
+                press = function() if leaf:HasMarks() then scope.EnterStops(i) end end,
+                leaf = function() return leaf end,
+            })
+        end
+    end
+    local leaf = scope.inSheet and sheets[scope.inSheet]
+    if leaf then
+        for _, st in ipairs(leaf:Marks()) do
+            local frame = st.frame
+            f:Add("stops", {
+                key = st.key, words = st.words, subhead = leaf.heading,
+                available = function() return frame == nil or frame:IsShown() end,
+                center = function() return st.x, -st.y end,
+                -- (its tooltip as under the mouse)
+                enter = function() Run(frame, "OnEnter") end,
+                leave = function() Run(frame, "OnLeave") end,
+                -- (A: its click, a name's; else nothing: no click is made)
+                press = st.press or function() end, hasClick = st.press ~= nil,
+                leaf = function() return leaf end,
+            })
+        end
     end
     for i = 1, Count(page) do
         local plate = plates[i]
@@ -721,6 +795,7 @@ function scope.build(f)
     local open = Road()
     f:Group("page", { mode = "spatial", left = open and open.choosing and "choose" or nil })
     f:Group("marks", { mode = "spatial" })
+    f:Group("stops", { mode = "spatial" })
     f:Group("full", { mode = "spatial", reveal = RevealOnMap })
     f:Group("run", { mode = "spatial" })
     f:Group("match", { mode = "spatial" })
@@ -846,6 +921,14 @@ function scope.Cross(data)
     end
 end
 
+-- A on sheet `i`: in among its stops.
+function scope.EnterStops(i)
+    local f = scope.focus
+    scope.inSheet = i
+    Pad.Refresh()
+    if not (f and f:EnterGroup("stops")) then scope.inSheet = nil end
+end
+
 -- A on plate `i`: in among its marks, the highest first.
 function scope.EnterMarks(i)
     local f = scope.focus
@@ -908,6 +991,15 @@ function scope.back()
     if at and at.group == "marks" then
         scope.inPlate = nil
         f:EnterGroup("page")
+        return true
+    end
+    if at and at.group == "stops" then
+        -- (out of a sheet's stops, onto the sheet)
+        local i = scope.inSheet
+        local leaf = i and YourDiary.SheetAt(i)
+        scope.inSheet = nil
+        Pad.Refresh()
+        if not (leaf and f:Focus("sheet:" .. i .. ":" .. tostring(leaf.kind), "page")) then f:EnterGroup("page") end
         return true
     end
     if at and at.group == "storymarks" then
@@ -1005,7 +1097,13 @@ local function CardAt(at, dry)
         return plate and CardSheet.PadRight(plate, at.frame, dry)
     end
     if page.mode ~= "plates" then return nil end
-    if at.group == "page" and at.plate then
+    if (at.group == "page" and at.sheet) or at.group == "stops" then
+        -- (a sheet's menu on the pad's slip, the mouse's generator)
+        local leaf = at.leaf and at.leaf()
+        if not (leaf and CardSheet.SheetGenerator(leaf)) then return nil end
+        if not dry then CardSheet.SheetMenu(leaf, true) end
+        return "menu"
+    elseif at.group == "page" and at.plate then
         local plate = page.plates[at.plate]
         return plate and CardSheet.PadRight(plate, nil, dry)
     elseif at.group == "page" and at.note then
@@ -1092,6 +1190,10 @@ function scope.legend()
             local plate = at.whole and at.whole()
             if plate and plate:HasMarks() then out[#out + 1] = PROMPT.marks end
             out[#out + 1] = PROMPT.whole
+        elseif at.sheet then
+            -- (A only where it has a stop; no X: a sheet has no whole map)
+            local leaf = at.leaf and at.leaf()
+            if leaf and leaf:HasMarks() then out[#out + 1] = PROMPT.stops end
         elseif at.person then
             out[#out + 1] = PROMPT.person
         end
@@ -1141,6 +1243,14 @@ function scope.legend()
     end
     if at.group == "storymarks" then
         return { PROMPT.backLine }
+    end
+    if at.group == "stops" then
+        -- (a name opens their page; a counted line has only its tooltip)
+        local out = {}
+        if at.press and at.words and at.hasClick then out[1] = PROMPT.person end
+        CardPrompt(out, at)
+        out[#out + 1] = PROMPT.backSheet
+        return out
     end
     if at.group == "marks" then
         local out = { PROMPT.whole }

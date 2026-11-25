@@ -2,7 +2,7 @@
 --
 -- A detection lives in Features/<Name>/ and plugs into the registries
 -- (Core/Rows.lua, Journey.RegisterList, Recap.RegisterMoment,
--- Plate.RegisterMark and RegisterPass, JourneyMargin.Register,
+-- Plate.RegisterMark and RegisterPass, JourneySheet.Register, JourneyMargin.Register,
 -- Text.RegisterCaption and RegisterLines). A registration left half done
 -- still loads, and the page quietly does without it: a People row reads
 -- as its raw type, a moment opens a plate with no mark on it, two kinds
@@ -43,7 +43,7 @@ Check(ns.Rows.Get("kinds_test_dealt").type == nil, "a refused kind is declared a
 --------------------------------------------------------------------------
 Section("every recap moment is ranked, gathered and marked")
 
-local Recap, Plate = ns.JourneyRecap, ns.UI.JourneyPlate
+local Recap, Plate, Sheets = ns.JourneyRecap, ns.UI.JourneyPlate, ns.UI.JourneySheet
 local orders = {}
 for _, kind in ipairs(Sorted(Recap.MOMENTS)) do
     local spec = Recap.MOMENTS[kind]
@@ -52,7 +52,13 @@ for _, kind in ipairs(Sorted(Recap.MOMENTS)) do
     Check(spec.gather ~= nil or (spec.list ~= nil and ns.Journey.LISTS[spec.list] ~= nil),
         kind .. " gathers from a list nobody registered")
     Check(spec.moment ~= nil or spec.field ~= nil, kind .. " puts its record in no field of the moment")
-    Check(Plate.MARKS[kind] ~= nil, kind .. " has no mark on the plates")
+    -- A kind told on a sheet (RegisterMoment's `sheet`) has a drawer for it
+    -- (UI/Journey/Sheet.lua's Register) instead of a mark on a map.
+    if spec.sheet then
+        Check(Sheets.KINDS[kind] ~= nil, kind .. " is told on a sheet nobody draws")
+    else
+        Check(Plate.MARKS[kind] ~= nil, kind .. " has no mark on the plates")
+    end
     -- A choice on the page points at a moment by its key (Core/Chosen.lua).
     local key = Recap.Key({ kind = kind, t = 1000, [spec.field or "rec"] = { t = 1000, npcID = 7 } })
     Check(type(key) == "string" and key:find("^" .. (spec.keyKind or kind) .. ":1000:") ~= nil, kind .. " yields no key")
@@ -61,6 +67,12 @@ for _, kind in ipairs(Sorted(Recap.MOMENTS)) do
     Check(spec.key == nil or type(spec.key) == "function", kind .. "'s key is no function")
     Check(not orders[spec.order], kind .. " shares its order with " .. tostring(orders[spec.order]))
     orders[spec.order or 0] = kind
+end
+
+-- A sheet's drawer draws a kind told on a sheet, and nothing else.
+for _, kind in ipairs(Sorted(Sheets.KINDS)) do
+    local spec = Recap.MOMENTS[kind]
+    Check(spec ~= nil and spec.sheet == true, kind .. " has a sheet's drawer but is no moment told on a sheet")
 end
 
 --------------------------------------------------------------------------

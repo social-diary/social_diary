@@ -14,6 +14,14 @@
 --     minute after they were found, over white ones (a green at 20 or
 --     below: it leads its entry), and a looted green belt after them, a
 --     smaller gain (a filler piece);
+--   - level 11 again, Orgrimmar's Valley of Strength, during the city
+--     trip there (Features/CityTrips/Dev.lua's usual round): a green
+--     vest bought at the auction house, come by the invoice's letter
+--     ("auction"), put on in town over a white one, a small gain (a piece,
+--     so the bracers still lead the level). It is told on the trip's sheet
+--     while the sheet is on the page (RegisterMoment's `errand`), and is a
+--     filler piece on Orgrimmar's plate where it is not. Invented, the
+--     item and its id;
 --   - level 13, the Crossroads: a green ring over a white one, with
 --     nothing said of how it came (the card's plainest heading, "Newly
 --     worn"). It was on an empty finger until 16 Nov, when an upgrade
@@ -31,7 +39,7 @@ local addonName, ns = ...
 local TestData = ns.TestData
 local Upgrades = ns.Upgrades
 local Link = TestData.Link
-local DUROTAR, BARRENS = 1411, 1413
+local DUROTAR, BARRENS, ORGRIMMAR = 1411, 1413, 1454
 local MIN = 60
 
 local GLOVES = Link(2, 4767, "Hardened Leather Gloves")
@@ -45,6 +53,9 @@ local OLD_RING = Link(1, 5000, "Tarnished Copper Band")
 local GUTWRENCHER = Link(4, 5616, "Gutwrencher")
 local OLD_AXE = Link(1, 853, "Hatchet")
 local OLD_CLOAK = Link(2, 4771, "Harvest Cloak")
+-- (invented: no such item in the game)
+local VEST = Link(2, 90411, "Dustwalker Vest")
+local OLD_VEST = Link(1, 90412, "Frayed Canvas Vest")
 
 -- How long after the trade the gift was put on.
 local GIFT_WORN = 4 * MIN
@@ -63,6 +74,13 @@ TestData.Register("route", function(c)
     stop = c.Stop(11, "The Sludge Fen")
     Wore(stop, stop.to - 140, 0.61, 0.14, 9, BRACERS, 2, 17, "quest", OLD_BRACERS, 5, stop.to - 200)
     Wore(stop, stop.to - 60, 0.612, 0.15, 6, BELT, 2, 16, "loot", OLD_BELT, 10, stop.to - 80)
+    -- In town, put on a minute after the letter was taken, half way through
+    -- the stay (the trip spans the stop: CityTrips' Dev.lua).
+    stop = c.Stop(11, "Valley of Strength")
+    local mid = math.floor((stop.from + stop.to) / 2)
+    Wore(stop, mid, (stop.x or 0.5) + 0.004, (stop.y or 0.5) + 0.003, 5, VEST, 2, 12, "auction", OLD_VEST,
+        8, mid - 60, nil, ORGRIMMAR)
+    table.sort(j.upgrades, function(a, b) return a.t < b.t end)
     stop = c.Stop(13, "The Crossroads")
     Wore(stop, stop.to - 300, 0.525, 0.305, 11, RING, 2, 15, nil, OLD_RING, 8, stop.to - 900)
     stop = c.Stop(15, "Raptor Grounds")

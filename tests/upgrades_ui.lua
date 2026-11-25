@@ -327,7 +327,10 @@ for _, at in ipairs(T.DiaryPages(page)) do
     end
 end
 local all = table.concat(seen, "; ")
-Check(all:find("11: 2 tunic(s), cards [], notes [a new belt]", 1, true), "level 11: the first green's tunic, the belt's note: " .. all)
+-- (Three: the vest put on in Orgrimmar too, Features/Upgrades/Dev.lua: the
+-- level's trip sheet is cut for room there, so the vest is a tunic on
+-- Orgrimmar's print as it always was, not on the sheet.)
+Check(all:find("11: 3 tunic(s), cards [], notes [a new belt]", 1, true), "level 11: the first green's tunic, the belt's note, the vest's: " .. all)
 Check(all:find("10: 1 tunic(s), cards [Bought/", 1, true), "level 10: the gloves' card, over the white ones: " .. all)
 Check(all:find("13: 1 tunic(s), cards [Newly worn/", 1, true), "level 13: the ring's card: " .. all)
 Check(all:find("15: 1 tunic(s), cards [], notes []", 1, true), "level 15: the first epic's tunic alone: " .. all)
@@ -339,7 +342,9 @@ do
     for _, e in ipairs(page.recap.entries) do
         if e.kind == "level" then by[e.level] = Plain(table.concat(Text.Lines(e, now, {}), " / ")) end
     end
-    Check(by[11]:find("Your Worn Leather Bracers made way for it. One more piece of gear went on besides.", 1, true),
+    -- (the belt and the vest put on in Orgrimmar: the left page tells the
+    -- level whole, whatever a sheet tells on the right)
+    Check(by[11]:find("Your Worn Leather Bracers made way for it. Two more pieces of gear went on besides.", 1, true),
         "level 11's sentence: " .. by[11])
     Check(not by[11]:find("made way for Wolfskin Bracers", 1, true), "level 11 names its first green twice")
     Check(by[13]:find("Your Tarnished Copper Band made way for Blood Ring.", 1, true), "level 13's sentence: " .. by[13])

@@ -107,6 +107,10 @@ local WORDS = {
     -- ever leaving out, as "Leave it out" does; back is the ticklist's alone.
     leavePlace = L["Leave this place out"], choose = L["Choose what's on this page..."],
     leavePerson = L["Leave %1$s off this page"],
+    -- A sheet among the plates (UI/Journey/Sheet.lua): its one way off the
+    -- page, as a place's.
+    -- COPY: placeholder, the copywriter's to replace
+    leaveSheet = L["Leave it out"],
 }
 
 local CardSheet = {}
@@ -1666,6 +1670,44 @@ function CardSheet.Person(strip, g, pad)
     if not generator then return end
     if pad then return ns.UI.Pad.Menu.Open(strip, generator) end
     MenuUtil.CreateContextMenu(strip, generator)
+end
+
+-- A sheet's menu, as a generator (the mouse's and the pad's alike, rule 6
+-- of the controller-support skill): "Leave it out", `out` on its moment
+-- and the stays it tells (Chosen.LeavePlace: its plate's moments), and
+-- "Choose what's on this page..." where the ticklist is not open. No line
+-- to add a card: a sheet has no spot on a map. Nil where it holds nothing.
+local function SheetGenerator(leaf)
+    local plan = leaf and leaf.plan
+    local leaves = plan ~= nil and plan.moments ~= nil and plan.moments[1] ~= nil
+    local page = YourDiary.page
+    local piece = YourDiary.ShownPiece and YourDiary.ShownPiece()
+    local chooses = (piece and page and not page.choosing and YourDiary.CanChoose(piece)) and true or false
+    if not (leaves or chooses) then return nil end
+    return function(_, root)
+        if leaves then
+            root:CreateButton(WORDS.leaveSheet, function()
+                -- (eased, as a tick on the ticklist: UI/Journey/Glide.lua)
+                if ns.Chosen.LeavePlace(nil, plan) then YourDiary.Glide.Around(Redraw) end
+            end)
+        end
+        if chooses then root:CreateButton(WORDS.choose, function() YourDiary.Choose() end) end
+    end
+end
+CardSheet.SheetGenerator = SheetGenerator
+
+-- A sheet's right click (leaf.onRight, UI/Journey/Sheet.lua), or with `pad`
+-- the pad's Y: the same menu on the pad's slip (Pad.Menu), never MenuUtil.
+-- Returns whether there was one.
+function CardSheet.SheetMenu(leaf, pad)
+    local generator = SheetGenerator(leaf)
+    if not generator then return false end
+    if pad then
+        ns.UI.Pad.Menu.Open(leaf, generator)
+    else
+        MenuUtil.CreateContextMenu(leaf, generator)
+    end
+    return true
 end
 
 -- plate.onRight (UI/Journey/Leaders.lua; plate:Right). `spot`: a registered

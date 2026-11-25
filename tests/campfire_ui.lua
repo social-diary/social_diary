@@ -330,7 +330,9 @@ do
     Eq(#Slips(), 0, "a slip under FL's print")
     Eq(p.camped, true, "the print's words do not say the fire")
     local said = page.captionPool[2]:GetText():gsub(NB, " ")
-    Eq(said, "First Aid at 75, and a campfire.", "level 11's print's words")
+    -- (the vest put on in town, Features/Upgrades/Dev.lua, is on this
+    -- Orgrimmar print while the level's trip sheet is cut for room)
+    Eq(said, "First Aid at 75, a new piece of gear, and a campfire.", "level 11's print's words")
 end
 
 -- Level 13: FL's print, its words long already; filler does not run them

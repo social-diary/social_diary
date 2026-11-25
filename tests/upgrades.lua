@@ -17,8 +17,17 @@ _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.LOOT_ITEM_SELF = "You receive loot: %s."
 _G.LOOT_ITEM_SELF_MULTIPLE = "You receive loot: %sx%d."
-local inbox, returned, buyback = {}, {}, {}
+local inbox, returned, buyback, invoice = {}, {}, {}, {}
 _G.GetInboxItemLink = function(index, attachment) return inbox[index] and inbox[index][attachment] end
+-- An auction's invoice, in this build's order (Blizzard_MailFrame/
+-- MailFrame.lua:790, `forever`): invoiceType, itemName, playerName, bid,
+-- buyout, deposit, consignment, moneyDelay, etaHour, etaMin, count,
+-- commerceAuction. nil for a letter that is none.
+_G.GetInboxInvoiceInfo = function(index)
+    local kind = invoice[index]
+    if not kind then return nil end
+    return kind, "Some Item", "Vendra", 1450, 1450, 0, 0, 0, 0, 0, 1, false
+end
 _G.GetInboxHeaderInfo = function(index)
     return nil, nil, "Sender", "Subject", 0, 0, 30, 1, false, returned[index] == true
 end
@@ -437,6 +446,41 @@ cand = Upgrades.Candidate(j, "6078:0")
 Eq(cand and cand.from, "mail", "a letter's item, how it came")
 Put(4, nil)
 Bags()
+-- A letter with an auction's invoice, the buyer's: bought at the auction
+-- house (25 Nov 2026).
+mock.now = mock.now + 60
+invoice[1] = "buyer"
+TakeInboxItem(1, 1)
+Put(4, HELM, 2)
+Bags()
+cand = Upgrades.Candidate(j, "6078:0")
+Eq(cand and cand.from, "auction", "a won auction's letter, how it came")
+Put(4, nil)
+Bags()
+-- A seller's invoice is no purchase: "mail" as any letter.
+mock.now = mock.now + 60
+invoice[1] = "seller"
+TakeInboxItem(1, 1)
+Put(4, HELM, 2)
+Bags()
+cand = Upgrades.Candidate(j, "6078:0")
+Eq(cand and cand.from, "mail", "a seller's invoice letter, how it came")
+Put(4, nil)
+Bags()
+-- Come back to its sender, an invoice or not: old gear, no candidate.
+mock.now = mock.now + 60
+invoice[1], returned[1] = "buyer", true
+TakeInboxItem(1, 1)
+Put(4, HELM, 2)
+Bags()
+Eq(Upgrades.Candidate(j, "6078:0"), nil, "a returned letter with an invoice made a candidate")
+Put(4, nil)
+Bags()
+invoice[1], returned[1] = nil, nil
+-- The words for it: the card's heading, its narrow form, the tooltip's.
+Eq(Upgrades.Heading({ from = "auction" }), "Bought at auction", "an auction's card heading")
+Eq(Upgrades.Heading({ from = "auction" }, true), "At auction", "an auction's narrow heading")
+Eq(Upgrades.How({ from = "auction" }), "bought at auction", "an auction's tooltip words")
 
 --------------------------------------------------------------------------
 Section("a gift that was worn")
