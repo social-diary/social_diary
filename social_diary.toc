@@ -2,7 +2,7 @@
 ## Title: Social Diary
 ## Notes: Remembers the people you meet in the open world.
 ## Author: social-diary
-## Version: 4.2.5
+## Version: 4.2.6
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
 ## LoadSavedVariablesFirst: 1

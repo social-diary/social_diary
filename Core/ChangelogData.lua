@@ -7,6 +7,18 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.6",
+        summary = "This Update makes your save files around 60 to 80% smaller, and a new _Memory_ setting caps how many strangers the diary keeps.",
+        groups = {
+            { heading = "Shiny new Things", entries = {
+                { text = "_Memory_ settings can now cap how many strangers are kept" },
+            } },
+            { heading = "Changes", entries = {
+                { text = "Strangers now take far less room in your save files" },
+            } },
+        },
+    },
+    {
         version = "4.2.5",
         summary = "This Update brings five more dungeons to the _Dungeon View_. A quest item everyone in your group loots, like a boss's head, no longer counts as a lucky drop in _Your Diary_.",
         groups = {
@@ -46,15 +58,6 @@ ns.Changelog = {
             } },
             { heading = "Fixes", entries = {
                 { text = "Quest drops are now only judged on looted items. Items that come from trading and mails are ignored for lucky / unlucky cards." },
-            } },
-        },
-    },
-    {
-        version = "4.2.1",
-        summary = "A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.",
-        groups = {
-            { heading = "Fixes", entries = {
-                { text = "Crossing a zone border no longer counts nearby people as seen twice", thanks = "OscillatorZ" },
             } },
         },
     },
