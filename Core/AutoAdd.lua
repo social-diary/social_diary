@@ -115,6 +115,13 @@ AutoAdd.Eligible = Eligible
 --   count     function(guid, rule, ctx) -> how many qualifying events are
 --             stored; ctx is { now, place } (CheckGroup's), or nil
 --   backfill  whether the backfill sheet may ask about it (grouped: false)
+--   strangers nil, or function(amount): unpacks the packed strangers
+--             (Core/Strangers.lua) who could count `amount` or more, before
+--             the backfill walks the stores. A packed stranger has nothing
+--             in the buffer, so a trigger that counts only buffer rows
+--             leaves it out; one that counts what a line holds (seen: the
+--             sighting rows) must have it, or the backfill never finds them.
+--             A wide net is fine: Passes still decides.
 --   describe  function(rule) -> "Whispered 3 times, either way"
 --   source    the entry's addedContext.source ("auto_whisper")
 
@@ -408,13 +415,17 @@ AutoAdd.FILTER_KEYS = { "guild", "faction", "level", "class" }
 
 -- Whether `guid` passes `rule`: the trigger's count reaches the amount and
 -- every filter passes. On or off is Match's. `ctx` as a trigger's count.
+-- The count `rule` asks for, its trigger's default where it says none.
+local function Amount(rule, spec)
+    return tonumber(rule.amount) or (spec.amount and spec.amount.default) or 1
+end
+
 function AutoAdd.Passes(guid, rule, ctx)
     local spec = type(rule) == "table" and triggers[rule.trigger]
     if not spec or not spec.count then return false end
     guid = ns.SafeGUID(guid)
     if not guid then return false end
-    local amount = tonumber(rule.amount) or (spec.amount and spec.amount.default) or 1
-    if (spec.count(guid, rule, ctx) or 0) < amount then return false end
+    if (spec.count(guid, rule, ctx) or 0) < Amount(rule, spec) then return false end
 
     if type(rule.filters) == "table" then
         local record = ns.Characters.Get(guid)
@@ -625,6 +636,9 @@ AutoAdd.RegisterTrigger("seen", {
     backfill = true,
     source = "auto_seen",
     count = function(guid) return TimesSeen(guid) end,
+    -- Every row a line holds counts here, hostile ones too: the net is
+    -- wider than TimesSeen, never narrower.
+    strangers = function(amount) ns.Strangers.UnpackSeenOften(amount) end,
     describe = function(rule)
         local n = tonumber(rule.amount) or 0
         return ns.Plural(n, L["seen %d time|seen %d times##plural"])
@@ -671,18 +685,18 @@ function AutoAdd.Waiting(rules)
 
     local out = {}
     if #list == 0 then return out end
-    -- A packed stranger (Core/Strangers.lua) has nothing in the buffer, so
-    -- only a sightings rule can take them in: those seen as often as the
-    -- lowest such rule asks are unpacked first.
-    local fewest
+    -- The packed strangers (Core/Strangers.lua) these rules could take in,
+    -- unpacked first: each trigger that can count them is asked once, for
+    -- the lowest amount its rules here want.
+    local fewest = {}
     for _, rule in ipairs(list) do
-        if rule.trigger == "seen" then
-            local spec = triggers.seen
-            local amount = tonumber(rule.amount) or (spec.amount and spec.amount.default) or 1
-            if not fewest or amount < fewest then fewest = amount end
+        local spec = triggers[rule.trigger]
+        if spec.strangers then
+            local amount = Amount(rule, spec)
+            if not fewest[spec] or amount < fewest[spec] then fewest[spec] = amount end
         end
     end
-    if fewest then ns.Strangers.UnpackSeenOften(fewest) end
+    for spec, amount in pairs(fewest) do spec.strangers(amount) end
 
     local seen = {}
     local function Consider(guid)

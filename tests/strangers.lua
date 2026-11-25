@@ -826,6 +826,63 @@ do
 end
 
 --------------------------------------------------------------------------
+Section("Auto-Add's backfill finds the packed strangers its rules could add")
+
+do
+    mock.Reset()
+    local ns = T.Boot()
+    local now = mock.now
+    local function Guid(i) return ("Player-4620-0C%06X"):format(i) end
+    -- Seen `times` times, an hour apart, all packed.
+    local function Seen(i, times, hostile)
+        ns.Characters.Observe(Guid(i), { first = "Wren", surname = "Moss" .. i, time = now - (times + 1) * HOUR })
+        for k = times, 1, -1 do
+            ns.Sightings.Record(Guid(i), { source = "plate", hostile = hostile or nil }, MULGORE, now - k * HOUR)
+        end
+    end
+    Seen(1, 2)
+    Seen(2, 3)
+    Seen(3, 5)
+    Seen(4, 4, true)   -- the other faction: never a familiar face
+    ns.Strangers.Pack()
+    for i = 1, 4 do Eq(type(ns.db.strangers[Guid(i)]), "string", "stranger " .. i .. " is not packed") end
+
+    local function Rule(trigger, amount)
+        local rule = ns.AutoAdd.Preset(trigger == "seen" and "seen" or "group")
+        rule.trigger, rule.amount = trigger, amount
+        return rule
+    end
+    local function Waiting(rules)
+        local out = {}
+        for _, item in ipairs(ns.AutoAdd.Waiting(rules)) do out[#out + 1] = item.guid end
+        table.sort(out)
+        return table.concat(out, ",")
+    end
+
+    -- A rule that counts the buffer alone unpacks nobody.
+    Eq(Waiting({ Rule("traded", 1) }), "", "a trades rule found a stranger")
+    for i = 1, 4 do Check(ns.Strangers.Packed(Guid(i)), "a trades rule unpacked stranger " .. i) end
+
+    -- Seen three times: the two seen that often, and nobody hostile.
+    Eq(Waiting({ Rule("seen", 3) }), Guid(2) .. "," .. Guid(3), "seen 3 times")
+    Check(ns.Strangers.Packed(Guid(1)), "seen twice, unpacked for a rule of three")
+    -- Two rules of one trigger: the lower amount is the net.
+    Eq(Waiting({ Rule("seen", 5), Rule("seen", 2) }), Guid(1) .. "," .. Guid(2) .. "," .. Guid(3),
+        "seen twice, with a rule of two beside one of five")
+    Check(not ns.Strangers.Packed(Guid(1)), "the lower amount did not unpack")
+
+    -- What the sheet offers, the backfill adds; whoever was unpacked and
+    -- not added is packed again at the next packing.
+    ns.Strangers.Pack()
+    local rule = Rule("seen", 5)
+    ns.db.settings.autoAddRules = { rule }
+    Eq(ns.AutoAdd.AddWaiting(), 1, "the backfill added a packed stranger")
+    Check(ns.db.diary[Guid(3)] ~= nil, "the one seen five times is not in the diary")
+    ns.Strangers.Pack()
+    Check(ns.db.strangers[Guid(3)] == nil, "someone in the diary went back into a line")
+end
+
+--------------------------------------------------------------------------
 Section("every walk over the records and the sightings knows of the lines")
 
 -- pairs(), next() or a count over db.characters or db.sightings finds the
