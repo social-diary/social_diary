@@ -83,7 +83,17 @@ local function BuildMemory(pane, c)
             ns.Sightings.Rollup()
             ns.Characters.Prune()
         end)
-    c:Hint(L["Imagine adding a stranger to your diary after you've met them many times already. This setting pre-saves stranger's data for this so interaction data is available even though they were always strangers. Data for people in your diary are kept indefinitely."])
+    -- The other bound (ns.Strangers.Limit, run by the prune): a lower number
+    -- applies now. No unit: "strangers" overflows its 34 px, as "matches"
+    -- does (Sections/Battlegrounds.lua), and the room goes to the line, which
+    -- holds six figures here and keeps its right edge in the column.
+    local WIDER = 16
+    page.strangerLimit = Number(c, L["Keep at most this many strangers"], "", "strangerLimit", 100, 100000,
+        function() ns.Characters.Prune() end)
+    page.strangerLimit.box:SetMaxLetters(6)
+    page.strangerLimit.box:SetWidth(page.strangerLimit.box:GetWidth() + WIDER)
+    page.strangerLimit.label:SetWidth(page.strangerLimit.label:GetWidth() - WIDER)
+    c:Hint(L["People outside the diary stay pencilled in for a while, so their history is there if you add them later. Strangers you only ever saw also go once there are more than this many, whichever comes first. A lower number forgets those seen longest ago at once. People in your diary are kept for good."])
 
     c:Heading(L["Your data"])
     -- DAT-1: the page's one account setting, so it says so. Ticked is the

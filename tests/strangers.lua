@@ -747,6 +747,74 @@ Eq(#ns.Sightings.For(ROLLED), 2, "the roll-up lost the rows a line held")
 Eq(ns.Characters.Get(ROLLED).sightingSummary.count, 1, "the roll-up did not fold the old row")
 
 --------------------------------------------------------------------------
+Section("past the limit, the strangers seen longest ago go")
+
+do
+    mock.Reset()
+    local ns = T.Boot()
+    local now = mock.now
+    Eq(ns.db.settings.strangerLimit, 4000, "the limit's default")
+
+    local function Guid(i) return ("Player-4620-0B%06X"):format(i) end
+    local function Meet(i, at)
+        ns.Characters.Observe(Guid(i), { first = "Vera", surname = "Holt" .. i, time = at })
+        ns.Sightings.Record(Guid(i), { source = "plate" }, MULGORE, at)
+    end
+    -- Ten strangers, the higher the number the later seen; the odd ones
+    -- packed, the even ones tables.
+    for i = 1, 9, 2 do Meet(i, now - (20 - i) * 3600) end
+    ns.Strangers.Pack()
+    for i = 2, 10, 2 do Meet(i, now - (20 - i) * 3600) end
+    -- Three who are no strangers, all seen before any of the ten: in the
+    -- diary, in the buffer, the user's own.
+    local DIARY, DEALT = Guid(101), Guid(102)
+    ns.Characters.Observe(DIARY, { first = "Odo", surname = "Marsh", time = now - 2 * DAY })
+    ns.Diary.Add(DIARY)
+    ns.Characters.Observe(DEALT, { first = "Ina", surname = "Reed", time = now - 2 * DAY })
+    ns.Interactions.Add(DEALT, "trade", { time = now - 2 * DAY })
+    ns.OwnCharacters()[ALT] = { first = "Bram", surname = "Holt" }
+    ns.Characters.Observe(ALT, { first = "Bram", surname = "Holt", time = now - 2 * DAY })
+    local known = ns.Characters.Count()
+
+    Eq(ns.Strangers.Limit(10), 0, "nobody is over a limit of ten, and someone went")
+    Eq(ns.Characters.Count(), known, "the count changed with nobody over the limit")
+
+    Eq(ns.Strangers.Limit(6), 4, "four over the limit")
+    for i = 1, 4 do
+        Eq(ns.Characters.Get(Guid(i)), nil, "stranger " .. i .. " is past the limit and kept their record")
+        Eq(#ns.Sightings.For(Guid(i)), 0, "stranger " .. i .. " is past the limit and kept their sightings")
+        Eq(ns.db.strangers[Guid(i)], nil, "stranger " .. i .. " is past the limit and kept their line")
+    end
+    for i = 5, 10 do
+        Eq(ns.Characters.FullName(Guid(i)), "Vera Holt" .. i, "stranger " .. i .. " is inside the limit and gone")
+        Eq(#ns.Sightings.For(Guid(i)), 1, "stranger " .. i .. " is inside the limit and lost their sighting")
+    end
+    Check(ns.Characters.Get(DIARY) ~= nil, "the limit took someone in the diary")
+    Check(ns.Characters.Get(DEALT) ~= nil, "the limit took someone in the buffer")
+    Check(ns.Characters.Get(ALT) ~= nil, "the limit took one of the user's own characters")
+    Eq(ns.Characters.Count(), known - 4, "the count after the limit")
+
+    -- Seen in the same second: only as many go as are over.
+    for i = 21, 24 do Meet(i, now - 30 * 3600) end
+    ns.Strangers.Pack()
+    Eq(ns.Strangers.Limit(8), 2, "two of four seen in one second are over")
+    local left = 0
+    for i = 21, 24 do
+        if ns.Characters.Get(Guid(i)) then left = left + 1 end
+    end
+    Eq(left, 2, "of four seen in one second, two stay")
+
+    -- The setting is what the housekeeping reads, with the days.
+    ns.db.settings.strangerLimit = 3
+    Eq(ns.Characters.Prune(), 5, "the housekeeping did not apply the limit")
+    for i = 8, 10 do Check(ns.Characters.Get(Guid(i)) ~= nil, "the latest seen went, stranger " .. i) end
+    -- Nothing that is not a number above zero means "keep nobody".
+    ns.db.settings.strangerLimit = 0
+    Eq(ns.Characters.Prune(), 0, "a limit of zero forgot everyone")
+    ns.db.settings.strangerLimit = 4000
+end
+
+--------------------------------------------------------------------------
 Section("every walk over the records and the sightings knows of the lines")
 
 -- pairs(), next() or a count over db.characters or db.sightings finds the

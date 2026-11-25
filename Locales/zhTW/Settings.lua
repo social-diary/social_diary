@@ -140,7 +140,6 @@ ns.Locale.Add("zhTW", {
     ["Forgetting"] = "遺忘",
     ["Forget people outside the diary after"] = "遺忘日記外的人，超過",
     ["days"] = "天",
-    ["Imagine adding a stranger to your diary after you've met them many times already. This setting pre-saves stranger's data for this so interaction data is available even though they were always strangers. Data for people in your diary are kept indefinitely."] = "想像一下：你已經遇見某個陌生人很多次，才決定把對方加進日記。這個設定會預先保存陌生人的資料，這樣即使對方一直都是陌生人，也查得到你們過去的互動資料。日記中人物的資料則會永久保留。",
     ["Your data"] = "你的資料",
     ["Share one diary between all my characters"] = "所有角色共用一本日記",
     ["Switching requires a reload."] = "切換後需要重新載入。",

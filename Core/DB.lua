@@ -174,6 +174,10 @@ local CHARACTER_SETTINGS = {
     -- per-person summaries. One window, so the Recently nearby page never
     -- lists a day whose "dealt with" marks are already gone. Decision D3.
     bufferDays = 30,
+    -- The other bound on strangers (people outside the diary with nothing
+    -- in the buffer, Core/Strangers.lua): at most this many are kept, the
+    -- ones seen longest ago going first. Whichever bound comes first.
+    strangerLimit = 4000,
     -- Battlegrounds: the full board (every player, every number) is kept
     -- for this many of the newest matches; older ones roll up to their
     -- header and the diary's people (Core/Matches.lua, Jan 9 Nov 2026).

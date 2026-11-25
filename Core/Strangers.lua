@@ -829,6 +829,65 @@ function Strangers.Prune(cutoff)
     return dropped
 end
 
+-- The other bound beside bufferDays (the setting `strangerLimit`): at most
+-- `limit` strangers are kept, and past it those seen longest ago go, record
+-- and sightings, whichever shape they are saved in. A stranger here is who
+-- Pack would pack: outside the diary, not the user's own, nothing in the
+-- interaction buffer. Everyone else is neither counted nor touched. A line
+-- whose head cannot be read is left alone. Returns how many went.
+function Strangers.Limit(limit)
+    local d = ns.db
+    if not d then return 0 end
+    limit = limit or ns.PositiveSetting("strangerLimit")
+    local lines, own = Lines(d), ns.OwnCharacters() or {}
+
+    local guids, seen, n = {}, {}, 0
+    for guid, line in NextLine, lines do
+        local last = LastSeen(line)
+        if last and rawget(d.characters, guid) == nil and not Stays(d, guid, LINE, own) then
+            n = n + 1
+            guids[n], seen[n] = guid, last
+        end
+    end
+    for guid, record in pairs(d.characters) do
+        if ns.SafeGUID(guid) and type(record) == "table" and not Stays(d, guid, record, own) then
+            n = n + 1
+            guids[n], seen[n] = guid, record.lastSeen or record.firstSeen or 0
+        end
+    end
+
+    local over = n - limit
+    if over <= 0 then return 0 end
+
+    -- The time the last one to go was seen at; those seen at that very
+    -- second go only until the count is right.
+    local sorted = {}
+    for i = 1, n do sorted[i] = seen[i] end
+    table.sort(sorted)
+    local edge = sorted[over]
+    local atEdge = 0
+    for i = 1, over do
+        if sorted[i] == edge then atEdge = atEdge + 1 end
+    end
+
+    local dropped = 0
+    for i = 1, n do
+        local go = seen[i] < edge
+        if not go and seen[i] == edge and atEdge > 0 then
+            go, atEdge = true, atEdge - 1
+        end
+        if go then
+            local guid = guids[i]
+            lines[guid] = nil
+            broken[guid] = nil
+            d.characters[guid] = nil
+            d.sightings[guid] = nil
+            dropped = dropped + 1
+        end
+    end
+    return dropped
+end
+
 -- Sightings.Forget(nil) for the packed: the rows and the summaries go,
 -- who they were stays.
 function Strangers.DropRows()
