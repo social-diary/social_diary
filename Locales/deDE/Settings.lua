@@ -222,6 +222,8 @@ ns.Locale.Add("deDE", {
     ["Forgetting"] = "Vergessen",
     ["Forget people outside the diary after"] = "Leute außerhalb des Tagebuchs vergessen nach",
     ["days"] = "Tagen",
+    ["Keep at most this many strangers"] = "Maximal so viele Fremde merken",
+    ["People outside the diary stay pencilled in for a while, so their history is there if you add them later. Strangers you only ever saw also go once there are more than this many, whichever comes first. A lower number forgets those seen longest ago at once. People in your diary are kept for good."] = "Leute außerhalb des Tagebuchs bleiben eine Weile mit Bleistift notiert, damit ihre Geschichte noch da ist, wenn du sie später einträgst. Fremde, die du nur gesehen hast, verschwinden außerdem, sobald es mehr als so viele sind, je nachdem, was zuerst eintritt. Eine niedrigere Zahl vergisst die am längsten nicht mehr Gesehenen sofort. Wer in deinem Tagebuch steht, bleibt für immer.",
     ["Your data"] = "Deine Daten",
     ["Share one diary between all my characters"] = "Ein Tagebuch für alle meine Charaktere",
     ["Switching requires a reload."] = "Der Wechsel lädt die Oberfläche neu.",
