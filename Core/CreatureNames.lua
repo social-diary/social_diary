@@ -17,6 +17,8 @@
 --   Of(j, npcID)           the name a creature goes by
 --   Clean(j, npcID, name)  a recap's name without its surname
 --   Note(npcID, name, now) a name read off a unit now
+--   Saw(name, npcID, display)  a creature the player targeted for a card
+--                          (this session only, never saved): Find's last word
 --   Prune(j, now)          at login (Journey.Prune): put right, then dropped
 
 local addonName, ns = ...
@@ -104,10 +106,27 @@ function CreatureNames.Note(npcID, name, now)
     Mend(j, npcID)
 end
 
+-- Creatures the player had targeted as a card's creature line was filled
+-- from the target (UI/Journey/CardSheet.lua's target fill): by name in lower
+-- case, { npcID, display }. Held for the session only, never saved: they
+-- give a typed name a picture where no record knows the creature yet.
+local saw = {}
+
+-- A creature targeted for a card: `name` is kind `npcID`, wearing `display`
+-- where it has been read (nil until then; a later call adds it).
+function CreatureNames.Saw(name, npcID, display)
+    if type(name) ~= "string" or name == "" or type(npcID) ~= "number" then return end
+    local key = name:lower()
+    local known = saw[key]
+    if known and known[1] == npcID and not display then return end
+    saw[key] = { npcID, display or (known and known[1] == npcID and known[2]) or nil }
+end
+
 -- The creature a name typed by the player means (Core/Custom.lua), by the
 -- records this character keeps of it, whatever the case: its npcID, and a
 -- display where one was read, so a card can draw it. The newest record with a
--- display first. Nil where no record knows it.
+-- display first; else a creature targeted this session (Saw). Nil where none
+-- knows it.
 function CreatureNames.Find(j, name)
     if not (j and type(name) == "string") then return nil end
     name = name:lower()
@@ -124,7 +143,9 @@ function CreatureNames.Find(j, name)
             end
         end
     end
-    return id
+    local seen = saw[name]
+    if seen and (not id or id == seen[1]) and seen[2] then return seen[1], seen[2] end
+    return id or (seen and seen[1])
 end
 
 -- The names past NAMES.days dropped, once what they put right is mended.

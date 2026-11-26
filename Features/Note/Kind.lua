@@ -64,6 +64,25 @@ function Note.FirstGuid(rec)
     return nil
 end
 
+-- A creature the player targeted as its line was filled from the target
+-- (CardSheet's target fill, the kind's `targeted`): its picture looked up
+-- from its npcID as a death's is (ns.Deaths.LookUp, a model frame no one
+-- sees), so a creature this character's records never met still has one.
+-- Kept by ns.CreatureNames.Saw for the session only; the card saves npcID
+-- and display as a typed creature's ever did (Core/Custom.lua's Creature).
+-- `done()` once the picture is read, so the card beside the form is
+-- written again.
+function Note.Targeted(name, npcID, done)
+    if type(npcID) ~= "number" then return end
+    ns.CreatureNames.Saw(name, npcID)
+    if not (ns.Deaths and ns.Deaths.LookUp) then return end
+    ns.Deaths.LookUp({ npcID = npcID }, function(display)
+        if not display then return end
+        ns.CreatureNames.Saw(name, npcID, display)
+        if done then done() end
+    end)
+end
+
 -- The moment: only ever inserted, so there is nothing to gather; Gather makes
 -- the entry's list and adds the player's cards to it. It ranks with the
 -- people, as "Someone you met" did; being custom, it outranks them anyway
@@ -80,9 +99,11 @@ ns.JourneyRecap.RegisterMoment(Note.KIND, { order = 85, entry = "noteCard", fiel
         -- A typed creature's name brings its picture, where this character's
         -- records know it.
         creature = "mob",
+        -- The creature's line taken from the target (a field's `target`).
+        targeted = function(name, npcID, done) Note.Targeted(name, npcID, done) end,
         defaults = {},
         -- The form's rows in three groups (`group`, CardSheet's BEAT: close
-        -- within one, a faint rule and more air between two): what it is
+        -- within one, more air between two): what it is
         -- (the icon, the words), who and what with (the people, the
         -- creature, the item), and how it goes on the page (the caption).
         fields = {
@@ -91,8 +112,10 @@ ns.JourneyRecap.RegisterMoment(Note.KIND, { order = 85, entry = "noteCard", fiel
                 hint = L["What happened here"], group = "what" },
             { key = "people", type = "people", label = L["Who was there"],
                 hint = L["Any name will do"], group = "who" },
-            { key = "mob", type = "text", optional = true, label = L["Creature"], hint = L["As the game names it"],
-                add = L["+ A creature"], group = "who" },
+            -- target: the targeted creature's name, where the line is empty
+            -- (CardSheet's target fill: the pad cannot type one).
+            { key = "mob", type = "text", optional = true, label = L["Creature"], hint = L["Target or type it"],
+                add = L["+ A creature"], group = "who", target = true },
             { key = "item", type = "item", id = "itemID", optional = true, label = L["Item"],
                 hint = L["Shift-click an item"], add = L["+ An item"], group = "who" },
             { key = "caption", type = "flag", label = L["Write it into the entry"], group = "page" },

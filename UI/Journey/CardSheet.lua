@@ -46,9 +46,20 @@ local BOOK = ns.UI.Journal.BOOK
 -- line, as many as fit its width (`wrap` on from there, a first found's five
 -- firsts running to three lines). links: from the last row to the quiet links' middle, foot: from
 -- there, or from the last row where it has none, to Save's. bottom: under Save.
--- Its height comes of its rows: a later kind may have more.
+-- Its height comes of its rows: a later kind may have more. w and label are
+-- the narrowest: a kind's labels may widen the column, and the slip with it
+-- (LABEL), so the line keeps its width.
 local SHEET = { w = 320, margin = 26, title = 32, first = 66, row = 30, label = 92, line = 176, short = 48, gap = 8, toggle = 86, wrap = 22,
     links = 34, foot = 28, bottom = 26, linkGap = 18 }
+-- The labels' column, sized from the widest label of the kind's rows, as
+-- measured (unbounded), and `gap` of air before the line; never narrower than
+-- SHEET.label, never wider than `most`, the slip as much wider as the column
+-- is. A label still wider than that wraps within the column, its lines about
+-- the row's middle. Every row's label counts, an optional one not yet added
+-- too, so the slip does not change its width as a field is added.
+-- (26 Nov, in the client: "WHO WAS THERE" ran into its line's hint at the
+-- fixed 92 px, and a translation's labels will be longer still.)
+local LABEL = { gap = 10, most = 140 }
 -- Not folded: a slip, not a sheet carried in the book. Its corners curl a
 -- little and it is hardly crumpled, as the note sheet's (NoteSheet.lua's CREASE,
 -- whose every value is said there).
@@ -237,7 +248,7 @@ local function Offering(holder, find, fill, pick)
             return n, w
         end
         local left = at[1] - (holder.box:GetWidth() or 0) / 2
-        w = math.min(SHEET.line, SHEET.w - SHEET.margin - left)
+        w = math.min(SHEET.line, (view.W or SHEET.w) - SHEET.margin - left)
         local below = math.floor((H - PERSON.edge - (at[2] + 11) - PERSON.foot) / PERSON.row)
         local above = math.floor((at[2] - 11 - PERSON.edge - PERSON.foot) / PERSON.row)
         local up = below < n and above > below
@@ -372,11 +383,11 @@ local FACES = { size = 30, pitch = 44, name = 12, cross = 13, out = 3, initial =
 -- The rows of a kind whose fields name a `group` (the free card's: what it
 -- is, who and what with, how it goes on the page), from one row's middle to
 -- the next's past what the first stands taller: `within` a group (6 px of
--- air between two lines), `between` two (24 px), with a faint rule in the
--- middle of that air, centred, `rule` of the writing's width, in the ink at
--- `alpha` (a section's break in a printed book, not a line to write on).
+-- air between two lines), `between` two (24 px): the air alone parts them.
 -- A kind with no groups keeps SHEET.row everywhere.
-local BEAT = { within = 26, between = 44, rule = 0.4, alpha = 0.25 }
+-- (26 Nov, in the client: the short faint rule centred in that air looked
+-- displaced, under neither the labels nor the lines; taken out, the user's.)
+local BEAT = { within = 26, between = 44 }
 
 -- The card as it will look, beside the form (a kind's `preview`): the
 -- margin's own card at `w` (the plates' L band, the caption column's
@@ -386,7 +397,7 @@ local BEAT = { within = 26, between = 44, rule = 0.4, alpha = 0.25 }
 -- at: nothing of it takes the mouse, and the pad does not go to it.
 local PREVIEW = { w = 176, over = 14, top = 58, level = 6 }
 CardSheet.ICONS, CardSheet.WRITE, CardSheet.MORE, CardSheet.FACES = ICONS, WRITE, MORE, FACES
-CardSheet.BEAT, CardSheet.PREVIEW = BEAT, PREVIEW
+CardSheet.BEAT, CardSheet.PREVIEW, CardSheet.LABEL, CardSheet.SHEET = BEAT, PREVIEW, LABEL, SHEET
 
 local AddField, TakeOff, AddPerson, TakePerson
 
@@ -771,6 +782,13 @@ local function NewRow(field)
     end
     -- Whatever is written on a line may change the card beside the form.
     if row.box then row.box:HookScript("OnTextChanged", function() CardSheet.Changed() end) end
+    -- A creature's line filled from the target (TargetInto, `targeted` the
+    -- name it gave) is the player's once they type in it.
+    if field.target and row.box then
+        row.box:HookScript("OnTextChanged", function(_, typed)
+            if typed then row.targeted = nil end
+        end)
+    end
     if field.optional then
         -- Its "+ Add" strip, a blank paper slip written on (the picker's
         -- cards are), whose tape lifts under the mouse; a click is `guid`'s.
@@ -784,6 +802,21 @@ local function NewRow(field)
         row.off = K.Link(FONT.small, function() TakeOff(row) end)
         row.off:SetText(L["Remove"])
         row.off.group = row.label
+    end
+    -- A line's hint ends where its line does: held by both ends of the box,
+    -- one line, cut with an ellipsis, so it never runs under the Remove beside
+    -- it (Lay gives the line only what the Remove leaves). What is typed is
+    -- the edit box's own, kept inside it.
+    -- (26 Nov, in the client: "As the game names it" ran under the R of
+    -- Remove; anchored by its left alone, it was as wide as its words.)
+    local hint = row.box and row.box.hint
+    if hint then
+        local top = row.scroll and -3 or 0
+        hint:ClearAllPoints()
+        hint:SetPoint(row.scroll and "TOPLEFT" or "LEFT", 0, top)
+        hint:SetPoint(row.scroll and "TOPRIGHT" or "RIGHT", 0, top)
+        hint:SetWordWrap(false)
+        hint:SetMaxLines(1)
     end
     return row
 end
@@ -1012,6 +1045,56 @@ local function FillCell(cell, x, k)
     cell.kit:Finish()
 end
 
+-- The target, where it is a creature: not a player, nor anything a player
+-- controls (a pet, a minion, a totem). Its name and npcID (nil where its GUID
+-- does not say). Read guarded: UnitName and UnitGUID may answer a secret in
+-- this build (SecretWhenUnitIdentityRestricted, the Forever docs, 26 Nov),
+-- and a secret, or a question that cannot be answered, is no creature.
+local function Targeted()
+    if not ns.Plain(UnitExists("target")) then return nil end
+    if ns.Plain(UnitIsPlayer("target"), true) then return nil end
+    if type(UnitPlayerControlled) == "function" and ns.Plain(UnitPlayerControlled("target"), true) then return nil end
+    local name = ns.Plain((UnitName("target")))
+    if type(name) ~= "string" or name == "" then return nil end
+    return name, ns.NpcID(UnitGUID("target"))
+end
+
+-- A creature's line (a field's `target`, the free card's) given the target's
+-- name: only where it is on the form and either empty and not being written
+-- on, or still holding the name a target gave it (`row.targeted`), which a
+-- new target replaces, the cursor in it or not (26 Nov, in the client: added
+-- with the mouse, the line took the cursor with the first target's name and
+-- a retarget did nothing). Nothing typed or saved is ever written over, and
+-- a target that is no creature (a player, a pet, none) leaves it as it is. The kind's `targeted(name,
+-- npcID, done)` is told, so its picture can be looked up (Features/Note/
+-- Kind.lua). True where it was filled. The pad cannot type a creature's
+-- name: this is its way to one.
+local function TargetInto(row)
+    if not (row.field.target and row.on and row.box) then return false end
+    local text = row:Get() or ""
+    -- (a name the target gave, not touched since, follows the target, the
+    -- cursor in the line or not; an empty line only without the cursor)
+    local own = row.targeted ~= nil and text == row.targeted
+    if not own and (text ~= "" or row.box:HasFocus()) then return false end
+    local name, npcID = Targeted()
+    if not name or name == text then return false end
+    row:Set(name)
+    row.targeted = name
+    if not row.box:HasFocus() then row.box:SetCursorPosition(0) end
+    local spec = ns.Custom.Spec(view.kind)
+    if npcID and spec and spec.targeted then spec.targeted(name, npcID, CardSheet.Changed) end
+    CardSheet.Changed()
+    return true
+end
+
+-- While the form is open for a kind with such a line, a new target fills
+-- it too (TargetInto's conditions); off as the form goes.
+local function WatchTarget(on)
+    if not view.watch then return end
+    if on then view.watch:RegisterEvent("PLAYER_TARGET_CHANGED") else view.watch:UnregisterEvent("PLAYER_TARGET_CHANGED") end
+end
+CardSheet.Targeted = Targeted
+
 local function BuildList()
     local C, W = PICKER.card, 2 * PICKER.card.w + PICKER.gap + ns.UI.SCROLLBAR_WIDTH + 2
     -- A row on the list, not the sheet (1 Nov, in the client: on the sheet its
@@ -1092,8 +1175,6 @@ local function Build()
     view.remove:SetText(WORDS.remove)
     view.remove:SetColor(Style.ACCENT[1], Style.ACCENT[2], Style.ACCENT[3])
 
-    -- The faint rules between a kind's groups of rows (BEAT), made as wanted.
-    view.rules = {}
     -- The card beside the form (PREVIEW): on the view, not the slip, so the
     -- pad's search of the slip's controls never finds it.
     view.preview = CreateFrame("Frame", nil, view)
@@ -1121,6 +1202,14 @@ local function Build()
     view:HookScript("OnHide", RingOff)
     view:HookScript("OnHide", Settle)
     view:HookScript("OnHide", PadRefresh)
+    -- The target watched while a form with a creature's line is open
+    -- (WatchTarget, TargetInto).
+    view.watch = CreateFrame("Frame", nil, view)
+    view.watch:SetScript("OnEvent", function()
+        if not (view:IsShown() and view.rows) then return end
+        for _, row in ipairs(view.rows) do TargetInto(row) end
+    end)
+    view:HookScript("OnHide", function() WatchTarget(false) end)
     view:Hide()
 end
 
@@ -1142,8 +1231,8 @@ local function ShowForm(on)
     view.save:SetShown(on)
     -- (on both; said, so the pad finds it shown: CardPad.lua)
     view.cancel:Show()
-    for _, rule in ipairs(view.rules) do rule:Hide() end
     if not on then
+        WatchTarget(false)
         view.preview:Hide()
         view.another:Hide()
         view.hide:Hide()
@@ -1156,7 +1245,14 @@ end
 -- only the links that apply. An optional field not added has no row: its
 -- strip goes on one row with the others', where the first of them would be.
 local function Lay(spec)
-    local M, W = SHEET.margin, SHEET.w
+    -- The labels' column (LABEL), and the slip as wide as it needs.
+    local col = SHEET.label
+    for _, row in ipairs(view.rows) do
+        if not row.flag then col = math.max(col, K.Width(row.label) + 2 + LABEL.gap) end
+    end
+    col = math.min(col, LABEL.most)
+    local M, W = SHEET.margin, 2 * SHEET.margin + col + SHEET.line
+    view.W, view.col = W, col
     local rec, inserted = view.rec, view.rec and view.rec.inserted
     local detected = rec and not inserted
     local saved = rec and (rec.customOf or rec)
@@ -1201,9 +1297,8 @@ local function Lay(spec)
         return row.field.group
     end
     -- A row's middle: the rows before it, and what each stands taller; in a
-    -- kind of groups, close within one and apart between two, a rule in
-    -- the air between (rules: its middle).
-    local ys, rules, last = {}, {}, SHEET.first
+    -- kind of groups, close within one and apart between two.
+    local ys, last = {}, SHEET.first
     for i, at in ipairs(list) do
         ys[i] = last
         local gap = 0
@@ -1215,7 +1310,6 @@ local function Lay(spec)
                 gap = BEAT.within
             else
                 gap = BEAT.between
-                rules[#rules + 1] = last + Extra(at.row) + 10 + (BEAT.between - 20) / 2
             end
         end
         last = last + Extra(at.row) + gap
@@ -1229,21 +1323,7 @@ local function Lay(spec)
     Place(W, H)
 
     K.PlaceText(view.title, M, SHEET.title)
-    for i, y in ipairs(rules) do
-        local rule = view.rules[i]
-        if not rule then
-            rule = view.sheet:CreateTexture(nil, "ARTWORK")
-            local INK = Style.INK
-            rule:SetColorTexture(INK[1], INK[2], INK[3], BEAT.alpha)
-            view.rules[i] = rule
-        end
-        K.Place(rule, M + (W - 2 * M) * BEAT.rule / 2, y, (W - 2 * M) * BEAT.rule, 1)
-        rule:Show()
-    end
-    for i = #rules + 1, #view.rules do view.rules[i]:Hide() end
-    -- (for the tests: where they lie)
-    view.ruleAt = rules
-    local x = M + SHEET.label
+    local x = M + col
     for i, at in ipairs(list) do
         local y, row = ys[i], at.row
         if at.strips then
@@ -1264,7 +1344,16 @@ local function Lay(spec)
         elseif row.flag then
             K.PlaceButton(row.flag, M, y - row.flag.height / 2, W - 2 * M, row.flag.height)
         else
-            K.PlaceText(row.label, M, y)
+            -- (one too wide for the column even at its most wraps in it)
+            local most = col - LABEL.gap
+            if K.Width(row.label) + 2 > most then
+                row.label:SetWidth(most)
+                row.label:SetWordWrap(true)
+                local h = (row.label:GetStringHeight() or 0) + 2
+                K.Place(row.label, M, y - h / 2, most, h)
+            else
+                K.PlaceText(row.label, M, y)
+            end
             if row.add then
                 row.add:Hide()
                 row.box:Show()
@@ -1337,6 +1426,9 @@ local function Lay(spec)
     end
     view.save:PlaceAt(W - M, footAt, "RIGHT")
     view.cancel:PlaceAt(W - M - K.Width(view.save.label) - SHEET.linkGap, footAt, "RIGHT")
+    local targets = false
+    for _, row in ipairs(view.rows) do targets = targets or row.field.target == true end
+    WatchTarget(targets)
     Preview()
 end
 
@@ -1353,9 +1445,12 @@ local function Relay(key, box)
     PadRefresh()
 end
 
--- An optional field added from its strip: on the form, and written on.
+-- An optional field added from its strip: on the form, and written on;
+-- a creature's line from the target where it can be (TargetInto). The pad's
+-- A on the strip clicks it, so it comes here too.
 function AddField(row)
     row.on = true
+    TargetInto(row)
     Style.PlaySound("hint")
     Relay("field:" .. row.field.key, row.box)
 end
@@ -1363,6 +1458,7 @@ end
 -- An optional field taken off again: cleared, and its strip back.
 function TakeOff(row)
     row:Set("", nil)
+    row.targeted = nil
     row.on = false
     Relay("more:" .. row.field.key)
 end
@@ -1469,6 +1565,8 @@ function Open(kind, rec, where)
             row:Set(row.was)
         end
         if row.field.optional then row.on = Filled(row) end
+        -- (what the card holds is the player's: never the target's to change)
+        row.targeted = nil
     end
     view.loading = false
     Lay(spec)

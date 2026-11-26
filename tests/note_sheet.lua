@@ -1,6 +1,6 @@
 -- The free card's form, made easier to read and kinder to write on (19 Nov,
--- the user's picks from the proposal): its rows in three groups with a faint
--- rule between, Delete on the foot left of Cancel and Save (and the pad's way
+-- the user's picks from the proposal): its rows in three groups, air
+-- between (the faint rule there taken out on 26 Nov), Delete on the foot left of Cancel and Save (and the pad's way
 -- along it: Delete, Cancel, Save, landing on Save), the card beside the form
 -- written again as it changes, the chosen icon in full ink on a wash with the
 -- rest dimmed (and given back when put away), its sounds, a face just added
@@ -81,20 +81,68 @@ local rec = Custom.Insert(KIND, { text = "at the pier" }, WHERE)
 Check(rec ~= nil, "setup: a free card written")
 
 --------------------------------------------------------------------------
-Section("the rows in three groups, a faint rule between")
+Section("the rows in three groups, air between and no rule")
 
 do
     local view, rows = Edit(KIND, rec)
-    Eq(#view.ruleAt, 2, "two rules: between what, who and the page")
-    for i = 1, 2 do Check(view.rules[i]:IsShown(), "rule " .. i .. " shown") end
-    -- (the text's ruled area: its middle's padAt, its rows' height)
-    local textFoot = rows.text.scroll.padAt[2] + rows.text.shown * CardSheet.WRITE.pitch / 2
-    Check(view.ruleAt[1] > textFoot and view.ruleAt[1] < rows.people.box.padAt[2] - 10,
-        "the first rule in the air between the words and who was there")
-    Check(view.ruleAt[2] > rows.mob.add.padAt[2] + 11 and view.ruleAt[2] < rows.caption.flag.padAt[2],
-        "the second between the strips and the caption's box")
+    -- (26 Nov, in the client: the short centred rules looked displaced; gone)
+    Eq(view.rules, nil, "no rules made")
+    Eq(view.ruleAt, nil, "none laid")
     Eq(rows.mob.add.padAt[2] - rows.people.box.padAt[2], BEAT.within, "close within a group")
     Eq(rows.caption.flag.padAt[2] - rows.mob.add.padAt[2], BEAT.between, "apart between two")
+    view:Hide()
+end
+
+--------------------------------------------------------------------------
+Section("the labels' column as wide as its widest label; a hint ends at its line")
+
+do
+    local LABEL, SHEET = CardSheet.LABEL, CardSheet.SHEET
+    local M = SHEET.margin
+    local view, rows = Edit(KIND, rec)
+    Eq(view.col, SHEET.label, "short labels: the narrowest column")
+    Eq(view.W, SHEET.w, "and the slip as it was")
+    local function LineLeft(row) return row.box.padAt[1] - row.box:GetWidth() / 2 end
+    -- A longer label (a translation's): the column and the slip widen, the
+    -- line keeps its width and starts past the label.
+    local label = rows.people.label
+    local was = label:GetText()
+    label:SetText("QUI ETAIT DONC LA")
+    view, rows = Edit(KIND, rec)
+    local wide = label:GetUnboundedStringWidth() + 2
+    Eq(view.col, wide + LABEL.gap, "the column from the widest label")
+    Eq(view.W, 2 * M + view.col + SHEET.line, "the slip as much wider")
+    Eq(rows.people.box:GetWidth(), SHEET.line, "the line keeps its width")
+    Check(LineLeft(rows.people) >= M + wide + LABEL.gap - 0.01, "the line starts past the label, with air")
+    Eq(LineLeft(rows.text), LineLeft(rows.people), "every line on one column")
+    -- Longer than the column may be: it wraps inside it.
+    label:SetText("LES GENS QUI ETAIENT LA AVEC MOI")
+    view, rows = Edit(KIND, rec)
+    Eq(view.col, LABEL.most, "the column at its most")
+    Eq(label:GetWidth(), LABEL.most - LABEL.gap, "the label held to the column, to wrap")
+    Check(LineLeft(rows.people) >= M + LABEL.most - 0.01, "the line still past it")
+    label:SetText(was)
+    view:Hide()
+    view, rows = Edit(KIND, rec)
+    Eq(view.W, SHEET.w, "back to the narrowest with the label as it was")
+    -- The creature's line: its hint held by both ends of the line, one line
+    -- cut short, and the line ending before Remove.
+    -- (26 Nov, in the client: "As the game names it" ran under the R of Remove)
+    Click(rows.mob.add.link)
+    local box, off = rows.mob.box, rows.mob.off
+    Eq(box.hint:GetNumPoints(), 2, "the hint held at both ends")
+    Eq(select(1, box.hint:GetPoint(1)), "LEFT", "by its left")
+    Eq(select(1, box.hint:GetPoint(2)), "RIGHT", "and its right")
+    Eq(box.hint.recorded.calls.SetWordWrap[1], false, "on one line, cut short")
+    Check(box.padAt[1] + box:GetWidth() / 2 <= off.padAt[1] - off:GetWidth() / 2,
+        "the line ends before Remove begins")
+    Check(off.padAt[1] + off:GetWidth() / 2 <= view.W - M + 4.01, "Remove inside the margin (its button 2 px past its words)")
+    local items = rows.item
+    Click(items.add.link)
+    Check(items.box.padAt[1] + items.box:GetWidth() / 2 <= items.off.padAt[1] - items.off:GetWidth() / 2,
+        "the item's line too")
+    Eq(items.box.hint:GetNumPoints(), 2, "and its hint held")
+    Eq(rows.people.box.hint:GetNumPoints(), 2, "who was there's hint held too")
     view:Hide()
 end
 
@@ -120,8 +168,7 @@ do
     Check(close ~= nil, "setup: a close call written")
     local view, rows = Edit("close", close)
     Eq(view.kind, "close", "setup: its form")
-    Eq(#view.ruleAt, 0, "no rules")
-    for _, rule in ipairs(view.rules) do Check(not rule:IsShown(), "no rule left from the free card") end
+    Eq(view.W, CardSheet.SHEET.w, "its slip as wide as ever")
     Check(not view.preview:IsShown(), "no card beside it")
     Eq(rows.foeLevel.box.padAt[2] - rows.name.box.padAt[2], 30, "its rows a row apart, as ever")
     Eq(view.remove.padAt[2], view.save.padAt[2], "its Delete on the foot too")
@@ -406,4 +453,132 @@ do
     Check(not card.link:IsMouseClickEnabled(), "nor the name")
     view:Hide()
     Custom.Remove(boots)
+end
+
+--------------------------------------------------------------------------
+Section("the creature's line taken from the target")
+
+do
+    -- (with the mouse: the line added takes the cursor after it is filled)
+    mock.pad.ui, mock.pad.enabled, mock.pad.devices = false, false, {}
+    mock.fire("GAME_PAD_ACTIVE_CHANGED", false)
+    local VERMIN = "Creature-0-1-2-3-3100-0000000001"
+    local NPC = { guid = VERMIN, name = { "Kobold Vermin" }, isPlayer = false, hostile = true }
+    mock.creatureDisplays[3100] = 4711
+    local function Target(def)
+        mock.SetUnit("target", def)
+        mock.fire("PLAYER_TARGET_CHANGED")
+    end
+    local function Fresh()
+        local view, rows = Edit(KIND, rec)
+        if rows.mob.on then Click(rows.mob.off) end
+        return view, rows
+    end
+
+    -- An NPC targeted: the line added from its strip is its name.
+    mock.SetUnit("target", NPC)
+    local view, rows = Fresh()
+    Click(rows.mob.add.link)
+    Eq(rows.mob:Get(), "Kobold Vermin", "the target's name on the line added")
+    Check(view.watch.events.PLAYER_TARGET_CHANGED, "the target watched while the form is open")
+    Eq(view.preview.rec.npcID, 3100, "its npcID from the target, though no record knows it")
+    for _ = 1, 3 do mock.RunTimers() end
+    Eq(view.preview.rec.display, 4711, "and its picture, once read")
+    -- The cursor on it (the mouse's way): a retarget still replaces the
+    -- target's name, with the new creature's npcID and picture.
+    -- (26 Nov, in the client: "It should update on a retarget.")
+    Check(rows.mob.box:HasFocus(), "setup: the line has the cursor")
+    mock.creatureDisplays[3101] = 4712
+    local WORKER = { guid = "Creature-0-1-2-3-3101-0000000002", name = { "Kobold Worker" }, isPlayer = false }
+    Target(WORKER)
+    Eq(rows.mob:Get(), "Kobold Worker", "a retarget replaces the target's name, the cursor in the line")
+    Check(rows.mob.box:HasFocus(), "the cursor kept")
+    Eq(view.preview.rec.npcID, 3101, "the new creature's npcID")
+    Eq(view.preview.rec.display, nil, "the old picture gone till the new one is read")
+    for _ = 1, 3 do mock.RunTimers() end
+    Eq(view.preview.rec.display, 4712, "the new creature's picture")
+    -- A player, a pet or no target: the name stays.
+    Target({ guid = "Player-1-0000AAAA", name = { "Wenna" }, isPlayer = true })
+    Eq(rows.mob:Get(), "Kobold Worker", "a player targeted: as it was")
+    Target(nil)
+    Eq(rows.mob:Get(), "Kobold Worker", "the target cleared: as it was")
+    -- Something typed is never written over.
+    Type(rows.mob.box, "Plainstrider")
+    Target(NPC)
+    Eq(rows.mob:Get(), "Plainstrider", "what was typed stays")
+    -- Emptied by hand with the cursor in it: left for typing.
+    Type(rows.mob.box, "")
+    Target(WORKER)
+    Eq(rows.mob:Get(), "", "an empty line being written on is not touched")
+    -- Let go, empty: a new target fills it.
+    rows.mob.box:ClearFocus()
+    Target(NPC)
+    Eq(rows.mob:Get(), "Kobold Vermin", "an empty line filled as the target changes")
+    view:Hide()
+    Check(not view.watch.events.PLAYER_TARGET_CHANGED, "the target not watched once the form is put away")
+
+    -- A player targeted: nothing.
+    mock.SetUnit("target", { guid = "Player-1-0000AAAA", name = { "Wenna" }, isPlayer = true })
+    view, rows = Fresh()
+    Click(rows.mob.add.link)
+    Eq(rows.mob:Get(), "", "no player's name")
+    view:Hide()
+
+    -- A pet or a minion (player controlled): nothing. (UnitPlayerControlled
+    -- set here alone, so no other test's code finds it.)
+    _G.UnitPlayerControlled = function(token) return token == "target" end
+    mock.SetUnit("target", { guid = "Pet-0-1-2-3-416-0000000003", name = { "Grubthak" }, isPlayer = false })
+    view, rows = Fresh()
+    Click(rows.mob.add.link)
+    Eq(rows.mob:Get(), "", "no pet's name")
+    view:Hide()
+    mock.SetUnit("target", { guid = "Creature-0-1-2-3-3573-0000000004", name = { "Mana Spring Totem" }, isPlayer = false })
+    view, rows = Fresh()
+    Click(rows.mob.add.link)
+    Eq(rows.mob:Get(), "", "nor a totem's")
+    view:Hide()
+    _G.UnitPlayerControlled = nil
+
+    -- A secret name (identity restricted): nothing, and no error.
+    mock.SetUnit("target", { guid = VERMIN, name = mock.secret("Kobold Vermin"), isPlayer = false })
+    view, rows = Fresh()
+    Click(rows.mob.add.link)
+    Eq(rows.mob:Get(), "", "no secret name")
+    view:Hide()
+
+    -- A creature already saved on the card is never written over, nor is a
+    -- line not added (its strip stays a strip).
+    local fought = Custom.Insert(KIND, { text = "by the shore", mob = "Murloc Forager" }, WHERE)
+    view, rows = Edit(KIND, fought)
+    Check(rows.mob.on, "setup: the saved creature's line on")
+    Target(NPC)
+    Eq(rows.mob:Get(), "Murloc Forager", "the saved creature stays")
+    rows.mob.box:SetFocus()
+    Target({ guid = "Creature-0-1-2-3-3101-0000000002", name = { "Kobold Worker" }, isPlayer = false })
+    Eq(rows.mob:Get(), "Murloc Forager", "with the cursor in it too")
+    view:Hide()
+    view, rows = Fresh()
+    Target(NPC)
+    Check(not rows.mob.on and rows.mob:Get() == "", "a line not added is not added by the target")
+    view:Hide()
+    Custom.Remove(fought)
+
+    -- The pad: A on the strip fills it the same way.
+    mock.pad.ui, mock.pad.enabled, mock.pad.devices = true, true, { 1 }
+    mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+    local catcher = Pad.Catcher(ns.UI.JournalFrame())
+    mock.SetUnit("target", NPC)
+    view, rows = Fresh()
+    Pad.Refresh()
+    local scope = Pad.Top()
+    scope.focus:Focus("more:mob", "form")
+    mock.PadPress(catcher, "PAD1", true)
+    mock.PadPress(catcher, "PAD1", false)
+    Check(rows.mob.on, "A added the creature's line")
+    Eq(rows.mob:Get(), "Kobold Vermin", "with the target's name: the pad's way to one")
+    Check(not rows.mob.box:HasFocus(), "and no cursor till A")
+    Target({ guid = "Creature-0-1-2-3-3101-0000000002", name = { "Kobold Worker" }, isPlayer = false })
+    Eq(rows.mob:Get(), "Kobold Worker", "a retarget follows with the pad too")
+    view:Hide()
+    mock.SetUnit("target", nil)
 end

@@ -356,6 +356,7 @@ local function Look()
     local death, model = item.death, Model()
     -- Read already, or put down to someone else since: nothing to do.
     if death.display or death.npcID ~= item.npcID or not model then
+        if item.done then item.done(death.npcID == item.npcID and death.display or nil) end
         table.remove(looks, 1)
         return Look()
     end
@@ -364,6 +365,7 @@ local function Look()
     local display = item.tries > 0 and DisplayOf(model)
     if display or item.tries >= LOOK_TRIES then
         if display then Deaths.Display(death, item.npcID, display) end
+        if item.done then item.done(display) end
         table.remove(looks, 1)
         return Look()
     end
@@ -372,9 +374,11 @@ local function Look()
 end
 
 -- The display of the creature `death` is put down to, unless it has one.
-function Deaths.LookUp(death)
+-- `done(display)`, where given, is told once the looking is over (display
+-- nil where it never read): the free card's target (Features/Note/Kind.lua).
+function Deaths.LookUp(death, done)
     if not (death and death.npcID) or death.display then return end
-    looks[#looks + 1] = { death = death, npcID = death.npcID, tries = 0 }
+    looks[#looks + 1] = { death = death, npcID = death.npcID, tries = 0, done = done }
     if not looking then Look() end
 end
 
