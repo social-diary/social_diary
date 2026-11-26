@@ -796,8 +796,7 @@ Section("a row's words: short, and never its time again")
 -- (the user's, 18 Nov: "Tarren Mill, yesterday at…", "Dun Garok Soldier,
 -- 1% h…". A mark's `label` says the row; its day and time are the time
 -- column's, its tooltip says the rest.)
-Eq(ns.Campfire.Label({ subZone = "Tarren Mill" }), "Tarren Mill", "a campfire's row: not its place alone")
-Eq(ns.Campfire.Label({}), "A campfire", "a campfire with no place to name")
+Eq(ns.Campfire.Label(), "Campfire", "a campfire's row: not what it is")
 Eq(ns.CloseCalls.Label({ name = "Dun Garok Soldier", pct = 1 }), "Dun Garok Soldier, 1%", "a close call's row lost its health")
 Eq(ns.Note.Label({ people = { { name = "Old Tom" } }, text = "fished off the pier all evening" }), "Old Tom",
     "a free card's row: more than who")
@@ -821,7 +820,8 @@ do
                         Check(item.label:find("%d+%%$") ~= nil and not item.label:find("health", 1, true),
                             "a close call's row not short, with its health: " .. item.label)
                     elseif m.kind == "campfire" then
-                        Eq(item.label, ns.Campfire.Label(m.campfire), "a campfire's row not its place")
+                        Check(item.label:find("^Campfire") ~= nil and not item.label:find(m.campfire.subZone or "\0", 1, true),
+                            "a campfire's row names its place: " .. item.label)
                     end
                 end
             end

@@ -88,12 +88,11 @@ function Campfire.Describe(fire)
 end
 
 -- A row of the ticklist ("Choose what's on this page", the mark's `label`):
--- the place alone, "Lushwater Oasis", or "A campfire" with none to name. The
--- list's time column tells two sittings at one fire apart, so the menu's
--- day and time (Describe) would only say it twice and cut the place short.
-function Campfire.Label(fire)
-    local sub = fire and fire.subZone
-    return type(sub) == "string" and sub ~= "" and sub or L["A campfire"]
+-- "Campfire", what it is. Not its place (the user, 26 Nov: a subzone in the
+-- list reads like a stop, not a fire); the list's time column tells two
+-- sittings apart, the tooltip says where.
+function Campfire.Label()
+    return L["Campfire"]
 end
 
 -- The caption's words. `said.campfire` (true): the plate's slip ("sat by a
