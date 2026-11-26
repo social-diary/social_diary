@@ -465,9 +465,10 @@ local function Died(guid)
     end
 end
 
--- Neither counts a Feign Death (ns.Feigning, issue #33).
+-- Neither counts a Feign Death (ns.Feigning, issue #33), and PLAYER_DEAD
+-- counts no death the client told again (ns.FreshDeath, issue #74).
 ns.On("PLAYER_DEAD", function()
-    if ns.Feigning("player") then return end
+    if not ns.FreshDeath() then return end
     Died(ns.ownGUID)
 end)
 

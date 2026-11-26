@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- A death to another player is no longer written down twice (#74)
+
 ## [4.2.6]
 
 This Update makes your save files around 60 to 80% smaller, and a new _Memory_ setting caps how many strangers the diary keeps.

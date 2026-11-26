@@ -253,3 +253,89 @@ Check(told[2] and told[2].death == told[1].death, "the recap told another death'
 Eq(told[2] and told[2].killer.guid, FOE, "the recap's killer told")
 ns.Off("SD_YOU_DIED", Heard)
 ns.Off("SD_DEATH_RECAP", Heard)
+
+--------------------------------------------------------------------------
+Section("one death, told more than once (issue #74)")
+
+-- The client tells one death twice at the moment, again at the release
+-- and once more after a resurrection: one fight, one death on the route.
+-- A real death after a revive still counts, a quick one too.
+local function Deaths() return ns.Interactions.Fights(FOE).deaths end
+local function Crosses() return #ns.Deaths.List(ns.Journey.Kept()) end
+local function Marks()
+    local n = 0
+    for _, m in ipairs(ns.Journey.Kept().marks or {}) do
+        if m.kind == "fight" and m.outcome == "lost" then n = n + 1 end
+    end
+    return n
+end
+local function Killed(spell)
+    recaps.latest = Blow(FOE, "Romulus", mock.now, spell)
+    mock.inCombat = false
+    mock.fire("PLAYER_REGEN_ENABLED")
+end
+
+ns.db.settings.keepRoute = true
+ns.Journey.Begin(ns.ownGUID, mock.now, 38, 1424)
+Check(ns.Journey.Kept(), "the route is not kept in this test")
+local deaths, crosses, marks = Deaths(), Crosses(), Marks()
+mock.now = mock.now + 600
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.inCombat = true
+mock.SetUnit("target", HOSTILE)
+mock.dead = true
+mock.fire("PLAYER_DEAD")
+mock.fire("PLAYER_DEAD")
+Killed("Shadow Word: Death")
+Eq(Deaths(), deaths + 1, "the double PLAYER_DEAD wrote two fights")
+Eq(Marks(), marks + 1, "the double PLAYER_DEAD drew two fight marks")
+Eq(Crosses(), crosses + 1, "the double PLAYER_DEAD put two deaths on the route")
+
+-- The spirit released: PLAYER_ALIVE as a ghost, and PLAYER_DEAD again.
+mock.now = mock.now + 20
+mock.dead, mock.ghost = false, true
+mock.fire("PLAYER_ALIVE")
+mock.fire("PLAYER_DEAD")
+-- A /reload on the way back, then the corpse reached.
+mock.fire("PLAYER_ENTERING_WORLD")
+mock.fire("PLAYER_DEAD")
+mock.now = mock.now + 60
+mock.ghost = false
+mock.fire("PLAYER_UNGHOST")
+mock.fire("PLAYER_ALIVE")
+-- And the one just after a revive, the user reading alive.
+mock.now = mock.now + 2
+mock.fire("PLAYER_DEAD")
+mock.RunTimers()
+Eq(Deaths(), deaths + 1, "a death told again was written again")
+Eq(Crosses(), crosses + 1, "a death told again went on the route again")
+
+-- Killed again a few seconds after the revive (a soulstone, a res in the
+-- middle of the fight): reading dead, a death of its own.
+mock.now = mock.now + 3
+mock.inCombat = true
+mock.dead = true
+mock.fire("PLAYER_DEAD")
+Killed("Shadow Word: Death")
+Eq(Deaths(), deaths + 2, "a real death soon after a revive was lost")
+Eq(Crosses(), crosses + 2, "a real death soon after a revive left the route")
+
+-- PLAYER_ALIVE while still lying dead (after a loading screen) is no
+-- revive: the release that follows is still the same death.
+mock.fire("PLAYER_ALIVE")
+mock.fire("PLAYER_DEAD")
+Eq(Crosses(), crosses + 2, "PLAYER_ALIVE while dead counted as a revive")
+
+-- Resurrected by a player, then a fight and a death much later.
+mock.dead = false
+mock.fire("PLAYER_ALIVE")
+mock.now = mock.now + 600
+mock.fire("PLAYER_REGEN_DISABLED")
+mock.inCombat = true
+mock.dead = true
+mock.fire("PLAYER_DEAD")
+Killed("Backstab")
+Eq(Deaths(), deaths + 3, "a later death was taken for a repeat")
+Eq(Marks(), marks + 3, "a later death drew no fight mark")
+mock.dead = false
+mock.fire("PLAYER_ALIVE")
