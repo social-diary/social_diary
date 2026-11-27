@@ -25,6 +25,17 @@ local FRIEND = Person(1, "Odalric")
 ns.Diary.Add(FRIEND, { source = "test" })
 local STRANGER, OTHER = Person(2, "Wenna"), Person(3, "Pell")
 
+-- A kind with a switch of its own on the Toasts page: registered before
+-- the page is first built, as a feature's is (the features load first).
+-- Its setting is given no value here: registering gives it its default.
+local LABELLED = "testlabelled"
+Toast.RegisterKind(LABELLED, {
+    setting = "testLabelledToasts",
+    label = "Test labelled switch",
+    snapshot = function(guid) return { name = "Labelled" } end,
+    text = function(snap) return { heading = "Test labelled", name = snap.name, stories = { "Labelled." } } end,
+})
+
 -- The kind under test: everything it was asked, and whether it is due.
 local due, asked, snapped = true, 0, 0
 local KIND = "testmade"
@@ -244,3 +255,136 @@ Eq(card.name:GetText(), "ODALRIC TINKERLY", "the reunion's name")
 ns.UI.Reunion(FRIEND)
 Eq(#Toast.queue, 0, "the cooldown did not hold the reunion")
 Clear()
+
+--------------------------------------------------------------------------
+Section("the master switch silences every toast")
+
+Eq(ns.SettingDefault("showToasts"), true, "the master switch is not on by default")
+Eq(ns.Setting("showToasts"), true, "the master switch is not on")
+Eq(ns.SettingDefault("testLabelledToasts"), true, "a kind's setting got no default")
+Eq(ns.Setting("testLabelledToasts"), true, "a kind's setting is not on by default")
+Check(not ns.IsAccountSetting("testLabelledToasts"), "a kind's setting is the account's")
+
+ns.db.settings.showToasts = false
+ns.UI.Reunion(FRIEND)
+ns.Fire("SD_TOAST", KIND, STRANGER, "boots")
+ns.Fire("SD_TOAST", LABELLED, OTHER)
+Eq(Showing(), nil, "a toast showed with the master switch off")
+Eq(#Toast.queue, 0, "a toast waits with the master switch off")
+Eq(ns.db.meta.greeted[FRIEND], nil, "a silenced reunion started the cooldown")
+ns.db.settings.showToasts = true
+ns.UI.Reunion(FRIEND)
+Check(Showing() and Showing().guid == FRIEND, "the reunion did not come back with the master switch")
+Clear()
+
+--------------------------------------------------------------------------
+Section("a kind's own switch silences only that kind")
+
+ns.db.settings.testLabelledToasts = false
+ns.Fire("SD_TOAST", LABELLED, OTHER)
+Eq(Showing(), nil, "a kind switched off showed")
+ns.UI.Reunion(FRIEND)
+ns.Fire("SD_TOAST", KIND, STRANGER, "boots")
+Eq(Showing() and Showing().guid, FRIEND, "the reunion went with a kind's switch")
+Eq(#Toast.queue, 1, "another kind went with a kind's switch")
+ns.db.settings.testLabelledToasts = true
+Clear()
+
+--------------------------------------------------------------------------
+Section("a saved file from before the switches reads as on")
+
+-- As saved by an older build: neither key in the character's file.
+SocialDiaryCharDB.settings.showToasts = nil
+SocialDiaryCharDB.settings.testLabelledToasts = nil
+ns.InitDB()
+Eq(SocialDiaryCharDB.settings.showToasts, true, "the master switch was not filled in")
+Eq(SocialDiaryCharDB.settings.testLabelledToasts, true, "a kind's switch was not filled in")
+Eq(SocialDiaryDB.settings.showToasts, nil, "the master switch went to the account's file")
+ns.UI.Reunion(FRIEND)
+ns.Fire("SD_TOAST", LABELLED, OTHER)
+Eq(Showing() and Showing().guid, FRIEND, "a reunion did not show from an older file")
+Eq(Toast.queue[1] and Toast.queue[1].kind, LABELLED, "a kind's card did not queue from an older file")
+Clear()
+
+--------------------------------------------------------------------------
+Section("the Toasts page: the master over everything, a switch per labelled kind")
+
+ns.UI.ShowJournal()
+ns.UI.SetJournalView("settings")
+local book = ns.UI.JournalFrame()
+local P = ns.UI.SettingsPage()
+local function ShowAll(frame)
+    frame:Show()
+    for _, child in ipairs({ frame:GetChildren() }) do ShowAll(child) end
+end
+ShowAll(P)
+P:ShowSection("toasts")
+P:Refresh()
+
+Check(P.showToasts and P.showToasts.parent == P.panes.toasts, "the master switch is not on the Toasts page")
+local box = P.kindToasts[LABELLED]
+Check(box and box.parent == P.panes.toasts, "a labelled kind has no switch on the Toasts page")
+Eq(box.label:GetText(), "Test labelled switch", "the kind's switch said other words")
+Eq(P.kindToasts[KIND], nil, "a kind without a label got a switch")
+Eq(P.kindToasts.testplain, nil, "a kind without a setting got a switch")
+local n = 0
+for _ in pairs(P.kindToasts) do n = n + 1 end
+Eq(n, 1, "switches for kinds")
+
+-- Below the master in the column, and greyed out with it.
+Check(P.showToasts:GetChecked() and box:GetChecked(), "the switches not ticked")
+local under = { "toasts", "nearbyToasts", "toastCooldown", "foeToastsUncooled" }
+for _, name in ipairs(under) do Check(not P[name].unavailable, name .. " greyed with the master on") end
+Check(not box.unavailable, "a kind's switch greyed with the master on")
+P.showToasts:Click()
+Eq(ns.db.settings.showToasts, false, "the master switch did not write through")
+for _, name in ipairs(under) do Check(P[name].unavailable, name .. " not greyed with the master off") end
+Check(box.unavailable, "a kind's switch not greyed with the master off")
+P.showToasts:Click()
+Eq(ns.db.settings.showToasts, true, "the master switch did not come back")
+Check(not box.unavailable and not P.toasts.unavailable, "the switches stayed greyed")
+
+box:Click()
+Eq(ns.db.settings.testLabelledToasts, false, "a kind's switch did not write through")
+ns.Fire("SD_TOAST", LABELLED, OTHER)
+Eq(Showing(), nil, "a kind switched off on the page showed")
+box:Click()
+Eq(ns.db.settings.testLabelledToasts, true, "a kind's switch did not come back")
+
+--------------------------------------------------------------------------
+Section("the pad reaches the master and the kind's switch, and A ticks them")
+
+local Pad = ns.UI.Pad
+mock.pad.ui, mock.pad.enabled, mock.pad.devices = true, true, { 1 }
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+local catcher = Pad.Catcher(book)
+local function Press(key)
+    mock.PadPress(catcher, key, true)
+    mock.PadPress(catcher, key, false)
+end
+local function At() return Pad.Top().focus:Current() end
+local function Walk(test)
+    for _ = 1, 40 do
+        if test(At()) then return true end
+        Press("PADDDOWN")
+    end
+    return test(At())
+end
+Pad.Refresh()
+Eq(At().key, "nav:toasts", "the pad is not on Toasts")
+Press("PAD1")
+Eq(At().group, "pane", "A did not go into the Toasts settings")
+Eq(At().frame, P.showToasts, "the master switch is not the first the pad lands on")
+Press("PAD1")
+Eq(ns.db.settings.showToasts, false, "A did not untick the master switch")
+Press("PAD1")
+Eq(ns.db.settings.showToasts, true, "A did not tick the master switch again")
+Check(Walk(function(at) return at.frame == box end), "the pad never reached the kind's switch")
+Press("PAD1")
+Eq(ns.db.settings.testLabelledToasts, false, "A did not untick the kind's switch")
+Press("PAD1")
+Press("PAD2")
+Eq(At().key, "nav:toasts", "B did not go back to the sections")
+mock.pad.ui = false
+mock.fire("GAME_PAD_ACTIVE_CHANGED", false)
+ns.UI.CloseJournal()

@@ -29,7 +29,8 @@
 --                              and queues it with the reunions, behind the
 --                              same combat gate. None of a reunion's rules
 --                              apply (its switches, its cooldown, the
---                              quiet list): only the kind's own. An
+--                              quiet list): only the kind's own, under the
+--                              master switch every toast has. An
 --                              unregistered kind, or a GUID that is not a
 --                              player's, is dropped.
 --   SD_MATCH_CLOSED (match)    a battleground match ended, its board read

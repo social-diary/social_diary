@@ -55,7 +55,7 @@
 --   .heldDone            an onDone a fight held back, until the fight ends
 --   .Build               this file's; .Snapshot, .Text Words.lua's;
 --                        .Dismiss, .Hover, .Pump, .InCombat,
---                        .RegisterKind Queue.lua's
+--                        .RegisterKind, .Switches Queue.lua's
 
 local addonName, ns = ...
 

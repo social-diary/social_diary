@@ -18,18 +18,38 @@ local INDENT = Kit.INDENT
 local function BuildToasts(pane, c)
     local page = SettingsUI.page
 
+    -- First the master switch: every toast at once, the reunions' and the
+    -- features' kinds of card (Core/Reunions.lua, UI/Windows/Reunion/
+    -- Queue.lua). Everything under it greys out while it is off.
+    c:Heading(L["When they show"])
+    page.showToasts = Switch(c, L["Show toasts"], "showToasts")  -- COPY: the master switch over every toast
+    local function On() return Saved().showToasts end
+    local function Reunions() return On() and (Saved().toasts or Saved().nearbyToasts) end
+
     -- Two switches, neither under the other: nearby toasts without the
     -- group ones is a fair thing to want. The cooldown is both kinds'.
-    c:Heading(L["When they show"])
     page.toasts = Switch(c, L["Show a toast when someone from your diary joins your group"], "toasts")
+    DependsOn(page.toasts, On)
     page.nearbyToasts = Switch(c, L["Show a toast when someone from your diary comes into view"],
         "nearbyToasts")
+    DependsOn(page.nearbyToasts, On)
     page.toastCooldown = Number(c, L["At most one toast per person every"], L["min"],
         "toastCooldownMinutes", 1, 720)
-    DependsOn(page.toastCooldown, function() return Saved().toasts or Saved().nearbyToasts end)
+    DependsOn(page.toastCooldown, Reunions)
     page.foeToastsUncooled = Switch(c, L["Ignore toast cooldown for foes"], "foeToastsUncooled", INDENT,
         nil, L["For World PVP e.g."])
-    DependsOn(page.foeToastsUncooled, function() return Saved().toasts or Saved().nearbyToasts end)
+    DependsOn(page.foeToastsUncooled, Reunions)
+
+    -- A switch for each feature's kind of card that brings one (a
+    -- `setting` and a `label`, Toast.RegisterKind), in the order they
+    -- registered: the features load before this page is first built.
+    -- Core names none of them; the words are the feature's.
+    page.kindToasts = {}
+    for _, spec in ipairs(ns.UI.Toast.Switches()) do
+        local box = Switch(c, spec.label, spec.setting)
+        DependsOn(box, On)
+        page.kindToasts[spec.kind] = box
+    end
 
     -- The book closes so the card can be seen where it lies, and opens
     -- on this page again once it is placed (UI/Windows/Reunion/Placing.lua).

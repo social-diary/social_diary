@@ -68,6 +68,8 @@ end
 function Reunions.Due(guid, reason, now)
     guid = ns.SafeGUID(guid)
     if not guid then return nil end
+    -- The master switch, over both of a reunion's own and the cooldown.
+    if not ns.Setting("showToasts") then return nil end
 
     local against = false
     if reason == "match" then

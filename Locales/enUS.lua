@@ -1843,6 +1843,7 @@ ns.Locale.Add("enUS", {
     ["Sounds"] = "Sounds",
     -- UI/Settings/Sections/Toasts.lua
     ["When they show"] = "When they show",
+    ["Show toasts"] = "Show toasts",
     ["Show a toast when someone from your diary joins your group"] = "Show a toast when someone from your diary joins your group",
     ["Show a toast when someone from your diary comes into view"] = "Show a toast when someone from your diary comes into view",
     ["At most one toast per person every"] = "At most one toast per person every",

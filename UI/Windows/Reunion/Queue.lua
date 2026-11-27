@@ -231,8 +231,18 @@ end)
 --           -- `toasts` / `nearbyToasts` switches, nor the battleground's
 --           -- hush; a kind that wants one asks it here.
 --       setting = "someKey",                               -- optional
---           -- a settings key (Core/DB.lua's defaults, true there) that
---           -- turns the kind off when false.
+--           -- a per-character settings key of the kind's own that turns
+--           -- it off when false. On by default: registering gives it the
+--           -- default true (ns.RegisterSettingDefault, Core/DB.lua), so
+--           -- the feature never touches Core/DB.lua for it, and a saved
+--           -- file from before the kind existed reads as on. Under the
+--           -- master switch (`showToasts`), as every toast is.
+--       label = L["..."],                                  -- optional
+--           -- the switch's words on Settings' Toasts page: a kind with
+--           -- both `setting` and `label` gets a switch there, under the
+--           -- master one, in the order the kinds registered
+--           -- (UI/Settings/Sections/Toasts.lua). Without a label the
+--           -- setting is still read, but only the feature can change it.
 --       key = function(guid, data) ... end,                -- optional
 --           -- what tells two cards of this kind about the same person
 --           -- apart: the same (kind, guid, key) already in line or
@@ -270,6 +280,9 @@ local kinds = ns.Registry.New({
         if spec.setting ~= nil and type(spec.setting) ~= "string" then
             return false, "Toast.RegisterKind: setting must be a settings key"
         end
+        if spec.label ~= nil and type(spec.label) ~= "string" then
+            return false, "Toast.RegisterKind: label must be a string"
+        end
         return true
     end,
 })
@@ -277,6 +290,17 @@ Toast.kinds, Toast.kindOrder = kinds.specs, kinds.list
 
 function Toast.RegisterKind(kind, spec)
     kinds:Add(kind, spec)
+    if spec.setting then ns.RegisterSettingDefault(spec.setting, true) end
+end
+
+-- The kinds that bring a switch for the Toasts page: a `setting` and a
+-- `label`, in the order they registered.
+function Toast.Switches()
+    local out = {}
+    for _, spec in ipairs(kinds.list) do
+        if spec.setting and spec.label then out[#out + 1] = spec end
+    end
+    return out
 end
 
 local function KeyOf(spec, guid, data)
@@ -292,6 +316,7 @@ local function Raise(kind, guid, data)
     local spec = kinds:Get(kind)
     guid = ns.SafeGUID(guid)
     if not spec or not guid then return end
+    if not ns.Setting("showToasts") then return end
     if spec.setting and not ns.Setting(spec.setting) then return end
 
     local key = KeyOf(spec, guid, data)

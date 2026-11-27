@@ -182,6 +182,11 @@ local CHARACTER_SETTINGS = {
     -- for this many of the newest matches; older ones roll up to their
     -- header and the diary's people (Core/Matches.lua, Jan 9 Nov 2026).
     battlegroundBoards = 100,
+    -- Every toast at once, the reunions' and the features' kinds of card
+    -- (Core/Reunions.lua, UI/Windows/Reunion/Queue.lua): off, none shows,
+    -- whatever the switches under it say. New: an older file has no value
+    -- and is given this one, so it reads as on (no step needed).
+    showToasts = true,
     toasts = true,      -- REU-1
     nearbyToasts = true,  -- REU-5
     toastCooldownMinutes = 10,  -- at most one toast per person this often
@@ -491,6 +496,23 @@ end
 -- Whether a setting is the account's rather than this character's.
 function ns.IsAccountSetting(key)
     return ACCOUNT_SETTINGS[key] ~= nil
+end
+
+-- A per-character default a registry brings for a key of its own: a
+-- feature's kind of toast card has its switch (Toast.RegisterKind,
+-- UI/Windows/Reunion/Queue.lua), and core must not name the feature in
+-- CHARACTER_SETTINGS to give it one. It goes into that table all the
+-- same, so the table stays the one list of which file a key lives in
+-- (.claude/rules/settings.md) and SettingDefault knows it. Registered as
+-- the files load, before InitDB, it is filled in with the rest; registered
+-- later (a test), it is filled in now where the character has no value.
+-- A key the diary already has a default for keeps it.
+function ns.RegisterSettingDefault(key, value)
+    if type(key) ~= "string" or value == nil then return end
+    if ACCOUNT_SETTINGS[key] ~= nil or CHARACTER_SETTINGS[key] ~= nil then return end
+    CHARACTER_SETTINGS[key] = value
+    local settings = character and character.settings
+    if type(settings) == "table" and settings[key] == nil then settings[key] = value end
 end
 
 -- A setting that must be a positive number to mean anything (a window, a
