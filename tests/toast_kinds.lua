@@ -95,10 +95,23 @@ Eq(card.name:GetText(), "WENNA TINKERLY", "the kind's name")
 Eq(card.lines[1]:GetText(), "Test story about the boots.", "the kind's story")
 Check(not card.tags:IsShown() and not card.relationship:IsShown(), "a reunion's tags or relationship on a kind's card")
 Check(not card.who:IsShown(), "a who line the kind did not give")
+-- Its tooltip says where the click goes: a stranger's glimpse, their page
+-- pencilled in (UI/Windows/Reunion/Toast.lua; the witness card's words).
+card.button.scripts.OnEnter(card.button)
+Eq(GameTooltip.text, ns.UI.PersonText.GLIMPSE.click, "the card's click line for a stranger")
+card.button.scripts.OnLeave(card.button)
 -- A click opens the stranger's glimpse, not an error.
 card.button.scripts.OnClick(card.button, "LeftButton")
 Eq(Showing(), nil, "the click did not put the card away")
 ns.UI.CloseJournal()
+Clear()
+
+-- Someone in the diary: their page.
+ns.Fire("SD_TOAST", KIND, FRIEND, "boots")
+Eq(Showing() and Showing().guid, FRIEND, "the friend's card is not up")
+card.button.scripts.OnEnter(card.button)
+Eq(GameTooltip.text, "Click to open their page in the diary", "the card's click line for a diary person")
+card.button.scripts.OnLeave(card.button)
 Clear()
 
 -- Nothing to snapshot, nothing shown; unknown kinds and non-players dropped.
@@ -327,9 +340,12 @@ Check(box and box.parent == P.panes.toasts, "a labelled kind has no switch on th
 Eq(box.label:GetText(), "Test labelled switch", "the kind's switch said other words")
 Eq(P.kindToasts[KIND], nil, "a kind without a label got a switch")
 Eq(P.kindToasts.testplain, nil, "a kind without a setting got a switch")
+-- (and Crafter detection's, the one feature's kind with a label today:
+-- Features/CrafterDetection/Toast.lua)
+Check(P.kindToasts.crafter and P.kindToasts.crafter.parent == P.panes.toasts, "the crafter kind has no switch")
 local n = 0
 for _ in pairs(P.kindToasts) do n = n + 1 end
-Eq(n, 1, "switches for kinds")
+Eq(n, 2, "switches for kinds")
 
 -- Below the master in the column, and greyed out with it.
 Check(P.showToasts:GetChecked() and box:GetChecked(), "the switches not ticked")

@@ -40,7 +40,11 @@ local best, bestScore
 for _, at in ipairs(T.DiaryPages(page)) do
     T.OpenDiaryPage(page, at.i, at.k)
     local plate = page.mode == "plates" and page.plates[1]
-    if plate and plate:IsShown() then
+    -- (a level's, not a week's: the cap's last week has the most marks on
+    -- its Barrens since Crafter detection's needles, Features/
+    -- CrafterDetection/Dev.lua, 27 Nov, and its walk below ends on a
+    -- person's mark, whose Y is their menu, not a card's slip)
+    if plate and plate:IsShown() and at.e.level then
         YourDiary.OpenFull(plate.mapID)
         local score = #page.plates[1]:Marks()
         -- (Of equals the later: level 15's map, whose marks lie further apart than a

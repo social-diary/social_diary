@@ -376,6 +376,11 @@ Section("after the reunion toast: what a connection reads")
 -- first name only gave the user bracers, worn now, and comes into view:
 -- the toast names them as the diary knew them, the connection reads their
 -- surname after.
+-- (the crafter toasts the sections above raised, once their kind is
+-- registered (Toast.lua), shown and put away first: the reunion's card is
+-- the one this looks at)
+for _ = 1, 60 do mock.RunTimers() end
+wipe(ns.UI.Toast.queue)
 ns.Characters.Forget(NUMA.guid)
 wipe(ns.db.meta.greeted)
 ns.Characters.Observe(NUMA.guid, { first = "Numa" })

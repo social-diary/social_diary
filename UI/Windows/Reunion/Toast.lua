@@ -232,8 +232,16 @@ local function Build()
         if Toast.placing then return { { L["Drag to move it"], 1, 1, 1 } } end
         local showing = Toast.showing
         if not showing then return nil end
+        -- A stranger's card (a feature's kind, Toast.RegisterKind) opens
+        -- their glimpse, their page pencilled in, and says so, as the
+        -- witness card does (Features/Witnesses/Card.lua).
+        local click = L["Click to open the diary"]
+        if showing.guid then
+            click = ns.Diary.IsDiary(showing.guid) and L["Click to open their page in the diary"]
+                or ns.UI.PersonText.GLIMPSE.click
+        end
         return {
-            { showing.guid and L["Click to open their page in the diary"] or L["Click to open the diary"], 1, 1, 1 },
+            { click, 1, 1, 1 },
             { L["Right-click to put it away"], 0.75, 0.75, 0.75 },
         }
     end, "ANCHOR_BOTTOM", function(_, over) Toast.Hover(over) end)

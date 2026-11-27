@@ -494,6 +494,10 @@ Features/Classes/Hunter/Card.lua
 Features/Classes/Hunter/Capture.lua
 # Crafter detection: its kind here, its capture after Capture/ (below).
 Features/CrafterDetection/Kind.lua
+Features/CrafterDetection/Text.lua
+Features/CrafterDetection/Mark.lua
+Features/CrafterDetection/Card.lua
+Features/CrafterDetection/Toast.lua
 
 Capture/Menus.lua
 Capture/Group.lua

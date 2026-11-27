@@ -7,6 +7,11 @@
 --                the route (j.crafter), the connections found (j.craftMeets),
 --                the row on the person (`crafted`), and the readers both
 --                lists' prune and forget ask
+--   Text.lua     the words (CrafterDetection.WORDS), the tooltips, the
+--                person's phrase, the caption's tail and the level's prose
+--   Mark.lua     the needle and thread on the plates
+--   Card.lua     the card in the plate's margin (the hand-off drawn)
+--   Toast.lua    the toast card's kind ("crafter")
 --   Capture.lua  the crafts, the hand-offs (a trade, an auction sale), what
 --                the user got and from whom (a trade, an auction bought),
 --                the worn slots, meeting people, and the inspect queue
@@ -200,7 +205,7 @@ Journey.RegisterList("crafter", {
 --
 -- { t, mapID, x, y, guid, dir, id, link, how }, oldest first, the newest
 -- T.meets kept (Journey.Append). The moment that puts them on the plates
--- is registered with its mark (UI build, phase 8).
+-- is at the foot of this file.
 
 Journey.RegisterList("craftMeets", {
     cap = T.meets,
@@ -262,7 +267,41 @@ ns.Rows.Register("crafted", {
         return ns.UI.Format.You(row.me, item and Fmt(L["Wore the %s {you} made them"], item)
             or L["Wore what {you} made them"])
     end,
-    icon = "crafted",
+    -- The trade's own art (the signed proposal: a hand-off is an exchange,
+    -- and the timeline already draws one so), no art of its own.
+    icon = "trade",
 })
--- Placeholder art until the UI proposal decides it (phase 5b/8).
-ns.Style.AddArt("crafted", { "Interface\\Icons\\Trade_BlackSmithing" })
+
+--------------------------------------------------------------------------
+-- The recap's moment
+--------------------------------------------------------------------------
+--
+-- A connection where it was found, on Your Diary's plates (the signed
+-- proposal, .claude/ui-proposal/crafter-detection.md; the user, 27 Nov
+-- 2026: "weight 7/10", it opens a plate). Rank 3.5: under a death, a close
+-- call, luck and a witness (3), over a first visit (4), a dungeon's door
+-- (5), a campfire (5.5), a city trip (5.6) and a stay (6). Full, never
+-- light: its card goes in the margin. In a city it is a plate of its own,
+-- as anywhere, and offers the city trip's sheet no errand (the user: the
+-- trip keeps its sheet). Its order (65) puts it after the profession caps
+-- (60) and before the campfires (70) among the features' moments.
+--
+-- A connection is its person's moment too (`guid`, and `person`, Text.lua's
+-- CrafterDetection.PERSON, read when the moment is made, as a first someone
+-- gave is): Mark.lua's `join` keeps it with their marks where the diary
+-- knows them, so their margin note says it once. A stranger's stays its
+-- own. A record whose person was forgotten (PRV-3: `guid` cleared) keeps
+-- its needle and names nobody.
+--
+-- Its key tells two connections at one time apart by who and which item
+-- (a GUID and an item's id, never a name).
+ns.JourneyRecap.RegisterMoment("crafted", { order = 65, list = "craftMeets", field = "meet", rank = 3.5,
+    key = function(m)
+        local rec = m.meet or {}
+        return tostring(rec.guid or "") .. "/" .. tostring(rec.id or "")
+    end,
+    moment = function(j, rec, Own)
+        local map, x, y = Own(j, rec.mapID, rec.x, rec.y, rec.t)
+        return { kind = "crafted", t = rec.t, meet = rec, guid = rec.guid,
+            person = rec.guid and CrafterDetection.PERSON or nil }, map, x, y
+    end })

@@ -9,6 +9,9 @@
 - Auto-Add Players now follows rules you can create yourself
   - Each rule also can set a tag to the new entry, to find them in _People_
 - _Your Diary_ remembers your city trips: auctions, mail, crafting, quests and the gear you put on in town on one sheet
+- _Your Diary_ notices people wearing gear you made them
+  - And people who gave or sold you the gear you wear
+- _Toasts_ can now all be switched off at once
 
 ## [4.2.6]
 

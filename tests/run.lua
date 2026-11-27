@@ -121,6 +121,7 @@ local FILES = {
     "citytrips",
     "citytrips_ui",
     "crafter_detection",
+    "crafter_detection_ui",
     "duels",
     "you",
     "duels_ui",
