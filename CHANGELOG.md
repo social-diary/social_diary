@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changes
+
+- Zone and dungeon names now read with their article in Brazilian Portuguese
+
 ### Fixes
 
 - A death to another player is no longer written down twice (#74)
