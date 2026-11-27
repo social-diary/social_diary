@@ -267,7 +267,8 @@ end
 
 -- A group member's loot (the party's loot message, plain, probe 12 Oct):
 -- a hunted item they took is one the group's kills gave and the user could
--- not have (Hunts.Shared). The looter by their GUID, so the message's
+-- not have (Hunts.Shared; which leaves out what a corpse gives everyone a
+-- copy of, Hunts.EachOwn). The looter by their GUID, so the message's
 -- words in any language do not matter; "x3" after the link is three.
 ns.OnChat("CHAT_MSG_LOOT", function(text, _, guid)
     local j = Live()

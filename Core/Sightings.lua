@@ -160,6 +160,7 @@ function Sightings.Forget(guid)
         wipe(ns.db.sightings)
         wipe(encounters)
         for _, record in pairs(ns.db.characters) do record.sightingSummary = nil end
+        ns.Strangers.DropRows()
         return
     end
     ns.db.sightings[guid] = nil
@@ -223,12 +224,20 @@ end
 function Sightings.Rollup(now, days)
     local cutoff = ns.Cutoff(now, days)
 
+    -- The packed strangers with a row that old, unpacked first. So is
+    -- anyone with rows here and a line as well: asking for their record in
+    -- the loop would unpack them into the rows it is reading.
+    ns.Strangers.UnpackRolling(cutoff)
+    ns.Strangers.UnpackThose(ns.db.sightings)
+
     local rolled, touched = 0, 0
     for guid, rows in pairs(ns.db.sightings) do
         local first = 1
         while rows[first] and rows[first].time < cutoff do first = first + 1 end
 
-        if first > 1 then
+        -- Still packed: their line would not open. They are not forgotten,
+        -- so their rows wait rather than go with nothing to fold into.
+        if first > 1 and not ns.Strangers.Packed(guid) then
             local record = ns.db.characters[guid]
             if record then
                 record.sightingSummary = record.sightingSummary or {}
@@ -274,9 +283,9 @@ function Sightings.Latest(guid)
     }
 end
 
--- Rows and characters.
+-- Rows and characters, the packed strangers among them.
 function Sightings.Count()
-    local rows, characters = 0, 0
+    local _, characters, rows = ns.Strangers.Count()
     for _, list in pairs(ns.db.sightings) do
         rows = rows + #list
         characters = characters + 1
@@ -287,6 +296,8 @@ end
 -- Everything seen since `since`, newest first, one entry per character: the
 -- shape JNL-3's "recently nearby" and DIA-3's picker both want.
 function Sightings.Since(since)
+    ns.Strangers.UnpackSeen(since, math.huge)
+
     local list = {}
     for guid, rows in pairs(ns.db.sightings) do
         local row = LatestRow(rows)
@@ -382,6 +393,8 @@ function Sightings.Days()
         end
         for day in pairs(on) do people[day] = (people[day] or 0) + 1 end
     end
+    -- The packed strangers are counted as they are, not unpacked for a list of days.
+    ns.Strangers.Days(people, DayOf)
 
     local list = {}
     for start, count in pairs(people) do list[#list + 1] = { start = start, count = count } end
@@ -395,6 +408,9 @@ end
 function Sightings.OnDay(dayStart)
     local dayEnd = dayStart + DAY
     local list = {}
+
+    -- That day's packed strangers, unpacked first.
+    ns.Strangers.UnpackSeen(dayStart, dayEnd)
 
     for guid, rows in pairs(ns.db.sightings) do
         local best, hostile

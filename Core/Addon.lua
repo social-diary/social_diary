@@ -58,7 +58,7 @@ end
 
 -- A hunter's Feign Death fires PLAYER_DEAD (and UNIT_DIED for a group
 -- member) like a real death (issue #33): every death handler asks this
--- first. `unit` is a unit token, or a GUID for one that UNIT_DIED gives
+-- first (the user's own through ns.FreshDeath, Core/Events.lua). `unit` is a unit token, or a GUID for one that UNIT_DIED gives
 -- (no token for it: not feigning, as far as can be told).
 function ns.Feigning(unit)
     if type(unit) == "string" and unit:find("-", 1, true) then

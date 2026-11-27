@@ -143,6 +143,9 @@ end
 -- Everyone already seen often enough who would be added the next time they
 -- pass: the GUIDs, by name so the sheet can say a few.
 function AutoAdd.Waiting()
+    -- The packed strangers seen that often, unpacked first.
+    ns.Strangers.UnpackSeenOften(AutoAdd.SEEN_TIMES)
+
     local list = {}
     for guid in pairs(ns.db.sightings) do
         guid = Eligible(guid)

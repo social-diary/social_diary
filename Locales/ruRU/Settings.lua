@@ -123,7 +123,6 @@ ns.Locale.Add("ruRU", {
     ["Forgetting"] = "Забывание",
     ["Forget people outside the diary after"] = "Забывать людей вне дневника через",
     ["days"] = "дн.",
-    ["Imagine adding a stranger to your diary after you've met them many times already. This setting pre-saves stranger's data for this so interaction data is available even though they were always strangers. Data for people in your diary are kept indefinitely."] = "Представь, что незнакомца добавляют в дневник после множества встреч с ним. Эта настройка заранее сохраняет данные о незнакомцах, чтобы сведения об их встречах были под рукой, хотя они оставались незнакомцами. Данные о людях из дневника хранятся бессрочно.",
     ["Your data"] = "Твои данные",
     ["Share one diary between all my characters"] = "Один общий дневник для всех моих персонажей",
     ["Reload"] = "Перезагрузить",

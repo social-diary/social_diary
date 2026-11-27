@@ -41,7 +41,7 @@ Eq(Dungeons.Floors(999999), nil, "an unknown dungeon has floors")
 local credits = Dungeons.Credits()
 Eq(#credits, 1, "the art credits, each once")
 Check(credits[1].text:find("Santiago Reyes", 1, true), "the credit's text")
-Eq(#credits[1].dungeons, 4, "the dungeons the credit is for")
+Eq(#credits[1].dungeons, 9, "the dungeons the credit is for")
 
 --------------------------------------------------------------------------
 Section("bosses, and how many count")

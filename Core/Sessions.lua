@@ -692,8 +692,10 @@ end
 -- sessions and stretches too, or those would show a bare GUID. A death they
 -- caused keeps its killer, as Characters.Prune leaves it.
 function Sessions.PruneLeftovers()
+    -- Not someone whose line would not open (Core/Strangers.lua): they are
+    -- still on record, and stay until the line itself goes.
     local function Gone(guid)
-        return ns.db.characters[guid] == nil and not ns.Diary.IsDiary(guid)
+        return ns.db.characters[guid] == nil and not ns.Diary.IsDiary(guid) and not ns.Strangers.Packed(guid)
     end
 
     local changed = false

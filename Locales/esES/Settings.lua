@@ -123,7 +123,6 @@ ns.Locale.Add("esES", {
     ["Forgetting"] = "Olvido",
     ["Forget people outside the diary after"] = "Olvidar a quien no esté en el diario tras",
     ["days"] = "días",
-    ["Imagine adding a stranger to your diary after you've met them many times already. This setting pre-saves stranger's data for this so interaction data is available even though they were always strangers. Data for people in your diary are kept indefinitely."] = "Imagina que añades a tu diario a alguien que ya has visto muchas veces. Este ajuste guarda de antemano los datos de quienes no están en él, para que haya datos de sus encuentros aunque siempre fueran desconocidos. Los datos de las personas de tu diario se conservan sin límite.",
     ["Your data"] = "Tus datos",
     ["Share one diary between all my characters"] = "Compartir un diario entre todos mis personajes",
     ["Reload"] = "Recargar",

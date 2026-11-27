@@ -117,7 +117,7 @@ local function ReportDB()
     ns.Print("schema v%d, saved data %s this load", ns.db.schema,
         ns.dbRestored and "|cff40c040restored|r" or "|cffc04040not restored|r")
     ns.Print("characters %d, diary %d, sessions %d, instances %d",
-        Count(ns.db.characters), ns.Diary.Count(),
+        ns.Characters.Count(), ns.Diary.Count(),
         Count(ns.db.sessions), Count(ns.db.instances))
     local rows, characters = ns.Interactions.Totals()
     ns.Print("interactions %d row(s) across %d character(s), kept %d days",
@@ -198,6 +198,9 @@ local function ReportCharacters()
     end
     ns.Print("%d character%s observed%s.", n, n == 1 and "" or "s",
         n > 20 and " (first 20 shown)" or "")
+    -- Core/Strangers.lua: /sd sightings packed says more.
+    local packed = ns.CountKeys(ns.db.strangers)
+    if packed > 0 then ns.Print("%d more are packed strangers.", packed) end
 end
 
 -- A reunion toast now, to look at the card without waiting for someone to

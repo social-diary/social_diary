@@ -183,6 +183,15 @@ function ns.On(event, handler)
     list.live = list.live + 1
 end
 
+-- What follows an event once every handler of it has run. Logging out,
+-- the strangers are packed again (Core/Strangers.lua): last, so that
+-- whoever a handler still asked after is packed with the rest. The frame
+-- listens for these whoever else does (registered below, with the
+-- dispatch), so Off leaves them registered.
+local AFTER = {
+    PLAYER_LOGOUT = function() ns.Strangers.Close() end,
+}
+
 -- Removal leaves a `false` tombstone rather than compacting, so a handler may
 -- call Off on its own event from inside dispatch without disturbing the loop.
 -- Tombstones are bounded by the number of registrations and the whole list is
@@ -200,7 +209,7 @@ function ns.Off(event, handler)
 
     if list.live <= 0 then
         handlers[event] = nil
-        if not IsMessage(event) then frame:UnregisterEvent(event) end
+        if not IsMessage(event) and not AFTER[event] then frame:UnregisterEvent(event) end
     end
 end
 
@@ -348,7 +357,13 @@ local function Dispatch(event, ...)
     end
 end
 
-frame:SetScript("OnEvent", function(_, event, ...) Dispatch(event, ...) end)
+for event in pairs(AFTER) do frame:RegisterEvent(event) end
+
+frame:SetScript("OnEvent", function(_, event, ...)
+    Dispatch(event, ...)
+    local after = AFTER[event]
+    if after then Call(after, event) end
+end)
 
 -- One of the SD_* messages above, to every handler On registered for it, in
 -- registration order. A client event's name is refused: firing one by hand
@@ -397,6 +412,73 @@ function ns.Duelling(guid, grace)
     return true
 end
 
+--------------------------------------------------------------------------
+-- The user's death, told once (issue #74)
+--------------------------------------------------------------------------
+--
+-- The client tells one death more than once: PLAYER_DEAD twice at the
+-- moment, with one death recap behind both, again when the spirit is
+-- released, and once more just after a resurrection (Muddy Boots' probe
+-- runs on WoW Forever). Each told the deaths' capture of a new death: a
+-- second fight with the same player, a second cross on the route (#74:
+-- "Lost to ... twice", two cards). So a PLAYER_DEAD is a repeat when
+--   - the user still reads dead or a ghost and no revive has been seen
+--     since the death counted last (the double, the release), or
+--   - the user reads alive within REVIVED_ECHO seconds of a revive (the
+--     one after a resurrection).
+-- A revive is PLAYER_ALIVE reading neither dead nor a ghost (a
+-- resurrection, a soulstone; PLAYER_ALIVE also fires on a release and
+-- after loading screens while still lying dead, which are none) or
+-- PLAYER_UNGHOST (the corpse reached, the spirit healer). Entering combat
+-- proves the user alive as well. A login or /reload while dead counts as
+-- that death already told. Whatever cannot be read leaves it a new death,
+-- as it always was. Registered here, in Core, ahead of every listener of
+-- PLAYER_DEAD; each asks ns.FreshDeath() first.
+local REVIVED_ECHO = 10
+
+-- dead: a death was counted and no revive seen since. revived: when the
+-- last revive was seen. fresh: the verdict on the PLAYER_DEAD at hand.
+local own = { dead = false, revived = nil, fresh = true }
+
+-- true or false as the client reads the user, nil when it cannot be read.
+local function ReadsDead()
+    local value = ns.Plain(UnitIsDeadOrGhost("player"))
+    if type(value) == "boolean" then return value end
+    return nil
+end
+
+local function Revived()
+    own.dead, own.revived = false, ns.Now()
+end
+
+ns.On("PLAYER_DEAD", function()
+    own.fresh = false
+    if ns.Feigning("player") then return end
+    local dead = ReadsDead()
+    if dead == true and own.dead then return end
+    if dead == false and own.revived and ns.Now() - own.revived <= REVIVED_ECHO then return end
+    own.fresh, own.dead = true, true
+end)
+
+ns.On("PLAYER_ALIVE", function()
+    if ReadsDead() == false then Revived() end
+end)
+
+ns.On("PLAYER_UNGHOST", Revived)
+
+ns.On("PLAYER_REGEN_DISABLED", function() own.dead = false end)
+
+ns.On("PLAYER_ENTERING_WORLD", function()
+    own.dead = ReadsDead() == true
+end)
+
+-- Whether the PLAYER_DEAD being handled is a death of the user's to keep:
+-- not a Feign Death (ns.Feigning, issue #33) and not one told again. Only
+-- meaningful inside a PLAYER_DEAD handler.
+function ns.FreshDeath()
+    return own.fresh
+end
+
 ns.On("ADDON_LOADED", function(_, loaded)
     if loaded ~= addonName then return end
     ns.InitDB()
@@ -415,9 +497,21 @@ ns.On("PLAYER_LOGIN", function()
     -- Each on its own: a bad row in one must not stop the rest, login after
     -- login. The records' prune comes after the rows': a record goes once
     -- the rows that held on to it have.
-    for _, step in ipairs({ ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
+    -- Last, the strangers still tables are packed (Core/Strangers.lua):
+    -- those the roll-up unpacked and kept, a diary whose number is past
+    -- STEPS.diary[6] without having run it, or a save that never heard
+    -- the logout.
+    for _, step in ipairs({ ns.Strangers.Attach, ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
         ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune,
-        function() ns.Matches.Expire() ns.Matches.Rollup() end }) do
+        function() ns.Matches.Expire() ns.Matches.Rollup() end,
+        function()
+            local started = debugprofilestop and debugprofilestop()
+            local packed = ns.Strangers.Pack()
+            if packed > 0 then
+                ns.Debug("packed %d stranger(s)%s", packed,
+                    started and (" in %.0f ms"):format(debugprofilestop() - started) or "")
+            end
+        end }) do
         Call(step)
     end
     ns.Debug("v%s loaded. /sd opens the journal, /sd help lists commands.", ns.version)

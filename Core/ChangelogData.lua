@@ -7,6 +7,30 @@ local addonName, ns = ...
 
 ns.Changelog = {
     {
+        version = "4.2.6",
+        summary = "This Update makes your save files around 60 to 80% smaller, and a new _Memory_ setting caps how many strangers the diary keeps.",
+        groups = {
+            { heading = "Shiny new Things", entries = {
+                { text = "_Memory_ settings can now cap how many strangers are kept" },
+            } },
+            { heading = "Changes", entries = {
+                { text = "Strangers now take far less room in your save files" },
+            } },
+        },
+    },
+    {
+        version = "4.2.5",
+        summary = "This Update brings five more dungeons to the _Dungeon View_. A quest item everyone in your group loots, like a boss's head, no longer counts as a lucky drop in _Your Diary_.",
+        groups = {
+            { heading = "Changes", entries = {
+                { text = "_Dungeon View_ now knows five more dungeons and more default routes", sub = { { text = "Blackmaw Hold and The Shaper's Terrace maps are in beta" } } },
+            } },
+            { heading = "Fixes", entries = {
+                { text = "_Your Diary_ no longer calls quest items the whole group loots lucky" },
+            } },
+        },
+    },
+    {
         version = "4.2.4",
         summary = "This update brings support for Traditional Chinese.",
         groups = {
@@ -34,24 +58,6 @@ ns.Changelog = {
             } },
             { heading = "Fixes", entries = {
                 { text = "Quest drops are now only judged on looted items. Items that come from trading and mails are ignored for lucky / unlucky cards." },
-            } },
-        },
-    },
-    {
-        version = "4.2.1",
-        summary = "A small Update: people who ride a zeppelin or boat with you, or walk beside you into a new zone, no longer count as seen twice.",
-        groups = {
-            { heading = "Fixes", entries = {
-                { text = "Crossing a zone border no longer counts nearby people as seen twice", thanks = "OscillatorZ" },
-            } },
-        },
-    },
-    {
-        version = "4.2.0",
-        summary = "This Update brings the diary in Brazilian Portuguese.",
-        groups = {
-            { heading = "Shiny new Things", entries = {
-                { text = "Added Brazilian Portuguese to the diary’s language settings", thanks = "thiagocoutinhor" },
             } },
         },
     },

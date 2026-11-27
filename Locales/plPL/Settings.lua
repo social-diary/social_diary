@@ -140,7 +140,6 @@ ns.Locale.Add("plPL", {
     ["Forgetting"] = "Okres przechowywania",
     ["Forget people outside the diary after"] = "Ścieraj wpisy o nieznajomych po",
     ["days"] = "dni",
-    ["Imagine adding a stranger to your diary after you've met them many times already. This setting pre-saves stranger's data for this so interaction data is available even though they were always strangers. Data for people in your diary are kept indefinitely."] = "Dziennik zapisuje nieznajomych ołówkiem, aby po dodaniu postaci dało się wrócić do wcześniejszych spotkań. Wpisy o dodanych postaciach pozostają na stałe.",
     ["Your data"] = "Twoje dane",
     ["Share one diary between all my characters"] = "Prowadź jeden dziennik dla wszystkich postaci",
     ["Switching requires a reload."] = "Przełączanie wymaga przeładowania.",

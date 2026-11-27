@@ -66,6 +66,9 @@ function Characters.FindByName(name, surname)
     first = first:lower()
     if last then last = last:lower() end
 
+    -- The packed strangers of that name, unpacked first.
+    ns.Strangers.UnpackNamed(first)
+
     local match, hits = nil, 0
     for guid in pairs(ns.db.characters) do
         local f, s = Characters.Name(guid)
@@ -79,8 +82,9 @@ function Characters.FindByName(name, surname)
     return match, 1
 end
 
+-- The records, and the strangers still packed (Core/Strangers.lua).
 function Characters.Count()
-    return ns.CountKeys(ns.db.characters)
+    return ns.CountKeys(ns.db.characters) + ns.Strangers.People()
 end
 
 --------------------------------------------------------------------------
@@ -280,6 +284,10 @@ function Characters.Prune(cutoff)
             dropped = dropped + 1
         end
     end
+    -- The same for the packed strangers.
+    dropped = dropped + ns.Strangers.Prune(cutoff)
+    -- And past the limit on how many are kept, those seen longest ago.
+    dropped = dropped + ns.Strangers.Limit()
     ns.Sessions.PruneLeftovers()
 
     if dropped > 0 then ns.Debug("forgot %d character(s) outside the diary", dropped) end

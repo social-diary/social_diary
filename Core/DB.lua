@@ -24,7 +24,7 @@ local addonName, ns = ...
 -- the per-character file. They move apart: a file can be converted at one
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
-local SCHEMA_VERSION = 5     -- a diary
+local SCHEMA_VERSION = 6     -- a diary
 local ACCOUNT_SCHEMA = 2     -- SocialDiaryDB, apart from the shared diary
 local CHARACTER_SCHEMA = 2   -- SocialDiaryCharDB, apart from its own diary
 
@@ -45,6 +45,15 @@ local DIARY = {
     matches = {},
     interactions = {},  -- rolling buffer, 7 days (INT-2)
     sightings = {},     -- recent raw sightings, rolled up after 30 days (SIG-7)
+    -- [guid] = a stranger packed, record and sightings in one line of text
+    -- (Core/Strangers.lua): everyone outside the diary with nothing in the
+    -- buffer, while nobody asks after them. Unpacked into `characters` and
+    -- `sightings` when somebody does, packed again at login and logout.
+    -- Filled from an older diary by STEPS.diary[6].
+    strangers = {},
+    -- The user's characters a packed stranger's rows name, by their place
+    -- here. It only ever grows: a line keeps the place, not the GUID.
+    strangerMe = {},
     around = {},        -- [guid] = "seen around" stretches of diary entries (SES-9)
     notes = {},         -- [noteId]    = what the user wrote into the diary (DIA-11)
     -- Your Diary (8.11): [charGUID] = the user's own route, per character
@@ -165,6 +174,10 @@ local CHARACTER_SETTINGS = {
     -- per-person summaries. One window, so the Recently nearby page never
     -- lists a day whose "dealt with" marks are already gone. Decision D3.
     bufferDays = 30,
+    -- The other bound on strangers (people outside the diary with nothing
+    -- in the buffer, Core/Strangers.lua): at most this many are kept, the
+    -- ones seen longest ago going first. Whichever bound comes first.
+    strangerLimit = 4000,
     -- Battlegrounds: the full board (every player, every number) is kept
     -- for this many of the newest matches; older ones roll up to their
     -- header and the diary's people (Core/Matches.lua, Jan 9 Nov 2026).
@@ -239,6 +252,23 @@ STEPS.diary[5] = function(t)
             j.sittings = ns.Sittings.Lines(ns.Sittings.FromRoute(j))
         end
     end
+end
+
+-- 6 (25 Nov 2026): strangers are packed (Core/Strangers.lua, discussion
+-- #77): everyone outside the diary with nothing in the buffer, record and
+-- sightings together in one line of text. Nothing is lost or reread: a
+-- line unpacks into the record and rows it was made from, and whoever does
+-- not fit one stays as saved. Both shapes are read wherever they are found,
+-- so a diary that comes with a later number and its strangers still tables
+-- (a build that numbered its own steps before this one) only waits for its
+-- login.
+--
+-- Never in the way of loading: packing is a saving, not a repair. Should
+-- it fail, the error is reported and the diary loads as it is, its
+-- strangers tables, for the login to pack.
+STEPS.diary[6] = function(t)
+    local ok, err = pcall(ns.Strangers.Pack, t)
+    if not ok and geterrorhandler then geterrorhandler()(err) end
 end
 
 -- Account 2 (2 Nov 2026): the tour replaces the front matter's introduction. A
@@ -338,6 +368,8 @@ function ns.InitDB()
     ApplyDefaults(diary, DIARY)
 
     ns.db = View()
+    -- A packed stranger is unpacked when their GUID is asked for (Core/Strangers.lua).
+    ns.Strangers.Attach()
     ns.dbRestored = restored
     ns.Touch()
     return ns.db
@@ -418,6 +450,7 @@ end
 function ns.WipeData()
     for key in pairs(diary) do diary[key] = nil end
     ApplyDefaults(diary, DIARY)
+    ns.Strangers.Attach()
     -- The saved tables are fresh already. This reaches what is kept in memory
     -- only: sighting encounters, the capture queue, waiting toasts, the
     -- picker's recent list.

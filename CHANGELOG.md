@@ -6,6 +6,35 @@
 
 - Zone and dungeon names now read with their article in Brazilian Portuguese
 
+### Fixes
+
+- A death to another player is no longer written down twice (#74)
+
+## [4.2.6]
+
+This Update makes your save files around 60 to 80% smaller, and a new _Memory_ setting caps how many strangers the diary keeps.
+
+### Shiny new Things
+
+- _Memory_ settings can now cap how many strangers are kept
+
+### Changes
+
+- Strangers now take far less room in your save files
+
+## [4.2.5]
+
+This Update brings five more dungeons to the _Dungeon View_. A quest item everyone in your group loots, like a boss's head, no longer counts as a lucky drop in _Your Diary_.
+
+### Changes
+
+- _Dungeon View_ now knows five more dungeons and more default routes
+  - Blackmaw Hold and The Shaper's Terrace maps are in beta
+
+### Fixes
+
+- _Your Diary_ no longer calls quest items the whole group loots lucky
+
 ## [4.2.4]
 
 This update brings support for Traditional Chinese.

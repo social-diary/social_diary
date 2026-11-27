@@ -44,7 +44,7 @@ Eq(Names(nil, false), "journal,add,remember,list,remove,sightings,settings,about
     "the user's commands, in help order")
 Eq(Names(nil, true), "art,env,who,observe,chars,db,sessions,toast,probe,ccprobe,handtest,journey,pen,pace,testdata,hint,pad", "the development commands")
 Eq(Names("sightings", false), "recent,of,city", "the user's sighting commands")
-Eq(Names("sightings", true), "status,scan,around,tooltip,on,rollup,reset", "the sighting diagnostics")
+Eq(Names("sightings", true), "status,scan,around,tooltip,on,rollup,packed,reset", "the sighting diagnostics")
 
 Check(not pcall(ns.Slash.Register, "add", function() end, "again"), "a name registered twice")
 Check(not pcall(ns.Slash.Register, "x", function() end, "x", { alias = { "" } }),
@@ -110,8 +110,8 @@ Check(Has(help, "/sd testdata|r") and Has(help, "/sd art|r"), "a development com
 Check(Has(help, "/sd forget|r") < Has(help, "/sd art|r"), "the dev commands are not after the user's")
 
 local sub = Said(function() Slash("sightings help") end)
-Eq(#sub, 10, "sightings help with debug")
-Eq(sub[#sub - 6], "   |cffffd100/sd sightings |r  -- status: listening or paused, nameplate settings,"
+Eq(#sub, 11, "sightings help with debug")
+Eq(sub[#sub - 7], "   |cffffd100/sd sightings |r  -- status: listening or paused, nameplate settings,"
     .. " counters, frame cost", "the bare status line")
 
 ns.db.settings.debug = false

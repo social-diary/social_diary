@@ -2,7 +2,7 @@
 ## Title: Social Diary
 ## Notes: Remembers the people you meet in the open world.
 ## Author: social-diary
-## Version: 4.2.4
+## Version: 4.2.6
 ## SavedVariables: SocialDiaryDB
 ## SavedVariablesPerCharacter: SocialDiaryCharDB
 ## LoadSavedVariablesFirst: 1
@@ -117,6 +117,9 @@ Core/DB.lua
 Core/Bridges/Questie.lua
 Core/Identity.lua
 Core/Location.lua
+# Strangers packed, a line each (db.strangers). Before the stores it
+# unpacks them into: forgetting someone drops their line first.
+Core/Strangers.lua
 Core/Characters.lua
 Core/Heat.lua
 Core/Registry.lua
