@@ -289,6 +289,12 @@ ns.Locale.Add("enUS", {
     ["one more close call|%s more close calls##plural"] = "one more close call|%s more close calls",
     ["a close call"] = "a close call",
     ["a close call with %s"] = "a close call with %s",
+    -- Features/CrafterDetection/Kind.lua
+    ["wears what you made them"] = "wears what you made them",
+    ["something"] = "something",
+    ["{You} wear the %s they sold {you}"] = "{You} wear the %s they sold {you}",
+    ["{You} wear the %s they gave {you}"] = "{You} wear the %s they gave {you}",
+    ["Wears the %s {you} made them"] = "Wears the %s {you} made them",
     -- Features/Deaths/Kind.lua
     ["Death"] = "Death",
     ["Killed by"] = "Killed by",

@@ -492,6 +492,8 @@ Features/Classes/Hunter/Text.lua
 Features/Classes/Hunter/Mark.lua
 Features/Classes/Hunter/Card.lua
 Features/Classes/Hunter/Capture.lua
+# Crafter detection: its kind here, its capture after Capture/ (below).
+Features/CrafterDetection/Kind.lua
 
 Capture/Menus.lua
 Capture/Group.lua
@@ -513,6 +515,11 @@ Features/Hunts/Capture.lua
 # it, as on every event it shares with Capture/
 # (Features/Witnesses/Capture.lua's header).
 Features/Witnesses/Capture.lua
+# Crafter detection's capture after Capture/, as Witnesses': on the
+# nameplate, target and mouseover events it writes the person and a row,
+# and Capture/Nearby.lua's reunion toast snapshots them on the same events
+# (Features/CrafterDetection/Capture.lua's header).
+Features/CrafterDetection/Capture.lua
 
 #@do-not-package@
 # Development tooling: diagnostics, /sd art, /sd journey and /sd testdata. They
@@ -548,4 +555,5 @@ Features/Witnesses/Dev.lua
 Features/Hunts/Dev.lua
 Features/Duels/Dev.lua
 Features/Classes/Hunter/Dev.lua
+Features/CrafterDetection/Dev.lua
 #@end-do-not-package@

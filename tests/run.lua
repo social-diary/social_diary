@@ -120,6 +120,7 @@ local FILES = {
     "campfire_ui",
     "citytrips",
     "citytrips_ui",
+    "crafter_detection",
     "duels",
     "you",
     "duels_ui",

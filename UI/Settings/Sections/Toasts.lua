@@ -22,7 +22,7 @@ local function BuildToasts(pane, c)
     -- features' kinds of card (Core/Reunions.lua, UI/Windows/Reunion/
     -- Queue.lua). Everything under it greys out while it is off.
     c:Heading(L["When they show"])
-    page.showToasts = Switch(c, L["Show toasts"], "showToasts")  -- COPY: the master switch over every toast
+    page.showToasts = Switch(c, L["Show toasts"], "showToasts")  -- the master switch over every toast
     local function On() return Saved().showToasts end
     local function Reunions() return On() and (Saved().toasts or Saved().nearbyToasts) end
 
