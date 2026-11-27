@@ -28,9 +28,10 @@
 --     DEALT_RANK, UI/Journal/Nearby.lua's words);
 --   - ns.Recent's "trade" (Core/Candidates.lua's RECENT_KINDS: the picker's
 --     "you traded with them"), which Capture.lua sets through ns.Recent.Set;
---   - SD_TRADE_COMPLETED (guid, received), the message Capture.lua fires
---     as it stores a trade (Core/Events.lua), for whoever cares what was
---     received from whom; this feature does not know who listens.
+--   - SD_TRADE_COMPLETED (guid, received, given), the message Capture.lua
+--     fires as it stores a trade (Core/Events.lua), for whoever cares what
+--     was received from whom, or given to whom; this feature does not know
+--     who listens.
 --
 -- This file: the kind, whole (Core/Rows.lua's spec in one call, words and
 -- icon included).

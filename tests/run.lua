@@ -133,6 +133,7 @@ local FILES = {
     "ui_layout",
     "copy_rules",
     "toast_fight",
+    "toast_kinds",
     "fonts",
     "locale",
 }

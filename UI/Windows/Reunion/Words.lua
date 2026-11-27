@@ -269,3 +269,19 @@ function ns.UI.ReunionText(snap)
     end
     return text
 end
+
+-- What the card says, whoever raised it: a feature's kind of card
+-- (Queue.lua's Toast.RegisterKind, snap.kind) speaks for itself, its own
+-- `text` for one person and its own `more` for the last card of its flood;
+-- everything else is a reunion's, or the sample being placed. A kind's
+-- snapshot never reaches ns.UI.ReunionText: that one reads a diary entry's
+-- tags and a reunion's reason, which a kind's card about a stranger has
+-- neither of, and would head it "Joined your group".
+function Toast.Text(snap)
+    local spec = snap.kind and Toast.kinds[snap.kind]
+    if spec then
+        if snap.more then return spec.more(snap.more) end
+        return spec.text(snap)
+    end
+    return ns.UI.ReunionText(snap)
+end

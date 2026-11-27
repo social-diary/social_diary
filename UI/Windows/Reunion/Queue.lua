@@ -8,8 +8,11 @@
 -- overflow becomes one "and N more" toast at the end.
 --
 -- Here: showing a card and putting it away (Display, Dismiss, Hover), the
--- combat gate (InCombat, Pump), forgetting (PRV-3), and the entry point,
--- ns.UI.Reunion, with the SD_REUNION handler that calls it. The card is
+-- combat gate (InCombat, Pump), forgetting (PRV-3), and the entry points:
+-- ns.UI.Reunion, with the SD_REUNION handler that calls it, and a
+-- feature's own kinds of card (Toast.RegisterKind, SD_TOAST), which share
+-- the one card, the queue and its cap, the gate and the forgetting with
+-- the reunions, but none of a reunion's rules. The card is
 -- UI/Windows/Reunion/Toast.lua, which lists the state shared on
 -- ns.UI.Toast; its words Words.lua's; placing it Placing.lua's.
 
@@ -81,6 +84,20 @@ Pump = function()
         snap = { more = Toast.more, reason = Toast.moreReason }
         Toast.more, Toast.moreReason = 0, nil
     end
+    -- Then each kind's own flood, one card for each, in the order the kinds
+    -- registered: never folded into the reunions' count, whose words are
+    -- about diary entries joining or coming near.
+    if not snap then
+        local moreKinds = Toast.moreKinds
+        for _, spec in ipairs(Toast.kindOrder) do
+            local count = moreKinds[spec.kind]
+            if count and count > 0 then
+                moreKinds[spec.kind] = nil
+                snap = { more = count, kind = spec.kind }
+                break
+            end
+        end
+    end
     if snap then Display(snap) end
 end
 Toast.Pump = Pump
@@ -96,7 +113,9 @@ ns.On("PLAYER_REGEN_DISABLED", function()
     if not snap then return end
     Toast.showing, Toast.overdue, Toast.hovered = nil, false, false
     Toast.toast:Hide()
-    if snap.more then
+    if snap.more and snap.kind then
+        Toast.moreKinds[snap.kind] = (Toast.moreKinds[snap.kind] or 0) + snap.more
+    elseif snap.more then
         Toast.more = Toast.more + snap.more
         Toast.moreReason = (Toast.moreReason == nil or Toast.moreReason == snap.reason) and snap.reason or "mixed"
     else
@@ -109,9 +128,14 @@ end)
 --------------------------------------------------------------------------
 
 -- PRV-3: a toast still waiting to show a forgotten person goes, and so does
--- one showing them now. Their cooldown stamp is Core/Reunions.lua's store.
+-- one showing them now, of whatever kind. Their cooldown stamp is
+-- Core/Reunions.lua's store; what a feature's kind keeps of them is the
+-- feature's to forget.
 ns.RegisterStore("toasts", function(guid)
-    if guid == nil then Toast.more, Toast.moreReason = 0, nil end
+    if guid == nil then
+        Toast.more, Toast.moreReason = 0, nil
+        wipe(Toast.moreKinds)
+    end
 
     local queue = Toast.queue
     for i = #queue, 1, -1 do
@@ -133,11 +157,13 @@ function ns.UI.Reunion(guid, reason)
     if not guid then return end
 
     -- Without a cooldown (a foe, settings.foeToastsUncooled) a nameplate
-    -- at the edge of range comes and goes: one toast per person in line.
+    -- at the edge of range comes and goes: one toast per person in line. A
+    -- feature's card about them (snap.kind) is another matter, and does
+    -- not stand in for their reunion.
     local showing, queue = Toast.showing, Toast.queue
-    if showing and showing.guid == guid then return end
+    if showing and showing.guid == guid and not showing.kind then return end
     for i = 1, #queue do
-        if queue[i].guid == guid then return end
+        if queue[i].guid == guid and not queue[i].kind then return end
     end
 
     local snap = Toast.Snapshot(guid, reason)
@@ -163,6 +189,137 @@ end
 ns.On("SD_REUNION", function(_, guid, reason)
     if reason == "nearby" and ns.Reunions.FoeAlert(guid) then Toast.PlayFoeAlert() end
     ns.UI.Reunion(guid, reason)
+end)
+
+--------------------------------------------------------------------------
+-- A feature's own kinds of card
+--------------------------------------------------------------------------
+--
+-- The reunion card is the one place the diary speaks up during play, so a
+-- feature with something to say about a person in the world (someone you
+-- meet wearing the boots you made them) says it there rather than with a
+-- window of its own: one card at a time, never in a fight, out of the way
+-- of the forgetting. But a reunion's rules are about diary entries met
+-- again: its switches, its per-person cooldown, the quiet list, a
+-- snapshot read off the entry, words that say who joined. A feature's card
+-- may well be about a stranger, and keeps its own count of what it has
+-- said (once ever, once a connection). So a kind brings its own rule, its
+-- own snapshot and its own words, and borrows only the card and the line
+-- it waits in.
+--
+--   ns.UI.Toast.RegisterKind(kind, {
+--       snapshot = function(guid, data, now) ... end,
+--           -- the card's snapshot, taken now, or nil for no toast. Asked
+--           -- only once the toast is going to be queued (its kind due, no
+--           -- twin in line), so a kind that counts its toasts may stamp
+--           -- here. Strangers allowed: read the name and the record from
+--           -- ns.Characters, never from a diary entry. The card reads
+--           -- from it only `record` (the portrait; nil shows the diary's
+--           -- own book); the rest is the kind's, for its `text`. The
+--           -- dispatch writes .kind, .guid and .key into it, over
+--           -- anything of the same name.
+--       text = function(snap) ... end,
+--           -- what the card says, in the shape ns.UI.ReunionText returns
+--           -- (Words.lua, above it): `heading`, `name`, `stories` longest
+--           -- first for the card to take the first that fits; optional
+--           -- `who` (longest first), `tags`, `relationship`, `warning`.
+--           -- Every string through L["..."].
+--       due = function(guid, data, now) ... end,          -- optional
+--           -- the kind's own rule: false or nil, no toast. Without it,
+--           -- always due. None of a reunion's rules are asked for a kind:
+--           -- not the cooldown, the quiet list, Reunions.Greet, the
+--           -- `toasts` / `nearbyToasts` switches, nor the battleground's
+--           -- hush; a kind that wants one asks it here.
+--       setting = "someKey",                               -- optional
+--           -- a settings key (Core/DB.lua's defaults, true there) that
+--           -- turns the kind off when false.
+--       key = function(guid, data) ... end,                -- optional
+--           -- what tells two cards of this kind about the same person
+--           -- apart: the same (kind, guid, key) already in line or
+--           -- showing is not queued twice. Without it, `data` itself
+--           -- where it is a string or a number, else one card of the kind
+--           -- per person in line.
+--       more = function(count) ... end,                    -- optional
+--           -- the last card of a flood of this kind, in `text`'s shape,
+--           -- for `count` cards that found the line full ("and 3 more",
+--           -- through L["and %d more|and %d more##plural"]). Each kind
+--           -- floods on its own card, after the reunions' "and N more":
+--           -- never counted with the reunions, so never in their words.
+--           -- Without it, the kind's cards are never folded into a count:
+--           -- they join the line past its cap, each to show in turn (a
+--           -- card said once ever must not be lost to a crowd).
+--   })
+--
+-- Registering a kind again replaces it (ns.Registry). The card's look is
+-- the reunion card's: a click opens their page or a stranger's glimpse
+-- (ns.UI.ShowJournal), a right-click puts it away, and it never takes the
+-- pad (UI/Windows/Reunion/Pad.lua).
+
+local kinds = ns.Registry.New({
+    what = "Toast.RegisterKind(kind, { snapshot = fn, text = fn })",
+    key = "kind",
+    check = function(_, spec)
+        if type(spec.snapshot) ~= "function" or type(spec.text) ~= "function" then
+            return false, "Toast.RegisterKind: snapshot and text must be functions"
+        end
+        for _, field in ipairs({ "due", "key", "more" }) do
+            if spec[field] ~= nil and type(spec[field]) ~= "function" then
+                return false, "Toast.RegisterKind: " .. field .. " must be a function"
+            end
+        end
+        if spec.setting ~= nil and type(spec.setting) ~= "string" then
+            return false, "Toast.RegisterKind: setting must be a settings key"
+        end
+        return true
+    end,
+})
+Toast.kinds, Toast.kindOrder = kinds.specs, kinds.list
+
+function Toast.RegisterKind(kind, spec)
+    kinds:Add(kind, spec)
+end
+
+local function KeyOf(spec, guid, data)
+    if spec.key then return spec.key(guid, data) end
+    local t = type(data)
+    if t == "string" or t == "number" then return data end
+    return true
+end
+
+-- A kind's card, fired by SD_TOAST: due by its own rule, in line once, and
+-- then the same way as a reunion's.
+local function Raise(kind, guid, data)
+    local spec = kinds:Get(kind)
+    guid = ns.SafeGUID(guid)
+    if not spec or not guid then return end
+    if spec.setting and not ns.Setting(spec.setting) then return end
+
+    local key = KeyOf(spec, guid, data)
+    local function Twin(snap)
+        return snap and snap.kind == kind and snap.guid == guid and snap.key == key
+    end
+    local queue = Toast.queue
+    if Twin(Toast.showing) then return end
+    for i = 1, #queue do
+        if Twin(queue[i]) then return end
+    end
+
+    local now = ns.Now()
+    if spec.due and not spec.due(guid, data, now) then return end
+    local snap = spec.snapshot(guid, data, now)
+    if not snap then return end
+    snap.kind, snap.guid, snap.key = kind, guid, key
+
+    if #queue >= MAX_QUEUE and spec.more then
+        Toast.moreKinds[kind] = (Toast.moreKinds[kind] or 0) + 1
+    else
+        queue[#queue + 1] = snap
+    end
+    Pump()
+end
+
+ns.On("SD_TOAST", function(_, kind, guid, data)
+    Raise(kind, guid, data)
 end)
 
 -- For the smoke test.

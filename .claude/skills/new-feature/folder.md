@@ -52,6 +52,7 @@ shared.
 | `ns.Deaths.Card.RegisterFace(key, face)` | `Features/Deaths/Card.lua` | Wear the killer card (Close calls). |
 | `ns.UI.JourneyText.RegisterCaption(key, spec)` | `UI/Journey/Text/Caption.lua` | `lead` / `tail` / `coda`, each `{ at, say }`, with the `said` table shared between kinds. |
 | `ns.UI.JourneyText.RegisterLines(key, spec)` | `UI/Journey/Text/Prose.lua` | `at`, `lines(e, now, index)`, `run` (several kinds share one paragraph: "combat"). Reads `e[entry]`, never another feature's. |
+| `ns.UI.Toast.RegisterKind(kind, spec)` | `UI/Windows/Reunion/Queue.lua` | A toast card of the feature's own, on the reunion card, for strangers too: `snapshot`, `text`, optional `due` (its own rule: none of a reunion's apply), `setting` (a default of `true` in `Core/DB.lua`), `key`, `more`. The feature raises it with `ns.Fire("SD_TOAST", kind, guid, data)`. |
 | `ns.Style.AddArt(key, paths, tint)` | `UI/Style/Art.lua` | The feature's own art. Art shared with a core activity stays core. |
 | `ns.TestData.Register(point, fn)` | `Dev/TestData.lua` | See "Test data" below. |
 | `ns.UI.Journal.RegisterPage`, `ns.UI.Settings.RegisterSection`, `Slash.Register` | `UI/Journal/Pages.lua`, `UI/Settings/Page.lua`, `Core/Slash.lua` | Rarely a feature's. A setting follows `.claude/rules/settings.md`. |
@@ -72,7 +73,7 @@ pcall, so its error is logged and doesn't unwind the sender.
 | `SD_QUEST_ACCEPTED (questID)`, `SD_QUEST_TURNED_IN (questID)` | after the route counted the quest |
 | `SD_LEVEL_ROSE (guid, from, level)` | a character read at a higher level, the user's own included |
 | `SD_YOU_DIED (death)`, `SD_DEATH_RECAP (death, killer)` | the user died; the recap named who did it |
-| `SD_TRADE_COMPLETED (guid, received)` | a trade completed |
+| `SD_TRADE_COMPLETED (guid, received, given)` | a trade completed |
 | `SD_FIGHT_SURVIVED (started, ended, taken, max, foe)` | every fight the close-call judge read (never a duel's) |
 | `SD_DUEL_STARTED (guid)`, `SD_DUEL_FINISHED (guid, outcome)` | a duel's countdown began / it ended (outcome nil: no winner); fired by Duels. Kept by core as `ns.Duelling(guid, grace)`, which Close calls' judge, the route (no fighting) and the sightings (not hostile) read: a flight's end can come long after combat |
 | `SD_REUNION`, `SD_DIARY_CHANGED`, `SD_PAPER_CHANGED` | core's own; rarely a feature's |

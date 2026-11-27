@@ -16,6 +16,22 @@
 --                              join, and Capture/Nearby.lua;
 --                              UI/Windows/Reunion/Queue.lua toasts it
 --                              (REU-1, REU-5).
+--   SD_TOAST (kind, guid, data)  a feature has something to tell the
+--                              player about someone, on the reunion
+--                              toast's card: `kind` a name registered with
+--                              ns.UI.Toast.RegisterKind (Queue.lua, its
+--                              spec above it), `guid` the player it is
+--                              about, a diary entry or a stranger, and
+--                              `data` whatever the kind wants handed back
+--                              to its spec (nil allowed). Fired by the
+--                              feature's own capture; UI/Windows/Reunion/
+--                              Queue.lua asks the kind whether it is due
+--                              and queues it with the reunions, behind the
+--                              same combat gate. None of a reunion's rules
+--                              apply (its switches, its cooldown, the
+--                              quiet list): only the kind's own. An
+--                              unregistered kind, or a GUID that is not a
+--                              player's, is dropped.
 --   SD_MATCH_CLOSED (match)    a battleground match ended, its board read
 --                              or not (Core/Matches.lua's record; state
 --                              "complete", "noboard" or "left"). Fired by
@@ -93,13 +109,15 @@
 --                              feature once combat is over, before the
 --                              death it keeps takes its killer; never
 --                              when no recap came.
---   SD_TRADE_COMPLETED (guid, received)  a trade the client said was
---                              completed, with `guid` (who it was with),
---                              `received` what came the user's way: the
---                              trade row's context.received ({ { link,
---                              count }, ... }, or nil for none). Fired by
---                              the feature that captures trades as it
---                              stores the row, now (ns.Now() is its time).
+--   SD_TRADE_COMPLETED (guid, received, given)  a trade the client said
+--                              was completed, with `guid` (who it was
+--                              with), `received` what came the user's way
+--                              and `given` what went theirs: the trade
+--                              row's context.received and context.given
+--                              ({ { link, count }, ... }, or nil for none).
+--                              Fired by the feature that captures trades
+--                              as it stores the row, now (ns.Now() is its
+--                              time).
 --   SD_FIGHT_SURVIVED (started, ended, taken, max, foe)  a fight the user
 --                              came out of alive, as the feature that
 --                              judges close calls reads it once the damage

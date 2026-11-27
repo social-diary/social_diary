@@ -23,18 +23,29 @@
 --
 -- This file is the card: its frame, where it lies, its layout and how it is
 -- filled (ns.UI.Toast.Build). Its siblings, loaded after it:
---   UI/Windows/Reunion/Words.lua    what the card says (ns.UI.ReunionText)
---                                   and the snapshot it is said from
+--   UI/Windows/Reunion/Words.lua    what the card says (ns.UI.ReunionText,
+--                                   and Toast.Text for any card, a
+--                                   feature's kind included) and the
+--                                   snapshot it is said from
 --   UI/Windows/Reunion/Queue.lua    the queue, "and N more", the combat
---                                   gate, forgetting, and the entry point
---                                   (ns.UI.Reunion, SD_REUNION)
+--                                   gate, forgetting, and the entry points
+--                                   (ns.UI.Reunion, SD_REUNION; a
+--                                   feature's own kinds of card,
+--                                   Toast.RegisterKind and SD_TOAST)
 --   UI/Windows/Reunion/Placing.lua  laying a sample card to be dragged
 --                                   (ns.UI.PlaceToast and friends)
 --
 -- What they share is on the module (ns.UI.Toast):
 --   .queue               the toasts waiting, oldest first
 --   .more, .moreReason   the overflow past the queue's cap, and why
---   .showing             the snapshot on the card now, else nil
+--   .kinds, .kindOrder   the kinds of card features registered, by name
+--                        and in the order they came: the registry's
+--                        own tables (ns.Registry), set by Queue.lua
+--   .moreKinds           a kind's overflow past the cap, by its name:
+--                        counted apart from the reunions', so a flood's
+--                        last card never says a reunion's words about it
+--   .showing             the snapshot on the card now, else nil. A kind's
+--                        carries .kind, .guid and .key (Queue.lua)
 --   .shown               which showing that is, a number, for its timers
 --   .toast               the card's frame (SocialDiaryToastFrame), once built
 --   .hovered, .overdue   the mouse on the card, and a card past its time
@@ -42,8 +53,9 @@
 --   .placing             while the card is being placed: { onDone }. No
 --                        toast shows meanwhile
 --   .heldDone            an onDone a fight held back, until the fight ends
---   .Build               this file's; .Snapshot Words.lua's; .Dismiss,
---                        .Hover, .Pump, .InCombat Queue.lua's
+--   .Build               this file's; .Snapshot, .Text Words.lua's;
+--                        .Dismiss, .Hover, .Pump, .InCombat,
+--                        .RegisterKind Queue.lua's
 
 local addonName, ns = ...
 
@@ -54,6 +66,7 @@ local L = ns.L
 local Toast = {
     queue = {},
     more = 0, moreReason = nil,
+    moreKinds = {},
     showing = nil,
     toast = nil,
     hovered = false, overdue = false,
@@ -250,7 +263,12 @@ local function Build()
     end)
 
     function host:Fill(snap)
-        local text = ns.UI.ReunionText(snap)
+        -- A reunion's words or a feature's kind's (Words.lua's Toast.Text).
+        -- Everything below but the heading, the name and the story may be
+        -- missing: a kind's card about a stranger has no tags, no
+        -- relationship and perhaps no record, and the portrait shows the
+        -- diary's own book for that.
+        local text = Toast.Text(snap)
         self.text = text
         K.Fall("toast" .. (snap.guid or ""))
         K.Lay()
