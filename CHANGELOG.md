@@ -5,6 +5,7 @@
 ### Fixes
 
 - A death to another player is no longer written down twice (#74)
+- Chinese times and dungeon initials no longer show as boxes
 
 ## [4.2.6]
 

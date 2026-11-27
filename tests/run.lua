@@ -81,6 +81,7 @@ local FILES = {
     "minimap",
     "sightings",
     "strangers",
+    "capitals",
     "timeline",
     "person_plate",
     "person_page",
