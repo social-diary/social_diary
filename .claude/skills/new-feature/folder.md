@@ -113,7 +113,9 @@ order**. This is a decision, not a default:
 The case that bit us: Witnesses reading a unit in a fight filled in a
 diary entry's surname before Nearby's reunion toast took its snapshot. The
 toast said "Bram Redfen" where it should have said "Bram"
-(`tests/witnesses.lua`, "after the reunion toast").
+(`tests/witnesses.lua`, "after the reunion toast"). That test is the
+template for any capture that writes a person on nameplate, target or
+mouseover events (`tests/crafter_detection.lua` copies it).
 
 ## TOC
 
@@ -157,6 +159,9 @@ script itself writes there, in TOC order:
 - On the route, write the list as capture keeps it (`j.<list> = {}` then
   the records), not through `X.Add`.
 - Made-up strangers are forgotten at `"remove"` (`Characters.Forget`).
+- Rows written at `"tester"` change the lines `tests/timeline.lua` pins
+  on Tester. Add them with the UI build and update that test on purpose,
+  or keep the feature off Tester.
 
 ## Tests
 
@@ -170,7 +175,10 @@ script itself writes there, in TOC order:
 - Add both to `FILES` in `tests/run.lua`. `tests/kinds.lua` checks the
   feature's registrations by itself, with nothing to add.
 - **Break every new hook once:** break it, watch a test fail, restore the
-  file byte for byte.
+  file byte for byte. Build the case so that only the broken line stands
+  between it and failing. If a break passes, look for an early return
+  that hides it (Crafter detection's gate passed broken until a case had
+  someone else in the index).
 - Mind the luajit pitfall: `luajit -bl a.lua b.lua` writes into `b.lua`.
 
 ## Patterns by example
@@ -188,6 +196,7 @@ Start from the nearest one. Its `Kind.lua` header explains the folder.
 | A face on another feature's card | `CloseCalls` | `RegisterFace`; split out of shared files; `readNames` |
 | Units a core capture also reads | `Witnesses` | capture after `Capture/`; a page-wide index by a flag stays core, the feature's reading of it moves; strangers forgotten at `"remove"` |
 | A keyed table, a gift, a bespoke mark | `Firsts` | `forget`/`prune` without a cap; `person` on a moment; `join` on a mark; a hand-off from Trade by `SD_TRADE_COMPLETED` |
+| Hand-offs, an inspect queue, a toast of its own | `CrafterDetection` | trades by `SD_TRADE_COMPLETED`, auction letters, the user's worn slots; a paced inspect queue with Stage 2 behind a gate; `RegisterKind` for a toast with its own switch under the master one |
 | Static data | `QuestFinales` | `Data.lua`; `SD_QUEST_*` |
 | A reading against the last one | `ProfessionCaps` | first reading on `SD_WORLD_SETTLED` |
 

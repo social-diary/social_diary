@@ -211,11 +211,23 @@ client.
   only code already on disk, so finish every edit before asking.
 - **Give the user numbered steps:** where to stand, what to do, what to
   type, when to reload.
+- **Doubt the probe before the client.** A "0" can be the probe's own bug:
+  global strings come colour-wrapped (`ITEM_CREATED_BY` is
+  `|cff00ff00<Made by %s>|r`), and a pattern built from one has to be
+  stripped and escaped. Check a probe's pattern offline against the
+  global's real value before writing "0" down as a fact.
 
 Write the facts into the dossier, dated: ids, durations, payloads, what is
 secret when. Then ask: **does this change the scope?** If a signal is
 weaker or richer than assumed, go back to 3 with the difference stated in
 player terms.
+
+**A client bug can split the feature into stages.** Add a "Plan" section
+to the dossier with Stage 1 (what ships now) and Stage 2 (what waits for
+the fix). Write the Stage 2 code now if the user wants it kept, behind one
+named gate in `Kind.lua` (Crafter detection's `INSPECT_EVERYONE`), with a
+test that the gate holds. Then the feature only needs the gate opened
+later; nothing is rebuilt.
 
 Close the phase by writing the **Record** section. This is the data
 contract the UI and the copy work from: each stored field, its type, and
@@ -227,6 +239,10 @@ A core hook is needed when:
 - a surface needs something no registry offers (a new `dealt` mark, a new
   `SD_*` message, a new spec field);
 - core would have to name the feature.
+
+Before telling the user that something exists (a master switch, a
+registry, a message), find it in the code. Crafter detection's run said
+there was a master toast switch; there wasn't, and it became a hook.
 
 Then, in the main session, before the folder:
 - Prefer a **flag on the row kind** (`fight`, `witness`, `climb`) that core
@@ -359,6 +375,10 @@ reached, and that the look is given back when the mouse takes over.
   Then the commands (`/sd testdata`, `/sd`, the page and level to open),
   then exactly which screenshots to take. Data is read from SavedVariables,
   not screenshots.
+- **Live steps come after `/sd testdata remove`.** While test data is
+  shown, `Journey.Kept()` is nil, so capture writes nothing. A trade or a
+  craft done then is simply lost; it looks like a bug but isn't. Put the
+  remove step in the checklist before the first live step.
 - **Each round:** fix what came back, leave dated notes in the code where a
   value changed because of a screenshot, and log the round in the dossier.
   Remove the probe module once it has done its job.
