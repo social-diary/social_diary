@@ -33,8 +33,22 @@
 -- The pencil's "Adjust Path" slip is never stood on and never named
 -- (the route editor stays the mouse's): taken up with the mouse, the pad
 -- steps aside (Pad.Aside "way", UI/Dungeon/Way.lua's Start and Lower) until
--- it is put down. Nothing on the table has a right click but the pencil's,
--- so there is no Y here: it goes on to the game, as X does.
+-- it is put down.
+--
+-- Y is the right click (the player's own notes, UI/Dungeon/NoteMenu.lua;
+-- .claude/ui-proposal/dungeon-notes.md §5): on a boss the free card's form
+-- opens pinned to it, on the way in or a mark at its spot (the pad never
+-- picks a free spot: it always stands on something with a place); on the
+-- player's own note (its strip, or its mark) its menu on the pad's slip
+-- (Pad.Menu: Edit, Move, Remove); on a detected strip, a floor's link, the
+-- bookmark or an item, nothing (the user, 28 Nov: no note from a detected
+-- strip). Only on the player's own run, and not under the first run's note.
+-- The form has the pad then (UI/Journey/CardPad.lua's `runcard`, over this
+-- scope); put away, the pad is back where Y was pressed. Move from the menu
+-- steps the note between the marks: only the marks are stood on, A puts it
+-- on the one stood on (a boss pins it), B leaves it where it was, LB / RB
+-- carry it to another floor; after either the pad is on the note's strip.
+-- X goes nowhere (nothing is passed on: taken, it does nothing).
 --
 -- LB / RB turn to the floor before or after (round the ends, as the book's
 -- ribbons go round), as a click on its link does; with one floor they go on
@@ -65,7 +79,12 @@ local Pad = ns.UI.Pad
 local J = ns.UI.Journal
 local DungeonPage = ns.UI.DungeonPage
 
+local W = DungeonPage.NOTE_WORDS
 local PROMPT = {
+    add = { "PAD4", W.add },
+    menu = { "PAD4", W.menu },
+    put = { "PAD1", W.put, main = true },
+    leave = { "PAD2", W.leave },
     person = { "PAD1", L["Go to their page"], main = true },
     floor = { "PAD1", L["See this floor"], main = true },
     away = { "PAD1", L["Put the map away"], main = true },
@@ -129,9 +148,15 @@ local function Laid(view, index)
 end
 
 -- The marks on the map: every hover square shown with a tooltip.
+-- (a mark of the player's own notes is keyed apart from the strips' "note:")
+local function MarkKey(what, at)
+    return string.format("%s:%d:%d", what == "note" and "ownmark" or what, math.floor(at[1] + 0.5), math.floor(at[2] + 0.5))
+end
+
 local function AddMarks(f, view)
     local pool = view.pools and view.pools.hit
-    local doors, first = nil, nil
+    local doors, first, moving = nil, nil, view.moving and view.moving.pad and view.moving
+    local start
     for i = 1, pool and pool.used or 0 do
         local hit = pool[i]
         local at = hit.padAt
@@ -139,18 +164,36 @@ local function AddMarks(f, view)
             local what = hit.what or "mark"
             local x, y = OnScreen(view, at[1], at[2])
             local item = f:Add("sheet", {
-                key = string.format("%s:%d:%d", what, math.floor(at[1] + 0.5), math.floor(at[2] + 0.5)),
+                key = MarkKey(what, at),
                 frame = hit, ring = true, what = what,
                 available = function() return hit:IsVisible() end,
                 center = function() return x, y end,
-                -- (no click: the tooltip is all a mark has)
-                press = function() end,
+                -- (no click: the tooltip is all a mark has; moving a note,
+                -- A puts it here)
+                press = function()
+                    if view.moving and view.moving.pad then
+                        local where = DungeonPage.NoteWhereOfHit(view, hit)
+                        if where then DungeonPage.NoteMoveEnd(view, where) end
+                    end
+                end,
             })
             if what == "door" then doors = doors or item end
             if what == "boss" then first = first or item end
+            -- (moving: the pad starts on the note's own mark or face)
+            if moving then
+                local rec = moving.rec
+                local saved = rec.customOf or rec
+                if rec.boss and what == "boss" and DungeonPage.NoteWhereOfHit(view, hit)
+                    and DungeonPage.NoteWhereOfHit(view, hit).boss == rec.boss then
+                    start = item
+                end
+                for _, r in ipairs(hit.own or {}) do
+                    if (r.customOf or r) == saved then start = item end
+                end
+            end
         end
     end
-    return doors or first
+    return doors or first, start
 end
 
 -- The notes beside them, and the items named on a loot strip.
@@ -191,6 +234,50 @@ local function AddNotes(f, view)
                             press = function() end,
                         })
                     end
+                end
+            end
+        end
+    end
+end
+
+-- The player's own notes' strips: as a detected note (A its click: a
+-- person's page where it names one), keyed by the saved note, so the pad
+-- keeps its place over a lay.
+local function OwnKey(rec)
+    return "own:" .. tostring(rec.customOf or rec)
+end
+DungeonPage.NoteOwnKey = OwnKey
+
+local function AddOwn(f, view)
+    for _, entry in ipairs(view.ownStrips or {}) do
+        local strip = entry.strip
+        if strip and strip.Focus and strip:IsShown() then
+            local at = strip:Focus()
+            f:Add("sheet", {
+                key = OwnKey(entry.rec), frame = at.frame, heading = at.words, mine = entry,
+                person = strip.guid ~= nil and strip.onClick ~= nil,
+                available = function() return strip:IsVisible() end,
+                center = function() return at.x, -at.y end,
+                outline = function()
+                    local now = strip:Focus()
+                    return { anchor = strip:GetParent(), corners = now.corners, level = strip:GetFrameLevel() }
+                end,
+                press = function()
+                    if strip.guid and strip.onClick then strip.onClick(strip.guid) end
+                end,
+            })
+            -- An item in its heading, as a loot strip's: never a click.
+            local slot = entry.slot
+            for n = 1, slot.links and slot.links.used or 0 do
+                local hover = slot.links[n]
+                local p = hover.padAt
+                if p then
+                    f:Add("sheet", {
+                        key = OwnKey(entry.rec) .. ":item:" .. n, frame = hover, item = true,
+                        available = function() return hover:IsVisible() end,
+                        center = function() return p[1], -p[2] end,
+                        press = function() end,
+                    })
                 end
             end
         end
@@ -260,10 +347,27 @@ function scope.build(f)
 
     local view = Map()
     if not (view and view:IsShown()) then return end
-    local land = AddMarks(f, view)
+    local land, start = AddMarks(f, view)
+    -- Moving a note with the pad: only the marks it may go to.
+    if view.moving and view.moving.pad then
+        if scope.movingFor ~= view.moving then
+            scope.movingFor = view.moving
+            f:Remember("sheet", start and start.key or land and land.key or nil)
+        end
+        scope.laidFor = Laid(view)
+        return
+    end
+    scope.movingFor = nil
+    AddOwn(f, view)
     AddNotes(f, view)
     AddFloors(f, view)
     AddBookmark(f, view)
+    -- A note just moved: the pad on its strip.
+    if view.moved then
+        f:Remember("sheet", OwnKey(view.moved))
+        view.moved = nil
+        scope.laidFor = Laid(view)
+    end
     -- Laid out afresh (each time it comes out: J.visit is new each time)
     -- or another floor: the pad lands on the way in, else the first boss,
     -- else the first thing there.
@@ -289,13 +393,30 @@ local function Floor(delta)
     end
 end
 
-scope.keys = { PADLSHOULDER = Floor(-1), PADRSHOULDER = Floor(1) }
+-- Y: the right click, a note added where the pad stands or the player's own
+-- note's menu (UI/Dungeon/NoteMenu.lua). Taken wherever it does nothing.
+local function Right()
+    if Note() then return true end
+    local view = Map()
+    if view and view.moving then return true end
+    local at = scope.focus and scope.focus:Current()
+    DungeonPage.NotePad(view, at)
+    return true
+end
+
+scope.keys = { PADLSHOULDER = Floor(-1), PADRSHOULDER = Floor(1), PAD4 = Right }
 
 -- B: the note put away, as its link does; else the run (the bookmark's).
 function scope.back()
     local note = Note()
     if note then
         note:Hide()
+        return true
+    end
+    -- Moving a note: left where it was.
+    local view = Map()
+    if view and view.moving then
+        DungeonPage.NoteMoveEnd(view, false)
         return true
     end
     DungeonPage.Close()
@@ -307,6 +428,13 @@ function scope.legend()
     local at = f and f:Current()
     if at and at.note then return { PROMPT.note } end
     local out = {}
+    local view = Map()
+    if view and view.moving and view.moving.pad then
+        if at and at.what and DungeonPage.NoteWhereOfHit(view, at.frame) then out[#out + 1] = PROMPT.put end
+        if view.floors and #view.floors > 1 then out[#out + 1] = PROMPT.floors end
+        out[#out + 1] = PROMPT.leave
+        return out
+    end
     if at then
         if at.person then
             out[#out + 1] = PROMPT.person
@@ -316,7 +444,8 @@ function scope.legend()
             out[#out + 1] = PROMPT.away
         end
     end
-    local view = Map()
+    local did = DungeonPage.NotePad(view, at, true)
+    if did then out[#out + 1] = did == "menu" and PROMPT.menu or PROMPT.add end
     if view and view.floors and #view.floors > 1 then out[#out + 1] = PROMPT.floors end
     out[#out + 1] = PROMPT.back
     return out

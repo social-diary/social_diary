@@ -411,6 +411,41 @@ function DungeonPage.Plan(spec)
         end
     end
     if plan.door then plan.spots[#plan.spots + 1] = { x = plan.door.x, y = plan.door.y, r = KILL.halo / 2 } end
+
+    -- The player's own notes (Core/RunNotes.lua) this sheet holds: where `At`
+    -- places each (its floor, or a combined map holding it; a note on
+    -- another floor is neither shown nor counted), oldest first. A note
+    -- pinned to a boss whose face is on this sheet has the face for its mark;
+    -- any other has a mark of its own at its spot, two within
+    -- OWN_MARK.merge sharing one (the oldest's). Their marks are spots the
+    -- folds keep off too.
+    plan.own, plan.ownMarks = {}, {}
+    local byName = {}
+    for _, mark in ipairs(plan.marks) do byName[ns.Dungeons.Norm(mark.name)] = mark.name end
+    local OM = DungeonPage.OWN_MARK
+    for _, rec in ipairs(ns.RunNotes and ns.RunNotes.List(visit) or {}) do
+        local x, y
+        if spec.floor then x, y = At(rec.f, rec.x, rec.y) end
+        if x and DungeonPage.NoteFace(rec.kind) then
+            local boss = rec.boss and byName[ns.Dungeons.Norm(rec.boss)] or nil
+            local o = { rec = rec, x = x, y = y, boss = boss }
+            if not boss then
+                for k, m in ipairs(plan.ownMarks) do
+                    if (m.x - x) ^ 2 + (m.y - y) ^ 2 <= OM.merge ^ 2 then
+                        o.mark = k
+                        m.recs[#m.recs + 1] = rec
+                        break
+                    end
+                end
+                if not o.mark then
+                    plan.ownMarks[#plan.ownMarks + 1] = { x = x, y = y, recs = { rec } }
+                    o.mark = #plan.ownMarks
+                    plan.spots[#plan.spots + 1] = { x = x, y = y, r = OM.halo / 2 }
+                end
+            end
+            plan.own[#plan.own + 1] = o
+        end
+    end
     return plan
 end
 
@@ -1233,6 +1268,41 @@ end
 -- `face` (how its portrait came, or nil), targets (each mark by boss name,
 -- the door and each wipe on the way ("wipe:<n>"): { x, y, r } on the
 -- sheet), crosses.
+-- The player's own notes' marks (Plan's plan.ownMarks): each its first
+-- note's face's mark (the free card's: the icon picked) on a halo of the
+-- paper, through the placer's mark kit (P.ownKit: Plate.MarkKit over the
+-- sheet's toolkit, so it turns and folds with the paper), a hover square
+-- (`what` "note", its notes kept on it: `own`) with every note's account,
+-- and its target ("own:<k>") for the strips' leaders.
+local function OwnMarks(plan, P, stock)
+    local kit = P.ownKit
+    if kit then kit:Begin() end
+    local OM = DungeonPage.OWN_MARK
+    for k, m in ipairs(plan.ownMarks or {}) do
+        local face = DungeonPage.NoteFace(m.recs[1].kind)
+        if kit and face then
+            kit.P = stock or kit.P
+            kit.Dot(kit.halo, m.x, m.y, OM.halo, kit.P, ns.UI.JourneyPlate.MARK.halo)
+            face.mark(kit, m.x, m.y, m.recs[1])
+        end
+        local recs = m.recs
+        local hit = P.Hit(P.pools.hit, m.x, m.y, OM.hover, nil, "note")
+        hit.own = recs
+        hit.tipFn = function()
+            local title, lines = face.tips(recs, ns.Now())
+            local list = Style.TipList(title, lines)
+            -- (the mouse's way to change it; the pad's slip says Y instead)
+            if ns.RunNotes.Writable(plan.visit) and not ns.UI.Pad.Input.Active() then
+                list[#list + 1] = { DungeonPage.NOTE_WORDS.change, 0.6, 0.6, 0.6, true }
+            end
+            return list
+        end
+        hit.tip = hit.tipFn()
+        plan.targets["own:" .. k] = { x = m.x, y = m.y, r = OM.radius }
+    end
+    if kit then kit:Finish() end
+end
+
 function DungeonPage.Ink(plan, P, stock)
     local pools = P.pools
     for _, pool in pairs(pools) do pool:Begin() end
@@ -1340,6 +1410,7 @@ function DungeonPage.Ink(plan, P, stock)
         end
     end
     Flavour(plan, P, stock)
+    OwnMarks(plan, P, stock)
 
     for _, pool in pairs(pools) do pool:Finish() end
     return plan

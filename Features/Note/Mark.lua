@@ -14,7 +14,7 @@ local MARK = Plate.MARK
 -- plate.people: that would make a second, automatic strip with no moments.
 -- Its room and halo are the icons' own (Icons.MARK), the ring's without them.
 local ICON = ns.NoteIcons and ns.NoteIcons.MARK or {}
-Plate.RegisterMark(Note.KIND, {
+Note.Mark = Plate.RegisterMark(Note.KIND, {
     order = 36, cap = 20, count = "noteCards",
     radius = ICON.radius or MARK.together / 2 + 1, halo = ICON.halo or MARK.together + 4,
     tip = function(m, now) return Note.Tip(m.noteCard, now) end,

@@ -106,6 +106,71 @@ local PAIR = { x = 0.4, turn = 3, clear = 1, pad = 6 }
 local STRIKE = { width = 1.4, alpha = 0.72, over = 3, pieces = 3, wobble = 0.8 }
 DungeonPage.PAIR, DungeonPage.STRIKE = PAIR, STRIKE
 
+-- The player's own notes on the run (Core/RunNotes.lua; .claude/features/
+-- dungeon-notes.md, the UI proposal .claude/ui-proposal/dungeon-notes.md §1,
+-- §2, approved 28 Nov 2026). A strip each, as the detected ones are (the same
+-- paper, tape, light and height), laid first and never cut: they do not count
+-- toward NOTES.most, the detected strips fill what is left of it (decision 4,
+-- the user's: max(0, most - #own)). What makes one read as the player's is
+-- its face's (RegisterNoteFace: the free card's in Features/Note/Sheet.lua):
+-- the chosen icon painted `icon` px in the strip's lead room, `iconGap` px
+-- before the heading, and the player's words quoted under it in their hand,
+-- at most `lines` lines. `width` and `wide` as NOTES'; `level` over the
+-- detected strips (1), under a pair's second (9).
+local OWN = { width = 210, wide = 320, icon = 20, iconGap = 5, lines = 3, level = 2 }
+-- An unpinned note's mark at its spot: the icon the player picked, drawn by
+-- the free card's own mark (Features/Note/Mark.lua, as on the plates; the
+-- user, 28 Nov: no mark art of its own), `size` px, on a paper halo `halo`
+-- px across, other strips keeping `radius` px off it; two within `merge` px
+-- share one mark (the oldest's icon, every note in its tooltip); its hover
+-- square `hover` px. A pinned note has no mark: the boss's face is its mark.
+local OWN_MARK = { size = 13, halo = 18, radius = 9, merge = 6, hover = 22 }
+-- A note with no free place still lies (decision 4): (a) the usual places,
+-- edges included; else (b) the edge places alone, its strip allowed over an
+-- earlier own strip by up to `overlap` of its depth (shingled) and its leader
+-- across a face; else (c) along the paper's foot from its bottom-left corner,
+-- `from` px in ({ x, y }), each next `stack` px right, its tape on the paper
+-- and the slip on the screen. Kept for the tests: the entry's `forced`
+-- ("edge" or "stack").
+local OWN_EDGE = { overlap = 0.5, stack = 18, from = { 24, 20 } }
+DungeonPage.OWN, DungeonPage.OWN_MARK, DungeonPage.OWN_EDGE = OWN, OWN_MARK, OWN_EDGE
+
+-- How a kind of the player's own note lies on the run's map, so neither Core
+-- nor this file names a feature (the free card's: Features/Note/Sheet.lua):
+--   DungeonPage.RegisterNoteFace(kind, {
+--     new(host) → slot          a strip and its parts on `host` (the notes'
+--                               host): DungeonPage.NewNote(host, hooks) with
+--                               whatever the face draws on it
+--     write(slot, rec, note)    `note` is the paper the strip lies as (seed,
+--                               tilt, shadow, soft, ground, light, strong):
+--                               the face adds its words (name, what, quote,
+--                               quoteLines, lead, guid, onClick, tip) and sets
+--                               it (slot.strip:SetNote(note)); slot.note = {
+--                               name, items (an item named in the heading:
+--                               its square, as a loot strip's) }
+--     mark(kit, x, y, rec)      its mark at x, y on a mark kit (Plate.MarkKit
+--                               over the sheet's toolkit)
+--     tips(recs, now) → title, lines   the tooltip of a mark holding `recs`
+--     describe(rec) → words     optional: its line in a menu where a mark
+--                               holds several ("Which one?")
+--   })
+-- A later kind needs no migration (the record keeps `kind`) and no change
+-- here.
+local faces = ns.Registry.New({
+    what = "DungeonPage.RegisterNoteFace(kind, { new, write, mark, tips })",
+    check = function(_, spec)
+        return type(spec.new) == "function" and type(spec.write) == "function" and type(spec.mark) == "function"
+            and type(spec.tips) == "function"
+    end,
+})
+function DungeonPage.RegisterNoteFace(kind, spec)
+    faces:Add(kind, spec)
+    return spec
+end
+function DungeonPage.NoteFace(kind)
+    return kind and faces:Get(kind) or nil
+end
+
 --------------------------------------------------------------------------
 -- What to say
 --------------------------------------------------------------------------
@@ -270,8 +335,10 @@ end
 -- each item named on a loot strip a square of our own: the item's own
 -- tooltip, for whom it dropped under it, and a click opens their page
 -- where they are in the diary.
-function DungeonPage.NewNote(host)
-    local strip = ns.UI.PaperStrip(host)
+-- `card`, optional: the strip's card hooks (UI/Paper/Strip.lua's contract),
+-- for a face that draws on its strip (the player's own notes, RegisterNoteFace).
+function DungeonPage.NewNote(host, card)
+    local strip = ns.UI.PaperStrip(host, card)
     local note = { strip = strip }
     note.links = ns.UI.Pool.New(function()
         local hover = CreateFrame("Button", nil, host)
@@ -617,6 +684,8 @@ local function Keep(plan)
     -- The moments in the hand: a drop's loop, a scribble, the pen at rest,
     -- the blood, a level-up's star and its scrawl (Print.lua's Flavour).
     for _, f in ipairs(plan.flavour or {}) do spots[#spots + 1] = { x = f.x, y = f.y, r = f.r } end
+    -- The player's own notes' marks (Print.lua's plan.ownMarks).
+    for _, m in ipairs(plan.ownMarks or {}) do spots[#spots + 1] = { x = m.x, y = m.y, r = OWN_MARK.halo / 2 } end
     local path = plan.route and plan.path
     if path then
         for k = 2, path.reached or 0 do
@@ -680,7 +749,10 @@ end
 -- with the least cost (its distance, and PLACE.route for each stretch of
 -- the inked way under it) round the mark, else along the paper's edge.
 -- Returns its middle, its box and its nearest point to the mark, or nil.
-local function Spot(t, w, h, j, ctx, tapeW)
+-- `edge` (the player's own notes, OWN_EDGE (b)): the edge places alone, the
+-- strip allowed over an earlier own strip (ctx.own) by up to OWN_EDGE.overlap
+-- of its depth, and its leader across a face.
+local function Spot(t, w, h, j, ctx, tapeW, edgeOnly)
     local best
     local function Try(cx, cy, cost, edge)
         local box, Nearest, tape = Lying(cx, cy, w, h, j, tapeW)
@@ -691,11 +763,16 @@ local function Spot(t, w, h, j, ctx, tapeW)
             if NearDisc(box, s.x, s.y, s.r, PLACE.clear) then return end
         end
         for _, b in ipairs(ctx.taken) do
-            if NearBox(box, b, PLACE.apart) then return end
+            if NearBox(box, b, PLACE.apart) then
+                local over = math.min(box[4], b[4]) - math.max(box[2], b[2])
+                if not (edgeOnly and ctx.own and ctx.own[b] and over <= OWN_EDGE.overlap * h) then return end
+            end
         end
         local fx, fy = Nearest(t.x, t.y)
-        for _, f in ipairs(ctx.faces) do
-            if (f.x ~= t.x or f.y ~= t.y) and CrossesDisc({ fx, fy }, { t.x, t.y }, f.x, f.y, f.r, 2) then return end
+        if not edgeOnly then
+            for _, f in ipairs(ctx.faces) do
+                if (f.x ~= t.x or f.y ~= t.y) and CrossesDisc({ fx, fy }, { t.x, t.y }, f.x, f.y, f.r, 2) then return end
+            end
         end
         cost = cost + PLACE.route * OverInk(box, ctx.ink) + PLACE.ridge * ridges
         if ctx.banner and box[1] < ctx.banner[3] and box[3] > ctx.banner[1] and box[2] < ctx.banner[4] then
@@ -707,7 +784,7 @@ local function Spot(t, w, h, j, ctx, tapeW)
     end
     local c, s = math.cos(j), math.sin(j)
     local hx, hy = (w * math.abs(c) + h * math.abs(s)) / 2, (w * math.abs(s) + h * math.abs(c)) / 2
-    for gi, gap in ipairs(PLACE.gap) do
+    for gi, gap in ipairs(edgeOnly and {} or PLACE.gap) do
         for hi, deg in ipairs(PLACE.headings) do
             local a = math.rad(deg)
             local ux, uy = math.cos(a), math.sin(a)
@@ -752,6 +829,87 @@ local function Target(plan, note)
     return (note.door and t.door) or (note.wipe and t["wipe:" .. note.wipe]) or (note.near and t["near:" .. note.near])
         or (note.wayLoot and t["loot:" .. note.wayLoot])
         or (note.boss and t[note.boss.name]) or nil
+end
+
+-- The player's own notes on the sheet (OWN; Print.lua's plan.own: those `At`
+-- places on it, oldest first, each { rec, x, y, boss (pinned to a face on
+-- this sheet), mark (its index in plan.ownMarks) }), laid before the detected
+-- strips through `ctx` (LayNotes' places taken and kept off) and LayAt, every
+-- one of them: the usual place, else the edges shingled, else stacked along
+-- the foot (OWN_EDGE). Kept for the tests and the pad: view.ownStrips ({ own =
+-- true, rec, slot, strip, box, middle, target, from, tip, leader, forced,
+-- leaders = { from, to } (its leader's pieces in the leaders' pools) }).
+-- Returns how many were laid.
+function DungeonPage.LayOwn(view, plan, P, K, ctx, LayAt, angle, flat)
+    local host = view.notesHost
+    view.ownPools = view.ownPools or {}
+    for _, pool in pairs(view.ownPools) do pool:Begin() end
+    view.ownStrips = {}
+    ctx.own = {}
+    local stacked = 0
+    for i, o in ipairs(plan.own or {}) do
+        local face = DungeonPage.NoteFace(o.rec.kind)
+        local t = o.boss and plan.targets[o.boss] or plan.targets["own:" .. tostring(o.mark)]
+        if face and t then
+            local pool = view.ownPools[o.rec.kind]
+            if not pool then
+                pool = ns.UI.Pool.New(function() return face.new(host) end)
+                pool:Begin()
+                view.ownPools[o.rec.kind] = pool
+            end
+            local slot = pool:Next()
+            local seed = table.concat({ "own", tostring(plan.visit.id or 0), tostring(o.rec.t or 0), tostring(i) }, ":")
+            local jitter = (Style.Noise(Surface.Seed(seed) + 0.5) - 0.5) * 2 * math.rad(PLACE.jitter)
+            local j = (flat or not slot.strip.turnsText) and -angle or jitter
+            local shadow, soft, under = DungeonPage.StripShadows(nil, view.ground)
+            face.write(slot, o.rec, { seed = seed, tilt = math.deg(angle + jitter), strong = true, shadow = shadow,
+                soft = soft, ground = under, light = true, quoteLines = OWN.lines, lead = OWN.icon + OWN.iconGap })
+            slot.note = slot.note or {}
+            slot.note.seed = seed
+            -- As wide as its heading needs, within reason.
+            local m = host.nameMeasure
+            m:SetText(slot.note.name or "")
+            local l, _, r = slot.strip:Pad()
+            local width = math.max(OWN.width, math.min(OWN.wide,
+                (m:GetUnboundedStringWidth() or 0) + l + r + 4 + OWN.icon + OWN.iconGap))
+            local w, h = slot.strip:Layout(0, 0, width)
+            local forced
+            local spot = Spot(t, w, h, j, ctx, w)
+            if not spot then
+                spot, forced = Spot(t, w, h, j, ctx, w, true), "edge"
+            end
+            if not spot then
+                -- Along the paper's foot from its bottom-left corner.
+                local F = OWN_EDGE.from
+                local c, s = math.cos(j), math.sin(j)
+                local hx = (w * math.abs(c) + h * math.abs(s)) / 2
+                local cx, cy = F[1] + hx + stacked * OWN_EDGE.stack, ctx.H - F[2]
+                stacked = stacked + 1
+                local box, Nearest, tape = Lying(cx, cy, w, h, j, w)
+                local fx, fy = Nearest(t.x, t.y)
+                spot, forced = { x = cx, y = cy, box = box, from = { fx, fy }, edge = true, tape = tape }, "stack"
+            end
+            LayAt(slot, spot.x, spot.y, w, h, width, OWN.level)
+            ctx.taken[#ctx.taken + 1] = spot.box
+            ctx.own[spot.box] = true
+            local gap = math.sqrt((t.x - spot.from[1]) ^ 2 + (t.y - spot.from[2]) ^ 2) - t.r
+            local entry = { own = true, rec = o.rec, slot = slot, strip = slot.strip, box = spot.box,
+                middle = { spot.x, spot.y }, target = t, from = spot.from, edge = spot.edge, gap = gap,
+                tape = spot.tape, forced = forced, boss = o.boss, mark = o.mark, note = slot.note }
+            local from = { view.leaders.used, view.leaderUnder.used }
+            if gap < LEADER.tick.near then
+                Tick(P, view.leaders, view.leaderUnder, spot.from, t)
+                entry.leader = "tick"
+            else
+                local tx, ty = Leader(P, view.leaders, view.leaderUnder, spot.from, t, (i % 2 == 0) and 1 or -1)
+                entry.leader, entry.tip = "arrow", tx and { tx, ty } or nil
+            end
+            entry.leaders = { from[1] + 1, view.leaders.used, from[2] + 1, view.leaderUnder.used }
+            view.ownStrips[#view.ownStrips + 1] = entry
+            DungeonPage.Step()
+        end
+    end
+    return #view.ownStrips
 end
 
 -- Lays the run's notes on the map sheet `view` (UI/Dungeon/Sheet.lua: its
@@ -800,6 +958,7 @@ function DungeonPage.LayNotes(view, plan, P, K)
     view.leaders:Begin()
     view.leaderUnder:Begin()
     view.noteStrips = {}
+    view.ownStrips = {}
     local shown = 0
     local host = view.notesHost
     -- As wide as a heading needs, within reason.
@@ -817,8 +976,13 @@ function DungeonPage.LayNotes(view, plan, P, K)
         PlaceLinks(host, slot)
         Underline(slot, host.nameMeasure)
     end
+    -- The player's own notes first, oldest first, every one of them (OWN):
+    -- the best places are theirs, and the detected strips get what is left
+    -- of NOTES.most.
+    local ownShown = DungeonPage.LayOwn(view, plan, P, K, ctx, LayAt, angle, flat)
+    local most = math.max(0, NOTES.most - ownShown)
     for i, a in ipairs(about) do
-        if shown >= NOTES.most then break end
+        if shown >= most then break end
         local slot = view.notes:Next()
         local seed = Surface.Seed(a.note.seed)
         local own = (Style.Noise(seed + 0.5) - 0.5) * 2 * math.rad(PLACE.jitter)
@@ -901,10 +1065,11 @@ function DungeonPage.LayNotes(view, plan, P, K)
         DungeonPage.Step()
     end
     view.notes:Finish()
+    for _, pool in pairs(view.ownPools or {}) do pool:Finish() end
     view.leaders:Finish()
     view.leaderUnder:Finish()
 
-    -- The rest, counted in chalk by the label.
+    -- The rest, counted in chalk by the label (never an own note).
     view.notesMore = #about - shown
     view.more:SetShown(view.notesMore > 0)
     if view.notesMore > 0 then
@@ -917,6 +1082,11 @@ end
 function DungeonPage.ClearNotes(view)
     view.notes:Begin()
     view.notes:Finish()
+    for _, pool in pairs(view.ownPools or {}) do
+        pool:Begin()
+        pool:Finish()
+    end
+    view.ownStrips = {}
     for _, pool in ipairs({ view.leaders, view.leaderUnder }) do
         pool:Begin()
         pool:Finish()

@@ -185,11 +185,13 @@ local function Writing(view)
     end
 end
 
-local scope = {
-    layer = 30,
-    host = function() return J.journal end,
-    active = function() return View() ~= nil end,
-}
+-- The scope, made twice from the same parts (Make): `cards` for the slip on
+-- the book, and `runcard` for the same form laid on a run's table spread (a
+-- note on the Dungeon View's map, CardSheet.OpenRun; .claude/ui-proposal/
+-- dungeon-notes.md §5), over the table's own scope (`spread`, 40), its host
+-- the spread and its prompts under the form's foot (the book's cover, where
+-- they usually lie, is see-through then). Everything else is the same.
+local function Make(scope)
 
 local function Click(frame) frame:Click("LeftButton") end
 
@@ -563,4 +565,26 @@ function scope.legend()
     return out
 end
 
-Pad.RegisterScope("cards", scope)
+return scope
+end
+
+Pad.RegisterScope("cards", Make({
+    layer = 30,
+    host = function() return J.journal end,
+    active = function() return View() ~= nil and CardSheet.Run() == nil end,
+}))
+
+-- The prompts' slip under the form's foot, its right end toward the form's
+-- right (the form lies straight: its sheet's middle is the form's).
+local RUNSLIP = { right = 26, tuck = 4 }
+Pad.RegisterScope("runcard", Make({
+    layer = 45,
+    host = function() return ns.UI.DungeonPage and ns.UI.DungeonPage.Spread() end,
+    active = function() return View() ~= nil and CardSheet.Run() ~= nil end,
+    slip = function(_, w)
+        local view = View()
+        if not (view and view.W and view.H) then return nil end
+        return { frame = view.sheet, x = view.W / 2 - RUNSLIP.right - w, y = -view.H / 2 + RUNSLIP.tuck,
+            level = view.sheet:GetFrameLevel() - 1 }
+    end,
+}))

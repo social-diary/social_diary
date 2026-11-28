@@ -24,7 +24,7 @@ local addonName, ns = ...
 -- the per-character file. They move apart: a file can be converted at one
 -- login while a diary that is not loaded waits for its next. Bump one with a
 -- step in its list below.
-local SCHEMA_VERSION = 8     -- a diary
+local SCHEMA_VERSION = 9     -- a diary
 local ACCOUNT_SCHEMA = 2     -- SocialDiaryDB, apart from the shared diary
 local CHARACTER_SCHEMA = 3   -- SocialDiaryCharDB, apart from its own diary
 
@@ -330,6 +330,20 @@ STEPS.diary[8] = function(t)
         if tag then
             if type(entry.tags) ~= "table" then entry.tags = {} end
             ns.Diary.Edit.AddTag(entry, tag)
+        end
+    end
+end
+
+-- 9 (28 Nov 2026): a run keeps the player's own notes on its map,
+-- `visit.custom`, a list (Core/RunNotes.lua, .claude/features/dungeon-notes.md).
+-- New and additive: no saved field moves. The step makes the shape one the
+-- readers can rely on: a visit's `custom` is a list or absent, anything else
+-- under that key (nothing ever wrote one) is dropped, and an empty list goes.
+STEPS.diary[9] = function(t)
+    if type(t.instances) ~= "table" then return end
+    for _, visit in pairs(t.instances) do
+        if type(visit) == "table" and visit.custom ~= nil then
+            if type(visit.custom) ~= "table" or next(visit.custom) == nil then visit.custom = nil end
         end
     end
 end

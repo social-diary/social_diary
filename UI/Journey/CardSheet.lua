@@ -126,6 +126,23 @@ local WORDS = {
 
 local CardSheet = {}
 YourDiary.CardSheet = CardSheet
+CardSheet.RING = RING
+
+-- The form scoped to a run's map (.claude/ui-proposal/dungeon-notes.md §4:
+-- the player's own notes on the Dungeon View, UI/Dungeon/NoteMenu.lua), laid
+-- on the table spread rather than the book (which is put aside, see-through
+-- and deaf, while the run is out): on the side of the screen away from the
+-- spot, so the spot and its ring stay in sight. The form's left edge `inset`
+-- px in from the map sheet's left edge where the spot lies right of the
+-- sheet's middle, else its right edge (its card beside it counted) `inset`
+-- px in from the sheet's right edge; centred on the spot's height, kept
+-- `edge` px inside the screen; where it would still come within `clear` px of
+-- the spot (a narrow screen), slid up or down away from it, toward the side
+-- with room. `level`: over the spread's map, its strips and the pen's slip.
+-- `name`: the frame that holds Escape's place while it is up, so Escape puts
+-- the form away and not the run.
+local TABLE = { inset = 28, clear = 48, edge = 12, level = 120, name = "SocialDiaryRunCard" }
+CardSheet.TABLE = TABLE
 
 local view, K
 
@@ -1133,6 +1150,21 @@ local function Build()
     view.another:SetText(WORDS.another)
 
     view.save = K.Link(FONT.strong, function()
+        -- On a run's map: written through the run's own store, not the
+        -- route's (CardSheet.OpenRun).
+        local run = view.run
+        if run then
+            if view.where then
+                run.store.Insert(view.kind, (Fields()), view.where)
+            else
+                local fields, any = Fields()
+                if any then run.store.Edit(view.rec, fields) end
+            end
+            Style.PlaySound("write")
+            Close(true)
+            run.store.Redraw()
+            return
+        end
         local t
         if view.where then
             local rec = ns.Custom.Insert(view.kind, (Fields()), view.where)
@@ -1165,6 +1197,18 @@ local function Build()
     -- (deleted, the slip torn up: the tear, not the sheet put away)
     view.remove = K.Link(FONT.body, function()
         local rec = view.rec
+        local run = view.run
+        if run then
+            -- (over the spread, which stands in the dialogs' strata)
+            local popup = ns.UI.Dialog.Confirm(run.confirm or WORDS.confirm, function()
+                if not run.store.Remove(rec) then return end
+                Style.PlaySound("tear")
+                if view:IsShown() and view.run == run then Close(true) end
+                run.store.Redraw()
+            end)
+            if type(popup) == "table" and popup.Raise then popup:Raise() end
+            return
+        end
         ns.UI.Dialog.Confirm(WORDS.confirm, function()
             ns.Custom.Remove(rec)
             Style.PlaySound("tear")
@@ -1196,10 +1240,17 @@ local function Build()
     end)
 
     -- Turning to another page, or shutting the book, puts it away unwritten.
-    YourDiary.page.right:HookScript("OnHide", function()
-        if view:IsShown() then view:Hide(true) end
-    end)
+    -- (The page is made with the book's first look at Your Diary; a form
+    -- opened on a run before that has no page to watch: the run's spread
+    -- puts it away, UI/Dungeon/NoteMenu.lua.)
+    local page = YourDiary.page
+    if page and page.right then
+        page.right:HookScript("OnHide", function()
+            if view:IsShown() and not view.run then view:Hide(true) end
+        end)
+    end
     view:HookScript("OnHide", RingOff)
+    view:HookScript("OnHide", function() CardSheet.Unhost() end)
     view:HookScript("OnHide", Settle)
     view:HookScript("OnHide", PadRefresh)
     -- The target watched while a form with a creature's line is open
@@ -1216,9 +1267,34 @@ end
 -- The sheet's size, and laid: its left edge PICKER.edge in from the pages',
 -- upright in the middle of their height. `dx` is from the view's middle, which
 -- is the book frame's and so the pages' (Style.Book, inset by COVER each side).
+local function RunAt(W, H)
+    local run = view.run
+    local sx, sy = run.spot()
+    local box = run.sheet()
+    local sw, sh = run.screen()
+    -- (a screen whose size is not known yet: nothing to keep inside)
+    if not (sw and sw > 0 and sh and sh > 0) then sw, sh = math.huge, math.huge end
+    local E = TABLE.edge
+    local spec = view.kind and ns.Custom.Spec(view.kind)
+    local total = W + ((spec and spec.preview) and (PREVIEW.w - PREVIEW.over) or 0)
+    local left
+    if sx > (box[1] + box[3]) / 2 then left = box[1] + TABLE.inset else left = box[3] - TABLE.inset - total end
+    left = math.max(-sw / 2 + E, math.min(sw / 2 - E - total, left))
+    local lo, hi = -sh / 2 + E + H / 2, sh / 2 - E - H / 2
+    local cy = math.max(lo, math.min(hi, sy))
+    local C = TABLE.clear
+    if sx > left - C and sx < left + total + C and sy > cy - H / 2 - C and sy < cy + H / 2 + C then
+        local above, below = sy + C + H / 2, sy - C - H / 2
+        local up, down = above <= hi, below >= lo
+        if up and (not down or sy < 0) then cy = above elseif down then cy = below end
+    end
+    view.runAt = { left = left, cy = cy, total = total }
+    return { left + W / 2, cy }
+end
+
 local function Place(W, H)
     K.Reshape(W, H)
-    K.Fall("custom-card", nil, { PICKER.edge + W / 2 - BOOK.BOOK_W / 2, 0 })
+    K.Fall("custom-card", nil, view.run and RunAt(W, H) or { PICKER.edge + W / 2 - BOOK.BOOK_W / 2, 0 })
     view:Show()
     K.Lay()
 end
@@ -1416,8 +1492,8 @@ local function Lay(spec)
     view.hide:SetShown(detected)
     view.reset:SetShown(changed)
     view.remove:SetShown(inserted)
-    view.another:SetShown(view.where ~= nil)
-    if view.where then view.another:PlaceAt(M, footAt) end
+    view.another:SetShown(view.where ~= nil and not view.run)
+    if view.where and not view.run then view.another:PlaceAt(M, footAt) end
     if detected then
         view.hide:PlaceAt(M, linksAt)
         if changed then view.reset:PlaceAt(M + K.Width(view.hide.label) + SHEET.linkGap, linksAt) end
@@ -1545,6 +1621,17 @@ function Open(kind, rec, where)
     RowsOff(kind)
     ShowForm(true)
     view.kind, view.rec, view.where, view.rows = kind, rec, where, RowsOf(kind, spec)
+    -- Scoped to a run's map: the rows its kind leaves out there (the free
+    -- card's "Write it into the entry": RunNotes.KINDS[kind].skip) are off
+    -- the form, and so out of what is written and of the card beside it.
+    local skip = view.run and view.run.skip
+    if skip then
+        local kept = {}
+        for _, row in ipairs(view.rows) do
+            if skip[row.field.key] then ShowRow(row, false) else kept[#kept + 1] = row end
+        end
+        view.rows = kept
+    end
     view.title:SetText(spec.heading or Capital(spec.label))
     local values = rec and ns.Custom.Values(rec) or spec.defaults or {}
     -- What a detected card shows but keeps elsewhere (Core/Custom.lua's `values`).
@@ -1588,6 +1675,65 @@ function Open(kind, rec, where)
 end
 
 CardSheet.Edit = function(kind, rec) Open(kind, rec) end
+
+-- The form for a note on a run's map (UI/Dungeon/NoteMenu.lua), `rec` of
+-- `kind` to edit, or a new one at scope.where. `scope`:
+--   host       the frame it lies on (the table spread, the whole screen)
+--   where      a new note's spot ({ f, x, y, boss }), nil to edit `rec`
+--   skip       the kind's rows left out here (RunNotes.KINDS[kind].skip)
+--   store      { Insert(kind, fields, where), Edit(rec, fields), Remove(rec),
+--              Redraw() }: where it is written (the run's notes, not the
+--              route's cards: CardSheet never names them)
+--   confirm    the words Delete asks with
+--   spot()     the spot on the host from its middle, y up; sheet() the map
+--              sheet's box there ({ x0, y0, x1, y1 }, y up); screen() the
+--              host's size: where the form lies (TABLE)
+--   hear(view) the form moved off the book: whatever stopped it hearing
+--              clicks there undone
+--   onClose()  after it is put away, however
+-- The picker is never shown (one kind) and the preview lies beside it as on
+-- the plates. Returns the view.
+function CardSheet.OpenRun(kind, rec, scope)
+    if not ns.Custom.Spec(kind) then return nil end
+    if not view then Build() end
+    if view:IsShown() then Close(true) end
+    view.run = scope
+    local host = scope.host
+    view:SetParent(host)
+    view:ClearAllPoints()
+    view:SetAllPoints(host)
+    view:SetFrameLevel(host:GetFrameLevel() + TABLE.level)
+    if not view.escape then
+        -- Escape's place while it is up: hidden by Escape (or the pad's
+        -- stand-in, Pad.CloseOurs), it puts the form away.
+        view.escape = CreateFrame("Frame", TABLE.name, view)
+        view.escape:SetScript("OnHide", function()
+            if view:IsShown() and view.run then Close() end
+        end)
+    end
+    view.escape:Show()
+    if scope.hear then scope.hear(view) end
+    Open(kind, rec, scope.where)
+    return view
+end
+
+-- The form put back on the book after a run's (OpenRun), as it was.
+function CardSheet.Unhost()
+    local run = view and view.run
+    if not run then return end
+    view.run, view.runAt = nil, nil
+    local book = ns.UI.JournalFrame()
+    view:SetParent(book)
+    view:ClearAllPoints()
+    view:SetAllPoints(book)
+    view:SetFrameLevel(book:GetFrameLevel() + 40)
+    if run.onClose then run.onClose() end
+end
+
+-- The run the form is scoped to now (OpenRun's scope), or nil.
+function CardSheet.Run()
+    return view and view:IsShown() and view.run or nil
+end
 
 -- The picker, for the spot already held (view.where): from the menu, or back
 -- from the form.

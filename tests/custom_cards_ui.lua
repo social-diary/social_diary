@@ -1148,3 +1148,87 @@ do
     Click(view.cancel)
     Custom.Remove(rec)
 end
+
+--------------------------------------------------------------------------
+Section("the form scoped to a run's map: rows skipped, its own store, another host, given back")
+
+do
+    local host = CreateFrame("Frame", nil, UIParent)
+    host:SetAllPoints(UIParent)
+    host:Show()
+    local calls, heard, closed = {}, 0, 0
+    local store = {
+        Insert = function(kind, fields, where) calls[#calls + 1] = { "insert", kind, fields, where } return {} end,
+        Edit = function(rec, fields) calls[#calls + 1] = { "edit", rec, fields } return true end,
+        Remove = function(rec) calls[#calls + 1] = { "remove", rec } return true end,
+        Redraw = function() calls[#calls + 1] = { "redraw" } end,
+    }
+    local screen = { 1200, 800 }
+    local spot = { 300, 0 }
+    local function Scope(where)
+        return { host = host, where = where, skip = { caption = true }, store = store,
+            spot = function() return spot[1], spot[2] end,
+            sheet = function() return { -500, -300, 500, 300 } end,
+            screen = function() return screen[1], screen[2] end,
+            hear = function() heard = heard + 1 end,
+            onClose = function() closed = closed + 1 end }
+    end
+    local book = ns.UI.JournalFrame()
+    local before = #(j.custom or {})
+    local view = CardSheet.OpenRun("noteCard", nil, Scope({ f = 292, x = 0.5, y = 0.5 }))
+    Check(view and view:IsShown(), "the form did not open on the run")
+    Eq(view:GetParent(), host, "the form not moved onto the run's host")
+    Eq(heard, 1, "the host not told to let it hear clicks")
+    Eq(CardSheet.Run() and CardSheet.Run().host, host, "not scoped to the run")
+    Eq(Row("caption"), nil, "a skipped row on the form")
+    Check(Row("text") and Row("icon"), "the free card's rows")
+    Check(not view.another:IsShown(), "the picker offered on a run")
+    Check(view.preview:IsShown(), "no card beside the form on a run (the user, 28 Nov)")
+    Eq(view.preview.recorded.points[1].args[1], view.sheet, "the card not beside the form")
+    -- The spot right of the sheet's middle: the form's left edge TABLE.inset in from the sheet's.
+    Eq(view.runAt.left, -500 + CardSheet.TABLE.inset, "the form not on the far side from the spot")
+    Eq(view.runAt.total, view.W + CardSheet.PREVIEW.w - CardSheet.PREVIEW.over, "the card beside it not counted")
+    Row("text").box:SetText("a run's note")
+    view.save.scripts.OnClick(view.save)
+    Eq(calls[1] and calls[1][1], "insert", "Save not through the run's store")
+    Eq(calls[1][2], "noteCard", "its kind")
+    Eq(calls[1][3].text, "a run's note", "its words")
+    Eq(calls[1][3].caption, nil, "the skipped row written")
+    Eq(calls[1][4].f, 292, "its spot")
+    Eq(calls[2] and calls[2][1], "redraw", "the run not laid again")
+    Eq(#(j.custom or {}), before, "the route's cards written to")
+    Check(not view:IsShown(), "Save left the form up")
+    Eq(view:GetParent(), book, "the form not given back to the book")
+    Eq(closed, 1, "the run not told the form went")
+    Eq(CardSheet.Run(), nil, "still scoped to the run")
+    -- Edit: through the store, only what changed.
+    calls = {}
+    CardSheet.OpenRun("noteCard", { kind = "noteCard", text = "old words", icon = "heart", inserted = true },
+        Scope(nil))
+    Eq(Row("text"):Get(), "old words", "Edit did not load the note")
+    Row("text").box:SetText("new words")
+    view.save.scripts.OnClick(view.save)
+    Eq(calls[1] and calls[1][1], "edit", "Edit not through the run's store")
+    Eq(calls[1][3].text, "new words", "the edit")
+    -- Escape (its stand-in hidden) puts the form away alone.
+    CardSheet.OpenRun("noteCard", nil, Scope({ f = 292, x = 0.5, y = 0.5 }))
+    _G[CardSheet.TABLE.name]:Hide()
+    Check(not view:IsShown(), "Escape left the form up")
+    Check(host:IsShown(), "Escape hid the run's host")
+    -- A narrow screen: the form slides up or down off the spot.
+    screen, spot = { 700, 1000 }, { 0, 0 }
+    CardSheet.OpenRun("noteCard", nil, Scope({ f = 292, x = 0.5, y = 0.5 }))
+    local H = view.H
+    Check(math.abs(view.runAt.cy - spot[2]) >= H / 2 + CardSheet.TABLE.clear - 1e-6, "the form over the spot on a narrow screen")
+    Check(math.abs(view.runAt.cy) + H / 2 <= screen[2] / 2 - CardSheet.TABLE.edge + 1e-6, "the form off the screen")
+    Press(view.cancel)
+    Eq(view:GetParent(), book, "Cancel: the form not given back")
+    -- A zone card is written as it always was: on the book, its caption row there.
+    RightMap(Plate(), 0.40, 0.60)
+    mock.MenuClick("Add custom event...")
+    PickKind("noteCard")
+    Eq(CardSheet.View():GetParent(), book, "a zone card's form not on the book")
+    Check(Row("caption") ~= nil, "a zone card lost its caption row")
+    Check(CardSheet.View().another:IsShown(), "a zone card lost Choose another")
+    Press(CardSheet.View().cancel)
+end

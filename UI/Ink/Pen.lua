@@ -339,3 +339,43 @@ function Pen.Beads(C)
     end
     return beads
 end
+
+--------------------------------------------------------------------------
+-- The dashed ring
+--------------------------------------------------------------------------
+
+-- A dashed ring round cx, cy, the kind the pencil draws where a card is
+-- being written (UI/Journey/CardSheet.lua's RING: a plate's spot, a run's
+-- map, UI/Dungeon/NoteMenu.lua): `look.dashes` dashes, each `look.share` of
+-- its arc, started up to `look.uneven` of an arc off its place and drawn up
+-- to `look.wander` px off the radius `look.r`, through `look.bends` points
+-- resampled every `look.step` px, `look.width` px wide in `look.colour` at
+-- `look.alpha`, the nib `look.nib` (Pen.Nib's). Seeded by `seed`, so it does
+-- not shift when drawn again. Its quads (Pen.Stroke's) are added to `prims`,
+-- dash by dash, and `prims` returned: the caller places them on its own
+-- surface. Lifted out of the plate's ring (UI/Journey/Plate.lua's DrawRing,
+-- 28 Nov 2026), which draws exactly what it drew before.
+function Pen.Ring(prims, cx, cy, look, seed)
+    local rand = Pen.Random(seed)
+    for d = 1, look.dashes do
+        local arc = 2 * pi / look.dashes
+        local a0 = (d - 1 + (rand() - 0.5) * look.uneven) * arc
+        local a1 = a0 + arc * look.share
+        local radius = look.r + (rand() - 0.5) * look.wander
+        local pts = {}
+        for i = 0, look.bends do
+            local a = a0 + (a1 - a0) * i / look.bends
+            pts[#pts + 1] = cx + radius * math.cos(a)
+            pts[#pts + 1] = cy + radius * sin(a)
+        end
+        local line = Pen.Resample(pts, look.step)
+        if #line >= 2 then
+            local n = #line
+            Pen.Stroke(prims, 0, line, Pen.Mitres(line), function(i)
+                local a, b = line[max(i - 1, 1)], line[min(i + 1, n)]
+                return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y, look.nib)
+            end, function() return 0 end, function() return look.alpha end, look.colour, nil, look.bends * 2)
+        end
+    end
+    return prims
+end

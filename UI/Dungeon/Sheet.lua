@@ -235,7 +235,14 @@ local function Placer(view, K)
         hit = ns.UI.Pool.New(function()
             local hit = CreateFrame("Frame", nil, hits)
             hit:EnableMouse(true)
-            Style.Tooltip(hit, function(self) return self.tip end, "ANCHOR_RIGHT")
+            -- (a mark of the player's own notes says its tooltip as it is
+            -- shown: tipFn, Print.lua's OwnMarks)
+            Style.Tooltip(hit, function(self) return self.tipFn and self.tipFn() or self.tip end, "ANCHOR_RIGHT")
+            -- A right click on a mark: a note added there, or the player's
+            -- own note's menu (UI/Dungeon/NoteMenu.lua).
+            hit:SetScript("OnMouseUp", function(self, button)
+                if button == "RightButton" and DungeonPage.NoteRight then DungeonPage.NoteRight(view, self) end
+            end)
             return hit
         end),
     }
@@ -323,9 +330,16 @@ local function Placer(view, K)
     function P.Hit(pool, x, y, size, tip, what)
         local hit = pool:Next()
         K.PlaceButton(hit, x - size / 2, y - size / 2, size, size)
-        hit.tip, hit.what = tip, what
+        hit.tip, hit.what, hit.own, hit.tipFn = tip, what, nil, nil
         return hit
     end
+
+    -- The player's own notes' marks (Print.lua's OwnMarks): a plate's mark
+    -- kit over the sheet's toolkit, on the faces' frame, so a note's icon
+    -- turns and folds with the paper as the plates' do with theirs.
+    P.ownKit = ns.UI.JourneyPlate.MarkKit(medals, function(region, x, y, w, h, turn)
+        K.Place(region, x - w / 2, y - h / 2, w, h, turn)
+    end, function(region, ...) return K.Quad(region, ...) end, view.paper or Style.PAPER)
 
     return P
 end
@@ -398,6 +412,16 @@ function DungeonPage.Sheet(parent)
     view.more:SetShadowOffset(1, -1)
     view.more:Hide()
     view.noteStrips, view.notesMore, view.notesAbout = {}, 0, 0
+    -- The chalk ring where a note of the player's is being written or moved
+    -- to (UI/Dungeon/NoteMenu.lua): over the leaders, its faint dark stroke
+    -- under it.
+    view.ringUnder = K.Pool("OVERLAY", 6)
+    view.ring = K.Pool("OVERLAY", 7)
+    -- A right press on the paper: "Add a note here" (UI/Dungeon/NoteMenu.lua).
+    -- Beside the sheet it still goes through to the world (Spread.lua).
+    S:SetScript("OnMouseUp", function(_, button)
+        if button == "RightButton" and DungeonPage.NoteRight then DungeonPage.NoteRight(view) end
+    end)
     view.links = ns.UI.Pool.New(function()
         return K.Link(FONT.body, function(self)
             if self.current then return end
@@ -516,10 +540,13 @@ function DungeonPage.Sheet(parent)
             pool:Begin()
             pool:Finish()
         end
+        P.ownKit:Begin()
+        P.ownKit:Finish()
         Links({})
         DungeonPage.ClearNotes(view)
         view.plan, view.box, view.kept, view.scale, view.From, view.At = nil, nil, nil, nil, nil, nil
         DungeonPage.WayLaid(view)
+        if DungeonPage.NotesLaid then DungeonPage.NotesLaid(view) end
         view.none:SetText(ns.Fmt(ns.L["The diary has no map of %s yet."], visit.name or ns.L["this place"]))
         K.PlaceText(view.none, W / 2, H / 2, "CENTER")
         view.none:Show()
@@ -534,6 +561,8 @@ function DungeonPage.Sheet(parent)
     local function LayFor(self, visit, guid)
         -- Another run: the pen on this one is put down first (WAY-11).
         DungeonPage.WayBefore(self, visit)
+        -- And a note being written or moved on it (UI/Dungeon/NoteMenu.lua).
+        if DungeonPage.NotesBefore then DungeonPage.NotesBefore(self, visit) end
         self.visit, self.guid = visit, guid
         local D, Map = ns.Dungeons, ns.UI.DungeonMap
         local wing = DungeonPage.Wing(visit)
@@ -618,6 +647,8 @@ function DungeonPage.Sheet(parent)
         -- Laid again while the pen is out (another floor, the screen
         -- changed): it is taken up again on what is shown now.
         DungeonPage.WayAfter(self)
+        -- The chalk ring and a note being moved, on what is shown now.
+        if DungeonPage.NotesLaid then DungeonPage.NotesLaid(self) end
         -- The spread told what it is laid from (UI/Dungeon/Spread.lua's
         -- Laid), so opening the run again with nothing moved shows it as
         -- it lies.

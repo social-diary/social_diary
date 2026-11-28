@@ -172,9 +172,11 @@ local L = Legend()
 Check(L.PAD1 == nil, "A offered on a mark")
 Eq(L.PAD2, "Put the map away", "B's prompt on the table")
 Check(L.PADLSHOULDER == nil, "floors offered on a map of one floor")
-Check(L.PAD4 == nil and L.PAD3 == nil, "X or Y offered on the table")
+Check(L.PAD3 == nil, "X offered on the table")
+-- (Y on a mark adds a note there: the sections on the player's own notes)
+Eq(L.PAD4, "Add a note here", "Y's prompt on a mark of the player's own run")
 Check(not Press("PAD1", sc), "A on a mark went on to the game")
-Check(Press("PAD4", sc) and Press("PAD3", sc), "X or Y taken on the table")
+Check(Press("PAD3", sc), "X taken on the table")
 Check(Press("PADLSHOULDER", sc), "a shoulder taken on a map of one floor")
 Check(mark.frame.what ~= nil, "a mark does not say what it is")
 
@@ -253,7 +255,8 @@ DungeonPage.WayStart = function() error("the pad took the pencil up") end
 for _, item in ipairs(Items("sheet")) do
     if not (item.person or item.bookmark or item.floor) then
         Scope().focus:Focus(item.key, "sheet")
-        for _, key in ipairs({ "PAD1", "PAD3", "PAD4" }) do Press(key, sc) end
+        -- (Y opens a note's form: the sections on the player's own notes)
+        for _, key in ipairs({ "PAD1", "PAD3" }) do Press(key, sc) end
     end
 end
 DungeonPage.WayStart = start
@@ -356,3 +359,185 @@ Eq(view.floorIndex, 1, "A on the floor shown changed it")
 Press("PAD2", sc)
 Eq(J.visit, nil, "B did not put the Deadmines away")
 Check(Scope() == nil or Scope().key ~= "spread", "the table kept the pad")
+
+--------------------------------------------------------------------------
+-- The player's own notes with the pad (UI/Dungeon/NoteMenu.lua; .claude/
+-- ui-proposal/dungeon-notes.md §5): Y where the pad stands.
+
+local CardSheet = ns.UI.YourDiary.CardSheet
+local RunNotes = ns.RunNotes
+local function Key(prefix)
+    for _, item in ipairs(Items("sheet")) do
+        if item.key:match("^" .. prefix) then return item.key end
+    end
+end
+local function MenuLines()
+    local out = {}
+    for _, item in ipairs(Scope().focus.groups.menu.items) do out[#out + 1] = item.element.text end
+    return table.concat(out, "|")
+end
+
+--------------------------------------------------------------------------
+Section("Y on a boss: the form, pinned to it, over the table; B back to the boss")
+
+ns.UI.ShowJournal(G)
+Eq(ns.UI.OpenVisit(vc.id, G), true, "setup: the Deadmines out again")
+view = DungeonPage.Spread().map
+local boss = Key("boss:")
+Check(boss, "setup: a boss to stand on")
+Scope().focus:Focus(boss, "sheet")
+Eq(Legend().PAD4, "Add a note here", "Y's prompt on a boss")
+Press("PAD4", sc)
+local form = CardSheet.View()
+Check(form and form:IsShown(), "Y on a boss did not open the form")
+Check(CardSheet.Run() and CardSheet.Run().where.boss ~= nil, "the note not pinned to the boss")
+Eq(Scope().key, "runcard", "the form's scope does not top the table's")
+Eq(Scope().layer, 45, "the form's layer")
+Check(sc:IsGamePadButtonEnabled(), "the table's catcher (the form's host) takes no pad")
+Check(not catcher:IsGamePadButtonEnabled(), "the book took the pad under the form")
+Eq(At().group, "form", "the pad not on the form")
+Eq(Legend().PAD2, "Put the card away", "B's prompt on the form")
+Check(Look.parts[spread].slip:IsShown(), "no prompts under the form")
+Eq(Look.parts[spread].slip.recorded.points[1].args[1], form.sheet, "the prompts not under the form's foot")
+Press("PAD2", sc)
+Check(not form:IsShown(), "B did not put the form away")
+Eq(Scope().key, "spread", "the table not back after the form")
+Eq(At().key, boss, "B: the pad not back on the boss")
+Eq(vc.custom, nil, "B wrote a note")
+
+--------------------------------------------------------------------------
+Section("Y on the way in: the form at its spot; saved, the note lies")
+
+local door = Key("door:")
+if door then
+    Scope().focus:Focus(door, "sheet")
+    Press("PAD4", sc)
+    Check(CardSheet.Run() and CardSheet.Run().where.boss == nil and CardSheet.Run().where.f, "the way in's note not at its spot")
+    Press("PAD2", sc)
+end
+Scope().focus:Focus(boss, "sheet")
+Press("PAD4", sc)
+for _, row in ipairs(form.rows) do
+    if row.field.key == "text" then row.box:SetText("A Divine Intervention saved the run.") end
+end
+form.save.scripts.OnClick(form.save)
+Eq(vc.custom and #vc.custom, 1, "Save from the pad's form wrote nothing")
+Eq(Scope().key, "spread", "the table not back after saving")
+local own = Key("own:")
+Check(own, "the note's strip not stood on")
+
+--------------------------------------------------------------------------
+Section("Y on the player's own note: its menu on the pad's slip; nothing on the rest")
+
+Scope().focus:Focus(own, "sheet")
+Eq(Legend().PAD4, "Open the menu", "Y's prompt on an own note")
+Press("PAD4", sc)
+Check(Pad.Menu.IsOpen(), "Y on an own note did not open the pad's menu")
+Eq(MenuLines(), "Edit|Move|Remove", "the menu's lines")
+Press("PAD2", sc)
+Check(not Pad.Menu.IsOpen(), "B left the menu up")
+Eq(At().key, own, "the pad not back on the note")
+for _, what in ipairs({ "floor:", "bookmark" }) do
+    local key = Key(what)
+    if key then
+        Scope().focus:Focus(key, "sheet")
+        Eq(Legend().PAD4, nil, "Y offered on " .. what)
+        Press("PAD4", sc)
+        Check(not Pad.Menu.IsOpen() and not CardSheet.Run(), "Y did something on " .. what)
+    end
+end
+for _, item in ipairs(Items("sheet")) do
+    if item.key:match("^note:") and not item.item then
+        Scope().focus:Focus(item.key, "sheet")
+        Eq(Legend().PAD4, nil, "Y offered on a detected strip")
+        Press("PAD4", sc)
+        Check(not Pad.Menu.IsOpen() and not CardSheet.Run(), "Y on a detected strip did something")
+        break
+    end
+end
+
+--------------------------------------------------------------------------
+Section("Move with the pad: only the marks, A puts it, B leaves it, LB / RB carry it")
+
+local function MoveIt()
+    Scope().focus:Focus(own, "sheet")
+    Press("PAD4", sc)
+    Scope().focus:Focus("button:2", "menu")
+    for _, item in ipairs(Scope().focus.groups.menu.items) do
+        if item.element.text == "Move" then Scope().focus:Focus(item.key, "menu") end
+    end
+    Press("PAD1", sc)
+end
+MoveIt()
+Check(view.moving and view.moving.pad, "Move from the pad's menu did not pick the note up")
+Eq(Scope().key, "spread", "setup: the table has the pad while moving")
+for _, item in ipairs(Items("sheet")) do
+    Check(item.what ~= nil, "something not a mark stood on while moving: " .. item.key)
+end
+Eq(At().key, boss, "moving: not started on the note's own face")
+local L3 = Legend()
+Eq(L3.PAD2, "Leave it where it was", "B's prompt while moving")
+Eq(L3.PADLSHOULDER, "See another floor", "the floors while moving")
+local was = vc.custom[1].boss
+Press("PAD2", sc)
+Check(not view.moving, "B did not leave it")
+Eq(vc.custom[1].boss, was, "B moved it")
+Eq(At().key, own, "B: the pad not back on the note's strip")
+-- LB carries it to the other floor; A on a mark there puts it down.
+MoveIt()
+local before = view.floorIndex
+Press("PADLSHOULDER", sc)
+Check(view.floorIndex ~= before, "LB did not turn the floor while moving")
+Check(view.moving, "the floor turned put the note down")
+local there
+for _, item in ipairs(Items("sheet")) do if item.what == "boss" or item.what == "door" then there = there or item end end
+Check(there, "setup: a mark on the other floor")
+Scope().focus:Focus(there.key, "sheet")
+Eq(Legend().PAD1, "Put it here", "A's prompt while moving")
+Press("PAD1", sc)
+Check(not view.moving, "A did not put it down")
+Eq(vc.custom[1].f, view.floors[view.floorIndex].uiMapID, "A did not move it to the other floor")
+Eq(At().key, own, "A: the pad not on the note's strip")
+
+--------------------------------------------------------------------------
+Section("the rules: no Y on another's run or under the note; combat; nothing passed on")
+
+vc.me = "Player-1-0ABCDEF0"
+Pad.Refresh()
+Scope().focus:Focus(Key("boss:") or Key("door:"), "sheet")
+Eq(Legend().PAD4, nil, "Y offered on another character's run")
+Press("PAD4", sc)
+Check(not CardSheet.Run() and not Pad.Menu.IsOpen(), "Y did something on another character's run")
+vc.me = ns.ownGUID
+Pad.Refresh()
+local note = DungeonPage.TutorialNote()
+if note then
+    note:Show()
+    Pad.Refresh()
+    Eq(Legend().PAD4, nil, "Y offered under the first run's note")
+    Press("PAD4", sc)
+    Check(not CardSheet.Run(), "Y under the note opened the form")
+    note:Hide()
+end
+Scope().focus:Focus(Key("boss:") or Key("door:"), "sheet")
+Press("PAD4", sc)
+Eq(Scope().key, "runcard", "setup: the form up")
+mock.fire("PLAYER_REGEN_DISABLED")
+Check(not sc:IsGamePadButtonEnabled(), "in combat the table still takes the pad")
+mock.fire("PLAYER_REGEN_ENABLED")
+Check(sc:IsGamePadButtonEnabled(), "after combat the pad not back")
+Press("PAD2", sc)
+Check(not form:IsShown(), "setup: put away")
+-- The mouse takes over: every colour given back, the slip put away.
+Scope().focus:Focus(own, "sheet")
+mock.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
+Check(not parts.outline.line:IsShown(), "the outline left with the mouse")
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+-- With the Gamepad UI off, nothing is enabled.
+mock.pad.ui = false
+mock.fire("GAME_PAD_ACTIVE_CHANGED", false)
+Check(not sc:IsGamePadButtonEnabled(), "the table takes the pad with the Gamepad UI off")
+mock.pad.ui = true
+mock.fire("GAME_PAD_ACTIVE_CHANGED", true)
+RunNotes.Remove(vc, vc.custom[1])
+DungeonPage.Close(true)

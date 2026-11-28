@@ -146,9 +146,13 @@ end
 -- each press takes only the top one. Swapped in place, never added or removed, as the client may be
 -- going through the list as it hides one: what stands in the place next
 -- is not reached by the same press.
+-- What else may stand in that place while the run is out, by name: a note of
+-- the player's being moved, or its form (UI/Dungeon/NoteMenu.lua).
+local STAND_INS = {}
+DungeonPage.STAND_INS = STAND_INS
 local function StandIn(to)
     for i, name in ipairs(UISpecialFrames) do
-        if name == SPREAD.book or name == SPREAD.name or name == DungeonPage.TUTORIAL.NOTE.name then
+        if name == SPREAD.book or name == SPREAD.name or name == DungeonPage.TUTORIAL.NOTE.name or STAND_INS[name] then
             UISpecialFrames[i] = to
             return
         end
@@ -195,6 +199,25 @@ local function Settle()
     elseif heard and not away then
         spread.bookHeard = nil
         for _, frame in ipairs(heard) do Try("hear", frame.SetMouseClickEnabled, frame, true) end
+    end
+end
+
+-- `frame` (one of the book's, moved onto the spread: the custom card's form,
+-- UI/Dungeon/NoteMenu.lua) hearing clicks again, it and all under it that
+-- the book's going deaf stopped: they are no longer the book's to give back.
+function DungeonPage.Hear(frame)
+    local heard = spread and spread.bookHeard
+    if not heard then return end
+    local function Under(f)
+        while f do
+            if f == frame then return true end
+            f = f.GetParent and f:GetParent() or nil
+        end
+        return false
+    end
+    for i = #heard, 1, -1 do
+        local f = heard[i]
+        if Under(f) and Try("hear", f.SetMouseClickEnabled, f, true) then table.remove(heard, i) end
     end
 end
 
@@ -508,6 +531,9 @@ local function Gone()
     -- time.
     spread.map:StopLaying()
     DungeonPage.TutorialGone()
+    -- A note of the player's being written or moved: given up
+    -- (UI/Dungeon/NoteMenu.lua).
+    if DungeonPage.NotesGone then DungeonPage.NotesGone(spread.map) end
     -- The pen put down, what it drew kept (WAY-11).
     DungeonPage.WayPutDown(spread.map)
     spread.map:Hide(true)

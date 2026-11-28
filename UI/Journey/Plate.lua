@@ -2308,30 +2308,11 @@ local function New(parent, slot)
         plate.ringPoint = nil
         if r and r.mapID == plate.mapID and plate.At then
             local cx, cy = plate.At(r.x, r.y, true)
-            local Pen, look = ns.UI.Pen, r.look
-            local rand = Pen.Random(1 + (r.x * 7919 + r.y * 104729) * 1000)
             plate.ringPoint = { cx, cy }
-            for d = 1, look.dashes do
-                local arc = 2 * math.pi / look.dashes
-                local a0 = (d - 1 + (rand() - 0.5) * look.uneven) * arc
-                local a1 = a0 + arc * look.share
-                local radius = look.r + (rand() - 0.5) * look.wander
-                local pts = {}
-                for i = 0, look.bends do
-                    local a = a0 + (a1 - a0) * i / look.bends
-                    pts[#pts + 1] = cx + radius * math.cos(a)
-                    pts[#pts + 1] = cy + radius * math.sin(a)
-                end
-                local line = Pen.Resample(pts, look.step)
-                if #line >= 2 then
-                    local prims, n = {}, #line
-                    Pen.Stroke(prims, 0, line, Pen.Mitres(line), function(i)
-                        local a, b = line[math.max(i - 1, 1)], line[math.min(i + 1, n)]
-                        return look.width / 2 * Pen.Nib(b.x - a.x, b.y - a.y, look.nib)
-                    end, function() return 0 end, function() return look.alpha end, look.colour, nil, look.bends * 2)
-                    for _, prim in ipairs(prims) do DrawPrim(prim, ringPool:Next()) end
-                end
-            end
+            -- (the dashes are the pen's, UI/Ink/Pen.lua's Ring, shared with
+            -- the run's map, UI/Dungeon/NoteMenu.lua)
+            local prims = ns.UI.Pen.Ring({}, cx, cy, r.look, 1 + (r.x * 7919 + r.y * 104729) * 1000)
+            for _, prim in ipairs(prims) do DrawPrim(prim, ringPool:Next()) end
         end
         ringPool:Finish()
     end

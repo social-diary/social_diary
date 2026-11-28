@@ -733,7 +733,7 @@ Eq(char.settings.autoAdd, true, "the master switch moved")
 Section("diary schema 8: the auto-added get their tags")
 
 local d = char.data
-Eq(d.schema, 8, "the diary's schema")
+Eq(d.schema >= 8, true, "the diary's schema")
 Eq(table.concat(d.diary[ALDA].tags, ","), "friend,group", "auto_group's tag")
 Eq(table.concat(d.diary[BERN].tags, ","), "seen", "auto_seen's tag")
 Eq(table.concat(d.diary[CARA].tags, ","), "helper", "an untouched entry got a tag")

@@ -568,6 +568,38 @@ function Custom.TimeNear(j, mapID, x, y, a, b)
     return math.floor(at or (a + b) / 2)
 end
 
+-- `fields` of `kind` written onto `rec`, cleaned as the kind says, a typed
+-- creature's picture looked up on `j` (a field cleared is taken off). `new`:
+-- a card being inserted, which takes the kind's defaults first and always has
+-- its icon. Insert and Edit write through it, and so do the cards on a run
+-- (Core/RunNotes.lua). `skip`: fields left out (a run's card has no caption).
+-- Returns rec, or nil for a kind that cannot be custom.
+function Custom.Fill(rec, kind, fields, j, new, skip)
+    local spec = SpecOf(kind)
+    if not (spec and rec) then return nil end
+    if new then
+        for key, value in pairs(Cleaned(spec, spec.defaults or {})) do
+            if value ~= false and not (skip and skip[key]) then rec[key] = value end
+        end
+    end
+    local values = Cleaned(spec, fields or {})
+    Creature(j, spec, values)
+    for key, value in pairs(values) do
+        if not (skip and skip[key]) then
+            if value == false then rec[key] = nil else rec[key] = value end
+        end
+    end
+    -- An icon the card must have: the first, where none was given.
+    if new then
+        for _, field in ipairs(spec.fields) do
+            if field.type == "icon" and not field.optional and rec[field.key] == nil then
+                rec[field.key] = Custom.DefaultIcon()
+            end
+        end
+    end
+    return rec
+end
+
 -- A card of `kind` the player inserted, on the logged-in character's route
 -- (Journey.Mine rather than Kept: it is their writing, not capture, so it
 -- does not stop with "Keep my own route" off). `where` = { mapID, x, y, from,
@@ -583,20 +615,7 @@ function Custom.Insert(kind, fields, where)
     local t = Custom.TimeNear(j, where.mapID, where.x, where.y, where.from, where.to)
     local rec = { kind = kind, t = t, mapID = where.mapID, x = where.x, y = where.y,
         level = ns.JourneyRecap.LevelAt(j, t) }
-    for key, value in pairs(Cleaned(spec, spec.defaults or {})) do
-        if value ~= false then rec[key] = value end
-    end
-    local values = Cleaned(spec, fields or {})
-    Creature(j, spec, values)
-    for key, value in pairs(values) do
-        if value == false then rec[key] = nil else rec[key] = value end
-    end
-    -- An icon the card must have: the first, where none was given.
-    for _, field in ipairs(spec.fields) do
-        if field.type == "icon" and not field.optional and rec[field.key] == nil then
-            rec[field.key] = Custom.DefaultIcon()
-        end
-    end
+    Custom.Fill(rec, kind, fields, j, true)
     j.custom = j.custom or {}
     local at = #j.custom + 1
     while at > 1 and j.custom[at - 1].t > t do at = at - 1 end
@@ -619,13 +638,11 @@ function Custom.Edit(kind, rec, fields)
     local spec, j = SpecOf(kind), Journey.Mine()
     if not (spec and j and rec) then return false end
     local saved = Saved(rec)
-    local values = Cleaned(spec, fields or {})
-    Creature(j, spec, values)
     if Position(j, saved) then
-        for key, value in pairs(values) do
-            if value == false then saved[key] = nil else saved[key] = value end
-        end
+        Custom.Fill(saved, kind, fields, j)
     else
+        local values = Cleaned(spec, fields or {})
+        Creature(j, spec, values)
         local changes = saved.custom or {}
         changes.hidden = nil
         for key, value in pairs(values) do

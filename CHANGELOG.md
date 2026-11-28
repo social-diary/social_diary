@@ -12,6 +12,9 @@
 - _Your Diary_ notices people wearing gear you made them
   - And people who gave or sold you the gear you wear
 - _Toasts_ can now all be switched off at once
+- Write your own notes on a run's map in the _Dungeon View_
+  - Right-click the map, or a boss to pin the note to it
+  - Anyone you name on a note finds it on their timeline
 
 ## [4.2.6]
 

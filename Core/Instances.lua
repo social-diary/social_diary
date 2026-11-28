@@ -535,7 +535,8 @@ end
 --------------------------------------------------------------------------
 
 -- PRV-3: a visit's member list holds names, so a forgotten person leaves
--- it, with their deaths and their loot. The visit itself stays: it is the
+-- it, with their deaths and their loot (the player's notes on its map keep
+-- the name as written, the link gone: Core/RunNotes.lua). The visit itself stays: it is the
 -- user's history, and the other members'. nil forgets every visit.
 function Instances.Forget(guid)
     if guid == nil then
@@ -553,6 +554,8 @@ function Instances.Forget(guid)
             if drop.need then drop.need[guid] = nil end
             if drop.winner == guid then drop.winner, drop.winRoll, drop.winNeed = nil, nil, nil end
         end
+        -- The player's notes on its map keep the name and lose the link.
+        if ns.RunNotes then ns.RunNotes.Forget(visit, guid) end
     end
 end
 ns.RegisterStore("instances", Instances.Forget)

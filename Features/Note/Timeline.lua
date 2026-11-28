@@ -24,6 +24,13 @@
 -- page the card's time falls on (YourDiary.OpenAt), where it is the road of
 -- the character playing; a card on another of the user's characters' roads
 -- (a shared diary) has no page there, and its click does nothing.
+--
+-- A free card on a run's map (Core/RunNotes.lua, .claude/features/dungeon-notes.md)
+-- is a slip the same, an aside of its own (`noteCardRun`): the line under it
+-- names the dungeon instead of the zone, and a click lays the run's map out
+-- over the person's page (ns.UI.OpenVisit), the run being theirs too:
+--   [icon] 21:05  “Divine Intervention saved the run.”
+--                 Noted on your map of the Deadmines, level 19
 
 local addonName, ns = ...
 
@@ -38,18 +45,20 @@ local MOST = { max = 3, shown = 2, more = Format.OTHERS }
 -- Every free card on the routes of the diary in use that links to `guid`,
 -- oldest first: { time, key (the saved card: the line's place for the pad),
 -- rec, me (whose road it is on) }.
+local function Links(rec, guid)
+    for _, p in ipairs(Note.People(rec)) do
+        if Note.Guid(p) == guid then return true end
+    end
+    return false
+end
+
 local function CardsOf(guid)
     local out = {}
     for me, j in pairs(ns.db.journey or {}) do
         for _, rec in ipairs(type(j) == "table" and j.custom or {}) do
             local hidden = type(rec.custom) == "table" and rec.custom.hidden
-            if rec.kind == Note.KIND and type(rec.t) == "number" and not hidden then
-                for _, p in ipairs(Note.People(rec)) do
-                    if Note.Guid(p) == guid then
-                        out[#out + 1] = { time = rec.t, key = rec, rec = rec, me = me }
-                        break
-                    end
-                end
+            if rec.kind == Note.KIND and type(rec.t) == "number" and not hidden and Links(rec, guid) then
+                out[#out + 1] = { time = rec.t, key = rec, rec = rec, me = me }
             end
         end
     end
@@ -57,6 +66,24 @@ local function CardsOf(guid)
     return out
 end
 Note.CardsOf = CardsOf
+
+-- Every free card on a run's map (visit.custom) that links to `guid`, oldest
+-- first: { time, key, rec, me, visit, guid (the page's: the run opens over
+-- it) }. A visit is a table each (db.instances holds no packed strangers).
+local function RunCardsOf(guid)
+    local out = {}
+    for _, visit in pairs(ns.db.instances or {}) do
+        local list = type(visit) == "table" and visit.custom
+        for _, rec in ipairs(type(list) == "table" and list or {}) do
+            if type(rec) == "table" and rec.kind == Note.KIND and type(rec.t) == "number" and Links(rec, guid) then
+                out[#out + 1] = { time = rec.t, key = rec, rec = rec, me = visit.me, visit = visit, guid = guid }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.time < b.time end)
+    return out
+end
+Note.RunCardsOf = RunCardsOf
 
 -- Everyone else the card names, each once, in its order (typed names as
 -- written): the page is `guid`'s, so they are not among them.
@@ -83,7 +110,17 @@ end
 -- Where the card lies, on whose map, and at what level: "Noted on your
 -- map in Mulgore, level 12" ("on Thex's map" for another of the user's
 -- characters, in a shared diary).
-local function Where(rec, me)
+local function Where(rec, me, visit)
+    if visit then
+        local name = type(visit.name) == "string" and visit.name ~= "" and visit.name or nil
+        local level = rec.level
+        local line
+        if name and level then line = Fmt(L["Noted on {your} map of %1$s, level %2$s##dungeon"], name, level)
+        elseif name then line = Fmt(L["Noted on {your} map of %s##dungeon"], name)
+        elseif level then line = Fmt(L["Noted on {your} map, level %s"], level)
+        else line = L["Noted on {your} map"] end
+        return Format.You(me, line)
+    end
     local zone = rec.mapID and Text.MapName(rec.mapID)
     zone = zone and ns.ZoneIn(rec.mapID, zone)
     local level = rec.level
@@ -107,7 +144,7 @@ function Note.Aside(of, guid)
         if type(rec.mob) == "string" and rec.mob ~= "" then with[#with + 1] = Text.KillerName({ name = rec.mob }) end
         if type(rec.item) == "string" and rec.item ~= "" then with[#with + 1] = rec.item end
     end
-    local where = Where(rec, of.me)
+    local where = Where(rec, of.me, of.visit)
     local sub = with[1] and Fmt(L["%1$s, with %2$s##card where and who"], where, Text.List(with, MOST)) or where
     return words or Note.IconName(rec), sub
 end
@@ -142,4 +179,33 @@ ns.Timeline.RegisterAside(Note.KIND, {
     end,
     hint = L["Click to open it in Your Diary."],
     prompt = L["Open in Your Diary"],
+})
+
+-- A run's map lays out over the person's page (UI/Dungeon/Spread.lua's
+-- OpenVisit, looked up when asked); the run must still be there.
+local function OpensRun(of)
+    return ns.UI.OpenVisit ~= nil and of.visit ~= nil and of.visit.id ~= nil
+        and ns.db.instances[of.visit.id] == of.visit
+end
+Note.OpensRunAside = OpensRun
+
+ns.Timeline.RegisterAside("noteCardRun", {
+    lines = RunCardsOf,
+    describe = function(of, guid) return Note.Aside(of, guid) end,
+    tip = function(of)
+        local title, lines = Note.Tip(of.rec, ns.Now())
+        return ns.Style.TipList(title, lines)
+    end,
+    icon = function(parent, size)
+        local frame = ns.NoteIcons.New(parent, size)
+        function frame:Set(of) self:SetIcon(of.rec.icon) end
+        return frame
+    end,
+    opens = OpensRun,
+    press = function(of)
+        if not OpensRun(of) then return end
+        ns.UI.OpenVisit(of.visit.id, of.guid)
+    end,
+    hint = L["Click to open the run's map."],
+    prompt = L["Open the map"],
 })
