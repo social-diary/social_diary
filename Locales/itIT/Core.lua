@@ -7,6 +7,12 @@ ns.Locale.Add("itIT", {
     -- Capture/Menus.lua
     ["Social Diary: open entry"] = "Social Diary: apri la voce",
     ["Social Diary: remember this"] = "Social Diary: ricorda questa persona",
+    -- Core/AutoAdd.lua
+    ["Group mates"] = "Compagni di gruppo",
+    ["Dungeon and raid companions"] = "Compagni di dungeon e raid",
+    ["Familiar faces"] = "Volti noti",
+    ["dungeon##autotag"] = "dungeon",
+    ["added |cffffffff%1$s|r to the diary automatically: %2$s."] = "|cffffffff%1$s|r è stato aggiunto al diario in automatico: %2$s.",
     -- Core/Candidates.lua
     ["your target"] = "il tuo bersaglio",
     ["under your cursor"] = "sotto il cursore",
@@ -18,6 +24,9 @@ ns.Locale.Add("itIT", {
     ["they resurrected you"] = "ti ha resuscitato",
     ["they summoned you"] = "ti ha evocato",
     ["recent %s"] = "di recente: %s",
+    -- Core/DB.lua
+    ["group##autotag"] = "gruppo",
+    ["seen##autotag"] = "di vista",
     ["recent whisper_in"] = "ti ha sussurrato da poco",
     ["recent whisper_out"] = "le hai sussurrato da poco",
     ["recent say"] = "ha parlato qui vicino da poco",

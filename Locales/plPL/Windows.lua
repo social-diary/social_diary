@@ -2,6 +2,15 @@ local _, ns = ...
 if not ns.Locale.Is("plPL") then return end
 
 ns.Locale.Add("plPL", {
+    -- UI/Windows/AutoAdd.lua
+    ["Add them"] = "Dodaj je",
+    ["Your rule"] = "Twoja reguła",
+    ["People who already match your rules"] = "Osoby, które już pasują do twoich reguł",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "%d osoba już pasuje do twoich reguł.|%d osoby już pasują do twoich reguł.|%d osób już pasuje do twoich reguł.",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "%d osoba już pasuje do tej reguły.|%d osoby już pasują do tej reguły.|%d osób już pasuje do tej reguły.",
+    ["and %d more rule|and %d more rules##plural"] = "i jeszcze %d reguła|i jeszcze %d reguły|i jeszcze %d reguł",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s: %2$d osoba|%1$s: %2$d osoby|%1$s: %2$d osób",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "Dodać je teraz do dziennika? Jeśli nie, każda trafi do niego przy następnym spotkaniu.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "jeszcze bez wspólnych wydarzeń",
     ["%d interaction on record|%d interactions on record##plural"] = "%d wspólne wydarzenie|%d wspólne wydarzenia|%d wspólnych wydarzeń",
@@ -64,6 +73,7 @@ ns.Locale.Add("plPL", {
     ["Tear it open"] = "Rozerwij opakowanie",
     ["Later"] = "Później",
     -- UI/Windows/Pad.lua
+    ["Not now"] = "Nie teraz",
     ["Put the page away"] = "Odłóż stronę",
     ["Remember them"] = "Zapamiętaj postacie",
     ["Put the list away"] = "Odłóż listę",

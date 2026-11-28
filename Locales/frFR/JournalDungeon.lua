@@ -147,7 +147,7 @@ ns.Locale.Add("frFR", {
 
     -- UI/Journal/Hints.lua
     ["Translated Pages"] = "Pages traduites",
-    ["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."] = "Le journal est désormais écrit en %s. La traduction est récente et faite par machine : attends-toi à des tournures étranges et à du texte tronqué. Les corrections sont les bienvenues.",
+    ["The diary is now written in %s. The translation is early and machine-made, so expect odd lines and clipped text. Corrections are welcome."] = "Le journal est désormais écrit en %s. La traduction est récente et faite par machine : attends-toi à des tournures étranges et à du texte tronqué. Les corrections sont les bienvenues.",
     ["Suggest Translation"] = "Suggérer une traduction",
     ["Go to Language"] = "Réglages de langue",
     ["Right-Click the map to add events yourself."] = "Fais un clic droit sur la carte pour ajouter toi-même des événements.",

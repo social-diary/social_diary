@@ -5,6 +5,13 @@ ns.Locale.Add("zhTW", {
     -- UI/Windows/AutoAdd.lua
     ["Familiar faces"] = "熟面孔",
     ["Add them"] = "把他們加進去",
+    ["Your rule"] = "你的規則",
+    ["People who already match your rules"] = "已經符合你規則的人",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "已有%d位符合你的規則。",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "已有%d位符合這條規則。",
+    ["and %d more rule|and %d more rules##plural"] = "還有%d條規則",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s：%2$d位",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "現在就把對方加入日記嗎？如果不要，下次碰面時會一一加入。",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "還沒有互動",
     ["%d interaction on record|%d interactions on record##plural"] = "%d筆互動紀錄",

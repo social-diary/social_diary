@@ -7,10 +7,18 @@ ns.Locale.Add("itIT", {
     -- UI/Journey/Caption.lua
     ["Nothing of this level's road was kept."] = "Niente della strada di questo Level è stato conservato.",
     -- UI/Journey/CardPad.lua
+    ["Add"] = "Aggiungi",
+    ["Take them off the card"] = "Togli dalla scheda",
+    -- UI/Journey/CardPad.lua
     ["Go to the names"] = "Vai ai nomi",
+    -- UI/Journey/Pad.lua
+    ["Back to the sheet"] = "Torna al foglio",
     ["Put the card away"] = "Metti via la scheda",
     ["Stop writing"] = "Smetti di scrivere",
     ["Back to the line"] = "Torna alla linea",
+    -- UI/Journey/Pad.lua
+    ["Bring it in"] = "Includilo",
+    ["Bring this place in"] = "Includi questo luogo",
     -- UI/Journey/CardSheet.lua
     ["Combat"] = "Combattimento",
     ["Quests and Lore"] = "Quest e storia",
@@ -27,8 +35,33 @@ ns.Locale.Add("itIT", {
     ["Leave this place out"] = "Escludi questo luogo",
     ["Choose what's on this page..."] = "Scegli cosa c’è in questa pagina…",
     ["Leave %1$s off this page"] = "Togli %1$s da questa pagina",
+    ["Click to take %s off the card."] = "Clicca per togliere %s dalla scheda.",
+    ["+ Add %s"] = "+ %s",
+    ["Remove"] = "Togli",
+    -- UI/Journey/Choose.lua
+    ["Three maps fit a page."] = "In una pagina stanno tre mappe.",
+    ["Errands take half a page."] = "Le commissioni occupano mezza pagina.",
+    ["No room for it beside what you chose. Leave something out first."] = "Non c’è posto accanto a ciò che hai scelto. Prima escludi qualcosa.",
+    ["Your choice"] = "Scelta tua",
+    ["Chosen for you"] = "Scelto per te",
+    ["No maps on this page"] = "Nessuna mappa in questa pagina",
+    ["Tick a place to bring its map in"] = "Spunta un luogo per includerne la mappa",
+    ["%s came off to make room."] = "Per fare spazio, %s lascia la pagina.",
+    ["Next in line"] = "Prossimo in lista",
+    ["No room on the page"] = "Niente posto sulla pagina",
+    ["Too small for a map of its own"] = "Troppo piccolo per una mappa tutta sua",
+    ["No room in the margin"] = "Niente posto nel margine",
+    ["Its run has a page of its own"] = "La sua run ha una pagina tutta sua",
+    ["Came off to make room for %s"] = "Ha lasciato la pagina per fare spazio a %s",
+    ["Fight with %s"] = "Scontro con %s",
+    ["Note on %s"] = "Nota su %s",
+    ["With %s##person"] = "Con %s",
+    ["Fighting stop"] = "Sosta per combattere",
+    ["Questing stop"] = "Sosta per le quest",
+    ["Resting stop"] = "Sosta per riposare",
     -- UI/Journey/Choose.lua
     ["Arrived %s##zone"] = "Arrivo %s",
+    ["%d run|%d runs##plural"] = "%d run|%d run",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "I luoghi di ogni Level sono incollati qui:",
     ["Where you stayed a while, darker the longer."] = "Dove hai sostato un po’, più scuro quanto più a lungo.",

@@ -26,12 +26,17 @@ ns.Locale.Add("deDE", {
     ["%1$s, %2$s, %3$s"] = "%1$s, %2$s, %3$s",
     ["a pet"] = "ein Begleiter",
     ["A pet"] = "Ein Begleiter",
+    -- Features/Classes/Hunter/Text.lua
+    ["Tamed %s"] = "Gezähmt: %s",
 
     -- Features/CloseCalls/Kind.lua: the custom card's form
     ["Close Call"] = "Knapper Kampf",
     ["A close call"] = "Ein knapper Kampf",
     ["%1$s, %2$d%% health"] = "%1$s, %2$d %% Gesundheit",
     ["Creature"] = "Kreatur",
+    -- Features/Note/Kind.lua
+    ["Target or type it"] = "Anvisieren oder eintippen",
+    ["+ A creature"] = "+ Eine Kreatur",
     ["-1 for a skull"] = "-1 für einen Totenkopf",
     ["Level"] = "Stufe",
     ["How many"] = "Wie viele",
@@ -60,6 +65,8 @@ ns.Locale.Add("deDE", {
     ["%s%% health left"] = "%s %% Gesundheit übrig",
     ["Down to %s%% health at worst"] = "Am knappsten: %s %% Gesundheit",
     ["%s close call|%s close calls##plural"] = "%s knapper Kampf|%s knappe Kämpfe",
+    -- Features/CloseCalls/Text.lua
+    ["Close call: %s"] = "Knapper Kampf: %s",
     ["fought against %s"] = "gegen %s gekämpft",
     ["Left you with %s%% health"] = "Ließ dir %s %% Gesundheit",
     ["One more was in the fight|%s more were in the fight##plural"] = "Ein weiterer war im Kampf|%s weitere waren im Kampf",
@@ -67,6 +74,67 @@ ns.Locale.Add("deDE", {
     ["one more close call|%s more close calls##plural"] = "noch ein knapper Kampf|noch %s knappe Kämpfe",
     ["a close call"] = "ein knapper Kampf",
     ["a close call with %s"] = "ein knapper Kampf gegen %s",
+    -- Features/CrafterDetection/Kind.lua
+    ["wore what changed hands between you"] = "hat getragen, was zwischen euch den Besitzer wechselte",
+    ["{You} wore the %s they sold {you}"] = "{Du hast} getragen, was sie {dir} verkauft haben: %s",
+    ["{You} wore what they sold {you}"] = "{Du hast} getragen, was sie {dir} verkauft haben",
+    ["{You} wore the %s they gave {you}"] = "{Du hast} getragen, was sie {dir} geschenkt haben: %s",
+    ["{You} wore what they gave {you}"] = "{Du hast} getragen, was sie {dir} geschenkt haben",
+    ["Wore the %s {you} made them"] = "Hat ein Stück von {dir} getragen: %s",
+    ["Wore what {you} made them"] = "Hat ein Stück von {dir} getragen",
+    -- Features/CrafterDetection/Text.lua
+    ["Wearing what you made"] = "Trägt, was du gemacht hast",
+    ["You made them the %s they have on."] = "Sie tragen ein Stück von deiner Hand: %s.",
+    ["You made them the %s."] = "Von deiner Hand: %s.",
+    ["Gave you what you wear"] = "Gab dir, was du trägst",
+    ["The %s came from them."] = "Stammt von ihnen: %s.",
+    ["The %s you have on came from them."] = "Was du trägst, stammt von ihnen: %s.",
+    ["Sold you what you wear"] = "Verkaufte dir, was du trägst",
+    ["Show a toast when someone wears what you made them, or you wear what they gave or sold you"] = "Einblendung, wenn jemand trägt, was du gemacht hast, oder du trägst, was man dir geschenkt oder verkauft hat",
+    ["you saw %s wear what you made"] = "%s trug ein Stück von deiner Hand",
+    ["you wore what %s gave you"] = "du trugst, was %s dir gab",
+    ["you wore what %s sold you"] = "du trugst, was %s dir verkaufte",
+    ["you saw them wear what you made"] = "sie trugen ein Stück von deiner Hand",
+    ["you wore what they gave you"] = "du trugst, was sie dir gaben",
+    ["you wore what they sold you"] = "du trugst, was sie dir verkauften",
+    ["Given to %1$s in a trade, %2$s"] = "Im Handel an %1$s gegeben, %2$s",
+    ["Sold to %1$s at auction, %2$s"] = "Im Auktionshaus an %1$s verkauft, %2$s",
+    ["Given to you by %1$s in a trade, %2$s"] = "Von %1$s im Handel bekommen, %2$s",
+    ["Bought from %1$s at auction, %2$s"] = "Im Auktionshaus von %1$s gekauft, %2$s",
+    ["Given to %s in a trade"] = "Im Handel an %s gegeben",
+    ["Sold to %s at auction"] = "Im Auktionshaus an %s verkauft",
+    ["Bought from %s at auction"] = "Im Auktionshaus von %s gekauft",
+    ["Given to you by %s in a trade"] = "Von %s im Handel bekommen",
+    ["%s wore what you made"] = "%s trug ein Stück von deiner Hand",
+    ["You wore what %s gave you"] = "Du trugst, was %s dir gab",
+    ["You wore what %s sold you"] = "Du trugst, was %s dir verkaufte",
+    ["given to them in a trade"] = "im Handel an sie gegeben",
+    ["sold to them at auction"] = "im Auktionshaus an sie verkauft",
+    ["bought from them at auction"] = "im Auktionshaus von ihnen gekauft",
+    ["given to you in a trade"] = "im Handel von ihnen bekommen",
+    ["A piece of gear that changed hands|%s pieces of gear that changed hands##plural"] = "Ein Ausrüstungsteil, das den Besitzer wechselte|%s Ausrüstungsteile, die den Besitzer wechselten",
+    ["given to %s in a trade"] = "im Handel an %s gegeben",
+    ["sold to %s at auction"] = "im Auktionshaus an %s verkauft",
+    ["bought from %s at auction"] = "im Auktionshaus von %s gekauft",
+    ["given to you by %s in a trade"] = "von %s im Handel bekommen",
+    ["saw %s wear what you made"] = "%s in einem Stück von deiner Hand gesehen",
+    ["wore what %s gave you"] = "ein Geschenk von %s getragen",
+    ["wore what %s sold you"] = "getragen, was %s dir verkaufte",
+    ["You saw %1$s %3$s, wearing the %2$s you made them.##zone"] = "Du sahst %1$s %3$s, in einem Stück von deiner Hand: %2$s.",
+    ["%1$s wore the %2$s you made them when you met %3$s.##zone"] = "Als ihr euch %3$s begegnetet, trug %1$s ein Stück von deiner Hand: %2$s.",
+    ["You met %1$s %3$s, wearing the %2$s they gave you.##zone"] = "Du trafst %1$s %3$s und trugst dabei ihr Geschenk: %2$s.",
+    ["You wore the %2$s %1$s gave you when you met %3$s.##zone"] = "Als ihr euch %3$s begegnetet, trugst du, was %1$s dir geschenkt hatte: %2$s.",
+    ["You met %1$s %3$s, wearing the %2$s they sold you.##zone"] = "Du trafst %1$s %3$s und trugst dabei, was sie dir verkauft hatten: %2$s.",
+    ["You wore the %2$s %1$s sold you when you met %3$s.##zone"] = "Als ihr euch %3$s begegnetet, trugst du, was %1$s dir verkauft hatte: %2$s.",
+    ["You saw %1$s in the %2$s you made them."] = "Du sahst %1$s in einem Stück von deiner Hand: %2$s.",
+    ["%1$s wore the %2$s you made them when you met."] = "Als ihr euch begegnetet, trug %1$s ein Stück von deiner Hand: %2$s.",
+    ["You met %1$s in the %2$s they gave you."] = "Du trafst %1$s und trugst dabei ihr Geschenk: %2$s.",
+    ["You wore the %2$s %1$s gave you when you met."] = "Als ihr euch begegnetet, trugst du, was %1$s dir geschenkt hatte: %2$s.",
+    ["You met %1$s in the %2$s they sold you."] = "Du trafst %1$s und trugst dabei, was sie dir verkauft hatten: %2$s.",
+    ["You wore the %2$s %1$s sold you when you met."] = "Als ihr euch begegnetet, trugst du, was %1$s dir verkauft hatte: %2$s.",
+    ["Bought from %s"] = "Von %s gekauft",
+    ["Gift from %s"] = "Geschenk von %s",
+    ["Made for %s"] = "Für %s gemacht",
 
     -- Features/Deaths/Kind.lua: the custom card's form
     ["Death"] = "Tod",
@@ -97,9 +165,19 @@ ns.Locale.Add("deDE", {
     ["And others"] = "Und weitere",
     ["a death|%s deaths##plural"] = "ein Tod|%s Tode",
     ["%1$s, to %2$s"] = "%1$s, durch %2$s",
+    -- Features/Deaths/Text.lua
+    ["Killed by %s"] = "Getötet von %s",
 
     -- Features/Firsts/Kind.lua (the hunts' form too)
     ["Item"] = "Gegenstand",
+    -- Features/Note/Kind.lua
+    ["+ An item"] = "+ Ein Gegenstand",
+    ["Shift-click an item"] = "Gegenstand mit Shift-Klick",
+    ["Write it into the entry"] = "In den Eintrag schreiben",
+    -- Features/Note/Text.lua
+    ["Someone you met"] = "Jemand, dem du begegnet bist",
+    ["Note on someone you met"] = "Notiz zu einer Begegnung",
+    ["Note: %s"] = "Notiz: %s",
 
     -- Features/Hunts/Kind.lua: the custom cards' form
     ["%1$s, %2$d killed"] = "%1$s, %2$d getötet",
@@ -156,6 +234,11 @@ ns.Locale.Add("deDE", {
     ["one more slow hunt|%s more slow hunts##plural"] = "noch eine zähe Jagd|noch %s zähe Jagden",
     ["one more lucky hunt|%s more lucky hunts##plural"] = "noch eine glückliche Jagd|noch %s glückliche Jagden",
     ["another lucky hunt|%s more lucky hunts##plural"] = "eine weitere glückliche Jagd|%s weitere glückliche Jagden",
+    -- Features/Hunts/Text.lua
+    ["A lucky drop"] = "Eine Glücksbeute",
+    ["Lucky drop: %s"] = "Glücksbeute: %s",
+    ["A long hunt"] = "Eine lange Jagd",
+    ["Hunt for %s"] = "Jagd nach %s",
 
     -- Features/Note/Kind.lua (the witness's form too)
     ["Who"] = "Wer",
@@ -204,6 +287,9 @@ ns.Locale.Add("deDE", {
 
     -- Features/Witnesses/Text.lua
     ["Someone"] = "Jemand",
+    -- UI/Journey/Choose.lua
+    ["Died"] = "Gestorben",
+    ["Stop at %s"] = "Halt bei %s",
     ["and %s##others"] = "und %s",
     ["& another|& %s others##plural"] = "& ein weiterer|& %s weitere",
     -- After several names, the verb theirs: "Numa und ein weiterer haben
@@ -242,6 +328,10 @@ ns.Locale.Add("deDE", {
     ["And more besides"] = "Und noch mehr",
     ["Others were there too"] = "Weitere waren dabei",
     ["%s witness|%s witnesses##plural"] = "%s Zeuge|%s Zeugen",
+    -- Features/Witnesses/Text.lua
+    ["Watched by %s"] = "Beobachtet von %s",
+    ["Saved by %s"] = "Gerettet von %s",
+    ["Helped by %s"] = "Hilfe von %s",
 
     -- UI/Journey/Text/Margin.lua (the killer card)
     ["killed you"] = "hat dich getötet",

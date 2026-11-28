@@ -85,6 +85,7 @@ G.YOU_FOR = {
     ["te"] = "%s", ["tu"] = "%s", ["tu e quella persona"] = "%s e quella persona",
     ["ti ha guardato morire"] = "ha guardato morire %s", ["ti ha salvato"] = "ha salvato %s",
     ["ti ha ucciso"] = "ha ucciso %s", ["ti ha visto morire"] = "ha visto morire %s",
+    ["ti ha dato"] = "ha dato a %s", ["ti ha venduto"] = "ha venduto a %s",
     ["tua"] = "di %s", ["tuo"] = "di %s",
     ["sulla tua mappa"] = "sulla mappa di %s",
 }

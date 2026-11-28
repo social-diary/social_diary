@@ -2,6 +2,15 @@ local addonName, ns = ...
 if not ns.Locale.Is("ruRU") then return end
 
 ns.Locale.Add("ruRU", {
+    -- UI/Windows/AutoAdd.lua
+    ["Add them"] = "Добавить",
+    ["Your rule"] = "Твоё правило",
+    ["People who already match your rules"] = "Люди, которые уже подходят под твои правила",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "Под твои правила уже подходит %d человек.|Под твои правила уже подходят %d человека.|Под твои правила уже подходят %d человек.",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "Под это правило уже подходит %d человек.|Под это правило уже подходят %d человека.|Под это правило уже подходят %d человек.",
+    ["and %d more rule|and %d more rules##plural"] = "и ещё %d правило|и ещё %d правила|и ещё %d правил",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s: %2$d человек|%1$s: %2$d человека|%1$s: %2$d человек",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "Добавить их в дневник сейчас? Если нет, каждый будет добавлен при следующей встрече.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "событий пока нет",
     ["%d interaction on record|%d interactions on record##plural"] = "%d событие|%d события|%d событий",
@@ -66,6 +75,7 @@ ns.Locale.Add("ruRU", {
     ["Put the page away"] = "Убрать страницу",
     ["Remember them"] = "Запомнить",
     ["Put the list away"] = "Убрать список",
+    ["Not now"] = "Не сейчас",
     -- UI/Windows/Picker.lua
     ["Remember this"] = "Запомнить",
     ["Click somebody to add them. Already in the diary opens their entry."] = "Щёлкни по персонажу, чтобы добавить его в дневник. Если он уже там, откроется запись.",

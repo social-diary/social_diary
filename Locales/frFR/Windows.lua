@@ -7,6 +7,13 @@ ns.Locale.Add("frFR", {
     -- UI/Windows/AutoAdd.lua
     ["Familiar faces"] = "Visages familiers",
     ["Add them"] = "Les ajouter",
+    ["Your rule"] = "Ta règle",
+    ["People who already match your rules"] = "Personnes qui répondent déjà à tes règles",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "%d personne répond déjà à tes règles.|%d personne répond déjà à tes règles.|%d personnes répondent déjà à tes règles.",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "%d personne répond déjà à cette règle.|%d personne répond déjà à cette règle.|%d personnes répondent déjà à cette règle.",
+    ["and %d more rule|and %d more rules##plural"] = "et %d autre règle|et %d autre règle|et %d autres règles",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s : %2$d personne|%1$s : %2$d personne|%1$s : %2$d personnes",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "Les ajouter au journal maintenant ? Sinon, chaque personne sera ajoutée la prochaine fois que vous vous croiserez.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "aucune interaction pour l’instant",
     ["%d interaction on record|%d interactions on record##plural"] = "%d interaction enregistrée|%d interaction enregistrée|%d interactions enregistrées",
@@ -131,7 +138,7 @@ ns.Locale.Add("frFR", {
     ["As the diary has it"] = "Tel que le journal le dit",
     ["In English"] = "En anglais",
     ["Your wording"] = "Ta formulation",
-    ["How should it read?"] = "Comment faudrait-il le dire ?",
+    ["How should it read?"] = "Comment faudrait-il le dire ?",
     ["Make the link"] = "Créer le lien",
     ["The diary couldn’t find the English for this line. It goes as it is shown."] = "Le journal n’a pas trouvé l’anglais de cette ligne. Elle part telle qu’elle s’affiche.",
     ["Copy this link into your browser. It opens a GitHub issue with everything filled in."] = "Copie ce lien dans ton navigateur. Il ouvre un ticket GitHub déjà rempli.",

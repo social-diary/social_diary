@@ -68,6 +68,7 @@ ns.Locale.Add("itIT", {
     ["Put the page away"] = "Metti via la pagina",
     ["Remember them"] = "Ricordala",
     ["Put the list away"] = "Metti via la lista",
+    ["Not now"] = "Non ora",
     -- UI/Windows/Picker.lua
     ["Remember this"] = "Ricordalo",
     ["Click somebody to add them. Already in the diary opens their entry."] = "Clicca su qualcuno per aggiungerlo. Se è già nel diario, si apre la sua voce.",

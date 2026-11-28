@@ -76,6 +76,61 @@ ns.Locale.Add("deDE", {
     ["Nobody yet. Search your diary above to choose who."] =
         "Noch niemand. Durchsuche oben dein Tagebuch, um jemanden auszuwählen.",
     ["Search your diary"] = "Tagebuch durchsuchen",
+    -- UI/Settings/Rules.lua
+    ["Auto-Add rules"] = "Regeln fürs automatische Eintragen",
+    ["Auto-Add Players is off: these rules wait until it’s on."] = "„Spieler automatisch eintragen“ ist aus: Diese Regeln warten, bis es eingeschaltet ist.",
+    ["+ New rule"] = "+ Neue Regel",
+    ["New rule"] = "Neue Regel",
+    ["There’s room for ten rules."] = "Es ist Platz für zehn Regeln.",
+    ["No rules yet."] = "Noch keine Regeln.",
+    ["A rule adds people to the diary for you: those you group with, see often, trade or whisper with, or fight. Start from one on the right."] = "Eine Regel trägt Leute für dich ins Tagebuch ein: die, mit denen du in einer Gruppe bist, die du oft siehst, mit denen du handelst oder flüsterst, oder gegen die du kämpfst. Fang mit einer von rechts an.",
+    ["A blank rule"] = "Eine leere Regel",
+    ["Choose everything yourself"] = "Alles selbst wählen",
+    ["Start from"] = "Beginnen mit",
+    ["At least##autorow"] = "Mindestens",
+    ["Filters"] = "Filter",
+    ["When##autorow"] = "Wenn",
+    ["Which"] = "Welche",
+    ["In my guild"] = "In meiner Gilde",
+    ["You’re not in a guild, so nobody matches."] = "Du bist in keiner Gilde, also passt niemand.",
+    ["My faction"] = "Meine Fraktion",
+    ["The other faction"] = "Die andere Fraktion",
+    ["Levels"] = "Stufen",
+    ["Within"] = "Höchstens",
+    ["levels of mine##autolevel"] = "Stufen von mir entfernt",
+    ["+ write one"] = "+ selbst schreiben",
+    ["no tag"] = "kein Tag",
+    ["Delete this rule"] = "Diese Regel löschen",
+    ["Rule deleted."] = "Regel gelöscht.",
+    ["Duplicate"] = "Duplizieren",
+    ["Switch off"] = "Ausschalten",
+    ["Switch on"] = "Einschalten",
+    ["can’t add anyone"] = "kann niemanden eintragen",
+    ["+ Class"] = "+ Klasse",
+    ["+ Faction"] = "+ Fraktion",
+    ["+ Guild"] = "+ Gilde",
+    ["+ Level"] = "+ Stufe",
+    ["my guild"] = "meine Gilde",
+    ["my faction"] = "meine Fraktion",
+    ["the other faction"] = "die andere Fraktion",
+    ["within %d levels of mine"] = "höchstens %d Stufen von mir entfernt",
+    ["level %1$d–%2$d"] = "Stufe %1$d–%2$d",
+    ["%d class|%d classes##plural"] = "%d Klasse|%d Klassen",
+    ["it only counts people of your own faction"] = "sie zählt nur Leute deiner eigenen Fraktion",
+    ["it only counts people of the other faction"] = "sie zählt nur Leute der anderen Fraktion",
+    ["everyone in your guild is of your faction"] = "alle in deiner Gilde gehören zu deiner Fraktion",
+    ["you’re not in a guild"] = "du bist in keiner Gilde",
+    ["%d added|%d added##autocount##plural"] = "%d eingetragen|%d eingetragen",
+    ["From %1$d to %2$d"] = "Von %1$d bis %2$d",
+    ["This rule can’t add anyone: %s."] = "Diese Regel kann niemanden eintragen: %s.",
+    -- UI/Settings/RulesPad.lua
+    ["Open the rule"] = "Regel öffnen",
+    ["Start from it"] = "Damit beginnen",
+    ["Change it"] = "Ändern",
+    ["Add it"] = "Hinzufügen",
+    ["Remove it"] = "Entfernen",
+    ["Back to the rules"] = "Zurück zu den Regeln",
+    ["Put the rules away"] = "Regeln weglegen",
 
     -- UI/Settings/Sections/About.lua
     ["About"] = "Über",
@@ -233,6 +288,9 @@ ns.Locale.Add("deDE", {
     ["Forgetting"] = "Vergessen",
     ["Forget people outside the diary after"] = "Leute außerhalb des Tagebuchs vergessen nach",
     ["days"] = "Tagen",
+    -- UI/Settings/Sections/Memory.lua
+    ["Keep at most this many strangers"] = "Höchstens so viele Fremde behalten",
+    ["People outside the diary stay pencilled in for a while, so their history is there if you add them later. Strangers you only ever saw also go once there are more than this many, whichever comes first. A lower number forgets those seen longest ago at once. People in your diary are kept for good."] = "Leute außerhalb des Tagebuchs bleiben eine Weile mit Bleistift notiert, damit ihre Geschichte noch da ist, falls du sie später einträgst. Fremde, die du nur gesehen hast, gehen außerdem, sobald es mehr als so viele sind, je nachdem, was zuerst eintritt. Eine niedrigere Zahl vergisst die am längsten nicht mehr Gesehenen sofort. Wer in deinem Tagebuch steht, bleibt für immer.",
     ["Your data"] = "Deine Daten",
     ["Share one diary between all my characters"] = "Ein Tagebuch für alle meine Charaktere",
     ["Switching requires a reload."] = "Der Wechsel lädt die Oberfläche neu.",
@@ -270,6 +328,8 @@ ns.Locale.Add("deDE", {
 
     -- UI/Settings/Sections/Recording.lua: auto-add
     ["Auto-Add Players"] = "Spieler automatisch eintragen",
+    -- UI/Settings/Sections/Recording.lua
+    ["Open the rules"] = "Regeln öffnen",
 
     -- UI/Settings/Sections/Shortcuts.lua
     ["Open the journal"] = "Tagebuch öffnen",
@@ -295,6 +355,8 @@ ns.Locale.Add("deDE", {
 
     -- UI/Settings/Sections/Toasts.lua
     ["When they show"] = "Wann sie erscheinen",
+    -- UI/Settings/Sections/Toasts.lua
+    ["Show toasts"] = "Einblendungen zeigen",
     ["Show a toast when someone from your diary joins your group"] =
         "Einblendung, wenn jemand aus deinem Tagebuch deiner Gruppe beitritt",
     ["Show a toast when someone from your diary comes into view"] =

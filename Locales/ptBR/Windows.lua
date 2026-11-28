@@ -7,6 +7,13 @@ ns.Locale.Add("ptBR", {
     -- UI/Windows/AutoAdd.lua
     ["Familiar faces"] = "Caras conhecidas",
     ["Add them"] = "Adicionar",
+    ["Your rule"] = "Sua regra",
+    ["People who already match your rules"] = "Pessoas que já atendem às suas regras",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "%d pessoa já atende às suas regras.|%d pessoas já atendem às suas regras.",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "%d pessoa já atende a esta regra.|%d pessoas já atendem a esta regra.",
+    ["and %d more rule|and %d more rules##plural"] = "e mais %d regra|e mais %d regras",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s: %2$d pessoa|%1$s: %2$d pessoas",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "Adicioná-las ao diário agora? Se não, cada uma será adicionada na próxima vez que vocês se cruzarem.",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "ainda sem interações",
     ["%d interaction on record|%d interactions on record##plural"] = "%d interação registrada|%d interações registradas",

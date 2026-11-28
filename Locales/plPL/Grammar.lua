@@ -38,9 +38,11 @@ grammar.ListEnd = function(head, last) return head .. " i " .. last end
 local agreedCounts = {
     f = { jeden = "jedna", dwa = "dwie" },
     m = { dwa = "dwóch", trzy = "trzech", cztery = "czterech" },
+    -- instrumental, after "z" ("z dwoma nieznajomymi")
+    i = { jeden = "jednym", dwa = "dwoma", trzy = "trzema", cztery = "czterema", ["pięć"] = "pięcioma" },
 }
 grammar.Agree = function(text)
-    return (text:gsub("([%w\128-\255]+)<([fm])>", function(word, form)
+    return (text:gsub("([%w\128-\255]+)<([fmi])>", function(word, form)
         local agreed = agreedCounts[form][word:lower()]
         if not agreed then return word end
         return word:match("^%u") and grammar.Capital(agreed) or agreed
@@ -76,6 +78,7 @@ grammar.YOU_FOR = {
     ["uciekasz"] = "%s ucieka",
     ["założyłeś"] = "%s założył", ["założyłaś"] = "%s założyła",
     ["twojej mapie"] = "mapie postaci %s",
+    ["twojej roboty"] = "roboty postaci %s",
 }
 
 local firsts = {

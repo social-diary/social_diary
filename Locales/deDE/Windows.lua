@@ -178,7 +178,18 @@ ns.Locale.Add("deDE", {
 
     -- UI/Windows/AutoAdd.lua: familiar faces, offered once
     ["Familiar faces"] = "Bekannte Gesichter",
+    -- Core/AutoAdd.lua
+    ["dungeon##autotag"] = "Dungeon",
+    ["added |cffffffff%1$s|r to the diary automatically: %2$s."] = "hat |cffffffff%1$s|r automatisch ins Tagebuch eingetragen: %2$s.",
+    -- UI/Windows/AutoAdd.lua
     ["Add them"] = "Eintragen",
+    ["Your rule"] = "Deine Regel",
+    ["People who already match your rules"] = "Leute, die schon zu deinen Regeln passen",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "Eine Person passt schon zu deinen Regeln.|%d Personen passen schon zu deinen Regeln.",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "Eine Person passt schon zu dieser Regel.|%d Personen passen schon zu dieser Regel.",
+    ["and %d more rule|and %d more rules##plural"] = "und eine weitere Regel|und %d weitere Regeln",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s: %2$d Person|%1$s: %2$d Personen",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "Jetzt ins Tagebuch eintragen? Sonst wird jede Person eingetragen, sobald ihr euch das nächste Mal begegnet.",
 
     -- UI/Windows/Picker.lua
     ["Remember this"] = "Ins Tagebuch eintragen",

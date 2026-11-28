@@ -17,9 +17,14 @@ if not ns.Locale.Is("deDE") then return end
 ns.Locale.Add("deDE", {
     -- UI/Journey/Caption.lua
     ["Nothing of this level's road was kept."] = "Vom Weg dieser Stufe wurde nichts aufgezeichnet.",
+    -- UI/Journey/CardPad.lua
+    ["Add"] = "Hinzufügen",
+    ["Take them off the card"] = "Von der Karte nehmen",
 
     -- UI/Journey/CardPad.lua
     ["Go to the names"] = "Zu den Namen",
+    -- UI/Journey/Pad.lua
+    ["Back to the sheet"] = "Zurück zum Blatt",
     ["Put the card away"] = "Karte weglegen",
 
     -- UI/Journey/CardSheet.lua
@@ -40,8 +45,35 @@ ns.Locale.Add("deDE", {
     ["Leave this place out"] = "Diesen Ort weglassen",
     ["Choose what's on this page..."] = "Auswählen, was auf dieser Seite steht …",
     ["Leave %1$s off this page"] = "%1$s auf dieser Seite weglassen",
+    -- UI/Journey/CardSheet.lua
+    ["Click to take %s off the card."] = "Klicken, um %s von der Karte zu nehmen.",
+    ["+ Add %s"] = "+ %s hinzufügen",
+    ["Remove"] = "Entfernen",
+    -- UI/Journey/Choose.lua
+    ["Three maps fit a page."] = "Drei Karten passen auf eine Seite.",
+    ["Errands take half a page."] = "Erledigungen: eine halbe Seite.",
+    ["No room for it beside what you chose. Leave something out first."] = "Neben deiner Auswahl ist kein Platz mehr. Lass zuerst etwas weg.",
+    ["Your choice"] = "Deine Wahl",
+    ["Chosen for you"] = "Für dich gewählt",
+    ["No maps on this page"] = "Keine Karten auf dieser Seite",
+    ["Tick a place to bring its map in"] = "Hak einen Ort an, um seine Karte aufzunehmen",
+    ["%s came off to make room."] = "%s musste Platz machen.",
+    ["Next in line"] = "Als Nächstes an der Reihe",
+    ["No room on the page"] = "Kein Platz auf der Seite",
+    ["Too small for a map of its own"] = "Zu klein für eine eigene Karte",
+    ["No room in the margin"] = "Kein Platz am Rand",
+    ["Its run has a page of its own"] = "Der Durchlauf hat eine eigene Seite",
+    ["Came off to make room for %s"] = "Musste Platz machen für %s",
+    ["Fight with %s"] = "Kampf mit %s",
+    ["Note on %s"] = "Notiz zu %s",
+    ["With %s##person"] = "Mit %s",
+    ["Fighting stop"] = "Halt mit Kämpfen",
+    ["Questing stop"] = "Halt zum Questen",
+    ["Resting stop"] = "Halt zum Rasten",
     -- UI/Journey/Choose.lua
     ["Arrived %s##zone"] = "Ankunft %s",
+    -- UI/Journey/Choose.lua
+    ["%d run|%d runs##plural"] = "%d Durchlauf|%d Durchläufe",
     -- UI/Journey/Empty.lua
     ["Each level's places are glued in here:"] = "Die Orte jeder Stufe werden hier eingeklebt:",
     ["Where you stayed a while, darker the longer."] = "Wo du eine Weile bliebst, dunkler, je länger.",
@@ -97,6 +129,9 @@ ns.Locale.Add("deDE", {
     ["Turn the roll over"] = "Liste umdrehen",
     ["Look along the line"] = "Die Linie entlang",
     ["Back to the line"] = "Zurück zur Zeile",
+    -- UI/Journey/Pad.lua
+    ["Bring it in"] = "Aufnehmen",
+    ["Bring this place in"] = "Diesen Ort aufnehmen",
 
     -- UI/Journey/Page.lua
     ["Your road is not being kept just now."] = "Dein Weg wird gerade nicht aufgezeichnet.",

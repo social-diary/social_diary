@@ -2,6 +2,15 @@ local addonName, ns = ...
 if not ns.Locale.Is("zhCN") then return end
 
 ns.Locale.Add("zhCN", {
+    -- UI/Windows/AutoAdd.lua
+    ["Add them"] = "全部添加",
+    ["Your rule"] = "你的规则",
+    ["People who already match your rules"] = "已符合你的规则的人",
+    ["%d person already matches your rules.|%d people already match your rules.##plural"] = "已有%d位玩家符合你的规则。",
+    ["%d person already matches this rule.|%d people already match this rule.##plural"] = "已有%d位玩家符合这条规则。",
+    ["and %d more rule|and %d more rules##plural"] = "另外还有%d条规则",
+    ["%1$s: %2$d person|%1$s: %2$d people##plural"] = "%1$s：%2$d位",
+    ["Add them to the diary now? If not, each is added the next time you cross paths."] = "现在就把这些人添加到日记吗？否则，每个人会在你们下次相遇时被添加。",
     -- UI/Windows/Entry.lua
     ["no interactions yet"] = "还没有互动",
     ["%d interaction on record|%d interactions on record##plural"] = "%d条互动记录",
@@ -67,6 +76,7 @@ ns.Locale.Add("zhCN", {
     ["Put the page away"] = "收起页面",
     ["Remember them"] = "记录",
     ["Put the list away"] = "收起列表",
+    ["Not now"] = "暂不",
     -- UI/Windows/Picker.lua
     ["Remember this"] = "记下来",
     ["Click somebody to add them. Already in the diary opens their entry."] = "点击某人来添加他。已在日记中的会打开他的条目。",

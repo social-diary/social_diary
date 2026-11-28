@@ -7,6 +7,9 @@ ns.Locale.Add("deDE", {
     -- Capture/Menus.lua
     ["Social Diary: open entry"] = "Social Diary: Eintrag öffnen",
     ["Social Diary: remember this"] = "Social Diary: ins Tagebuch eintragen",
+    -- Core/AutoAdd.lua
+    ["Group mates"] = "Gruppengefährten",
+    ["Dungeon and raid companions"] = "Dungeon- und Schlachtzuggefährten",
 
     -- Core/Candidates.lua
     ["your target"] = "dein Ziel",
@@ -28,6 +31,9 @@ ns.Locale.Add("deDE", {
     ["recent group_leave"] = "hat kürzlich deine Gruppe verlassen",
     ["recent level_up"] = "ist kürzlich eine Stufe aufgestiegen",
     ["recent %s"] = "kürzlich: %s",
+    -- Core/DB.lua
+    ["group##autotag"] = "Gruppe",
+    ["seen##autotag"] = "gesehen",
 
     -- Core/Diary.lua
     ["friend##tag"] = "Freund",

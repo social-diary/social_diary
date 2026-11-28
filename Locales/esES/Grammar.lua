@@ -87,6 +87,9 @@ G.YOU_FOR = {
     ["intentó salvarte"] = "intentó salvar a %s", ["te salvó"] = "salvó a %s",
     ["te pusiste"] = "%s se puso",
     ["tu mapa"] = "el mapa de %s",
+    -- The crafter rows: "{Te pusiste} lo que esa persona {te vendió}" reads
+    -- "Brom se puso lo que esa persona le vendió" for another character.
+    ["te vendió"] = "le vendió", ["te dio"] = "le dio", ["le hiciste"] = "%s le hizo",
 }
 
 -- The plain preposition per role. "de" and "a" contract with a name's own
