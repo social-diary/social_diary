@@ -248,3 +248,12 @@ Text.RegisterCaption("witnessed", {
         return table.concat(sentences, " ")
     end },
 })
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Witnesses.Row(w)
+    local name = Witnesses.Name(w)
+    if Witnesses.Look(w) then return Fmt(L["Watched by %s"], name) end
+    if w and w.type == Witnesses.SAVED then return Fmt(L["Saved by %s"], name) end
+    return Fmt(L["Helped by %s"], name)
+end

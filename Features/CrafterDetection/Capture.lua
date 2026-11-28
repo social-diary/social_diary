@@ -17,8 +17,9 @@
 --            moment after the letter arrives (probe round 4: filled in on
 --            the next MAIL_INBOX_UPDATE, before the letter is opened), and
 --            nil for "multiple buyers" (a stack: never gear). The letter
---            stays in the inbox and is read again at every update, so a
---            craft keeps the letter's key and a key used hands nothing more.
+--            stays in the inbox and is read again at every update, so the
+--            book keeps the letter's key (book.letters, a hash) and a key
+--            used hands nothing more.
 --   got      a trade's `received`: worn gear from that GUID. An auction
 --            won (the buyer's letter: the item's name and the seller's)
 --            is noted by name (`bought`) until an item of that name is put
@@ -30,12 +31,16 @@
 --            PLAYER_EQUIPMENT_CHANGED. Only what is worn now counts (the
 --            user, 27 Nov): a `got` once worn and then taken off is let go.
 --
+-- The craft side (made, handed, the inspect queue) runs only for a crafter:
+-- a profession that makes gear past T.rank (Crafter, below). "yours" needs
+-- no profession of the user's and runs for everyone.
+--
 -- Meeting people. NAME_PLATE_UNIT_ADDED, PLAYER_TARGET_CHANGED and
 -- UPDATE_MOUSEOVER_UNIT, everywhere but in an instance (unit identity is
 -- secret there), cities included: the sightings' handlers are switched off
 -- in a city (SIG-5), but ns.Off drops only theirs, and these stay. Each
 -- costs a GUID read and a lookup in the book's small index; a name is read
--- only while the book waits on one.
+-- only while the book waits on one, and once a person a session.
 --   - Someone the book knows by name only (an auction's buyer or seller)
 --     is known by their GUID from then on.
 --   - "yours": they gave or sold the user something the user wears now.
@@ -78,17 +83,61 @@ local ItemID, ItemName, Wearable = CrafterDetection.ItemID, CrafterDetection.Ite
 
 local Book = CrafterDetection.Book
 
+-- The time between two asks of the inspect queue, under a second: the
+-- client's clock (ns.Now counts whole seconds).
+local function Clock()
+    return GetTime and GetTime() or ns.Now()
+end
+
+--------------------------------------------------------------------------
+-- The crafter gate
+--------------------------------------------------------------------------
+
+-- The professions that make gear (skill line ids): blacksmithing,
+-- leatherworking, tailoring, engineering, enchanting (wands). Alchemy,
+-- cooking, first aid and the gathering ones make none.
+local GEAR_MAKERS = { [164] = true, [165] = true, [197] = true, [202] = true, [333] = true }
+CrafterDetection.GEAR_MAKERS = GEAR_MAKERS
+
+-- nil until read; read again after the skills changed or the world settled
+-- (before then the client may not have the professions yet).
+local crafter
+
+function CrafterDetection.Crafter()
+    if crafter == nil then
+        crafter = false
+        if GetProfessions and GetProfessionInfo then
+            for _, index in pairs({ GetProfessions() }) do
+                local _, _, rank, _, _, _, line = GetProfessionInfo(index)
+                rank, line = ns.Plain(rank), ns.Plain(line)
+                if GEAR_MAKERS[line] and type(rank) == "number" and rank > T.rank then crafter = true end
+            end
+        end
+    end
+    return crafter
+end
+local Crafter = CrafterDetection.Crafter
+
+ns.On("SKILL_LINES_CHANGED", function() crafter = nil end)
+
 --------------------------------------------------------------------------
 -- The index: who the book waits on, so a meeting costs a lookup
 --------------------------------------------------------------------------
 
 local index = { guids = {}, names = {}, any = false }
+
+-- The GUIDs whose name was read against index.names this session: a name
+-- can wait for weeks (an auction's buyer or seller never met), and a busy
+-- city's every nameplate would read it again. Emptied whenever a name
+-- joins the index (someone already read may be the new name).
+local nameRead = {}
 local worn = { ids = {}, names = {} }  -- the user's worn slots, now
 
 -- Rebuilt whenever the book or the worn slots change. A GUID is in it for
 -- a craft handed to them and not yet found on them ("theirs") or a got
 -- from them that is worn now ("yours"); a name for either, not yet met.
 local function Reindex()
+    local before = index.names
     index = { guids = {}, names = {}, any = false }
     local book = Book(Journey.Kept())
     if not book then return end
@@ -99,12 +148,22 @@ local function Reindex()
         end
     end
     for id, got in pairs(book.got) do
-        if worn.ids[id] then
+        if worn.ids[id] and not got.met then
             if got.from then index.guids[got.from] = true end
             if got.fromName then index.names[got.fromName] = true end
         end
     end
     index.any = next(index.guids) ~= nil or next(index.names) ~= nil
+    if not next(index.names) then
+        nameRead = {}
+    else
+        for name in pairs(index.names) do
+            if not before[name] then
+                nameRead = {}
+                break
+            end
+        end
+    end
 end
 
 --------------------------------------------------------------------------
@@ -132,7 +191,7 @@ end
 local function Made(result)
     if type(result) ~= "table" then return end
     local j = Journey.Kept()
-    if not j or ns.Plain(result.isEnchant) == true then return end
+    if not j or ns.Plain(result.isEnchant) == true or not Crafter() then return end
     local id = ns.Plain(result.itemID)
     local key = ns.Plain(result.itemGUID)
     local link = ns.Plain(result.hyperlink)
@@ -143,23 +202,16 @@ local function Made(result)
     book.made[key] = { id = id, name = ItemName(link), link = type(link) == "string" and link or nil, t = ns.Now() }
 
     -- At most T.made still in hand: the oldest of those go.
-    local unhanded = {}
-    for _, craft in ipairs(CrafterDetection.Crafts(book)) do
-        if CrafterDetection.Unhanded(craft) then unhanded[#unhanded + 1] = craft end
-    end
-    for i = 1, #unhanded - T.made do
-        for k, craft in pairs(book.made) do
-            if craft == unhanded[i] then book.made[k] = nil end
-        end
-    end
+    local inHand = CrafterDetection.InHand(book)
+    for i = 1, #inHand - T.made do book.made[inHand[i].key] = nil end
 end
 
 ns.On("TRADE_SKILL_ITEM_CRAFTED_RESULT", function(_, result) Made(result) end)
 
--- The oldest craft still in hand that `match` accepts, or nil.
-local function OldestInHand(book, match)
-    for _, craft in ipairs(CrafterDetection.Crafts(book)) do
-        if CrafterDetection.Unhanded(craft) and match(craft) then return craft end
+-- The oldest craft still in hand whose `field` is `value`, or nil.
+local function OldestInHand(book, field, value)
+    for _, e in ipairs(CrafterDetection.InHand(book)) do
+        if e.craft[field] == value then return e.craft end
     end
     return nil
 end
@@ -173,18 +225,22 @@ ns.On("SD_TRADE_COMPLETED", function(_, guid, received, given)
     if not j or not guid then return end
     local book = Book(j)
     local now = ns.Now()
-    for _, item in ipairs(given or {}) do
-        local id = ItemID(item.link)
-        local craft = id and OldestInHand(book, function(c) return c.id == id end)
-        if craft then craft.to, craft.how, craft.handed = guid, "trade", now end
+    local changed = false
+    if given and next(given) and next(book.made) and Crafter() then
+        for _, item in ipairs(given) do
+            local id = ItemID(item.link)
+            local craft = id and OldestInHand(book, "id", id)
+            if craft then craft.to, craft.how, craft.handed, changed = guid, "trade", now, true end
+        end
     end
     for _, item in ipairs(received or {}) do
         local id = ItemID(item.link)
         if id and Wearable(id) then
             book.got[id] = { from = guid, how = "trade", t = now, link = item.link }
+            changed = true
         end
     end
-    Reindex()
+    if changed then Reindex() end
 end)
 
 --------------------------------------------------------------------------
@@ -197,22 +253,36 @@ local function Letters()
     local book = Book(j)
     local now = ns.Now()
     local changed = false
+    -- A sale hands a craft only to a crafter with crafts in hand.
+    local selling = next(book.made) ~= nil and Crafter()
+    -- The crafts in hand by name, oldest first, made once a read and only
+    -- when a letter not yet used asks.
+    local byName
     for i = 1, ns.Plain(GetInboxNumItems()) or 0 do
         local kind, item, who, bid = GetInboxInvoiceInfo(i)
         kind, item, who, bid = ns.Plain(kind), ns.Plain(item), ns.Plain(who), ns.Plain(bid)
         -- "" not loaded yet (read again at the next update), nil "multiple
         -- buyers": either way nobody to note.
         if type(item) == "string" and type(who) == "string" and who ~= "" then
-            if kind == "seller" then
-                local key = table.concat({ item, who, tostring(bid) }, "|")
-                local used = false
-                for _, craft in pairs(book.made) do
-                    if craft.letter == key then used = true end
-                end
-                local craft = not used and OldestInHand(book, function(c) return c.name == item end)
-                if craft then
-                    craft.toName, craft.how, craft.handed, craft.letter = who, "auction", now, key
-                    changed = true
+            if kind == "seller" and selling then
+                local key = CrafterDetection.LetterKey(item .. "|" .. who .. "|" .. tostring(bid))
+                if not book.letters[key] then
+                    if not byName then
+                        byName = {}
+                        for _, e in ipairs(CrafterDetection.InHand(book)) do
+                            local name = e.craft.name
+                            if name then
+                                byName[name] = byName[name] or {}
+                                table.insert(byName[name], e.craft)
+                            end
+                        end
+                    end
+                    local craft = byName[item] and table.remove(byName[item], 1)
+                    if craft then
+                        craft.toName, craft.how, craft.handed = who, "auction", now
+                        book.letters[key] = now
+                        changed = true
+                    end
                 end
             elseif kind == "buyer" then
                 local key = item .. "|" .. who
@@ -268,8 +338,23 @@ local function Worn()
     Reindex()
 end
 
-ns.On("SD_WORLD_SETTLED", Worn)
-ns.On("PLAYER_EQUIPMENT_CHANGED", Worn)
+-- PLAYER_EQUIPMENT_CHANGED fires once a slot: a set swapped is up to 19
+-- in one frame, read once on the next.
+local wornDue = false
+local function WornSoon()
+    if wornDue then return end
+    wornDue = true
+    ns.After(0, function()
+        wornDue = false
+        Worn()
+    end)
+end
+
+ns.On("SD_WORLD_SETTLED", function()
+    crafter = nil
+    Worn()
+end)
+ns.On("PLAYER_EQUIPMENT_CHANGED", WornSoon)
 
 --------------------------------------------------------------------------
 -- The inspect queue
@@ -283,8 +368,9 @@ local function InspectOpen()
     return InspectFrame ~= nil and InspectFrame:IsShown() and true or false
 end
 
+-- In combat. (In an instance Met never gets this far.)
 local function Away()
-    return (InCombatLockdown and InCombatLockdown()) or (IsInInstance and IsInInstance()) or false
+    return (InCombatLockdown and InCombatLockdown()) or false
 end
 
 -- Whether to ask after `guid` at all: Stage 2 everyone, Stage 1 those
@@ -312,7 +398,7 @@ local function Read(unit, guid)
     if n == 0 then return end
     asked[guid] = ns.Now()
     local found = false
-    for _, craft in ipairs(CrafterDetection.Crafts(book)) do
+    for _, craft in pairs(book.made) do
         if craft.to == guid and not craft.met and not craft.gone and ids[craft.id] then
             craft.met = ns.Now()
             Connect(guid, THEIRS, craft.id, craft.link, craft.how, unit)
@@ -322,14 +408,12 @@ local function Read(unit, guid)
     if found then Reindex() end
 end
 
-local function Ask(unit, guid)
-    local now = ns.Now()
-    local j = Journey.Kept()
-    local book = j and Book(j)
-    if not book or Away() or InspectOpen() then return end
+local function Ask(unit, guid, book)
+    if not Crafter() or Away() or InspectOpen() then return end
+    local now = Clock()
     if pending and now - pending.at < T.timeout then return end
     if now - lastAsk < T.gap then return end
-    if asked[guid] and now - asked[guid] < T.again then return end
+    if asked[guid] and ns.Now() - asked[guid] < T.again then return end
     if not Wanted(guid, book) then return end
     if type(CanInspect) ~= "function" or type(NotifyInspect) ~= "function" then return end
     local ok, can = pcall(CanInspect, unit)
@@ -339,13 +423,14 @@ local function Ask(unit, guid)
     pending = { guid = guid, unit = unit, at = now }
     NotifyInspect(unit)
     C_Timer.After(T.timeout, function()
-        if pending and pending.guid == guid and ns.Now() - pending.at >= T.timeout then pending = nil end
+        if pending and pending.guid == guid and Clock() - pending.at >= T.timeout then pending = nil end
     end)
 end
 
 -- The unit token that is `guid` now, of those the queue asks by.
+local TOKENS = { "target", "mouseover" }
 local function TokenOf(guid)
-    for _, unit in ipairs({ "target", "mouseover" }) do
+    for _, unit in ipairs(TOKENS) do
         if ns.SafeGUID(UnitGUID(unit)) == guid then return unit end
     end
     return nil
@@ -380,8 +465,10 @@ local function Met(unit, inspect)
     if not book then return end
 
     -- Known by name only until now: by GUID from here on.
-    if next(index.names) then
+    if next(index.names) and not nameRead[guid] then
         local name = ns.JoinName(ns.NameFromUnit(unit))
+        -- No name yet (not loaded): read again at the next meeting.
+        if name then nameRead[guid] = true end
         if name and index.names[name] then
             for _, craft in pairs(book.made) do
                 if craft.toName == name then craft.to, craft.toName = guid, nil end
@@ -394,16 +481,20 @@ local function Met(unit, inspect)
     end
 
     -- "yours": they gave or sold the user what the user wears now.
+    -- Made once (or found made already), never watched for again.
     if index.guids[guid] then
+        local met = false
         for id, got in pairs(book.got) do
-            if got.from == guid and worn.ids[id] then
+            if got.from == guid and worn.ids[id] and not got.met then
                 Connect(guid, YOURS, id, worn.ids[id] or got.link, got.how, unit)
+                got.met, met = ns.Now(), true
             end
         end
+        if met then Reindex() end
     end
 
     -- "theirs": a craft of the user's on them? Ask.
-    if inspect then Ask(unit, guid) end
+    if inspect then Ask(unit, guid, book) end
 end
 
 ns.On("NAME_PLATE_UNIT_ADDED", function(_, unit) Met(unit, false) end)
@@ -417,8 +508,9 @@ ns._test.CrafterDetection = {
     Index = function() return index end,
     Pending = function() return pending end,
     Reset = function()
-        pending, lastAsk, asked = nil, -math.huge, {}
+        pending, lastAsk, asked, crafter, wornDue = nil, -math.huge, {}, nil, false
         worn = { ids = {}, names = {} }
         index = { guids = {}, names = {}, any = false }
+        nameRead = {}
     end,
 }

@@ -839,6 +839,8 @@ local function Inserted(list)
 end
 
 ns.UI.JourneyPlate.RegisterMark("killedBy", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(d, m) return ns.Deaths.Row(d or m.killedBy) end,
     order = 32, cap = 20, count = "insertedDeaths",
     radius = 5, halo = false, hover = 14,
     tip = function(m, now) return ns.Deaths.DeathCross(1, { m.killedBy }, now) end,
@@ -846,3 +848,20 @@ ns.UI.JourneyPlate.RegisterMark("killedBy", {
     keep = "killedMarks",
     draw = function(kit, x, y) ns.UI.JourneyPlate.SHAPE.death(kit, x, y) end,
 })
+
+-- A death on the route, as a row of "Choose what's on this page": "Killed by
+-- Hogger", the first of its deaths whose killer is known (as the player left
+-- it, Deaths.Read), else "Died" (UI/Journey/Choose.lua's RegisterRowWords).
+ns.UI.YourDiary.RegisterRowWords("death", function(m)
+    local seg = m.seg
+    local j = ns.Journey.Mine()
+    if not (seg and seg.from and j) then return nil end
+    local to = seg.to or seg.from
+    for _, rec in ipairs(ns.Deaths.List(j)) do
+        if rec.t >= seg.from and rec.t <= to then
+            local d = ns.Deaths.Read(rec)
+            if d and d.name then return ns.Deaths.Row(d) end
+        end
+    end
+    return nil
+end)

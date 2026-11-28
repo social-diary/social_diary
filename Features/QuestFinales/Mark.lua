@@ -22,6 +22,8 @@ QuestFinales.MARK = MARK
 -- level's pin, so it keeps its place and the crosses and tallies step
 -- round it.
 ns.UI.JourneyPlate.RegisterMark("finale", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(f, m) return ns.QuestFinales.Row(f or m.finale) end,
     order = 10, cap = 10, count = "finales",
     radius = MARK.rules[1].w / 2, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return QuestFinales.Tip(m.finale, now) end,

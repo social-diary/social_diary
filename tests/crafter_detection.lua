@@ -23,6 +23,9 @@ _G.CanInspect = function() return canInspect end
 _G.NotifyInspect = function(unit) asks[#asks + 1] = unit end
 _G.InspectFrame = { shown = false, IsShown = function(self) return self.shown end }
 
+-- A tailor, past the crafter gate's rank.
+mock.professions = { { name = "Tailoring", rank = 40, max = 75, line = 197 } }
+
 local ns = T.Boot()
 
 -- Worn slots: the user's from the mock, anyone else's from `wears`.
@@ -110,6 +113,33 @@ mock.fire("TRADE_SKILL_ITEM_CRAFTED_RESULT", { itemID = 2302, itemGUID = bootsKe
 n = 0
 for _ in pairs(Book().made) do n = n + 1 end
 Eq(n, 1, "the same craft was booked twice")
+
+--------------------------------------------------------------------------
+Section("the crafter gate: the craft side runs only past T.rank in a gear profession")
+
+local Crafter = CD.Crafter
+Check(Crafter(), "a tailor at 40 is not a crafter")
+mock.professions = { { name = "Tailoring", rank = 1, max = 75, line = 197 },
+    { name = "Alchemy", rank = 60, max = 75, line = 171 } }
+mock.fire("SKILL_LINES_CHANGED")
+Check(not Crafter(), "a tailor at 1 (and an alchemist) counted as a crafter")
+local beforeGate = 0
+for _ in pairs(Book().made) do beforeGate = beforeGate + 1 end
+Craft(GLOVES)
+local afterGate = 0
+for _ in pairs(Book().made) do afterGate = afterGate + 1 end
+Eq(afterGate, beforeGate, "a craft booked for someone not a crafter")
+CD.INSPECT_EVERYONE = true
+asks = {}
+Target(GARRICK)
+Eq(#asks, 0, "someone not a crafter asked for an inspect")
+CD.INSPECT_EVERYONE = false
+mock.professions = { { name = "Tailoring", rank = 40, max = 75, line = 197 } }
+mock.fire("SKILL_LINES_CHANGED")
+Check(Crafter(), "the gate did not open again once the skills changed")
+Test.Reset()
+Test.Worn()
+asks = {}
 
 --------------------------------------------------------------------------
 Section("Stage 1's gate: nobody is inspected without a craft of the user's")
@@ -258,9 +288,33 @@ letters = { { "seller", "Linen Gloves", nil, 5 } }
 mock.fire("MAIL_INBOX_UPDATE")
 Check(CD.Unhanded(Book().made[spareKey]), "a letter with no buyer handed a craft")
 letters = {}
+for key in pairs(Book().letters) do
+    Check(type(key) == "number", "a letter's key kept the buyer's name")
+end
+
+-- Someone else's name is read once a session while a name waits; again
+-- only once a new name joins.
+Check(Test.Index().names["Tullus Hostilius"], "the buyer's name is not watched for")
+local nameReads, NameFromUnit = 0, ns.NameFromUnit
+ns.NameFromUnit = function(...) nameReads = nameReads + 1 return NameFromUnit(...) end
+mock.SetUnit("nameplate6", GARRICK)
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+Eq(nameReads, 1, "the same person's name read again in one session")
+local otherKey = Craft(BOOTS)
+letters = { { "seller", "Handstitched Leather Boots", "Garrick Fallow", 77 } }
+mock.fire("MAIL_INBOX_UPDATE")
+letters = {}
+Eq(Book().made[otherKey].toName, "Garrick Fallow", "setup: the boots were not sold")
+mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+Eq(nameReads, 2, "a new name waiting did not read people already read")
+Eq(Book().made[otherKey].to, GARRICK.guid, "the new name was not met")
+ns.NameFromUnit = NameFromUnit
+Book().made[otherKey] = nil
+Test.Reindex()
 
 -- Seen on a nameplate: by GUID from now on.
-Check(Test.Index().names["Tullus Hostilius"], "the buyer's name is not watched for")
 mock.SetUnit("nameplate2", TULLUS)
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
 Eq(Book().made[saleKey].to, TULLUS.guid, "meeting the buyer did not put their GUID on the craft")
@@ -290,6 +344,7 @@ Eq(Rows(NUMA.guid, CD.YOURS), 0, "a connection with the bracers not worn")
 
 mock.equipped[9] = { link = BRACERS, quality = 2 }
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 9, false)
+mock.RunTimers()
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate3")
 Eq(Rows(NUMA.guid, CD.YOURS), 1, "seeing who gave the bracers worn made no connection")
 Eq(#toasts, 1, "no toast for the bracers")
@@ -297,10 +352,13 @@ Eq(toasts[1] and toasts[1].data.dir, CD.YOURS, "the toast's direction")
 Eq(toasts[1] and toasts[1].data.how, "trade", "the toast's how")
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate3")
 Eq(Rows(NUMA.guid, CD.YOURS), 1, "a second row for the same bracers")
+Check(Book().got[6070].met, "the bracers' connection is not marked made")
+Check(not Test.Index().guids[NUMA.guid], "who gave the bracers is still watched for once connected")
 
 -- Taken off once worn: let go.
 mock.equipped[9] = nil
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 9, true)
+mock.RunTimers()
 Eq(Book().got[6070], nil, "the bracers taken off are still kept")
 
 --------------------------------------------------------------------------
@@ -313,6 +371,7 @@ Check(next(Book().bought), "the auction won was not noted")
 letters = {}
 mock.equipped[2] = { link = CHARM, quality = 2 }
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 2, false)
+mock.RunTimers()
 Eq(Book().got[7002] and Book().got[7002].fromName, "Garrick Fallow", "the amulet put on is not noted from the seller")
 Eq(next(Book().bought), nil, "the auction won stayed noted once worn")
 mock.SetUnit("nameplate4", GARRICK)
@@ -324,6 +383,7 @@ Eq(sold.context.how, "auction", "the connection's how")
 Eq(#toasts, 1, "no toast for the amulet")
 mock.equipped[2] = nil
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 2, true)
+mock.RunTimers()
 
 --------------------------------------------------------------------------
 Section("nothing in an instance; nothing without the route kept")
@@ -331,6 +391,7 @@ Section("nothing in an instance; nothing without the route kept")
 ns.Fire("SD_TRADE_COMPLETED", BRAM.guid, { { link = BRACERS, count = 1 } }, nil)
 mock.equipped[9] = { link = BRACERS, quality = 2 }
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 9, false)
+mock.RunTimers()
 mock.inInstance = true
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
 Eq(Rows(BRAM.guid, CD.YOURS), 0, "a connection made in an instance")
@@ -346,6 +407,7 @@ Eq(after, before, "a craft booked with the route not kept")
 ns.db.settings.keepRoute = true
 mock.equipped[9] = nil
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 9, true)
+mock.RunTimers()
 
 --------------------------------------------------------------------------
 Section("forgetting someone, and the buffer's days")
@@ -364,6 +426,35 @@ Book().made[oldKey] = { id = 7005, name = "Linen Hood", t = mock.now, to = BRAM.
     handed = mock.now }
 ns.Journey.Prune(mock.now + (ns.BufferDays() + 1) * T.DAY)
 Eq(Book().made[oldKey], nil, "a stranger's hand-off outlived the buffer")
+
+-- A sale letter still in the inbox after its craft was pruned hands no
+-- second craft; the letter's key goes after T.letters.
+local soldKey = Craft(Link(7006, "Linen Sash"))
+local twinKey = Craft(Link(7006, "Linen Sash"))
+mock.itemInfo[7006] = { equipLoc = "INVTYPE_WAIST" }
+Book().made[soldKey] = { id = 7006, name = "Linen Sash", t = mock.now - 1, link = Link(7006, "Linen Sash") }
+Book().made[twinKey] = { id = 7006, name = "Linen Sash", t = mock.now, link = Link(7006, "Linen Sash") }
+letters = { { "seller", "Linen Sash", "Kaeso Varro", 300 } }
+mock.fire("MAIL_INBOX_UPDATE")
+Eq(Book().made[soldKey].toName, "Kaeso Varro", "setup: the sash was not sold")
+ns.Journey.Prune(mock.now + (ns.BufferDays() + 1) * T.DAY)
+Eq(Book().made[soldKey], nil, "setup: the sale outlived the buffer")
+mock.fire("MAIL_INBOX_UPDATE")
+Check(CD.Unhanded(Book().made[twinKey]), "a letter read again after its craft was pruned handed a second craft")
+ns.Journey.Prune(mock.now + CD.T.letters + T.DAY)
+Eq(next(Book().letters), nil, "a letter's key outlived the mail")
+letters = {}
+
+-- Everyone forgotten: the names not yet met go too.
+Book().made[soldKey] = { id = 7006, name = "Linen Sash", t = mock.now, toName = "Kaeso Varro", how = "auction",
+    handed = mock.now }
+Book().got[7007] = { fromName = "Kaeso Varro", how = "auction", t = mock.now }
+Book().bought["Linen Sash|Kaeso Varro"] = { name = "Linen Sash", fromName = "Kaeso Varro", t = mock.now }
+ns.ForgetEverywhere(nil)
+Eq(Book().made[soldKey].toName, nil, "a buyer's name outlived forgetting everyone")
+Check(Book().made[soldKey].gone, "a craft sold to a forgotten name could be handed again")
+Eq(Book().got[7007], nil, "a seller's name outlived forgetting everyone")
+Eq(next(Book().bought), nil, "an auction won's seller outlived forgetting everyone")
 
 --------------------------------------------------------------------------
 Section("after the reunion toast: what a connection reads")
@@ -389,6 +480,7 @@ Eq(ns.Characters.FullName(NUMA.guid), "Numa", "setup: the diary knew their surna
 ns.Fire("SD_TRADE_COMPLETED", NUMA.guid, { { link = BRACERS, count = 1 } }, nil)
 mock.equipped[9] = { link = BRACERS, quality = 2 }
 mock.fire("PLAYER_EQUIPMENT_CHANGED", 9, false)
+mock.RunTimers()
 mock.SetUnit("nameplate5", NUMA)
 mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate5")
 Eq(Rows(NUMA.guid, CD.YOURS), 1, "setup: no connection")

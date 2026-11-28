@@ -44,6 +44,8 @@ end
 -- the cards in the margin (Card.lua's Items: a card each item, its leader
 -- to the pouch), each with the ink it was drawn in (its `arg`).
 ns.UI.JourneyPlate.RegisterMark("find", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.Firsts.Row(rec or m.find) end,
     order = 5, cap = 10, count = "finds",
     radius = POUCH.height / 2 + 1, halo = POUCH.height + 4,
     tip = function(m, now)

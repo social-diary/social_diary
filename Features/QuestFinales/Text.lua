@@ -160,3 +160,10 @@ Text.RegisterCaption("finale", {
     lead = { at = 30, say = function(finales) return Capital(Ended(finales)) end },
     tail = { at = 20, say = Ended },
 })
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function QuestFinales.Row(f)
+    if not (f and f.title) then return L["A chain finished"] end
+    return Fmt(L["Finished %s##quest"], Quoted(f.title))
+end

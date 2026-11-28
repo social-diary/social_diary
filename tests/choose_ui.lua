@@ -182,8 +182,8 @@ Check(not StrokeInk(on.placeBox.tick[1]) and not StrokeInk(on.placeBox.outline[1
 Eq(on.placeBox.tick[1].recorded.height, C.faded.tickW, "the diary's tick as heavy as the player's")
 local fightRow = MomentRow(1413, "fight")
 Check(fightRow and fightRow.cardBox:IsShown() and not fightRow.placeBox:IsShown(), "a moment's row has no small box")
-Eq(fightRow and fightRow.name:GetText(), ns.Characters.Name(FOE) or ns.Characters.FullName(FOE) or "Someone",
-    "a person's row: their name")
+Eq(fightRow and fightRow.name:GetText(), ns.Characters.Name(FOE) and ("Fight with " .. ns.Characters.Name(FOE)) or "A fight",
+    "a person's row: what it is, then their first name")
 Eq(fightRow.time:GetText(), ns.UI.Format.Clock(t0 + 6000), "a row's time: its moment's")
 -- No map numbers (the user's, 18 Nov): no marker column on the rows, no
 -- label on the plates; the plate a row is on is only for its ring.
@@ -793,13 +793,38 @@ end
 --------------------------------------------------------------------------
 Section("a row's words: short, and never its time again")
 
--- (the user's, 18 Nov: "Tarren Mill, yesterday at…", "Dun Garok Soldier,
--- 1% h…". A mark's `label` says the row; its day and time are the time
+-- (the user's, 18 Nov: "Tarren Mill, yesterday at…"; 28 Nov: at most 25
+-- characters before the row's ellipsis, what it is first, then who or
+-- what. A mark's `label` says the row; its day and time are the time
 -- column's, its tooltip says the rest.)
 Eq(ns.Campfire.Label(), "Campfire", "a campfire's row: not what it is")
-Eq(ns.CloseCalls.Label({ name = "Dun Garok Soldier", pct = 1 }), "Dun Garok Soldier, 1%", "a close call's row lost its health")
-Eq(ns.Note.Label({ people = { { name = "Old Tom" } }, text = "fished off the pier all evening" }), "Old Tom",
+Eq(ns.CloseCalls.Label({ name = "Dun Garok Soldier", pct = 1 }), "Close call: Dun Garok Soldier", "a close call's row")
+Eq(ns.CloseCalls.Label({ pct = 1 }), "A close call", "a close call's row, no creature")
+Eq(ns.Note.Label({ people = { { name = "Old Tom" } }, text = "fished off the pier all evening" }), "Note on Old Tom",
     "a free card's row: more than who")
+Eq(ns.Note.Label({ text = "fished off the pier" }), "Note: fished off the pier", "a free card about nothing named")
+Eq(ns.Duels.Row({ name = "Bram", won = 1 }), "Duel with Bram", "one duel")
+Eq(ns.Duels.Row({ name = "Bram", won = 2, lost = 1 }), "3 duels with Bram", "a series: how many, with whom")
+Eq(ns.Duels.Row({ won = 1 }), "A duel", "a duel with nobody known")
+Eq(ns.Hunts.Row({ item = "Raptor Horn" }), "Hunt for Raptor Horn", "a long hunt")
+Eq(ns.Hunts.Row({ item = "Raptor Horn" }, true), "Lucky drop: Raptor Horn", "a lucky drop")
+Eq(ns.Firsts.Row({ name = "Gutwrencher" }), "Found Gutwrencher", "a first found")
+Eq(ns.Hunter.Row({ name = "Bristlemane" }), "Tamed Bristlemane", "a tame")
+Eq(ns.Upgrades.Row({ slot = 15 }), "New cloak", "an upgrade")
+Eq(ns.Upgrades.Row({ slot = 9 }), "New bracers", "an upgrade, no article either way")
+Eq(ns.QuestFinales.Row({ title = "The Demon Seed" }), "Finished \226\128\156The Demon Seed\226\128\157", "a chain's end")
+Eq(ns.Deaths.Row({ name = "Hogger" }), "Killed by Hogger", "a death with its killer")
+Eq(ns.Deaths.Row({}), "Died", "a death, no killer known")
+Eq(ns.Witnesses.Row({ type = ns.Witnesses.SAVED, name = "Bram" }), "Saved by Bram", "a witness who saved you")
+-- A row longer than 25 characters only where its last part is a name (an
+-- item's, a creature's, a place's): what it is still reads before the cut.
+local CUT = { "^Hunt for ", "^Lucky drop: ", "^Found ", "^Close call: ", "^Killed by ", "^Finished ", "^Note on ",
+    "^Note: ", "^Arrived ", "^Stop at ", "^Tamed " }
+local function Fits(label)
+    if #label <= 25 then return true end
+    for _, pattern in ipairs(CUT) do if label:find(pattern) then return true end end
+    return false
+end
 Check(ns.UI.JourneyPlate.MARKS.campfire.label and ns.UI.JourneyPlate.MARKS.close.label
     and ns.UI.JourneyPlate.MARKS.noteCard.label, "a mark without its row's label")
 do
@@ -814,11 +839,12 @@ do
                     rows = rows + 1
                     kinds[m.kind] = true
                     Check(not item.label:find(item.time, 1, true), "a row says its time twice: " .. item.label)
+                    Check(Fits(item.label), "a row past 25 characters: " .. item.label)
                     Check(not item.label:find("yesterday", 1, true) and not item.label:find(" on %d"),
                         "a row says its day: " .. item.label)
                     if m.kind == "close" then
-                        Check(item.label:find("%d+%%$") ~= nil and not item.label:find("health", 1, true),
-                            "a close call's row not short, with its health: " .. item.label)
+                        Check(item.label:find("^Close call: ") ~= nil or item.label == "A close call",
+                            "a close call's row not what it is first: " .. item.label)
                     elseif m.kind == "campfire" then
                         Check(item.label:find("^Campfire") ~= nil and not item.label:find(m.campfire.subZone or "\0", 1, true),
                             "a campfire's row names its place: " .. item.label)

@@ -87,9 +87,18 @@ function Note.Who(rec)
 end
 
 -- A row of the ticklist ("Choose what's on this page", the mark's `label`):
--- short, one line.
+-- "Note on Old Tom", what it is first (25 characters before the row's
+-- ellipsis, UI/Journey/Choose.lua); its text where it is about nothing
+-- named, "Note: fished off the pier"; else the icon's name.
 function Note.Label(rec)
-    return Note.Subject(rec) or Note.IconName(rec)
+    if Note.Someone(rec) then return L["Note on someone you met"] end
+    local names = Note.Names(rec)
+    if names[1] then return Fmt(L["Note on %s"], List(names)) end
+    for _, about in ipairs({ rec.mob, rec.item }) do
+        if type(about) == "string" and about ~= "" then return Fmt(L["Note on %s"], about) end
+    end
+    local line = Line(rec, LABEL_MOST)
+    return line and Fmt(L["Note: %s"], line) or Note.IconName(rec)
 end
 
 -- A menu's line, where a spot merges several: what it is about and the

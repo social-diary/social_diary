@@ -334,3 +334,13 @@ Text.RegisterCaption("duel", {
     end },
     tail = { at = 85, say = function(recs, c) return c.said.duel and Duels.Phrase(recs) or nil end },
 })
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Duels.Row(rec)
+    local who = Duels.Who(rec)
+    local n = (rec.won or 0) + (rec.lost or 0) + (rec.fled or 0) + (rec.theyFled or 0)
+    if not who then return n > 1 and ns.Plural(n, L["%d duel|%d duels##plural"]) or L["A duel"] end
+    if n <= 1 then return Fmt(L["Duel with %s"], who) end
+    return ns.Plural(n, L["Duel with %2$s|%1$d duels with %2$s##plural"], n, who)
+end

@@ -131,11 +131,11 @@ function CloseCalls.Tip(call, now)
 end
 
 -- A row of the ticklist ("Choose what's on this page", the mark's `label`):
--- the creature and how low it left you, "Dun Garok Soldier, 1%". The health
--- is what tells two fights with one creature apart, and the one thing worth
--- keeping when the row is narrow; "health" itself the tooltip says.
+-- "Close call: Dun Garok Soldier", what it is first (25 characters at most,
+-- UI/Journey/Choose.lua); how low it left you is the row's tooltip (the
+-- user's, 28 Nov 2026; was "Dun Garok Soldier, 1%").
 function CloseCalls.Label(call)
-    return Fmt(L["%1$s, %2$d%%##creature and health"], call.name or L["A close call"], call.pct or 0)
+    return call.name and Fmt(L["Close call: %s"], call.name) or L["A close call"]
 end
 
 -- The card of the creature that nearly got you (Card.lua's SetFoe):

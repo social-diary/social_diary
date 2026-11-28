@@ -711,6 +711,8 @@ end
 -- and with no `arg` (the picker), as "saw" is what a new card starts as. Order 34
 -- after the close call's 30, whose size it shares and so its room.
 ns.UI.JourneyPlate.RegisterMark("witnessed", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.Witnesses.Row(ns.Witnesses.Written(rec or m.witnessed)) end,
     order = 34, cap = 20, count = "witnesses",
     radius = ns.CloseCalls.MARK.stem.h / 2 + 1, halo = false, hover = ns.CloseCalls.MARK.dot,
     tip = function(m, now) return Witnesses.Tip(Witnesses.Written(m.witnessed), now) end,

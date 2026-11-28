@@ -164,3 +164,9 @@ do
         end },
     })
 end
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Deaths.Row(d)
+    return d and d.name and Fmt(L["Killed by %s"], d.name) or L["Died"]
+end

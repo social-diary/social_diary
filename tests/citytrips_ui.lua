@@ -474,7 +474,7 @@ Eq(Plain(CityTrips.Coin(28077)), "2g 81s", "coin rounded up to the silver")
 Eq(CityTrips.Coin(45), "45c", "copper under a silver")
 Eq(CityTrips.Coin(28037):find(" ", 1, true), nil, "coin not held together")
 Eq(Plain(CityTrips.Exact(28037)), "2g 80s 37c", "the exact sum")
-Eq(Plain(CityTrips.Label({ from = 0, to = 38 * 60, trip = USUAL })), "Errands, 38 min", "the ticklist row's words")
+Eq(CityTrips.Label({ from = 0, to = 38 * 60, trip = USUAL }), "Errands in town", "the ticklist row's words")
 Eq(CityTrips.Tip(), "What you did in town, on half a page", "the row's tooltip")
 -- The heading always names its city, even counting on from a plate before
 -- it on the same map.

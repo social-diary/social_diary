@@ -320,3 +320,12 @@ do
         end },
     })
 end
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Firsts.Row(rec)
+    local name = Name(rec)
+    if name then return Fmt(L["Found %s"], name) end
+    local _, yours = Words(rec and rec.what)
+    return rec and rec.what and Capital(yours) or L["A first found"]
+end

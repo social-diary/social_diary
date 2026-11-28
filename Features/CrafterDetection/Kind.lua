@@ -70,6 +70,15 @@ local T = {
     made = 100,
     -- The connections kept on the route for the plates, the newest.
     meets = 200,
+    -- A sale letter's key is kept this long after it handed a craft: an
+    -- auction's letter stays in the inbox up to 30 days, and is read again
+    -- at every update until then.
+    letters = 31 * ns.DAY,
+    -- The user is a crafter (and the craft side runs: crafts booked,
+    -- hand-offs, the inspect queue) once a profession that makes gear is
+    -- past this rank (the user, 28 Nov 2026: skip a profession only just
+    -- learned, at 1).
+    rank = 3,
 }
 CrafterDetection.T = T
 
@@ -121,25 +130,49 @@ end
 --   made   = { [itemGUID] = craft },  what the user made, one an item
 --   got    = { [itemID] = got },      gear that came from someone
 --   bought = { [key] = bought },      won at auction, until put on
+--   letters = { [hash] = t },         sale letters that handed a craft
 -- }
 -- craft:  id, name, link, t (made); once handed: to (GUID) or toName (an
 --         auction buyer's name until met), how ("trade" or "auction"),
---         handed (time), letter (the sale letter's key, so a letter read
---         again hands nothing twice); met, once found worn on them; gone,
+--         handed (time); met, once found worn on them; gone,
 --         once the person it went to was forgotten (PRV-3: the record
 --         stays, never handed again)
 -- got:    from (GUID) or fromName (an auction seller's name until met), how,
---         t, link; worn, once seen on the user
+--         t, link; worn, once seen on the user; met, once the connection
+--         was made (not watched for again)
 -- bought: name (the item's), fromName, t
+-- letters: a sale letter read again hands nothing twice. Kept apart from
+--         the crafts, which the buffer's days may prune while the letter
+--         is still in the inbox, and by a hash of the letter (item, buyer,
+--         bid), so no buyer's name is kept in it.
 
 function CrafterDetection.Book(j)
     if not j then return nil end
     local book = j.crafter
     if not book then
-        book = { made = {}, got = {}, bought = {} }
+        book = { made = {}, got = {}, bought = {}, letters = {} }
         j.crafter = book
     end
+    if not book.letters then
+        -- A book from before the letters had their own table (never
+        -- released; the dev round's): each craft kept its letter's key.
+        book.letters = {}
+        for _, craft in pairs(book.made) do
+            if craft.letter then
+                book.letters[CrafterDetection.LetterKey(craft.letter)] = craft.handed or craft.t
+                craft.letter = nil
+            end
+        end
+    end
     return book
+end
+
+-- A sale letter's key: a hash of what tells it apart (the item's name, the
+-- buyer's, the bid), never the name itself.
+function CrafterDetection.LetterKey(text)
+    local h = 5381
+    for i = 1, #text do h = (h * 33 + text:byte(i)) % 4294967296 end
+    return h
 end
 
 -- A craft still in the user's hands: never handed, never given up.
@@ -147,18 +180,19 @@ function CrafterDetection.Unhanded(craft)
     return not craft.to and not craft.toName and not craft.gone
 end
 
--- The book's crafts in the order they were made (oldest first), as a list.
-function CrafterDetection.Crafts(book)
+-- The crafts still in the user's hands, oldest first, as { key, craft }
+-- (the saved tables are not written to sort them).
+local function Older(a, b)
+    if a.craft.t ~= b.craft.t then return a.craft.t < b.craft.t end
+    return a.key < b.key
+end
+
+function CrafterDetection.InHand(book)
     local list = {}
     for key, craft in pairs(book and book.made or {}) do
-        list[#list + 1] = craft
-        craft.key = key
+        if CrafterDetection.Unhanded(craft) then list[#list + 1] = { key = key, craft = craft } end
     end
-    table.sort(list, function(a, b)
-        if a.t ~= b.t then return a.t < b.t end
-        return a.key < b.key
-    end)
-    for _, craft in ipairs(list) do craft.key = nil end
+    table.sort(list, Older)
     return list
 end
 
@@ -184,18 +218,25 @@ Journey.RegisterList("crafter", {
         for key, bought in pairs(book.bought) do
             if bought.t < cutoff then book.bought[key] = nil end
         end
+        for key, t in pairs(book.letters or {}) do
+            if t < now - T.letters then book.letters[key] = nil end
+        end
     end,
     forget = function(j, guid)
         local book = j.crafter
         if not book then return end
         for _, craft in pairs(book.made) do
-            if craft.to and (guid == nil or craft.to == guid) then
-                craft.to, craft.gone = nil, true
+            -- Everyone (nil): a name not yet met goes too.
+            if (craft.to and (guid == nil or craft.to == guid)) or (guid == nil and craft.toName) then
+                craft.to, craft.toName, craft.gone = nil, nil, true
             end
         end
         for id, got in pairs(book.got) do
-            if got.from and (guid == nil or got.from == guid) then book.got[id] = nil end
+            if (got.from and (guid == nil or got.from == guid)) or (guid == nil and got.fromName) then
+                book.got[id] = nil
+            end
         end
+        if guid == nil then wipe(book.bought) end
     end,
 })
 

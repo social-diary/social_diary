@@ -36,6 +36,8 @@ Hunter.MARK = MARK
 -- the player's own cards (Card.lua's Customs). Its tooltip is Hunter.Tips's
 -- account of every tame on the spot, so each name is said once.
 ns.UI.JourneyPlate.RegisterMark("tame", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(tame, m) return ns.Hunter.Row(tame or m.tame) end,
     order = 67, cap = 10, count = "tames",
     radius = MARK.height / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now)

@@ -118,6 +118,8 @@ end
 -- (plate.craftedMarks) for the cards in the margin (Card.lua: a card each
 -- connection, its leader to its needle).
 ns.UI.JourneyPlate.RegisterMark("crafted", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.CrafterDetection.Row(rec or m.meet) end,
     order = 8, cap = 10, count = "connections",
     radius = MARK.height / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return CrafterDetection.Tips({ m }, now) end,

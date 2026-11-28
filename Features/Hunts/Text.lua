@@ -540,3 +540,11 @@ do
         tail = { at = 70, say = Lucky },
     })
 end
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Hunts.Row(hunt, lucky)
+    local item = hunt and hunt.item ~= "" and hunt.item or nil
+    if lucky then return item and Fmt(L["Lucky drop: %s"], item) or L["A lucky drop"] end
+    return item and Fmt(L["Hunt for %s"], item) or L["A long hunt"]
+end

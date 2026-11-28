@@ -235,30 +235,57 @@ local function ZoneName(mapID)
     return Text.MapName(mapID) or L["A stop"]
 end
 
--- What a moment's row says: a person's name; a feature's mark's short
--- label for a list (Plate.RegisterMark's `label`: no day or time, the time
--- column has them; the user's, 18 Nov, after "Tarren Mill, yesterday at…"
--- and "Dun Garok Soldier, 1% h…" were cut short), else its card as its
--- editor describes it (Core/Custom.lua), else its mark's tooltip's title
--- (`tip`); the route's own kinds in their words (a stop and an arrival by
--- their sub-zone, which is never a heading).
-local PEOPLE = { session = true, fight = true, note = true, first = true }
+-- What a moment's row says, in at most 25 characters (where the row's
+-- ellipsis starts): first what kind of thing it is, then who or what, as
+-- short as it goes ("Stop at Razor Hill", "Duel with Bram", "Killed by
+-- Hogger"); a number only where it tells rows apart (a level, a skill, how
+-- many duels), the rest is the row's tooltip (the user's, 28 Nov 2026). A
+-- person by their first name. In turn: a sheet's drawer's words (UI/Journey/
+-- Sheet.lua's `label`); a feature's words for a core kind
+-- (RegisterRowWords: the deaths name the killer of a route's death); the
+-- people's and the route's own kinds here; a feature's mark's `label`
+-- (Plate.RegisterMark), else its card as its editor describes it
+-- (Core/Custom.lua), else its mark's tooltip's title (`tip`).
+local PEOPLE = {
+    session = L["With %s##person"], fight = L["Fight with %s"], note = L["Note on %s"],
+    first = L["First saw %s"],
+}
+local STOP = { fighting = L["Fighting stop"], questing = L["Questing stop"], resting = L["Resting stop"] }
+
+-- A feature's words for a row of a core kind: fn(m) → words, or nil to
+-- leave it to the core's. Features load after this file.
+YourDiary.ROW_WORDS = YourDiary.ROW_WORDS or {}
+function YourDiary.RegisterRowWords(kind, fn)
+    assert(type(kind) == "string" and type(fn) == "function", "YourDiary.RegisterRowWords(kind, fn)")
+    YourDiary.ROW_WORDS[kind] = fn
+end
+
+local function Words(text)
+    return type(text) == "string" and text ~= "" and text or nil
+end
 
 local function CardLabel(m, now)
-    -- (a sheet's moment: its drawer's words, UI/Journey/Sheet.lua's `label`)
     local sheet = YourDiary.SHEETS and YourDiary.SHEETS[m.kind]
-    if sheet then
-        local words = sheet.label(m)
-        if type(words) == "string" and words ~= "" then return words end
-    end
-    if PEOPLE[m.kind] and m.guid then
-        return ns.Characters.FullName(m.guid) or ns.Characters.Name(m.guid) or L["Someone"]
+    local words = sheet and Words(sheet.label(m))
+    if words then return words end
+    local hook = YourDiary.ROW_WORDS[m.kind]
+    words = hook and Words(hook(m))
+    if words then return words end
+    if PEOPLE[m.kind] then
+        local name = m.guid and Text.Short(m.guid)
+        if name then return Fmt(PEOPLE[m.kind], name) end
+        return m.kind == "fight" and L["A fight"] or L["Someone"]
     end
     if m.kind == "level" then return Fmt(L["Level %d"], m.level or 0) end
-    if m.kind == "death" then return L["A death"] end
+    if m.kind == "death" then return L["Died"] end
     if m.kind == "road" then return L["On the road"] end
     if m.kind == "dungeon" then return m.name or L["An instance"] end
-    if m.kind == "stay" then return m.seg and Text.StopLabel(m.seg, m.seconds) or L["A stop"] end
+    if m.kind == "stay" then
+        local seg = m.seg
+        local sub = seg and seg.subZone
+        if sub and sub ~= "" then return Fmt(L["Stop at %s"], sub) end
+        return seg and STOP[Text.StopKind(seg) or ""] or L["A stop"]
+    end
     if m.kind == "arrive" then
         local sub = m.seg and m.seg.subZone
         if sub and sub ~= "" then return Fmt(L["Arrived %s##zone"], ns.ZoneIn(nil, sub)) end
@@ -270,30 +297,44 @@ local function CardLabel(m, now)
     local rec = field and m[field]
     local values = type(rec) == "table" and ns.Custom.Values(rec.customOf or rec) or nil
     local mark = Plate.MARKS[m.kind]
-    local short = mark and mark.label and mark.label(values, m)
-    if type(short) == "string" and short ~= "" then return short end
+    local short = mark and mark.label and Words(mark.label(values, m))
+    if short then return short end
     if spec and values then
         return spec.describe and spec.describe(values) or Capital(spec.label)
     end
-    local title = mark and mark.tip and mark.tip(m, now)
-    if type(title) == "string" and title ~= "" then return title end
+    local title = mark and mark.tip and Words((mark.tip(m, now)))
+    if title then return title end
     return spec and Capital(spec.label) or Capital(m.kind)
 end
 
--- A row's words: its moment's; a door's trips together with how many.
+-- A row's words: its moment's; a door's trips together with how many runs.
 -- A sheet's row stands for its moment and the stays it tells, and says
 -- the sheet's words alone.
 local function RowLabel(row, now)
     local label = CardLabel(row.moment, now)
-    if #row.moments > 1 and not row.sheet then label = Fmt(L["%1$s, %2$s"], label, Format.Times(#row.moments)) end
+    local n = #row.moments
+    if n > 1 and not row.sheet then
+        local many = row.moment.kind == "dungeon" and ns.Plural(n, L["%d run|%d runs##plural"]) or Format.Times(n)
+        label = Fmt(L["%1$s, %2$s"], label, many)
+    end
     return label
 end
 
--- A sheet row's tooltip title, where its drawer gives one (`tip`).
-local function SheetTip(row, now)
+-- A row's tooltip: what its row leaves out. A sheet's drawer's `tip`, else
+-- its mark's tooltip (the duel's score, the close call's health, the
+-- hunt's kills, when it was); nil where there is none (the row's words
+-- are the tooltip's title then).
+local function RowTip(row, now)
     local spec = row.sheet and YourDiary.SHEETS and YourDiary.SHEETS[row.sheet]
-    local title = spec and spec.tip and spec.tip(row.moment, now)
-    return type(title) == "string" and title ~= "" and title or nil
+    if spec then
+        local title = spec.tip and spec.tip(row.moment, now)
+        return Words(title)
+    end
+    local mark = Plate.MARKS[row.moment.kind]
+    if not (mark and mark.tip) then return nil end
+    local title, lines = mark.tip(row.moment, now)
+    if not Words(title) then return nil end
+    return title, type(lines) == "table" and lines or nil
 end
 
 -- The tooltip's line for why a row (or a zone) is not on the page; nil where
@@ -312,7 +353,8 @@ local function Items(choices, now)
     for _, zone in ipairs(choices.zones) do
         items[#items + 1] = { zone = zone, row = zone, label = ZoneName(zone.mapID), height = CHOOSE.place }
         for _, row in ipairs(zone.rows) do
-            items[#items + 1] = { card = row, row = row, label = RowLabel(row, now), title = SheetTip(row, now),
+            local title, lines = RowTip(row, now)
+            items[#items + 1] = { card = row, row = row, label = RowLabel(row, now), title = title, lines = lines,
                 time = Format.Clock(row.t or 0), height = CHOOSE.card }
         end
         items[#items].height = items[#items].height + CHOOSE.gap
@@ -325,6 +367,9 @@ end
 local function Tip(item)
     if not item then return nil end
     local list = { { item.title or item.label } }
+    for _, line in ipairs(item.lines or {}) do
+        if Words(line) then list[#list + 1] = { line, 1, 1, 1, true } end
+    end
     local why = Reason(item.row)
     if why then list[#list + 1] = { Capital(why), 1, 1, 1, true } end
     return list

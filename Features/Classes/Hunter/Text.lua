@@ -138,3 +138,10 @@ end
 function Hunter.Describe(tame)
     return tame.name or tame.beast or W.describeNone
 end
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+function Hunter.Row(tame)
+    local name = tame and (tame.name or tame.beast)
+    return name and Fmt(L["Tamed %s"], name) or W.describeNone
+end

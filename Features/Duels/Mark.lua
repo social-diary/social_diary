@@ -44,6 +44,8 @@ Duels.MARK = MARK
 -- one flag (the plate's own MARK.merge), its tooltip telling them as one. Kept
 -- (plate.duelMarks) for the plate's one note (Slip.lua, plate.duel).
 ns.UI.JourneyPlate.RegisterMark("duel", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.Duels.Row(rec or m.duel) end,
     order = 65, cap = 20, count = "duels",
     radius = MARK.h / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now) return Duels.Tip(m.duel, now) end,

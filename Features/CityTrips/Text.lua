@@ -962,10 +962,9 @@ function CityTrips.Stay(rec)
     return Text.Spoken((rec.to or rec.t) - rec.t)
 end
 
--- The ticklist's row (K1): "Errands, 38 min".
-function CityTrips.Label(m)
-    local rec = m.trip or {}
-    return Fmt(L["%1$s, %2$s"], L["Errands"], Text.Duration((m.to or rec.to or 0) - (m.from or rec.t or 0)))
+-- The ticklist's row (K1): "Errands in town" (its time is the row's column; 28 Nov 2026, was "Errands, 38 min").
+function CityTrips.Label()
+    return L["Errands in town"]
 end
 
 -- Its tooltip's words (K2).

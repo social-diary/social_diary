@@ -83,19 +83,45 @@ local SLOT = {
 -- The client's numbers: Enum.ItemClass.Weapon and its wand.
 local WEAPON, WAND = 2, 19
 
+-- The same as a row of "Choose what's on this page" (Upgrades.Row): no
+-- article, capitalised, what it is first.
+local ROW = {
+    [1] = L["New helm"], [2] = L["New necklace"], [3] = L["New shoulders"], [5] = L["New chest piece"],
+    [6] = L["New belt"], [7] = L["New leggings"], [8] = L["New boots"], [9] = L["New bracers"],
+    [10] = L["New gloves"], [11] = L["New ring"], [12] = L["New ring"], [13] = L["New trinket"],
+    [14] = L["New trinket"], [15] = L["New cloak"], [16] = L["New weapon"], [17] = L["New off-hand piece"],
+    [18] = L["New ranged weapon"],
+}
+local ROW_OF = { shield = L["New shield"], offhand = L["New off-hand weapon"], wand = L["New wand"],
+    relic = L["New relic"], piece = L["New piece"] }
+local SLOT_OF = { shield = L["a new shield"], offhand = L["a new off-hand weapon"], wand = L["a new wand"],
+    relic = L["a new relic"], piece = L["a new piece"] }
+
+-- What an off-hand's or a ranged slot's item is, where its slot alone
+-- doesn't say: "shield", "offhand", "wand", "relic", else nil.
+local function Special(rec)
+    if not ((rec.slot == 17 or rec.slot == 18) and C_Item and C_Item.GetItemInfoInstant) then return nil end
+    local _, id = Upgrades.Key(rec.link)
+    if not id then return nil end
+    local _, _, _, equipLoc, _, classID, subclassID = C_Item.GetItemInfoInstant(id)
+    if rec.slot == 17 and equipLoc == "INVTYPE_SHIELD" then return "shield" end
+    if rec.slot == 17 and classID == WEAPON then return "offhand" end
+    if rec.slot == 18 and classID == WEAPON and subclassID == WAND then return "wand" end
+    -- The ranged slot is a libram's, an idol's and a totem's too.
+    if rec.slot == 18 and equipLoc == "INVTYPE_RELIC" then return "relic" end
+    return nil
+end
+
 function Upgrades.Slot(rec)
-    if (rec.slot == 17 or rec.slot == 18) and C_Item and C_Item.GetItemInfoInstant then
-        local _, id = Upgrades.Key(rec.link)
-        if id then
-            local _, _, _, equipLoc, _, classID, subclassID = C_Item.GetItemInfoInstant(id)
-            if rec.slot == 17 and equipLoc == "INVTYPE_SHIELD" then return L["a new shield"] end
-            if rec.slot == 17 and classID == WEAPON then return L["a new off-hand weapon"] end
-            if rec.slot == 18 and classID == WEAPON and subclassID == WAND then return L["a new wand"] end
-            -- The ranged slot is a libram's, an idol's and a totem's too.
-            if rec.slot == 18 and equipLoc == "INVTYPE_RELIC" then return L["a new relic"] end
-        end
-    end
-    return SLOT[rec.slot] or L["a new piece"]
+    local special = Special(rec)
+    return special and SLOT_OF[special] or SLOT[rec.slot] or SLOT_OF.piece
+end
+
+-- Its row in "Choose what's on this page" (the mark's `label`): "New cloak",
+-- 25 characters at most (UI/Journey/Choose.lua).
+function Upgrades.Row(rec)
+    local special = Special(rec)
+    return special and ROW_OF[special] or ROW[rec.slot] or ROW_OF.piece
 end
 
 -- The small note's line for two pieces or more on a plate.

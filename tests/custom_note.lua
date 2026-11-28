@@ -426,7 +426,7 @@ do
     local nobody = { t = now - 900, icon = "meeting", text = "helped with the Nagas" }
     Eq(Note.Tip(nobody, now), "With someone", "a meeting, nobody named: with someone")
     Eq(Note.Who(nobody), "with someone", "its strip's line")
-    Eq(Note.Label(nobody), "Someone you met", "its row on the ticklist")
+    Eq(Note.Label(nobody), "Note on someone you met", "its row on the ticklist")
     Eq(Note.Describe(nobody), "Someone you met, helped with the Nagas", "its menu line")
     Eq(Note.Label({ icon = "boot" }), "On the road", "an empty card: the icon's name")
 
@@ -981,7 +981,7 @@ do
     local e = Recap.Gather(j, 0, now, Recap.Context(ns.ownGUID, now))
     Eq(#e.noteCard, 3, "the folded cards are gathered")
     Eq(Recap.Key({ kind = KIND, t = 10, noteCard = e.noteCard[1] }), "noteCard:10:", "keyed as the choice is")
-    Eq(Note.Label(e.noteCard[1]), "Brannoc", "and read")
+    Eq(Note.Label(e.noteCard[1]), "Note on Brannoc", "and read")
     Eq(Note.Who(e.noteCard[1]), "with Brannoc", "its strip's line, as before")
     j.custom = before
 end

@@ -32,6 +32,8 @@ Hunts.TALLY = TALLY
 -- Fourth of the registered marks (order 40, after the close calls' 30,
 -- before the good luck's 50).
 ns.UI.JourneyPlate.RegisterMark("luck", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(hunt, m) return ns.Hunts.Row(hunt or m.hunt) end,
     order = 40, cap = 20, count = "hunts",
     radius = TALLY.h / 2 + 2, halo = TALLY.halo, hover = TALLY.halo,
     tip = function(m, now) return Hunts.Tip(m.hunt, now) end,
@@ -72,6 +74,8 @@ local FORTUNE = { r = 6.2, inner = 0.45, turn = -0.10, drop = 0.095, ray = 2.4, 
 -- on the print of a light plate (LuckyCard.lua's pass, "print"). After
 -- the tally (order 50), before the deaths on the road (the plate's 60).
 ns.UI.JourneyPlate.RegisterMark("fortune", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(hunt, m) return ns.Hunts.Row(hunt or m.hunt, true) end,
     order = 50, cap = 20, count = "fortunes",
     radius = FORTUNE.r + 1, halo = FORTUNE.halo, hover = FORTUNE.halo,
     tip = function(m, now) return Hunts.Tip(m.hunt, now) end,

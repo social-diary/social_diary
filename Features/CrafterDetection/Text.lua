@@ -329,3 +329,10 @@ end
 -- After the people (30) and the free card (35), before the firsts found
 -- (40): who you met, then what changed hands between you.
 Text.RegisterLines("crafted", { at = 37, lines = function(e) return CrafterDetection.Lines(e) end })
+
+-- Its row in "Choose what's on this page" (the mark's `label`): at most 25
+-- characters, what it is first, then who or what (UI/Journey/Choose.lua).
+local ROW = { theirs = L["Made for %s"], sold = L["Bought from %s"], gave = L["Gift from %s"] }
+function CrafterDetection.Row(rec)
+    return Fmt(ROW[Way(rec)], CrafterDetection.First(rec) or L["someone"])
+end

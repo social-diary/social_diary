@@ -99,6 +99,8 @@ end
 -- plate's one card (Card.lua, plate.upgrade: the first of them, an entry
 -- has one).
 ns.UI.JourneyPlate.RegisterMark("upgrade", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.Upgrades.Row(rec or m.upgrade) end,
     order = 7, cap = 10, count = "upgrades",
     radius = MARK.height / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now)
@@ -123,6 +125,8 @@ ns.UI.JourneyPlate.RegisterMark("upgrade", {
 -- plate.pieces: every piece on the plate, and the first mark for its
 -- leader).
 ns.UI.JourneyPlate.RegisterMark("piece", {
+    -- Its row in "Choose what's on this page" (UI/Journey/Choose.lua).
+    label = function(rec, m) return ns.Upgrades.Row(rec or m.upgrade) end,
     order = 68, cap = 10, count = "pieces",
     radius = MARK.height / 2 + 1, halo = MARK.halo, hover = MARK.halo,
     tip = function(m, now)
