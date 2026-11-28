@@ -750,19 +750,54 @@ local AROUND = {
 }
 CityTrips.AROUND = AROUND
 
+-- When a person's rows begin and end: { n, first, last, lo, hi }, kept a
+-- rows table (weakly) and made again when the list is not the one it was
+-- made of (its length, or its first or last row, changed: a row added,
+-- pruned off the front or taken back). Rows are written in time order but
+-- backfill brings older times, so the span is the rows' least and greatest
+-- time, not the ends'.
+local spans = setmetatable({}, { __mode = "k" })
+
+local function Span(rows)
+    local n = #rows
+    local s = spans[rows]
+    if s and s.n == n and s.first == rows[1] and s.last == rows[n] then return s end
+    local lo, hi = math.huge, -math.huge
+    for i = 1, n do
+        local t = rows[i].time
+        if t then
+            if t < lo then lo = t end
+            if t > hi then hi = t end
+        end
+    end
+    s = { n = n, first = rows[1], last = rows[n], lo = lo, hi = hi }
+    spans[rows] = s
+    return s
+end
+
 -- Who was round trip `rec`: { [clause key] = { guids = { ... }, strangers
 -- = n } }, from the People rows the route's owner `me` wrote between the
 -- trip's two ends. Someone with no name to show is counted. Nothing is
 -- stored: read as the sheet is drawn, as the record's header says.
+--
+-- Diary entries' rows are kept for ever, so the buffer grows with the
+-- player's whole history: only the people whose rows reach into the trip's
+-- span (Span, a lookup a person once its span is known) have their rows
+-- read, and only they are sorted (review #1, 28 Nov 2026: a long diary's
+-- every row was read, and every GUID sorted, at each drawing of a sheet).
 function CityTrips.Round(rec, me)
     local out, unnamed = { strangers = 0 }, {}
     local interactions = ns.db and ns.db.interactions or {}
+    local from, to = rec.t, rec.to or rec.t
     local guids = {}
-    for guid in pairs(interactions) do guids[#guids + 1] = guid end
+    for guid, rows in pairs(interactions) do
+        local s = Span(rows)
+        if s.hi >= from and s.lo <= to then guids[#guids + 1] = guid end
+    end
     table.sort(guids)
     for _, guid in ipairs(guids) do
         for _, row in ipairs(interactions[guid]) do
-            if row.time and row.time >= rec.t and row.time <= (rec.to or rec.t) and (not me or row.me == nil or row.me == me) then
+            if row.time and row.time >= from and row.time <= to and (not me or row.me == nil or row.me == me) then
                 for _, clause in ipairs(AROUND) do
                     if clause.rows[row.type] then
                         local list = out[clause.key] or { guids = {}, seen = {}, strangers = 0 }

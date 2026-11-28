@@ -44,9 +44,9 @@
 --   - quests taken and handed in, counted by the route and passed on as
 --     SD_QUEST_ACCEPTED / SD_QUEST_TURNED_IN (Capture/Journey.lua,
 --     Core/Events.lua's header);
---   - who the diary knows (ns.db.characters, Characters.FindByName,
---     ns.OwnCharacters): a name read off a letter or an invoice becomes a
---     GUID only through them, and never stays a name;
+--   - who the diary keeps (ns.Diary, ns.OwnCharacters): a name read off a
+--     letter or an invoice becomes a GUID only through them, and never
+--     stays a name;
 --   - the route's gate (Journey.Kept), its list and cap (Journey.Append),
 --     its login pruning (Journey.Prune) and forgetting someone (the
 --     "journey" store), which ask this list's `prune` and `forget`
@@ -55,7 +55,10 @@
 -- Additive saved data only: j.trips is a new list on the route, absent on
 -- every route kept before it, and every reader here takes its absence as
 -- no trips. Nothing older is moved or reread, so there is no schema bump
--- (AGENTS.md).
+-- (AGENTS.md). A baked trip (Bake, below) is the same record with its
+-- errands in one string field, `baked`, beside the fields it keeps; a trip
+-- without that field is read as it always was, so baking needs no step
+-- either.
 
 local addonName, ns = ...
 
@@ -67,9 +70,9 @@ local Journey = ns.Journey
 -- The numbers, to tune once the client round has real trips. Counts are
 -- entries on one trip's list; times are seconds.
 local T = {
-    cap = 200,      -- trips kept a character, the newest (the user's own
-                    -- route: 56 city visits in 55 hours, 31 of them five
-                    -- minutes or longer, 24 Nov; empty ones are dropped)
+    cap = 200,      -- trips kept whole a character, the newest, at the
+    perLevel = 10,  -- least, and this many more a level reached (Cap,
+                    -- below); older ones are baked, never dropped (Bake)
     items = 6,      -- things on an item list (put up, bought, sold, made),
                     -- one entry a kind of thing; past it, a last entry
                     -- carries the rest as counts
@@ -94,8 +97,9 @@ CityTrips.T = T
 -- The record
 --------------------------------------------------------------------------
 --
--- j.trips = { trip, ... }, oldest first, the newest T.cap kept (one trip
--- under way at most, always the last). A trip, every field but the first
+-- j.trips = { trip, ... }, oldest first, every trip that held something
+-- (one under way at most, always the last); past Cap, the oldest are
+-- baked (Bake, at "Baking" below) but stay on the list. A trip, every field but the first
 -- four optional and absent when there is nothing to say (example invented):
 --
 --   t        when it began: arriving in the city (ns.Now() seconds)
@@ -165,11 +169,12 @@ CityTrips.T = T
 -- professions' lists keep to their caps alone (a trip does not hand in
 -- dozens): past them, a quest is counted in `quests.more`.
 --
--- People are GUIDs of characters the diary already knows (ns.db.characters,
--- or the player's own, ns.OwnCharacters), and nothing else: a name from a
--- letter, an invoice or an auction that the diary does not know, or knows
--- twice, keeps no name at all and is a count (`others`, or the letters'
--- entry with no `from`). The sign-off (24 Nov): a stranger is counted,
+-- People are GUIDs of diary entries (ns.Diary) or the player's own
+-- characters (ns.OwnCharacters), and nothing else: a name from a letter,
+-- an invoice or an auction that is neither, or is two of them, keeps no
+-- name at all and is a count (`others`, or the letters' entry with no
+-- `from`). A stranger with a record is no exception (review #6, 28 Nov
+-- 2026), and is never looked up by name: that would unpack the packed. The sign-off (24 Nov): a stranger is counted,
 -- never named and never stored.
 
 -- The lists an errand writes, and what makes an entry the same as another
@@ -194,8 +199,9 @@ end
 -- what a reader draws. One under way, or empty, is left out.
 function CityTrips.List(j)
     local list = {}
-    for _, rec in ipairs(Journey.List(j, "trips")) do
-        if rec.to and not CityTrips.Empty(rec) then list[#list + 1] = rec end
+    for _, kept in ipairs(Journey.List(j, "trips")) do
+        local rec = CityTrips.Trip(kept)
+        if rec and rec.to and not CityTrips.Empty(rec) then list[#list + 1] = rec end
     end
     return list
 end
@@ -212,6 +218,7 @@ function CityTrips.Open(j, mapID, rec)
     rec.left = rec.came
     Journey.Append(j, "trips", rec)
     if rec.mapID ~= mapID then rec.mapID, rec.x, rec.y = mapID, nil, nil end
+    CityTrips.BakeOld(j, rec.level)
     return rec
 end
 
@@ -440,23 +447,262 @@ CityTrips.Let = Let
 -- who has left the diary and is none of the player's own characters, is a
 -- stranger's again, as a fight's foe and a gift's giver are. PRV-3 (the
 -- "journey" store): a forgotten person leaves every trip (nil: everyone).
+--
+-- No `cap`: Journey.Append would drop the oldest. Past Cap they are baked
+-- instead (CityTrips.BakeOld, at each trip opened and at login).
 Journey.RegisterList("trips", {
-    cap = T.cap,
     prune = function(j, now)
         local cutoff = ns.Cutoff(now)
         local own = ns.OwnCharacters and ns.OwnCharacters() or {}
+        local function Stranger(guid) return not own[guid] and not ns.Diary.IsDiary(guid) end
         for _, rec in ipairs(j.trips or {}) do
-            if rec.t < cutoff then
-                Let(rec, function(guid) return not own[guid] and not ns.Diary.IsDiary(guid) end)
-            end
+            if rec.t < cutoff then CityTrips.Edit(rec, function(view) Let(view, Stranger) end) end
         end
+        CityTrips.BakeOld(j)
     end,
     forget = function(j, guid)
         for _, rec in ipairs(j.trips or {}) do
-            Let(rec, function(g) return guid == nil or g == guid end)
+            CityTrips.Edit(rec, function(view) Let(view, function(g) return guid == nil or g == guid end) end, guid)
         end
     end,
 })
+
+--------------------------------------------------------------------------
+-- Baking (review #8, the user, 28 Nov 2026: "make it scale, and also bake
+-- them once the limit is hit instead of removing them")
+--------------------------------------------------------------------------
+--
+-- How many trips stay whole tables: T.cap, and T.perLevel more for each
+-- level reached. Trips come with play, and a level is the diary's own
+-- measure of it (the route keeps no time played). The user's route had 31
+-- real rounds in 55 hours at the low levels (24 Nov), and a level takes
+-- longer, with more errands in town, the higher it is, so the allowance
+-- grows with it: 210 at level 1, 400 at 20, 800 at 60.
+function CityTrips.Cap(level)
+    level = type(level) == "number" and level > 0 and level or 0
+    return T.cap + T.perLevel * math.floor(level)
+end
+
+-- A baked trip keeps these as they are, beside the string: what a list
+-- walk, Journey's own code and the recap's key and placing read without
+-- opening it. The moment's key, "trip:<t>:", is the trip's `t`, so a
+-- ticklist choice in j.chosen holds across baking (and Core/Chosen.lua
+-- prunes keys only for a kind gathered by `list`; "trip" gathers by hand).
+-- Everything else, the errands, the purse and the level, goes into
+-- `baked`: one string where SavedVariables writes a field a line (a heavy
+-- trip's sixty-odd lines come to one line of a few hundred bytes).
+-- Nothing is dropped: the sheet reads a baked trip as it read the whole
+-- one.
+local OUTER = { t = true, to = true, mapID = true, x = true, y = true, custom = true }
+CityTrips.OUTER = OUTER
+
+-- The string: a value a token, in a shape only this file reads and writes.
+--   123,      a whole number (#1.5, for any other)
+--   'name,    a string of letters, digits and _ that starts with no digit
+--   s5:hello  any other string, by its length
+--   T F       true, false
+--   { ... | k v ... }   a table: its list part, then its other keys and
+--             values in order (the bar only where there are any)
+local function Put(v, out)
+    local kind = type(v)
+    if kind == "number" then
+        if v == math.floor(v) and math.abs(v) < 2 ^ 53 then
+            out[#out + 1] = ("%.0f,"):format(v)
+        else
+            out[#out + 1] = ("#%.17g,"):format(v)
+        end
+    elseif kind == "string" then
+        if v:match("^[%a_][%w_]*$") then
+            out[#out + 1] = "'" .. v .. ","
+        else
+            out[#out + 1] = "s" .. #v .. ":" .. v
+        end
+    elseif kind == "boolean" then
+        out[#out + 1] = v and "T" or "F"
+    elseif kind == "table" then
+        out[#out + 1] = "{"
+        local n = #v
+        for i = 1, n do Put(v[i], out) end
+        local keys = {}
+        for k in pairs(v) do
+            if not (type(k) == "number" and k >= 1 and k <= n and k == math.floor(k)) then keys[#keys + 1] = k end
+        end
+        if keys[1] then
+            table.sort(keys, function(a, b)
+                if type(a) ~= type(b) then return type(a) < type(b) end
+                return a < b
+            end)
+            out[#out + 1] = "|"
+            for _, k in ipairs(keys) do
+                Put(k, out)
+                Put(v[k], out)
+            end
+        end
+        out[#out + 1] = "}"
+    else
+        error("a " .. kind .. " cannot be baked")
+    end
+end
+
+local strfind, strsub = string.find, string.sub
+
+local function Get(s, i)
+    local c = strsub(s, i, i)
+    if c == "{" then
+        local t, n = {}, 0
+        i = i + 1
+        c = strsub(s, i, i)
+        while c ~= "}" and c ~= "|" do
+            if c == "" then error("a baked trip ends early") end
+            local v
+            v, i = Get(s, i)
+            n = n + 1
+            t[n] = v
+            c = strsub(s, i, i)
+        end
+        if c == "|" then
+            i = i + 1
+            while strsub(s, i, i) ~= "}" do
+                if i > #s then error("a baked trip ends early") end
+                local k, v
+                k, i = Get(s, i)
+                v, i = Get(s, i)
+                t[k] = v
+            end
+        end
+        return t, i + 1
+    elseif c == "'" then
+        local j = strfind(s, ",", i + 1, true)
+        return strsub(s, i + 1, j - 1), j + 1
+    elseif c == "s" then
+        local colon = strfind(s, ":", i + 1, true)
+        local len = tonumber(strsub(s, i + 1, colon - 1))
+        return strsub(s, colon + 1, colon + len), colon + len + 1
+    elseif c == "T" then
+        return true, i + 1
+    elseif c == "F" then
+        return false, i + 1
+    elseif c == "#" then
+        local j = strfind(s, ",", i + 1, true)
+        return assert(tonumber(strsub(s, i + 1, j - 1))), j + 1
+    else
+        local j = strfind(s, ",", i, true)
+        return assert(tonumber(strsub(s, i, j - 1))), j + 1
+    end
+end
+
+local function Encode(v)
+    local out = {}
+    Put(v, out)
+    return table.concat(out)
+end
+
+local function Decode(s)
+    local v, i = Get(s, 1)
+    assert(type(v) == "table" and i == #s + 1, "a baked trip with more after it")
+    return v
+end
+
+local function Same(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do
+        if not Same(v, b[k]) then return false end
+    end
+    for k in pairs(b) do
+        if a[k] == nil then return false end
+    end
+    return true
+end
+
+-- Trip `rec` baked, or left whole where it cannot be (still under way, or
+-- something in it that would not come back the same: as Core/Strangers.lua
+-- packs, the string is read back and compared before the tables go).
+-- `view`: the trip's fields to bake, when they are not `rec`'s own (Edit's
+-- copy). Returns whether it is baked.
+function CityTrips.Bake(rec, view)
+    view = view or rec
+    if not view.to then return false end
+    local inner = {}
+    for k, v in pairs(view) do
+        if not OUTER[k] and k ~= "baked" then inner[k] = v end
+    end
+    local ok, line = pcall(Encode, inner)
+    if not ok then return false end
+    local back
+    ok, back = pcall(Decode, line)
+    if not ok or not Same(back, inner) then return false end
+    for k in pairs(rec) do
+        if not OUTER[k] then rec[k] = nil end
+    end
+    rec.baked = line
+    return true
+end
+
+-- A trip as every reader takes it: a whole one is itself; a baked one is
+-- opened into a table of every field, made once a string and remembered
+-- (weakly), so the same trip is the same table from draw to draw. nil for
+-- a string that does not open (it is left as it is, never written over).
+local opened = setmetatable({}, { __mode = "k" })
+
+local function Opened(rec)
+    local ok, view = pcall(Decode, rec.baked)
+    if not ok then return nil end
+    for k in pairs(OUTER) do view[k] = rec[k] end
+    return view
+end
+
+function CityTrips.Trip(rec)
+    if type(rec) ~= "table" then return nil end
+    local line = rec.baked
+    if type(line) ~= "string" then return rec end
+    local hit = opened[rec]
+    if hit and hit.line == line then return hit.view end
+    local view = Opened(rec)
+    if not view then return nil end
+    opened[rec] = { line = line, view = view }
+    return view
+end
+
+-- `fn(view)` on trip `rec`'s fields, and a baked one baked again after
+-- (forgetting someone, the login's pruning). `guid`: only a string that
+-- names them is opened at all (nil: any that names someone).
+function CityTrips.Edit(rec, fn, guid)
+    local line = rec.baked
+    if type(line) ~= "string" then return fn(rec) end
+    if not strfind(line, guid or "Player-", 1, true) then return end
+    local view = Opened(rec)
+    if not view then return end
+    fn(view)
+    if not CityTrips.Bake(rec, view) then
+        -- It would not bake again: kept whole, never with the old string
+        -- (which still names whoever was let go).
+        for k, v in pairs(view) do rec[k] = v end
+        rec.baked = nil
+    end
+    Journey.Touch()
+end
+
+-- The oldest ended trips past Cap (by `level`, else the newest trip's),
+-- baked. Those already baked end the walk (they are always the oldest),
+-- so a call with nothing new to bake reads one record.
+function CityTrips.BakeOld(j, level)
+    local list = j and j.trips
+    if not list then return end
+    if not level then
+        local last = list[#list]
+        local whole = last and CityTrips.Trip(last)
+        level = whole and whole.level
+    end
+    local over = #list - CityTrips.Cap(level)
+    if over <= 0 then return end
+    local baked = false
+    for i = over, 1, -1 do
+        local rec = list[i]
+        if rec.baked then break end
+        if CityTrips.Bake(rec) then baked = true end
+    end
+    if baked then Journey.Touch() end
+end
 
 --------------------------------------------------------------------------
 -- The moment: a trip told on a sheet

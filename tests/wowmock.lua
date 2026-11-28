@@ -860,6 +860,7 @@ _G.NUM_BAG_SLOTS = 4
 M.bags = { [0] = { size = 16 } }
 M.equipped = {}
 M.itemInfo = {}
+M.itemByName = {}
 M.itemAsked = {}
 
 _G.C_Container = {
@@ -894,6 +895,15 @@ end
 -- loads asked for).
 _G.C_Item = {
     GetItemInfoInstant = function(id)
+        -- By name, as the client: only an item in its cache
+        -- (M.itemByName[name] = itemID), nil else.
+        if type(id) == "string" and not tonumber(id) and not id:find("item:") then
+            local byName = M.itemByName[id]
+            if not byName then return nil end
+            id = byName
+        elseif type(id) == "string" and id:find("item:") then
+            id = tonumber(id:match("item:(%d+)"))
+        end
         local info = M.itemInfo[tonumber(id)]
         if not info then return id, "Miscellaneous", "Junk", "", 134400, 15, 0 end
         return id, nil, nil, info.equipLoc or "", info.icon or 134400, info.classID or 15, info.subclassID or 0

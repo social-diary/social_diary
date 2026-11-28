@@ -863,9 +863,18 @@ do
     Eq(Waiting({ Rule("traded", 1) }), "", "a trades rule found a stranger")
     for i = 1, 4 do Check(ns.Strangers.Packed(Guid(i)), "a trades rule unpacked stranger " .. i) end
 
+    -- Only who passes is unpacked (code review 28 Nov 2026, #7): a rule
+    -- whose filter nobody passes (no class was read of them) leaves every
+    -- line as it was, however often they were seen.
+    local picky = Rule("seen", 2)
+    picky.filters = { class = { MAGE = true } }
+    Eq(Waiting({ picky }), "", "a class filter nobody passes found someone")
+    for i = 1, 4 do Check(ns.Strangers.Packed(Guid(i)), "a filter nobody passes unpacked stranger " .. i) end
+
     -- Seen three times: the two seen that often, and nobody hostile.
     Eq(Waiting({ Rule("seen", 3) }), Guid(2) .. "," .. Guid(3), "seen 3 times")
     Check(ns.Strangers.Packed(Guid(1)), "seen twice, unpacked for a rule of three")
+    Check(ns.Strangers.Packed(Guid(4)), "seen four times by the other faction, unpacked for a rule of three")
     -- Two rules of one trigger: the lower amount is the net.
     Eq(Waiting({ Rule("seen", 5), Rule("seen", 2) }), Guid(1) .. "," .. Guid(2) .. "," .. Guid(3),
         "seen twice, with a rule of two beside one of five")
@@ -914,6 +923,9 @@ local HANDED = {
     -- Record: ListFor asks by GUID; Forget(nil): wipe, with DropRows;
     -- Rollup: UnpackThose.
     ["Core/Sightings.lua"] = 3,
+    -- Note.Guid: rawget by GUID (a table already), else Strangers.Packed,
+    -- so a card's person is never unpacked.
+    ["Features/Note/Kind.lua"] = 1,
 }
 
 -- Dev/ is read as well: its two walks say what they count (the tables,

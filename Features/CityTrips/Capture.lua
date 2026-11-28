@@ -212,9 +212,21 @@ local function Professions()
 end
 
 -- A name read off a letter, an invoice or an auction, as a person the
--- diary knows: their GUID and whether they are one of the player's own
+-- diary keeps: their GUID and whether they are one of the player's own
 -- characters, or nil. The third value says whether a name was read at all,
 -- so an unknown one can be counted. The name itself goes no further.
+--
+-- Only the player's own characters and diary entries are named (the
+-- sign-off, 24 Nov: a stranger is counted, never named and never stored).
+-- So the name is looked for among those two small sets alone, never
+-- through Characters.FindByName: that walks every record and unpacks the
+-- packed strangers of the name (Core/Strangers.lua), for a stranger the
+-- trip would only count. A name two of them share is nobody's.
+local function Matches(e, lower, lowerSur)
+    return type(e) == "table" and type(e.first) == "string" and e.first:lower() == lower
+        and (not lowerSur or (type(e.surname) == "string" and e.surname:lower() == lowerSur))
+end
+
 local function Person(name)
     name = Text(name)
     if not name then return nil, nil, false end
@@ -224,25 +236,28 @@ local function Person(name)
     local own = ns.OwnCharacters and ns.OwnCharacters() or {}
     local hit, hits = nil, 0
     for guid, e in pairs(own) do
-        if type(e) == "table" and type(e.first) == "string" and e.first:lower() == lower
-            and (not lowerSur or (type(e.surname) == "string" and e.surname:lower() == lowerSur)) then
-            hit, hits = guid, hits + 1
-        end
+        if Matches(e, lower, lowerSur) then hit, hits = guid, hits + 1 end
     end
     if hits == 1 then return hit, true, true end
     if hits > 1 then return nil, nil, true end
-    local guid = ns.Characters.FindByName(first, surname)
-    if not guid then return nil, nil, true end
-    local record = ns.db.characters[guid]
-    return guid, (own[guid] ~= nil or (record and record.isSelf)) or nil, true
+    -- Diary entries are never packed (a stranger is, by being outside the
+    -- diary), so their names read without unpacking anyone.
+    for guid in ns.Diary.Each() do
+        local f, s = ns.Characters.Name(guid)
+        if Matches({ first = f, surname = s }, lower, lowerSur) then hit, hits = guid, hits + 1 end
+    end
+    if hits ~= 1 then return nil, nil, true end
+    return hit, nil, true
 end
 
--- A unit's GUID, when the diary knows them; the second value whether there
--- was a player there at all.
+-- A unit's GUID, when it is a diary entry or one of the player's own; the
+-- second value whether there was a player there at all. Asked by GUID, not
+-- through db.characters, which would unpack a packed stranger.
 local function Known(unit)
     local guid = ns.SafeGUID(UnitGUID and UnitGUID(unit))
     if not guid then return nil, false end
-    return ns.db.characters[guid] and guid or nil, true
+    local own = ns.OwnCharacters and ns.OwnCharacters() or {}
+    return (own[guid] ~= nil or ns.Diary.IsDiary(guid)) and guid or nil, true
 end
 
 --------------------------------------------------------------------------
@@ -524,7 +539,7 @@ local function Thing(name)
     if id then return { id = id } end
     local list = tripJ and tripJ.trips or {}
     for i = #list, math.max(1, #list - 20), -1 do
-        for _, e in ipairs(list[i].up or {}) do
+        for _, e in ipairs((CityTrips.Trip(list[i]) or {}).up or {}) do
             if e.id and ItemName(e.id) == name then return { id = e.id } end
         end
     end

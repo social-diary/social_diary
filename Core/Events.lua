@@ -448,13 +448,14 @@ ns.On("ZONE_CHANGED_NEW_AREA", function() ns.FillBegunZone() end)
 ns.On("PLAYER_LOGIN", function()
     -- Each on its own: a bad row in one must not stop the rest, login after
     -- login. The records' prune comes after the rows': a record goes once
-    -- the rows that held on to it have.
+    -- the rows that held on to it have, and Auto-Add's declined list after
+    -- the records (it keeps whoever still has one).
     -- Last, the strangers still tables are packed (Core/Strangers.lua):
     -- those the roll-up unpacked and kept, a diary whose number is past
     -- STEPS.diary[6] without having run it, or a save that never heard
     -- the logout.
     for _, step in ipairs({ ns.Strangers.Attach, ns.TouchOwnCharacter, ns.Interactions.Prune, ns.Diary.FillSeen,
-        ns.Sightings.Rollup, ns.Characters.Prune, ns.Reunions.Prune,
+        ns.Sightings.Rollup, ns.Characters.Prune, function() ns.AutoAdd.PruneDeclined() end, ns.Reunions.Prune,
         function() ns.Matches.Expire() ns.Matches.Rollup() end,
         function()
             local started = debugprofilestop and debugprofilestop()

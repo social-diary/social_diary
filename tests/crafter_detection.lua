@@ -457,6 +457,79 @@ Eq(Book().got[7007], nil, "a seller's name outlived forgetting everyone")
 Eq(next(Book().bought), nil, "an auction won's seller outlived forgetting everyone")
 
 --------------------------------------------------------------------------
+Section("the book's bounds: what an auction win keeps, and how long")
+
+-- A long-lived book stays bounded (the impact review, 28 Nov 2026): a
+-- reagent bought is never noted, a consumable is (the user: who sold it is
+-- worth keeping), an unknown name is asked again, and every table has a
+-- cap or an age.
+local book = Book()
+wipe(book.made); wipe(book.got); wipe(book.bought)
+mock.itemByName["Silk Cloth"], mock.itemInfo[7010] = 7010, { equipLoc = "", classID = 7 }
+mock.itemByName["Healing Potion"], mock.itemInfo[7011] = 7011, { equipLoc = "", classID = 0 }
+letters = { { "buyer", "Silk Cloth", "Garrick Fallow", 40 }, { "buyer", "Healing Potion", "Garrick Fallow", 25 } }
+mock.fire("MAIL_INBOX_UPDATE")
+letters = {}
+Eq(book.bought["Silk Cloth|Garrick Fallow"], nil, "a reagent won at auction was noted")
+local potion = book.bought["Healing Potion|Garrick Fallow"]
+Eq(potion and potion.use, "consumable", "a consumable won at auction was not noted as one")
+mock.fire("PLAYER_EQUIPMENT_CHANGED", 1, false)
+mock.RunTimers()
+Check(book.bought["Healing Potion|Garrick Fallow"], "a consumable went at an equipment change")
+
+-- A name the client had no info for is asked again at the prune.
+book.bought["Copper Bar|Garrick Fallow"] = { name = "Copper Bar", fromName = "Garrick Fallow", t = mock.now, use = "unknown" }
+mock.itemByName["Copper Bar"], mock.itemInfo[7012] = 7012, { equipLoc = "", classID = 7 }
+ns.Journey.Prune(mock.now)
+Eq(book.bought["Copper Bar|Garrick Fallow"], nil, "an unknown win, a reagent once known, was kept")
+Check(book.bought["Healing Potion|Garrick Fallow"], "the prune let a fresh consumable go")
+
+-- The newest T.bought, the oldest going first.
+wipe(book.bought)
+for i = 1, CD.T.bought + 5 do
+    book.bought["Item " .. i .. "|Seller"] = { name = "Item " .. i, fromName = "Seller", t = mock.now - 1000 + i, use = "gear" }
+end
+CD.Tidy(book, mock.now)
+local count = 0
+for _ in pairs(book.bought) do count = count + 1 end
+Eq(count, CD.T.bought, "the auction wins past their cap")
+Eq(book.bought["Item 1|Seller"], nil, "the cap kept the oldest win")
+Check(book.bought["Item " .. (CD.T.bought + 5) .. "|Seller"], "the cap let the newest win go")
+wipe(book.bought)
+
+-- Crafts found or given up go after the buffer's days, whoever they went
+-- to; one still waited on for someone in the diary stays.
+local KEPT = "Player-1111-0000F00D"
+ns.Characters.Observe(KEPT, { first = "Aulus", last = "Kept" })
+ns.Diary.Add(KEPT, { source = "test" })
+local old = mock.now - 10
+book.made.found = { id = 1, t = old, to = KEPT, how = "trade", handed = old, met = old }
+book.made.gone = { id = 2, t = old, how = "trade", handed = old, gone = true }
+book.made.waiting = { id = 3, t = old, to = KEPT, how = "trade", handed = old }
+book.got[7013] = { from = KEPT, how = "trade", t = old }
+ns.Journey.Prune(mock.now + (ns.BufferDays() + 1) * T.DAY)
+Eq(book.made.found, nil, "a craft found on them outlived the buffer")
+Eq(book.made.gone, nil, "a craft given up outlived the buffer")
+Check(book.made.waiting, "a craft waited on for someone in the diary was pruned")
+Eq(book.got[7013], nil, "a got never put on outlived the buffer")
+
+-- The whole book within T.book: the oldest handed go first, the ones in
+-- hand stay.
+wipe(book.made)
+for i = 1, CD.T.book + 10 do
+    book.made["h" .. i] = { id = 100 + i, t = old, to = KEPT, how = "trade", handed = old + i }
+end
+for i = 1, 5 do book.made["in" .. i] = { id = 900 + i, t = old } end
+CD.Tidy(book, mock.now)
+count = 0
+for _ in pairs(book.made) do count = count + 1 end
+Eq(count, CD.T.book, "the craft book past its cap")
+Eq(book.made.h1, nil, "the cap kept the oldest hand-off")
+for i = 1, 5 do Check(book.made["in" .. i], "the cap let a craft in hand go before the hand-offs") end
+wipe(book.made)
+ns.Diary.Remove(KEPT)
+
+--------------------------------------------------------------------------
 Section("after the reunion toast: what a connection reads")
 
 -- Nearby's reunion toast (Capture/Nearby.lua) and this capture hear the

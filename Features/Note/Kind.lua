@@ -45,9 +45,14 @@ Note.KIND = "noteCard"
 -- The diary entry a person on the card links to, where the character is still
 -- known; nil for a name only typed, or one forgotten since. An entry taken out
 -- of the diary afterwards stays linked, as an automatic strip's does.
+-- Asked for every person on every card each time a timeline is built, so it
+-- asks without unpacking: a record already a table, or a packed stranger's
+-- line (Core/Strangers.lua; db.characters[guid] would unpack them).
 function Note.Guid(p)
     local guid = type(p) == "table" and p.guid or nil
-    return guid and ns.db.characters[guid] ~= nil and guid or nil
+    if not guid then return nil end
+    local known = rawget(ns.db.characters, guid) ~= nil or ns.Strangers.Packed(guid)
+    return known and guid or nil
 end
 
 -- The people on a card, as a list (none: empty).

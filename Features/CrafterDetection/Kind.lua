@@ -68,6 +68,15 @@ local T = {
     -- oldest going first (a pair of boots made months ago and never given
     -- away needn't be kept for ever).
     made = 100,
+    -- The whole craft book: in hand, handed and waiting, found, given up.
+    -- Past this the oldest handed ones go first (by when they were handed),
+    -- and only then any in hand: a crafter who sells for years keeps the
+    -- last few hundred hand-offs, not every one.
+    book = 400,
+    -- Auction wins kept by name (gear until it is put on, consumables for
+    -- whom they came from): the newest this many, each for the buffer's
+    -- days at most.
+    bought = 200,
     -- The connections kept on the route for the plates, the newest.
     meets = 200,
     -- A sale letter's key is kept this long after it handed a craft: an
@@ -122,6 +131,25 @@ function CrafterDetection.Wearable(id)
     return type(equipLoc) == "string" and not NOT_WORN[equipLoc]
 end
 
+-- What an auction win is to the book, by the item's id, link or name (a
+-- buyer's letter names it only): "gear" (worn: it may become a got once put
+-- on), "consumable" (the user, 28 Nov 2026: who sold the user what they
+-- drink and eat is worth keeping), or nil for anything else (reagents,
+-- trade goods, recipes, bags: nothing the diary tells). "unknown" where the
+-- client has no instant info for a name (not in its cache): kept, the cap
+-- holds it, and the next prune asks again.
+local CONSUMABLE = Enum and Enum.ItemClass and Enum.ItemClass.Consumable or 0
+
+function CrafterDetection.Use(item)
+    if not item or not (C_Item and C_Item.GetItemInfoInstant) then return "unknown" end
+    local id, _, _, equipLoc, _, classID = C_Item.GetItemInfoInstant(item)
+    id, equipLoc, classID = ns.Plain(id), ns.Plain(equipLoc), ns.Plain(classID)
+    if not id then return "unknown" end
+    if type(equipLoc) == "string" and not NOT_WORN[equipLoc] then return "gear" end
+    if classID == CONSUMABLE then return "consumable" end
+    return nil
+end
+
 --------------------------------------------------------------------------
 -- The book (j.crafter), written and read by this feature alone
 --------------------------------------------------------------------------
@@ -140,7 +168,9 @@ end
 -- got:    from (GUID) or fromName (an auction seller's name until met), how,
 --         t, link; worn, once seen on the user; met, once the connection
 --         was made (not watched for again)
--- bought: name (the item's), fromName, t
+-- bought: name (the item's), fromName, t, use ("gear", "consumable" or
+--         "unknown": CrafterDetection.Use); a gear one becomes a got once
+--         worn, a consumable one stays for whom it came from
 -- letters: a sale letter read again hands nothing twice. Kept apart from
 --         the crafts, which the buffer's days may prune while the letter
 --         is still in the inbox, and by a hash of the letter (item, buyer,
@@ -203,21 +233,67 @@ local function Stale(guid, t, cutoff)
     return t < cutoff and not (guid and ns.Diary.IsDiary(guid))
 end
 
+-- The oldest of `tbl`'s entries past `cap` go, oldest by `When(entry)`,
+-- and among those only where `May(entry)` (all where nil).
+local function Trim(tbl, cap, When, May)
+    local list = {}
+    for key, entry in pairs(tbl) do
+        if not May or May(entry) then list[#list + 1] = { key = key, t = When(entry) or 0 } end
+    end
+    local n = 0
+    for _ in pairs(tbl) do n = n + 1 end
+    if n <= cap then return end
+    table.sort(list, function(a, b)
+        if a.t ~= b.t then return a.t < b.t end
+        return tostring(a.key) < tostring(b.key)
+    end)
+    for i = 1, math.min(#list, n - cap) do tbl[list[i].key] = nil end
+end
+CrafterDetection.Trim = Trim
+
+local function Handed(craft) return craft.handed or craft.t end
+local function NotInHand(craft) return not CrafterDetection.Unhanded(craft) end
+
+-- The book within bounds (the login prune, and Capture after each write
+-- that may grow it). What goes, each for a reason of its own:
+--   made    a stranger's hand-off past the buffer's days (PRV-3); one found
+--           on them (`met`: the row and j.craftMeets tell it now) or given
+--           up (`gone`: its person forgotten) past the buffer's days,
+--           whoever it went to; then the oldest past T.book, handed ones
+--           first. One still waited on for someone in the diary stays
+--           within the cap however old.
+--   got     a stranger's past the buffer's days; one never put on by then,
+--           anyone's (Worn lets go of one taken off).
+--   bought  past the buffer's days; anything not gear or a consumable
+--           (an "unknown" asked again); the oldest past T.bought.
+function CrafterDetection.Tidy(book, now)
+    if not book then return end
+    local cutoff = ns.Cutoff(now)
+    for key, craft in pairs(book.made) do
+        local t = Handed(craft)
+        if (craft.to or craft.toName) and Stale(craft.to, t, cutoff) then
+            book.made[key] = nil
+        elseif (craft.met or craft.gone) and (craft.met or t) < cutoff then
+            book.made[key] = nil
+        end
+    end
+    Trim(book.made, T.book, Handed, NotInHand)
+    Trim(book.made, T.book, Handed)
+    for id, got in pairs(book.got) do
+        if Stale(got.from, got.t, cutoff) or (not got.worn and got.t < cutoff) then book.got[id] = nil end
+    end
+    for key, bought in pairs(book.bought) do
+        if bought.use == "unknown" or bought.use == nil then bought.use = CrafterDetection.Use(bought.name) end
+        if bought.t < cutoff or not bought.use then book.bought[key] = nil end
+    end
+    Trim(book.bought, T.bought, function(b) return b.t end)
+end
+
 Journey.RegisterList("crafter", {
     prune = function(j, now)
         local book = j.crafter
         if not book then return end
-        local cutoff = ns.Cutoff(now)
-        for key, craft in pairs(book.made) do
-            local t = craft.handed or craft.t
-            if (craft.to or craft.toName) and Stale(craft.to, t, cutoff) then book.made[key] = nil end
-        end
-        for id, got in pairs(book.got) do
-            if Stale(got.from, got.t, cutoff) then book.got[id] = nil end
-        end
-        for key, bought in pairs(book.bought) do
-            if bought.t < cutoff then book.bought[key] = nil end
-        end
+        CrafterDetection.Tidy(book, now)
         for key, t in pairs(book.letters or {}) do
             if t < now - T.letters then book.letters[key] = nil end
         end

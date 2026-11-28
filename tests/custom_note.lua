@@ -1231,3 +1231,17 @@ do
     Eq(#Asides(TAGGED), 0, "and off their timeline")
     Custom.Remove(tagged)
 end
+
+do
+    Section("a person on a card, packed since, stays packed (Note.Guid)")
+    -- The impact review, 28 Nov 2026: a timeline built asks Note.Guid for
+    -- every person on every card; one who left the diary and was packed as
+    -- a stranger stays linked, and stays a line.
+    local PACKED = "Player-1111-0000C0DE"
+    ns.Characters.Observe(PACKED, { first = "Lanna", last = "Quill" })
+    ns.Strangers.Pack()
+    Check(ns.Strangers.Packed(PACKED), "setup: the stranger was not packed")
+    Eq(Note.Guid({ name = "Lanna", guid = PACKED }), PACKED, "a packed stranger on a card lost the link")
+    Check(ns.Strangers.Packed(PACKED), "asking for a card's person unpacked them")
+    Eq(Note.Guid({ name = "Nobody", guid = "Player-1111-0000DEAD" }), nil, "a forgotten person kept the link")
+end

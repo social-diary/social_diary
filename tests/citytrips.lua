@@ -507,6 +507,46 @@ end
 Check(saved:find(FRIEND.guid, 1, true) ~= nil, "the known person's GUID not kept")
 
 --------------------------------------------------------------------------
+Section("only the diary and the player's own are named; a packed stranger stays packed")
+
+-- Review #6 (28 Nov 2026): a name off a letter, or a party member, who is
+-- no diary entry and none of the player's own is counted, never stored,
+-- and asking after them unpacks nobody (Core/Strangers.lua).
+local PACKED = F.Player{ guid = "Player-4620-00BBBB09", "Gaius", "Mucius", level = 20 }
+ns.Characters.Observe(PACKED.guid, { first = "Gaius", surname = "Mucius" })
+-- Tullus Hostilius stays a table (a row in the buffer), the one Tullus of
+-- that surname: before the fix his letter named him.
+local _ = ns.db.characters[STRANGER2.guid]  -- unpacked, if an earlier pack took him
+ns.db.interactions[STRANGER2.guid] = { { type = "trade", time = mock.now, me = SELF.guid } }
+ns.Strangers.Pack()
+Check(ns.Strangers.Packed(PACKED.guid), "setup: Gaius not packed")
+Check(rawget(ns.db.characters, STRANGER2.guid) ~= nil, "setup: Tullus packed")
+trip = Last()
+inbox = { { sender = "Gaius Mucius", subject = "Hi", money = 30, canReply = true },
+    { sender = "Tullus Hostilius", subject = "Hi", money = 40, canReply = true } }
+TakeInboxMoney(1)
+TakeInboxMoney(2)
+Check(ns.Strangers.Packed(PACKED.guid), "a letter's name unpacked a packed stranger")
+mock.SetUnit("party1", PACKED)
+mock.SetUnit("party2", STRANGER2)
+onQuest = { party1 = 1066, party2 = 1066 }
+ns.Fire("SD_QUEST_TURNED_IN", 1066)
+Check(ns.Strangers.Packed(PACKED.guid), "a party member unpacked a packed stranger")
+local q6
+for _, e in ipairs(trip.quests) do
+    if e.id == 1066 then q6 = e end
+end
+Eq(q6 and q6.with, nil, "a stranger in the party named on a quest")
+Eq(q6 and q6.others, 2, "the strangers in the party not counted")
+local kept = table.concat(Dump(trip))
+Check(not kept:find(PACKED.guid, 1, true), "a packed stranger's GUID kept on a trip")
+Check(not kept:find(STRANGER2.guid, 1, true), "a stranger with a record named on a trip")
+mock.ClearUnits()
+mock.SetUnit("player", SELF)
+onQuest, inbox = {}, {}
+ns.db.interactions[STRANGER2.guid] = nil
+
+--------------------------------------------------------------------------
 Section("a heavy trip stays small: merged by item, capped with the rest counted")
 
 Go(MULGORE)

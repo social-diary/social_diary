@@ -359,6 +359,81 @@ local round = CityTrips.Round(USUAL, ns.ownGUID)
 Check(round.traded and round.traded.strangers == 1 and #round.traded.guids == 0, "a trader with no name not counted")
 ns.db.interactions[STRANGER] = nil
 
+-- Review #1 (28 Nov 2026): Round reads only the people whose rows reach
+-- into the trip, and says the same as reading every row did. The old walk,
+-- kept here as the reference.
+local function Everyone(rec, me)
+    local out, unnamed = { strangers = 0 }, {}
+    local interactions = ns.db.interactions
+    local guids = {}
+    for guid in pairs(interactions) do guids[#guids + 1] = guid end
+    table.sort(guids)
+    for _, guid in ipairs(guids) do
+        for _, row in ipairs(interactions[guid]) do
+            if row.time and row.time >= rec.t and row.time <= (rec.to or rec.t) and (not me or row.me == nil or row.me == me) then
+                for _, clause in ipairs(CityTrips.AROUND) do
+                    if clause.rows[row.type] then
+                        local list = out[clause.key] or { guids = {}, seen = {}, strangers = 0 }
+                        out[clause.key] = list
+                        if not list.seen[guid] then
+                            list.seen[guid] = true
+                            if ns.UI.JourneyText.Short(guid) then
+                                list.guids[#list.guids + 1] = guid
+                            else
+                                list.strangers = list.strangers + 1
+                                if not unnamed[guid] then unnamed[guid] = true; out.strangers = out.strangers + 1 end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+local function Same(a, b, path)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b, path end
+    for k, v in pairs(a) do
+        local ok, at = Same(v, b[k], path .. "." .. tostring(k))
+        if not ok then return false, at end
+    end
+    for k in pairs(b) do
+        if a[k] == nil then return false, path .. "." .. tostring(k) end
+    end
+    return true
+end
+do
+    -- People round the usual trip: one inside it, one whose rows run
+    -- through it out of order (a backfilled row first), one long before it.
+    local IN, ACROSS, OLD = "Player-4707-00EE0011", "Player-4707-00EE0012", "Player-4707-00EE0013"
+    local reads = 0
+    local function Counted(row)
+        return setmetatable({}, { __index = function(_, k) reads = reads + 1 return row[k] end })
+    end
+    ns.db.interactions[IN] = { { time = USUAL.t + 10, type = "whisper_in", me = ns.ownGUID } }
+    ns.db.interactions[ACROSS] = { { time = USUAL.t + 20, type = "trade", me = ns.ownGUID },
+        { time = USUAL.t - 9000, type = "trade", me = ns.ownGUID } }
+    ns.db.interactions[OLD] = {}
+    for i = 1, 50 do
+        ns.db.interactions[OLD][i] = Counted({ time = USUAL.t - 100000 + i, type = "trade", me = ns.ownGUID })
+    end
+    for _, trip in ipairs({ USUAL, HEAVY, THIN }) do
+        local ok, at = Same(CityTrips.Round(trip, ns.ownGUID), Everyone(trip, ns.ownGUID), "round")
+        Check(ok, "Round says other than reading every row did, at " .. tostring(at))
+        local ok2, at2 = Same(CityTrips.Round(trip), Everyone(trip), "round")
+        Check(ok2, "Round (no owner) says other than reading every row did, at " .. tostring(at2))
+    end
+    reads = 0
+    CityTrips.Round(USUAL, ns.ownGUID)
+    Eq(reads, 0, "a person long before the trip had their rows read again")
+    -- A row added to them inside the trip: they are round it now.
+    local rows = ns.db.interactions[OLD]
+    rows[#rows + 1] = { time = USUAL.t + 40, type = "trade", me = ns.ownGUID }
+    local ok, at = Same(CityTrips.Round(USUAL, ns.ownGUID), Everyone(USUAL, ns.ownGUID), "round")
+    Check(ok, "a row added was not seen by Round, at " .. tostring(at))
+    ns.db.interactions[IN], ns.db.interactions[ACROSS], ns.db.interactions[OLD] = nil, nil, nil
+end
+
 --------------------------------------------------------------------------
 Section("the heavy trip folds; a counted part's tooltip lists what it merged")
 
@@ -675,4 +750,112 @@ if os.getenv("SD_CT_DUMP") then
             end
         end
     end
+end
+
+--------------------------------------------------------------------------
+Section("a trip past the cap is baked: the same sheet, the same choice")
+
+-- Review #8 (the user, 28 Nov 2026): trips past the cap are baked into a
+-- string, never dropped; the cap grows with the level; the ticklist's
+-- choice and the sheet hold across it.
+Eq(CityTrips.Cap(nil), 200, "the cap with no level")
+Eq(CityTrips.Cap(1), 210, "the cap at level 1")
+Eq(CityTrips.Cap(60), 800, "the cap at level 60")
+
+local function Texts(rec)
+    local out = {}
+    for _, st in ipairs(CityTrips.Stops(rec, { people = CityTrips.Round(rec, ns.ownGUID) }, {})) do
+        for _, line in ipairs(st.lines) do out[#out + 1] = Plain(line.text) end
+    end
+    return table.concat(out, "\n")
+end
+local function Moment(t)
+    local ctx1 = Recap.Context(ns.ownGUID, mock.now)
+    for _, at in ipairs(T.DiaryPages(page)) do
+        local pieces = Recap.Pieces(j, at.e, page.ctx or ctx1)
+        local p = at.k and pieces[at.k] or at.e
+        for _, m in ipairs(Recap.Moments(j, p, page.ctx or ctx1)) do
+            if m.kind == "trip" and m.t == t then return m end
+        end
+    end
+end
+local function SheetOf(t)
+    for _, at in ipairs(T.DiaryPages(page)) do
+        T.OpenDiaryPage(page, at.i, at.k)
+        for i = 1, page.layout or 0 do
+            local leaf = YD.SheetAt(i)
+            if leaf and leaf.trip and leaf.trip.rec.t == t then return leaf end
+        end
+    end
+end
+
+local beforeU, beforeH = Texts(USUAL), Texts(HEAVY)
+local mU = Moment(USUAL.t)
+Check(mU ~= nil, "setup: the usual trip's moment")
+local keyU, choiceU = ns.Chosen.Key(mU), ns.Chosen.Of(j, mU)
+Eq(choiceU, "keep", "setup: the usual trip kept on its page")
+local sizeH = ns.EstimateSizeOf(HEAVY)
+Check(CityTrips.Bake(USUAL), "the usual trip did not bake")
+Check(CityTrips.Bake(HEAVY), "the heavy trip did not bake")
+Check(type(HEAVY.baked) == "string" and HEAVY.sold == nil and HEAVY.came == nil, "a baked trip kept its tables")
+Eq(HEAVY.t ~= nil and HEAVY.to ~= nil and HEAVY.mapID, 1454, "a baked trip lost its span or map")
+Check(ns.EstimateSizeOf(HEAVY) < sizeH, ("baking made the heavy trip no smaller: %d to %d"):format(sizeH,
+    ns.EstimateSizeOf(HEAVY)))
+print(("heavy trip: %d estimated bytes whole, %d baked (%d in the string)"):format(sizeH, ns.EstimateSizeOf(HEAVY),
+    #HEAVY.baked))
+ns.Journey.Touch()  -- (BakeOld does; Bake alone, as here, leaves it to its caller)
+ns.UI.RefreshJourneyPage(false)
+local vU = CityTrips.Trip(USUAL)
+Check(vU ~= USUAL and vU.sold ~= nil, "a baked trip did not open")
+Check(CityTrips.Trip(USUAL) == vU, "a baked trip opened anew at each read")
+Eq(Texts(vU), beforeU, "the usual trip's lines changed when baked")
+Eq(Texts(CityTrips.Trip(HEAVY)), beforeH, "the heavy trip's lines changed when baked")
+Check(CityTrips.Real(vU), "a baked trip is no real round")
+local mU2 = Moment(USUAL.t)
+Check(mU2 and mU2.trip == vU, "the baked trip is no moment")
+Eq(mU2 and ns.Chosen.Key(mU2), keyU, "the moment's key changed when baked")
+Eq(mU2 and ns.Chosen.Of(j, mU2), "keep", "the ticklist's keep lost when baked")
+Check(SheetOf(USUAL.t) ~= nil, "no sheet for the baked trip")
+ns.Chosen.Leave(j, mU2)
+ns.UI.RefreshJourneyPage(false)
+Check(SheetOf(USUAL.t) == nil, "a baked trip left out is still on its page")
+ns.Chosen.Keep(j, mU2)
+ns.UI.RefreshJourneyPage(false)
+Check(SheetOf(USUAL.t) ~= nil, "a baked trip kept is not back")
+
+do
+    -- A route past the cap: nothing dropped, the oldest baked, a new trip
+    -- appended past it; forgetting and the login's pruning reach inside.
+    local OUTSIDER = "Player-4707-00EE0099"
+    local r = { trips = {} }
+    for i = 1, 205 do
+        r.trips[i] = { t = i * 100, to = i * 100 + 50, mapID = 1454, made = { { id = 2996, n = i } },
+            letters = { { from = TESTER, n = 1, coin = 5 }, { n = 2 } },
+            quests = { { id = 1, title = "Of Rats", out = true, with = { OUTSIDER } } } }
+    end
+    r.trips[205].to = nil
+    CityTrips.BakeOld(r)
+    Eq(#r.trips, 205, "baking dropped trips")
+    for i = 1, 5 do Check(r.trips[i].baked, "trip " .. i .. " past the cap not baked") end
+    Check(not r.trips[6].baked, "a trip inside the cap baked")
+    r.trips[205].level = 1
+    CityTrips.BakeOld(r)
+    Check(r.trips[5].baked ~= nil and not r.trips[6].baked, "the cap did not grow with the level")
+    r.trips[205].to = r.trips[205].t + 50
+    for _ = 1, 6 do CityTrips.Open(r, 1454, { t = mock.now, level = 1, came = 0 }); r.trips[#r.trips].to = mock.now + 1 end
+    Eq(#r.trips, 211, "a trip opened past the cap dropped the oldest")
+    Check(r.trips[1].baked and r.trips[1].t == 100, "the oldest trip no longer first, or whole")
+    Eq(CityTrips.Trip(r.trips[1]).made[1].n, 1, "the oldest trip's errands lost")
+    ns.Journey.LISTS.trips.forget(r, TESTER)
+    Check(not r.trips[1].baked:find(TESTER, 1, true), "a forgotten person still in a baked trip")
+    local v1 = CityTrips.Trip(r.trips[1])
+    Eq(#v1.letters, 1, "the forgotten sender did not join the unknown in a baked trip")
+    Eq(v1.letters[1].n, 3, "letters lost from a baked trip")
+    ns.Journey.LISTS.trips.prune(r, mock.now + 400 * 86400)
+    Check(not r.trips[1].baked:find(OUTSIDER, 1, true), "a stranger kept past the buffer in a baked trip")
+    Eq(CityTrips.Trip(r.trips[1]).quests[1].others, 1, "a pruned stranger not counted in a baked trip")
+    -- A string that does not open is nobody's trip, and breaks nothing.
+    r.trips[2].baked = "{|'made,{"
+    Eq(CityTrips.Trip(r.trips[2]), nil, "a broken baked trip opened")
+    Check(pcall(CityTrips.List, r), "a broken baked trip broke the list")
 end

@@ -22,8 +22,10 @@
 --            used hands nothing more.
 --   got      a trade's `received`: worn gear from that GUID. An auction
 --            won (the buyer's letter: the item's name and the seller's)
---            is noted by name (`bought`) until an item of that name is put
---            on, and then becomes `got` from that name. A letter's own
+--            is noted by name (`bought`), gear and consumables only, until
+--            an item of that name is put on, and then becomes `got` from
+--            that name (a consumable stays a `bought`, for whom it came
+--            from; Kind.lua's Tidy keeps them within T.bought). A letter's own
 --            attachments are never read: the name on the letter, matched
 --            when the thing is worn, says the same without hooking the
 --            mail.
@@ -201,9 +203,12 @@ local function Made(result)
     if book.made[key] then return end
     book.made[key] = { id = id, name = ItemName(link), link = type(link) == "string" and link or nil, t = ns.Now() }
 
-    -- At most T.made still in hand: the oldest of those go.
+    -- At most T.made still in hand: the oldest of those go. And the whole
+    -- book within T.book, the oldest handed first (Kind.lua's Tidy).
     local inHand = CrafterDetection.InHand(book)
     for i = 1, #inHand - T.made do book.made[inHand[i].key] = nil end
+    CrafterDetection.Trim(book.made, T.book, function(c) return c.handed or c.t end,
+        function(c) return not CrafterDetection.Unhanded(c) end)
 end
 
 ns.On("TRADE_SKILL_ITEM_CRAFTED_RESULT", function(_, result) Made(result) end)
@@ -285,10 +290,16 @@ local function Letters()
                     end
                 end
             elseif kind == "buyer" then
+                -- Gear and consumables only (CrafterDetection.Use): a
+                -- reagent bought is nobody's story.
                 local key = item .. "|" .. who
                 if not book.bought[key] then
-                    book.bought[key] = { name = item, fromName = who, t = now }
-                    changed = true
+                    local use = CrafterDetection.Use(item)
+                    if use then
+                        book.bought[key] = { name = item, fromName = who, t = now, use = use }
+                        CrafterDetection.Trim(book.bought, T.bought, function(b) return b.t end)
+                        changed = true
+                    end
                 end
             end
         end
@@ -318,9 +329,10 @@ local function Worn()
 
     local book = Book(Journey.Kept())
     if book then
-        -- Won at auction, now put on: from the seller, by name.
+        -- Won at auction, now put on: from the seller, by name. A
+        -- consumable is never worn, and stays for whom it came from.
         for key, bought in pairs(book.bought) do
-            local id = worn.names[bought.name]
+            local id = bought.use ~= "consumable" and worn.names[bought.name]
             if id and not book.got[id] then
                 book.got[id] = { fromName = bought.fromName, how = "auction", t = bought.t, link = worn.ids[id] }
                 book.bought[key] = nil

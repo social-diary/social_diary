@@ -234,3 +234,49 @@ do
     SlashCmdList.SOCIALDIARY("chosen clear")
     Eq(j.chosen, nil, "clear takes every choice off")
 end
+
+do
+    Section("a place left out still counts against its list's cap (Journey.Append)")
+    -- The impact review, 28 Nov 2026: a record only hidden (Custom.Hide, a
+    -- place left out) holds no writing of the player's, so it counts and
+    -- goes as a plain one; one written on is kept past the cap.
+    J.RegisterList("testCapped", { cap = 3 })
+    local list = {}
+    for i = 1, 3 do list[i] = J.Append(j, "testCapped", { t = t0 + i }) end
+    list[1].custom = { hidden = true }
+    list[2].custom = { hidden = true, label = "mine" }
+    for i = 4, 6 do J.Append(j, "testCapped", { t = t0 + i }) end
+    local kept = J.List(j, "testCapped")
+    local has = {}
+    for _, rec in ipairs(kept) do has[rec.t - t0] = true end
+    Check(not has[1], "a record only hidden outlived the cap")
+    Check(has[2], "a record the player wrote on went with the cap")
+    Eq(#kept, 4, "the cap: three plain and the one written on")
+end
+
+do
+    Section("choices whose record is gone go at the prune (Chosen.Orphans)")
+    -- A listed kind's key older than every record left on its list has no
+    -- record behind it; the route's own moments and a card the player
+    -- inserted keep theirs.
+    ns.JourneyRecap.RegisterMoment("testOrphan", { order = 999, list = "testOrphans", field = "rec", rank = 9 })
+    j.testOrphans = { { t = t0 + 500 }, { t = t0 + 900 } }
+    j.custom = j.custom or {}
+    local inserted = { kind = "testOrphan", t = t0 + 50, inserted = true }
+    table.insert(j.custom, inserted)
+    j.chosen = {
+        [("testOrphan:%d:"):format(t0 + 100)] = "out",
+        [("testOrphan:%d:"):format(t0 + 50)] = "out",
+        [("testOrphan:%d:"):format(t0 + 500)] = "keep",
+        [("testOrphan:%d:"):format(t0 + 900)] = "out",
+        [("arrive:%d:"):format(t0 - 99999)] = "out",
+    }
+    J.Prune(now)
+    Eq(j.chosen[("testOrphan:%d:"):format(t0 + 100)], nil, "a choice whose record the cap let go stayed")
+    Eq(j.chosen[("testOrphan:%d:"):format(t0 + 50)], "out", "an inserted card's choice went")
+    Eq(j.chosen[("testOrphan:%d:"):format(t0 + 500)], "keep", "the oldest record's choice went")
+    Eq(j.chosen[("testOrphan:%d:"):format(t0 + 900)], "out", "a kept record's choice went")
+    Eq(j.chosen[("arrive:%d:"):format(t0 - 99999)], "out", "a route moment's choice went")
+    for i = #j.custom, 1, -1 do if j.custom[i] == inserted then table.remove(j.custom, i) end end
+    j.testOrphans, j.chosen = nil, nil
+end

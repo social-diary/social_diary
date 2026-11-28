@@ -43,8 +43,9 @@
 -- (Waiting, AddWaiting; the sheet is UI/Windows/AutoAdd.lua's).
 --
 -- Someone the user takes out of the diary is never added back
--- (meta.declined, written by Diary.Remove). Nor is anyone on the game's
--- ignore list.
+-- (meta.declined, written by Diary.Remove) while the diary still knows
+-- anything of them (PruneDeclined). Nor is anyone on the game's ignore
+-- list.
 
 local addonName, ns = ...
 
@@ -64,18 +65,71 @@ AutoAdd.On = On
 -- PRV-3: "Delete all data" forgets the list too. Forgetting one person keeps
 -- their bare GUID here, though: "delete everything about them" is not "add
 -- them back the next time they pass".
+--
+-- meta.declinedAt[guid] = when they were taken out, beside meta.declined
+-- (a table of its own, so `declined` keeps its shape: `true` a GUID). An
+-- entry from before it has no time; PruneDeclined gives it one.
 ns.RegisterStore("declined", function(guid)
-    if guid == nil then wipe(ns.db.meta.declined) end
+    if guid == nil then
+        wipe(ns.db.meta.declined)
+        if ns.db.meta.declinedAt then wipe(ns.db.meta.declinedAt) end
+    end
 end)
+
+local function DeclinedAt()
+    local meta = ns.db.meta
+    if type(meta.declinedAt) ~= "table" then meta.declinedAt = {} end
+    return meta.declinedAt
+end
 
 function AutoAdd.Decline(guid)
     guid = ns.SafeGUID(guid)
-    if guid then ns.db.meta.declined[guid] = true end
+    if guid then
+        ns.db.meta.declined[guid] = true
+        DeclinedAt()[guid] = ns.Now()
+    end
 end
 
 function AutoAdd.Declined(guid)
     guid = ns.SafeGUID(guid)
     return guid ~= nil and ns.db.meta.declined[guid] == true
+end
+
+-- How long a GUID stays on the list once nothing else of theirs is kept
+-- (code review 28 Nov 2026, #3: the list only ever grew). Someone still
+-- about -- a record, a packed line, a row -- stays declined however long
+-- ago that was: auto-add could weigh them, so the list must hold. Only
+-- someone the diary has wholly forgotten (bufferDays, strangerLimit) and
+-- declined a year ago goes: to be added again they would have to meet a
+-- rule afresh, from nothing.
+AutoAdd.DECLINED_DAYS = 365
+
+-- At login, after the records' prune (Core/Events.lua). Asks the stores
+-- with rawget and the lines as they are: unpacks nobody. Returns how many
+-- went.
+function AutoAdd.PruneDeclined(now)
+    now = now or ns.Now()
+    local d = ns.db
+    local declined, at = d.meta.declined, DeclinedAt()
+    local cutoff = now - AutoAdd.DECLINED_DAYS * ns.DAY
+    local lines = type(d.strangers) == "table" and d.strangers or {}
+    local dropped = 0
+    for guid in pairs(declined) do
+        local when = tonumber(at[guid])
+        if not when then
+            at[guid] = now      -- from before the times were kept: from now
+        elseif when < cutoff and rawget(d.characters, guid) == nil and lines[guid] == nil
+            and d.interactions[guid] == nil and rawget(d.sightings, guid) == nil
+            and not ns.Diary.IsDiary(guid) then
+            declined[guid], at[guid] = nil, nil
+            dropped = dropped + 1
+        end
+    end
+    -- A time without its GUID (a hand-edited file): nothing to keep it for.
+    for guid in pairs(at) do
+        if declined[guid] == nil then at[guid] = nil end
+    end
+    return dropped
 end
 
 local function Ignored(guid)
@@ -115,13 +169,17 @@ AutoAdd.Eligible = Eligible
 --   count     function(guid, rule, ctx) -> how many qualifying events are
 --             stored; ctx is { now, place } (CheckGroup's), or nil
 --   backfill  whether the backfill sheet may ask about it (grouped: false)
---   strangers nil, or function(amount): unpacks the packed strangers
---             (Core/Strangers.lua) who could count `amount` or more, before
+--   strangers nil, or function(amount, test): unpacks the packed
+--             strangers (Core/Strangers.lua) who could count `amount` or
+--             more and whom `test(guid, record, rows)` lets through, before
 --             the backfill walks the stores. A packed stranger has nothing
 --             in the buffer, so a trigger that counts only buffer rows
 --             leaves it out; one that counts what a line holds (seen: the
 --             sighting rows) must have it, or the backfill never finds them.
---             A wide net is fine: Passes still decides.
+--             `test` weighs the line itself (lineCount and the filters), so
+--             only who would be offered is unpacked.
+--   lineCount with `strangers`: function(record, rows, rule) -> the count,
+--             off a packed line read into a record and rows (not stored)
 --   describe  function(rule) -> "Whispered 3 times, either way"
 --   source    the entry's addedContext.source ("auto_whisper")
 
@@ -420,6 +478,15 @@ local function Amount(rule, spec)
     return tonumber(rule.amount) or (spec.amount and spec.amount.default) or 1
 end
 
+-- Every filter of `rule` passes for `guid`, whose record is `record`.
+local function Filtered(guid, record, rule)
+    for key, value in pairs(rule.filters) do
+        local test = FILTERS[key]
+        if not test or not test(guid, record, value) then return false end
+    end
+    return true
+end
+
 function AutoAdd.Passes(guid, rule, ctx)
     local spec = type(rule) == "table" and triggers[rule.trigger]
     if not spec or not spec.count then return false end
@@ -428,12 +495,18 @@ function AutoAdd.Passes(guid, rule, ctx)
     if (spec.count(guid, rule, ctx) or 0) < Amount(rule, spec) then return false end
 
     if type(rule.filters) == "table" then
-        local record = ns.Characters.Get(guid)
-        for key, value in pairs(rule.filters) do
-            local test = FILTERS[key]
-            if not test or not test(guid, record, value) then return false end
-        end
+        return Filtered(guid, ns.Characters.Get(guid), rule)
     end
+    return true
+end
+
+-- Passes, for a packed stranger's line read into `record` and `rows`
+-- without unpacking it (the backfill's net, Waiting).
+local function PassesLine(guid, record, rows, rule)
+    local spec = triggers[rule.trigger]
+    if not (spec and spec.lineCount) then return false end
+    if (spec.lineCount(record, rows, rule) or 0) < Amount(rule, spec) then return false end
+    if type(rule.filters) == "table" then return Filtered(guid, record, rule) end
     return true
 end
 
@@ -618,12 +691,16 @@ end
 -- Rows of the sighting store (one per zone-hour, the count "Seen N times"
 -- says) within its window, not counting hostile ones: a returning face, not
 -- an enemy passing through.
-local function TimesSeen(guid)
+local function Friendly(rows)
     local n = 0
-    for _, row in ipairs(ns.Sightings.For(guid)) do
+    for _, row in ipairs(rows) do
         if not row.hostile then n = n + 1 end
     end
     return n
+end
+
+local function TimesSeen(guid)
+    return Friendly(ns.Sightings.For(guid))
 end
 
 AutoAdd.RegisterTrigger("seen", {
@@ -636,9 +713,11 @@ AutoAdd.RegisterTrigger("seen", {
     backfill = true,
     source = "auto_seen",
     count = function(guid) return TimesSeen(guid) end,
-    -- Every row a line holds counts here, hostile ones too: the net is
-    -- wider than TimesSeen, never narrower.
-    strangers = function(amount) ns.Strangers.UnpackSeenOften(amount) end,
+    -- Every row a line holds counts for the first cut, hostile ones too
+    -- (wider than TimesSeen, never narrower); `test` then counts as
+    -- TimesSeen does, on the line.
+    strangers = function(amount, test) ns.Strangers.UnpackSeenOften(amount, test) end,
+    lineCount = function(_, rows) return Friendly(rows) end,
     describe = function(rule)
         local n = tonumber(rule.amount) or 0
         return ns.Plural(n, L["seen %d time|seen %d times##plural"])
@@ -685,18 +764,31 @@ function AutoAdd.Waiting(rules)
 
     local out = {}
     if #list == 0 then return out end
-    -- The packed strangers (Core/Strangers.lua) these rules could take in,
-    -- unpacked first: each trigger that can count them is asked once, for
-    -- the lowest amount its rules here want.
-    local fewest = {}
+    -- The packed strangers (Core/Strangers.lua) these rules would offer,
+    -- unpacked first, and only they: each trigger that can count them is
+    -- asked once, for the lowest amount its rules here want, and its lines
+    -- are weighed against every rule here that trigger has (the count off
+    -- the line, the filters off the line's record). Who passes none stays
+    -- a line (code review 28 Nov 2026, #7).
+    local fewest, theirs = {}, {}
     for _, rule in ipairs(list) do
         local spec = triggers[rule.trigger]
         if spec.strangers then
             local amount = Amount(rule, spec)
             if not fewest[spec] or amount < fewest[spec] then fewest[spec] = amount end
+            theirs[spec] = theirs[spec] or {}
+            table.insert(theirs[spec], rule)
         end
     end
-    for spec, amount in pairs(fewest) do spec.strangers(amount) end
+    for spec, amount in pairs(fewest) do
+        spec.strangers(amount, function(guid, record, rows)
+            if not Eligible(guid) then return false end
+            for _, rule in ipairs(theirs[spec]) do
+                if PassesLine(guid, record, rows, rule) then return true end
+            end
+            return false
+        end)
+    end
 
     local seen = {}
     local function Consider(guid)
@@ -717,19 +809,40 @@ function AutoAdd.Waiting(rules)
     return out
 end
 
+-- How many the backfill adds in one frame (the user, 28 Nov 2026: no cap
+-- on what the rules add, but a large first list is taken in batches). A
+-- loose rule's first sheet can list thousands; each is weighed again and
+-- written, and the frame should not stall on the lot.
+AutoAdd.BATCH = 100
+
 -- Adds them all, quietly, with one line in chat for the lot, each by the
 -- rule it came with. Still checks each: the sheet may have been open while
--- one of them was added or removed. Returns how many were added.
-function AutoAdd.AddWaiting(list)
-    local n = 0
-    for _, item in ipairs(list or AutoAdd.Waiting()) do
-        local guid = Eligible(item.guid)
-        if guid and AutoAdd.Passes(guid, item.rule) and AutoAdd.Add(guid, item.rule, true) then
-            n = n + 1
+-- one of them was added or removed. The first BATCH at once, the rest
+-- BATCH a frame after. Returns how many were added now; `done(n)`, if
+-- given, is called with the whole count once the last batch is written
+-- (at once for a list that fits in one).
+function AutoAdd.AddWaiting(list, done)
+    list = list or AutoAdd.Waiting()
+    local n, i = 0, 1
+    local function Batch()
+        local stop = math.min(#list, i + AutoAdd.BATCH - 1)
+        for k = i, stop do
+            local item = list[k]
+            local guid = Eligible(item.guid)
+            if guid and AutoAdd.Passes(guid, item.rule) and AutoAdd.Add(guid, item.rule, true) then
+                n = n + 1
+            end
         end
+        i = stop + 1
+        if i <= #list then
+            ns.After(0, Batch)
+            return
+        end
+        if n > 0 then
+            ns.Print(ns.Plural(n, L["added %d person to the diary by your rules.|added %d people to the diary by your rules.##plural"]))
+        end
+        if done then done(n) end
     end
-    if n > 0 then
-        ns.Print(ns.Plural(n, L["added %d person to the diary by your rules.|added %d people to the diary by your rules.##plural"]))
-    end
+    Batch()
     return n
 end

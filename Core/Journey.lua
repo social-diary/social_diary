@@ -1256,6 +1256,18 @@ function Journey.RegisterList(name, spec)
     return spec
 end
 
+-- Whether the player wrote on `rec` (Core/Custom.lua): changed a field,
+-- not only hid it.
+local function Written(rec)
+    local changes = rec.custom
+    if not changes then return false end
+    for field in pairs(changes) do
+        if field ~= "hidden" then return true end
+    end
+    return false
+end
+Journey.Written = Written
+
 -- `rec` on j's list `name`, stamped now unless it says when, and placed
 -- where `where` says (ns.Where's shape; here and now without it; only on a
 -- zone map, else the recap places it by time). Returns `rec`.
@@ -1271,15 +1283,17 @@ function Journey.Append(j, name, rec, where)
     -- The oldest goes, past any the player has changed, which do not count
     -- against the cap either: nothing removes their writing on its own, or
     -- crowds out what comes next (Core/Custom.lua, as Core/Notes.lua says of
-    -- theirs).
+    -- theirs). One only hidden (Custom.Hide, a place left out in the
+    -- ticklist) holds no writing: it counts and goes as a plain one does,
+    -- or every place left out would keep its records past the cap for good.
     if cap and #list > cap then
         local plain = 0
         for _, kept in ipairs(list) do
-            if not kept.custom then plain = plain + 1 end
+            if not Written(kept) then plain = plain + 1 end
         end
         local i = 1
         while plain > cap do
-            if list[i].custom then
+            if Written(list[i]) then
                 i = i + 1
             else
                 table.remove(list, i)

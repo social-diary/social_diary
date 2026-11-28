@@ -105,6 +105,45 @@ function Chosen.Leave(j, m)
     return true
 end
 
+-- A choice outlives its moment where the record behind it is gone: its
+-- list's cap let the oldest go (Journey.Append) or the feature's prune did.
+-- At login (Journey.Prune) such a key goes too, or a player who curates for
+-- years keeps every key they ever set. Only a feature's listed kind (a
+-- `list`, no `gather`) is judged, by its key's time: the moment of a listed
+-- record is at the record's own `t` (Recap.Moments), and the list is kept
+-- oldest first by time, so a key older than every record left has none
+-- behind it. A card the player inserted of that kind keeps its key (j.custom
+-- is never capped). The route's own moments (segments, levels, sessions)
+-- are never cut, and their keys stay.
+local function Orphans(j)
+    local chosen = j.chosen
+    if not chosen then return end
+    local Recap = ns.JourneyRecap
+    local oldest, inserted = {}, {}
+    for kind, spec in pairs(Recap.MOMENTS) do
+        if spec.list and not spec.gather and (spec.keyKind or kind) == kind then
+            local min = math.huge
+            for _, rec in ipairs(Journey.List(j, spec.list)) do
+                if rec.t and rec.t < min then min = rec.t end
+            end
+            oldest[kind] = min
+        end
+    end
+    for _, rec in ipairs(j.custom or {}) do
+        if rec.kind and rec.t then inserted[rec.kind .. ":" .. math.floor(rec.t)] = true end
+    end
+    for key in pairs(chosen) do
+        local kind, t = key:match("^([^:]+):(%-?%d+):")
+        t = tonumber(t)
+        if kind and t and oldest[kind] and t < oldest[kind] and not inserted[kind .. ":" .. t] then
+            chosen[key] = nil
+        end
+    end
+    if next(chosen) == nil then j.chosen = nil end
+end
+Chosen.Orphans = Orphans
+
+
 -- The moment a plate opened round: the best ranked, then the earliest.
 function Chosen.Lead(plate)
     local Rank, lead = ns.JourneyRecap.Rank, nil
@@ -608,4 +647,4 @@ local function ForgetOn(j, guid)
     if next(j.chosen) == nil then j.chosen = nil end
 end
 
-Journey.RegisterList("chosen", { forget = ForgetOn })
+Journey.RegisterList("chosen", { forget = ForgetOn, prune = function(j) Orphans(j) end })

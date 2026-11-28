@@ -506,6 +506,70 @@ ns.Diary.Add(ALDA, { source = "test" })
 Eq(#A.Waiting(), 0, "someone in the diary waits")
 
 --------------------------------------------------------------------------
+Section("a large backfill is added in batches, one chat line for the lot")
+
+-- (the user, 28 Nov 2026: no cap on the rules, but a large first list is
+-- taken BATCH a frame)
+local batch = A.BATCH
+A.BATCH = 2
+rules = Fresh({ { trigger = "traded", amount = 1 } })
+local many = {}
+for i = 1, 5 do
+    many[i] = ("Player-1111-0000B%03d"):format(i)
+    ns.db.interactions[many[i]] = { { type = "trade", time = mock.now } }
+end
+waiting = A.Waiting()
+Eq(#waiting, 5, "set-up: five wait")
+before = #said
+local total
+Eq(A.AddWaiting(waiting, function(n) total = n end), 2, "the first batch")
+Eq(total, nil, "done before the last batch")
+Eq(#said - before, 0, "a chat line before the last batch")
+for _ = 1, 5 do mock.RunTimers() end
+for i = 1, 5 do Check(In(many[i]), "a later batch left out " .. i) end
+Eq(total, 5, "done's count")
+Eq(#said - before, 1, "the batches' lines in chat")
+-- A list that fits in one batch is done at once.
+A.BATCH = batch
+ns.db.interactions[DOMO] = { { type = "trade", time = mock.now } }
+total = nil
+Eq(A.AddWaiting(nil, function(n) total = n end), 1, "a small backfill")
+Eq(total, 1, "a small backfill's done came later")
+
+--------------------------------------------------------------------------
+Section("the declined list: kept while the diary knows them, a year after it forgot")
+
+rules = Fresh({ { trigger = "traded", amount = 1 } })
+ns.db.meta.declinedAt = nil
+local now0 = mock.now
+A.Decline(ALDA)                     -- still has a record: stays for ever
+A.Decline(BERN)                     -- forgotten, a year ago: goes
+A.Decline(CARA)                     -- forgotten, but declined lately: stays
+ns.db.meta.declined[DOMO] = true    -- from before the times: given one
+Eq(ns.db.meta.declinedAt[ALDA], now0, "Decline kept no time")
+
+mock.now = now0 + 400 * ns.DAY
+ns.db.meta.declinedAt[CARA] = mock.now - 10 * ns.DAY
+ns.db.characters[BERN], ns.db.characters[CARA], ns.db.characters[DOMO] = nil, nil, nil
+Eq(A.PruneDeclined(mock.now), 1, "how many left the list")
+Check(A.Declined(ALDA), "someone with a record left the list")
+Check(not A.Declined(BERN), "someone forgotten a year ago stayed on the list")
+Eq(ns.db.meta.declinedAt[BERN], nil, "their time stayed")
+Check(A.Declined(CARA), "someone declined ten days ago left the list")
+Check(A.Declined(DOMO), "an entry without a time left the list")
+Eq(ns.db.meta.declinedAt[DOMO], mock.now, "an entry without a time got none")
+-- A packed stranger's line keeps them on it, and unpacks nobody.
+ns.db.meta.declinedAt[CARA] = now0
+ns.db.strangers[CARA] = "1,0,,,,,,;Cara;"
+Eq(A.PruneDeclined(mock.now), 0, "someone with a packed line left the list")
+Eq(type(ns.db.strangers[CARA]), "string", "the prune unpacked a stranger")
+ns.db.strangers[CARA] = nil
+-- Delete all data forgets the times too.
+ns.ForgetEverywhere(nil)
+Eq(next(ns.db.meta.declinedAt), nil, "deleting all data kept the times")
+mock.now = now0
+
+--------------------------------------------------------------------------
 Section("Widened, Snapshot, AskAbout")
 
 local base = { id = 1, on = true, trigger = "whispered", amount = 3, option = "in",

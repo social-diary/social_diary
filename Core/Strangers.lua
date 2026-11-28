@@ -691,8 +691,14 @@ function Strangers.UnpackSeen(from, to)
     swept[span], sweptCount = true, sweptCount + 1
 end
 
--- Those with at least `n` rows.
-function Strangers.UnpackSeenOften(n)
+-- Those with at least `n` rows. With `test`, only those of them that
+-- `test(guid, record, rows)` says yes to, asked of the line read into a
+-- record and rows of its own (nothing written; a line that does not open
+-- is passed over): Auto-Add's backfill weighs a rule's count and filters
+-- on the line, and only who passes is unpacked (code review 28 Nov 2026,
+-- #7: a rule of two once unpacked most of the lines and kept them so).
+function Strangers.UnpackSeenOften(n, test)
+    local hands = ns.db and Hands(ns.db)
     for guid, line in Each() do
         local first, at, stop = Parts(line)
         if first and at <= stop then
@@ -702,7 +708,14 @@ function Strangers.UnpackSeenOften(n)
                 if not at or at > stop then break end
                 rows, at = rows + 1, at + 1
             end
-            if rows >= n then Strangers.Unpack(guid) end
+            if rows >= n then
+                local yes = true
+                if test then
+                    local ok, record, list = pcall(FromLine, guid, line, hands)
+                    yes = ok and test(guid, record, list or {}) and true or false
+                end
+                if yes then Strangers.Unpack(guid) end
+            end
         end
     end
 end
