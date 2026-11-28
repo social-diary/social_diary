@@ -34,19 +34,19 @@ local L = ns.L
 local Style = ns.Style
 local DungeonPage = ns.UI.DungeonPage
 
--- The words (drafts: the copywriter's pass follows, 28 Nov 2026).
--- copy TBD (copywriter)
+-- The words, all furniture (the copywriter's §1); the menu's as the
+-- plates' own card's ("Delete this card", UI/Journey/CardSheet.lua).
 local WORDS = {
     add = L["Add a note here"],
-    edit = L["Edit##run note"],
-    move = L["Move##run note"],
-    remove = L["Remove##run note"],
+    edit = L["Change this note"],
+    move = L["Move this note"],
+    remove = L["Delete this note"],
     which = L["Which one?"],
     menu = L["Open the menu"],
     confirm = L["Delete this note you wrote?\n\nIt comes off the map. This cannot be undone."],
-    drop = L["Click where it goes"],
-    pin = L["Pin it to %s"],
-    cancel = L["Right-click or Escape: leave it where it was"],
+    drop = L["Click to put it here"],
+    pin = L["Click to pin it to %s"],
+    cancel = L["Right-click or Escape to leave it where it was"],
     change = L["Right-click to change it"],
     put = L["Put it here"],
     leave = L["Leave it where it was"],

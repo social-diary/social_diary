@@ -291,13 +291,13 @@ local own2 = Put({ icon = "heart", text = "mine too" }, { f = 292, x = 0.3, y = 
 Relay()
 mock.contextMenu = nil
 view.ownStrips[1].strip.link.scripts.OnMouseUp(view.ownStrips[1].strip.link, "RightButton")
-Eq(Lines(mock.contextMenu), "Edit|Move|Remove", "an own strip's menu")
+Eq(Lines(mock.contextMenu), "Change this note|Move this note|Delete this note", "an own strip's menu")
 for i = 1, view.pools.hit.used do if view.pools.hit[i].what == "note" then hit = view.pools.hit[i] end end
 mock.contextMenu = nil
 hit.scripts.OnMouseUp(hit, "RightButton")
 Eq(mock.contextMenu.children[1].text, "Which one?", "a mark of two does not ask which")
 Eq(#mock.contextMenu.children, 3, "a line each")
-Eq(Lines(mock.contextMenu.children[2]), "Edit|Move|Remove", "each its own lines")
+Eq(Lines(mock.contextMenu.children[2]), "Change this note|Move this note|Delete this note", "each its own lines")
 -- No menu: another character's run, the pen up, off the floor, a bare sheet.
 cursor = { view.w * 0.5, view.h * 0.5 }
 local function Refused(what)
@@ -382,7 +382,7 @@ view, spread = Open()
 view.K.Cursor = function() return cursor[1], cursor[2] end
 -- Edit from the menu: the same form, the note's words.
 view.ownStrips[1].strip.link.scripts.OnMouseUp(view.ownStrips[1].strip.link, "RightButton")
-mock.MenuClick("Edit")
+mock.MenuClick("Change this note")
 Eq(Row("text"):Get(), "Divine Intervention saved the run.", "Edit did not load the note")
 Row("text").box:SetText("It was a Divine Intervention.")
 form.save.scripts.OnClick(form.save)
@@ -396,7 +396,7 @@ local function Strip()
     for _, entry in ipairs(view.ownStrips) do if entry.rec.customOf == rec then return entry end end
 end
 view.ownStrips[1].strip.link.scripts.OnMouseUp(view.ownStrips[1].strip.link, "RightButton")
-mock.MenuClick("Move")
+mock.MenuClick("Move this note")
 local c = _G[Page.NOTE_MOVE.name]
 Check(view.moving and c and c:IsShown(), "Move did not pick the note up")
 Eq(Strip().strip:GetAlpha(), Page.NOTE_MOVE.alpha, "the note moved not faded")
@@ -447,7 +447,7 @@ local confirm = ns.UI.Dialog.Confirm
 local asked
 ns.UI.Dialog.Confirm = function(text, action) asked = text; action() end
 view.ownStrips[1].strip.link.scripts.OnMouseUp(view.ownStrips[1].strip.link, "RightButton")
-mock.MenuClick("Remove")
+mock.MenuClick("Delete this note")
 ns.UI.Dialog.Confirm = confirm
 Eq(asked, "Delete this note you wrote?\n\nIt comes off the map. This cannot be undone.", "not asked first")
 Eq(visit.custom, nil, "not removed")

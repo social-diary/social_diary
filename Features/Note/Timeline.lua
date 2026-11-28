@@ -108,15 +108,17 @@ local function Words(rec)
 end
 
 -- Where the card lies, on whose map, and at what level: "Noted on your
--- map in Mulgore, level 12" ("on Thex's map" for another of the user's
+-- map in Mulgore, level 12", "in The Deadmines" for a run's map ("on Thex's map" for another of the user's
 -- characters, in a shared diary).
 local function Where(rec, me, visit)
     if visit then
         local name = type(visit.name) == "string" and visit.name ~= "" and visit.name or nil
+        -- "in The Deadmines", "in Wailing Caverns": the locale's phrase.
+        name = name and ns.DungeonIn(visit.instanceID, name)
         local level = rec.level
         local line
-        if name and level then line = Fmt(L["Noted on {your} map of %1$s, level %2$s##dungeon"], name, level)
-        elseif name then line = Fmt(L["Noted on {your} map of %s##dungeon"], name)
+        if name and level then line = Fmt(L["Noted on {your} map %1$s, level %2$s##dungeon"], name, level)
+        elseif name then line = Fmt(L["Noted on {your} map %s##dungeon"], name)
         elseif level then line = Fmt(L["Noted on {your} map, level %s"], level)
         else line = L["Noted on {your} map"] end
         return Format.You(me, line)
@@ -206,6 +208,6 @@ ns.Timeline.RegisterAside("noteCardRun", {
         if not OpensRun(of) then return end
         ns.UI.OpenVisit(of.visit.id, of.guid)
     end,
-    hint = L["Click to open the run's map."],
+    hint = L["Click to open the map it’s on."],
     prompt = L["Open the map"],
 })

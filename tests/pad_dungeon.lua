@@ -433,7 +433,7 @@ Scope().focus:Focus(own, "sheet")
 Eq(Legend().PAD4, "Open the menu", "Y's prompt on an own note")
 Press("PAD4", sc)
 Check(Pad.Menu.IsOpen(), "Y on an own note did not open the pad's menu")
-Eq(MenuLines(), "Edit|Move|Remove", "the menu's lines")
+Eq(MenuLines(), "Change this note|Move this note|Delete this note", "the menu's lines")
 Press("PAD2", sc)
 Check(not Pad.Menu.IsOpen(), "B left the menu up")
 Eq(At().key, own, "the pad not back on the note")
@@ -464,7 +464,7 @@ local function MoveIt()
     Press("PAD4", sc)
     Scope().focus:Focus("button:2", "menu")
     for _, item in ipairs(Scope().focus.groups.menu.items) do
-        if item.element.text == "Move" then Scope().focus:Focus(item.key, "menu") end
+        if item.element.text == "Move this note" then Scope().focus:Focus(item.key, "menu") end
     end
     Press("PAD1", sc)
 end
