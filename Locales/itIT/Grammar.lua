@@ -86,6 +86,7 @@ G.YOU_FOR = {
     ["ti ha guardato morire"] = "ha guardato morire %s", ["ti ha salvato"] = "ha salvato %s",
     ["ti ha ucciso"] = "ha ucciso %s", ["ti ha visto morire"] = "ha visto morire %s",
     ["tua"] = "di %s", ["tuo"] = "di %s",
+    ["sulla tua mappa"] = "sulla mappa di %s",
 }
 
 -- The plain preposition per role. The client gives a bare name that may

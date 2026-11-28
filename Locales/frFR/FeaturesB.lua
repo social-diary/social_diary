@@ -116,6 +116,17 @@ ns.Locale.Add("frFR", {
     ["Who"] = "Qui",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s ; %2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "Notée sur {ta carte} %1$s, niveau %2$s",
+    ["Noted on {your} map %s##dungeon"] = "Notée sur {ta carte} %s",
+    ["Noted on {your} map, level %s"] = "Notée sur {ta carte}, niveau %s",
+    ["Noted on {your} map"] = "Notée sur {ta carte}",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Notée sur {ta carte} %1$s, niveau %2$s",
+    ["Noted on {your} map %s##zone"] = "Notée sur {ta carte} %s",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, avec %2$s",
+    ["Click to open it in Your Diary."] = "Clic pour l’ouvrir dans Ton journal.",
+    ["Open in Your Diary"] = "Ouvrir dans Ton journal",
+    ["Click to open the map it’s on."] = "Clic pour ouvrir la carte où elle se trouve.",
     -- Features/ProfessionCaps/Text.lua
     ["as far as an Apprentice goes"] = "jusqu’au rang d’apprenti",
     ["as far as a Journeyman goes"] = "jusqu’au rang de compagnon",

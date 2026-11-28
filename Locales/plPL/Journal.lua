@@ -16,6 +16,17 @@ ns.Locale.Add("plPL", {
     ["in your diary"] = "w twoim dzienniku",
     ["|cffffd100Diary:|r %s"] = "|cffffd100Dziennik:|r %s",
     ["Met %1$d time, last %2$s|Met %1$d times, last %2$s##plural"] = "Spotkanie %1$d raz, ostatnio %2$s|Spotkania %1$d razy, ostatnio %2$s|Spotkania %1$d razy, ostatnio %2$s",
+    -- UI/Dungeon/NoteMenu.lua
+    ["Add a note here"] = "Dodaj tutaj notatkę",
+    ["Change this note"] = "Zmień tę notatkę",
+    ["Move this note"] = "Przesuń tę notatkę",
+    ["Delete this note you wrote?\n\nIt comes off the map. This cannot be undone."] = "Usunąć tę notatkę?\n\nZniknie z mapy. Tej operacji nie można cofnąć.",
+    ["Click to put it here"] = "Kliknij, aby ją tu położyć",
+    ["Click to pin it to %s"] = "Kliknij, aby przypiąć ją do bossa %s",
+    ["Right-click or Escape to leave it where it was"] = "Prawy przycisk myszy lub Esc zostawia ją na miejscu",
+    ["Right-click to change it"] = "Kliknij prawym przyciskiem, aby ją zmienić",
+    ["Put it here"] = "Połóż tutaj",
+    ["Leave it where it was"] = "Zostaw na miejscu",
     -- UI/Journal/Book.lua
     ["%d day|%d days##plural"] = "%d dzień|%d dni|%d dni",
     -- UI/Journal/Empty.lua
@@ -131,6 +142,7 @@ ns.Locale.Add("plPL", {
     ["See where you saw them"] = "Zobacz miejsca spotkań",
     ["Go to the tabs"] = "Przejdź do zakładek",
     ["Back to the list"] = "Powrót do listy",
+    ["Open the menu"] = "Otwórz menu",
     ["Change the note"] = "Zmień notatkę",
     ["Write about them"] = "Napisz o tej postaci",
     ["Back to the left page"] = "Powrót do lewej strony",

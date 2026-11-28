@@ -291,6 +291,17 @@ ns.Locale.Add("plPL", {
     ["Who"] = "Kto",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "Zapisano na {twojej mapie} %1$s, poziom %2$s",
+    ["Noted on {your} map %s##dungeon"] = "Zapisano na {twojej mapie} %s",
+    ["Noted on {your} map, level %s"] = "Zapisano na {twojej mapie}, poziom %s",
+    ["Noted on {your} map"] = "Zapisano na {twojej mapie}",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Zapisano na {twojej mapie} %1$s, poziom %2$s",
+    ["Noted on {your} map %s##zone"] = "Zapisano na {twojej mapie} %s",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, razem z: %2$s",
+    ["Click to open it in Your Diary."] = "Kliknij, aby otworzyć ją w twoim dzienniku.",
+    ["Open in Your Diary"] = "Otwórz w twoim dzienniku",
+    ["Click to open the map it’s on."] = "Kliknij, aby otworzyć mapę, na której jest.",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "limit dla czeladnika",
     ["as far as an Apprentice goes"] = "limit dla ucznia",

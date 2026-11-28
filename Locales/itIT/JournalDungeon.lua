@@ -249,6 +249,7 @@ ns.Locale.Add("itIT", {
     ["See where you saw them"] = "Vedi dove l’hai vista",
     ["Go to the tabs"] = "Vai alle linguette",
     ["Back to the list"] = "Torna alla lista",
+    ["Open the menu"] = "Apri il menu",
     ["Change the note"] = "Cambia la nota",
     ["Write about them"] = "Scrivi su quella persona",
     ["Back to the left page"] = "Torna alla pagina di sinistra",

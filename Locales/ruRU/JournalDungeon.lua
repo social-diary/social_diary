@@ -247,6 +247,7 @@ ns.Locale.Add("ruRU", {
     ["See where you saw them"] = "Показать места встреч",
     ["Go to the tabs"] = "К вкладкам",
     ["Back to the list"] = "Назад к списку",
+    ["Open the menu"] = "Открыть меню",
     ["Change the note"] = "Изменить заметку",
     ["Write about them"] = "Написать заметку",
     ["Back to the left page"] = "Назад к левой странице",

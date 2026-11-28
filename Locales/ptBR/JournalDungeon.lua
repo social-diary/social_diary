@@ -234,6 +234,7 @@ ns.Locale.Add("ptBR", {
     ["See where you saw them"] = "Ver onde se viram",
     ["Go to the tabs"] = "Ir para as abas",
     ["Back to the list"] = "De volta à lista",
+    ["Open the menu"] = "Abrir o menu",
     ["Change the note"] = "Mudar a nota",
     ["Write about them"] = "Escrever sobre essa pessoa",
     ["Back to the left page"] = "De volta à página esquerda",

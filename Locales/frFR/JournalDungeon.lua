@@ -249,6 +249,7 @@ ns.Locale.Add("frFR", {
     ["See where you saw them"] = "Voir où vos chemins se sont croisés",
     ["Go to the tabs"] = "Aller aux onglets",
     ["Back to the list"] = "Retour à la liste",
+    ["Open the menu"] = "Ouvrir le menu",
     ["Change the note"] = "Modifier la note",
     ["Write about them"] = "Écrire à son sujet",
     ["Back to the left page"] = "Retour à la page de gauche",

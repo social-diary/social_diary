@@ -231,6 +231,7 @@ ns.Locale.Add("zhTW", {
     ["See where you saw them"] = "查看你在哪裡見過對方",
     ["Go to the tabs"] = "前往分頁標籤",
     ["Back to the list"] = "返回列表",
+    ["Open the menu"] = "開啟選單",
     ["Change the note"] = "修改筆記",
     ["Write about them"] = "寫下關於對方的事",
     ["Back to the left page"] = "返回左頁",

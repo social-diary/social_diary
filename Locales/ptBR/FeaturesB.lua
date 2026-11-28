@@ -118,6 +118,17 @@ ns.Locale.Add("ptBR", {
     ["Who"] = "Quem",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "Anotada {no seu mapa} %1$s, nível %2$s",
+    ["Noted on {your} map %s##dungeon"] = "Anotada {no seu mapa} %s",
+    ["Noted on {your} map, level %s"] = "Anotada {no seu mapa}, nível %s",
+    ["Noted on {your} map"] = "Anotada {no seu mapa}",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Anotada {no seu mapa} %1$s, nível %2$s",
+    ["Noted on {your} map %s##zone"] = "Anotada {no seu mapa} %s",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, com %2$s",
+    ["Click to open it in Your Diary."] = "Clique para abri-la no Seu Diário.",
+    ["Open in Your Diary"] = "Abrir no Seu Diário",
+    ["Click to open the map it’s on."] = "Clique para abrir o mapa onde ela está.",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "até o máximo de um Profissional",
     ["as far as an Apprentice goes"] = "até o máximo de um Aprendiz",

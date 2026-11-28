@@ -141,6 +141,7 @@ ns.Locale.Add("deDE", {
     ["See where you saw them"] = "Ansehen, wo du sie gesehen hast",
     ["Go to the tabs"] = "Zu den Reitern",
     ["Back to the list"] = "Zurück zur Liste",
+    ["Open the menu"] = "Menü öffnen",
     ["Change the note"] = "Notiz ändern",
     ["Write about them"] = "Über sie schreiben",
     ["Back to the left page"] = "Zurück zur linken Seite",

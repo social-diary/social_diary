@@ -98,6 +98,7 @@ G.YOU_FOR = {
     -- The diary's own phrases, braced whole so the name falls inside them.
     ["seu grupo"] = "O grupo de %s",
     ["com você"] = "com %s",
+    ["no seu mapa"] = "no mapa de %s",
 }
 
 -- The plain preposition per role. The client's name arrives bare, with no

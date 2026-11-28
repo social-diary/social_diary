@@ -109,6 +109,17 @@ ns.Locale.Add("zhCN", {
     ["in your diary"] = "在你的日记中",
     ["|cffffd100Diary:|r %s"] = "|cffffd100日记：|r %s",
     ["Met %1$d time, last %2$s|Met %1$d times, last %2$s##plural"] = "相遇%1$d次，最近%2$s",
+    -- UI/Dungeon/NoteMenu.lua
+    ["Add a note here"] = "在此添加笔记",
+    ["Change this note"] = "修改此笔记",
+    ["Move this note"] = "移动此笔记",
+    ["Delete this note you wrote?\n\nIt comes off the map. This cannot be undone."] = "删除你写的这条笔记吗？\n\n它将从地图中移除，且无法撤销。",
+    ["Click to put it here"] = "点击放在这里",
+    ["Click to pin it to %s"] = "点击钉在%s旁",
+    ["Right-click or Escape to leave it where it was"] = "右键或按Esc放回原处",
+    ["Right-click to change it"] = "右键点击以修改",
+    ["Put it here"] = "放在这里",
+    ["Leave it where it was"] = "放回原处",
     -- UI/Kit/Confirm.lua
     ["Delete"] = "删除",
     ["Cancel"] = "取消",

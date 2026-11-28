@@ -116,6 +116,17 @@ ns.Locale.Add("ruRU", {
     ["Who"] = "Кто",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "Отмечено на {твоей карте} %1$s, уровень %2$s",
+    ["Noted on {your} map %s##dungeon"] = "Отмечено на {твоей карте} %s",
+    ["Noted on {your} map, level %s"] = "Отмечено на {твоей карте}, уровень %s",
+    ["Noted on {your} map"] = "Отмечено на {твоей карте}",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Отмечено на {твоей карте} %1$s, уровень %2$s",
+    ["Noted on {your} map %s##zone"] = "Отмечено на {твоей карте} %s",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, рядом: %2$s",
+    ["Click to open it in Your Diary."] = "Щёлкни, чтобы открыть её в Твоём дневнике.",
+    ["Open in Your Diary"] = "Открыть в Твоём дневнике",
+    ["Click to open the map it’s on."] = "Щёлкни, чтобы открыть карту, на которой она лежит.",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "предел для подмастерья",
     ["as far as an Apprentice goes"] = "предел для ученика",

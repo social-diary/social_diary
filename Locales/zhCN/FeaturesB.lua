@@ -115,6 +115,17 @@ ns.Locale.Add("zhCN", {
     ["Who"] = "是谁",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s；%2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "%1$s记在{你的}地图上，%2$s级",
+    ["Noted on {your} map %s##dungeon"] = "%s记在{你的}地图上",
+    ["Noted on {your} map, level %s"] = "记在{你的}地图上，%s级",
+    ["Noted on {your} map"] = "记在{你的}地图上",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "%1$s记在{你的}地图上，%2$s级",
+    ["Noted on {your} map %s##zone"] = "%s记在{你的}地图上",
+    ["%1$s, with %2$s##card where and who"] = "%1$s，与%2$s同在",
+    ["Click to open it in Your Diary."] = "点击在冒险日记中打开。",
+    ["Open in Your Diary"] = "在冒险日记中打开",
+    ["Click to open the map it’s on."] = "点击打开它所在的地图。",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "达到中级水准",
     ["as far as an Apprentice goes"] = "达到初级水准",

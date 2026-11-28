@@ -112,6 +112,17 @@ ns.Locale.Add("frFR", {
     ["in your diary"] = "dans ton journal",
     ["|cffffd100Diary:|r %s"] = "|cffffd100Journal :|r %s",
     ["Met %1$d time, last %2$s|Met %1$d times, last %2$s##plural"] = "%1$d rencontre, la dernière %2$s|%1$d rencontre, la dernière %2$s|%1$d rencontres, la dernière %2$s",
+    -- UI/Dungeon/NoteMenu.lua
+    ["Add a note here"] = "Ajouter une note ici",
+    ["Change this note"] = "Modifier cette note",
+    ["Move this note"] = "Déplacer cette note",
+    ["Delete this note you wrote?\n\nIt comes off the map. This cannot be undone."] = "Supprimer cette note que tu as écrite ?\n\nElle disparaît de la carte. Impossible de revenir en arrière.",
+    ["Click to put it here"] = "Clic pour la poser ici",
+    ["Click to pin it to %s"] = "Clic pour l’épingler sur %s",
+    ["Right-click or Escape to leave it where it was"] = "Clic droit ou Échap pour la laisser où elle était",
+    ["Right-click to change it"] = "Clic droit pour la modifier",
+    ["Put it here"] = "La poser ici",
+    ["Leave it where it was"] = "La laisser où elle était",
     -- UI/Kit/Confirm.lua
     ["Delete"] = "Supprimer",
     ["Cancel"] = "Annuler",

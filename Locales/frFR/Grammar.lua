@@ -119,6 +119,7 @@ G.YOU_FOR = {
     ["toi"] = "%s", ["ta"] = "la",
     ["ton groupe"] = function(name) return "le groupe " .. De(name) end,
     ["à tes côtés"] = function(name) return "aux côtés " .. De(name) end,
+    ["ta carte"] = function(name) return "la carte " .. De(name) end,
 }
 
 -- The plain preposition per role. The client's name arrives bare, with no

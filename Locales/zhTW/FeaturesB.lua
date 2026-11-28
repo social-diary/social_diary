@@ -116,6 +116,17 @@ ns.Locale.Add("zhTW", {
     ["Who"] = "是誰",
     -- Features/Note/Text.lua
     ["%1$s; %2$s##list"] = "%1$s；%2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "%1$s記在{你的}地圖上，%2$s級",
+    ["Noted on {your} map %s##dungeon"] = "%s記在{你的}地圖上",
+    ["Noted on {your} map, level %s"] = "記在{你的}地圖上，%s級",
+    ["Noted on {your} map"] = "記在{你的}地圖上",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "%1$s記在{你的}地圖上，%2$s級",
+    ["Noted on {your} map %s##zone"] = "%s記在{你的}地圖上",
+    ["%1$s, with %2$s##card where and who"] = "%1$s，與%2$s同在",
+    ["Click to open it in Your Diary."] = "點擊在你的日記中開啟。",
+    ["Open in Your Diary"] = "在你的日記中開啟",
+    ["Click to open the map it’s on."] = "點擊開啟它所在的地圖。",
     -- Features/ProfessionCaps/Text.lua
     ["as far as a Journeyman goes"] = "已是中級能練到的極限",
     ["as far as an Apprentice goes"] = "已是初級能練到的極限",

@@ -181,6 +181,17 @@ ns.Locale.Add("deDE", {
     ["With %s"] = "Mit %s",
     ["someone##with"] = "jemandem",
     ["%1$s; %2$s##list"] = "%1$s; %2$s",
+    -- Features/Note/Timeline.lua
+    ["Noted on {your} map %1$s, level %2$s##dungeon"] = "Notiert auf {deiner} Karte %1$s, Stufe %2$s",
+    ["Noted on {your} map %s##dungeon"] = "Notiert auf {deiner} Karte %s",
+    ["Noted on {your} map, level %s"] = "Notiert auf {deiner} Karte, Stufe %s",
+    ["Noted on {your} map"] = "Notiert auf {deiner} Karte",
+    ["Noted on {your} map %1$s, level %2$s##zone"] = "Notiert auf {deiner} Karte %1$s, Stufe %2$s",
+    ["Noted on {your} map %s##zone"] = "Notiert auf {deiner} Karte %s",
+    ["%1$s, with %2$s##card where and who"] = "%1$s, mit %2$s",
+    ["Click to open it in Your Diary."] = "Klicken, um sie in deinem Tagebuch aufzuschlagen.",
+    ["Open in Your Diary"] = "In deinem Tagebuch aufschlagen",
+    ["Click to open the map it’s on."] = "Klicken, um die Karte zu öffnen, auf der sie liegt.",
 
     -- Features/ProfessionCaps/Text.lua: a cap in the prose, the caption, the tooltip
     ["as far as a Journeyman goes"] = "das Maximum als Geselle",

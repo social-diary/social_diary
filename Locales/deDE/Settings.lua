@@ -25,6 +25,17 @@ ns.Locale.Add("deDE", {
     ["|cffffd100Diary:|r %s"] = "|cffffd100Tagebuch:|r %s",
     ["Met %1$d time, last %2$s|Met %1$d times, last %2$s##plural"] =
         "Einmal getroffen, zuletzt %2$s|%1$d-mal getroffen, zuletzt %2$s",
+    -- UI/Dungeon/NoteMenu.lua
+    ["Add a note here"] = "Hier eine Notiz schreiben",
+    ["Change this note"] = "Diese Notiz ändern",
+    ["Move this note"] = "Diese Notiz verschieben",
+    ["Delete this note you wrote?\n\nIt comes off the map. This cannot be undone."] = "Diese Notiz löschen, die du geschrieben hast?\n\nSie verschwindet von der Karte. Das kann nicht rückgängig gemacht werden.",
+    ["Click to put it here"] = "Klicken, um sie hier abzulegen",
+    ["Click to pin it to %s"] = "Klicken, um sie an %s zu heften",
+    ["Right-click or Escape to leave it where it was"] = "Rechtsklick oder Escape lässt sie, wo sie war",
+    ["Right-click to change it"] = "Rechtsklick, um sie zu ändern",
+    ["Put it here"] = "Hier ablegen",
+    ["Leave it where it was"] = "Lassen, wo sie war",
 
     -- UI/Journal/Nearby.lua
     ["Notice who passes you in the open world"] = "Bemerken, wer in der offenen Welt an dir vorbeikommt",

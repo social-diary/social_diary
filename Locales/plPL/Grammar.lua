@@ -75,6 +75,7 @@ grammar.YOU_FOR = {
     ["uciekłeś"] = "%s uciekł", ["uciekłaś"] = "%s uciekła",
     ["uciekasz"] = "%s ucieka",
     ["założyłeś"] = "%s założył", ["założyłaś"] = "%s założyła",
+    ["twojej mapie"] = "mapie postaci %s",
 }
 
 local firsts = {

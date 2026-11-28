@@ -231,6 +231,7 @@ ns.Locale.Add("zhCN", {
     ["See where you saw them"] = "查看你在哪里见过对方",
     ["Go to the tabs"] = "前往标签页",
     ["Back to the list"] = "返回列表",
+    ["Open the menu"] = "打开菜单",
     ["Change the note"] = "修改笔记",
     ["Write about them"] = "记录关于对方",
     ["Back to the left page"] = "返回左页",

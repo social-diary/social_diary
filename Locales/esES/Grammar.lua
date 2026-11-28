@@ -86,6 +86,7 @@ G.YOU_FOR = {
     ["te vio morir"] = "vio morir a %s", ["te miró morir"] = "miró morir a %s",
     ["intentó salvarte"] = "intentó salvar a %s", ["te salvó"] = "salvó a %s",
     ["te pusiste"] = "%s se puso",
+    ["tu mapa"] = "el mapa de %s",
 }
 
 -- The plain preposition per role. "de" and "a" contract with a name's own

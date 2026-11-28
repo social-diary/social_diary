@@ -247,6 +247,7 @@ ns.Locale.Add("esES", {
     ["See where you saw them"] = "Ver dónde se vio",
     ["Go to the tabs"] = "Ir a las pestañas",
     ["Back to the list"] = "Volver a la lista",
+    ["Open the menu"] = "Abrir el menú",
     ["Change the note"] = "Cambiar la nota",
     ["Write about them"] = "Escribir sobre esa persona",
     ["Back to the left page"] = "Volver a la página izquierda",
